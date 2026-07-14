@@ -1,0 +1,74 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+.turbo/
+target/
+**/src-tauri/target/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# Backup files
+backups/
+*.bak
+*.backup
+
+# Secrets and certificates
+*.pem
+*.key
+*.pfx
+*.p12
+certs/
+secrets/
+
+# Test and coverage
+coverage/
+test-results/
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# Dotnet
+bin/
+obj/
+*.user
+*.suo
+
+# PostgreSQL local files
+.pgdata/
