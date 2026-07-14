@@ -1,0 +1,11 @@
+* text=auto
+
+*.cs text
+
+*.ts text
+
+*.tsx text
+
+*.md text
+
+*.sql text
