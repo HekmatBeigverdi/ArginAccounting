@@ -1,0 +1,24 @@
+{
+  "name": "@argin/ui",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"No lint configured yet\"",
+    "test": "echo \"No tests configured yet\"",
+    "build": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "react": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.10",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.2"
+  }
+}
