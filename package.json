@@ -1,0 +1,23 @@
+{
+  "name": "argin-accounting",
+  "version": "0.2.0",
+  "private": true,
+  "packageManager": "pnpm@11.13.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:web": "pnpm --filter @argin/web dev",
+    "dev:desktop": "pnpm --filter @argin/desktop tauri dev",
+    "build": "turbo build",
+    "build:web": "pnpm --filter @argin/web build",
+    "build:desktop": "pnpm --filter @argin/desktop tauri build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "clean": "turbo clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "turbo": "^2.5.6",
+    "typescript": "^5.9.2"
+  }
+}
