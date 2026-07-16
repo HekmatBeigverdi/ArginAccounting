@@ -20,6 +20,12 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@argin/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@argin/database-tauri':
+        specifier: workspace:*
+        version: link:../../packages/database-tauri
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1

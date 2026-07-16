@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@argin/database": "workspace:*",
+    "@argin/database-tauri": "workspace:*",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-sql": "~2.4.0",
