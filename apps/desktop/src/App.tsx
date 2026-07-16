@@ -1,12 +1,46 @@
 import "./App.css";
 
+import {
+  DatabaseStatusCard
+} from "./features/database/database-status-card";
+
 function App() {
   return (
     <main className="container" dir="rtl">
-      <h1>ArginAccounting</h1>
-      <p>نرم‌افزار حسابداری شرکتی، ماژولار و آفلاین‌محور</p>
-      <p>واحد پول پایه: ریال</p>
-      <p>تقویم رابط کاربری: هجری شمسی</p>
+      <header className="app-header">
+        <p className="app-kicker">
+          نرم‌افزار حسابداری شرکتی
+        </p>
+
+        <h1>ArginAccounting</h1>
+
+        <p>
+          سامانه حسابداری فارسی، ماژولار و آفلاین‌محور
+        </p>
+      </header>
+
+      <DatabaseStatusCard />
+
+      <section className="localization-card">
+        <h2>تنظیمات پایه</h2>
+
+        <dl>
+          <div>
+            <dt>واحد پول پایه</dt>
+            <dd>ریال ایران</dd>
+          </div>
+
+          <div>
+            <dt>تقویم رابط کاربری</dt>
+            <dd>هجری شمسی</dd>
+          </div>
+
+          <div>
+            <dt>حالت اجرا</dt>
+            <dd>دسکتاپ آفلاین</dd>
+          </div>
+        </dl>
+      </section>
     </main>
   );
 }
