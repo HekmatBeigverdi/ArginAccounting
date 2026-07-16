@@ -1,0 +1,24 @@
+{
+  "name": "@argin/database-tauri",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Tauri database lint is not configured yet\"",
+    "test": "echo \"Tauri database tests are not configured yet\"",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@argin/database": "workspace:*",
+    "@tauri-apps/plugin-sql": "^2.0.0"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.0"
+  }
+}
