@@ -166,3 +166,95 @@ button {
 .localization-card dd {
   margin: 0;
 }
+
+.company-form {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border: 1px solid #d8d8d8;
+  border-radius: 0.75rem;
+  background: #ffffff;
+}
+
+.company-form header h2 {
+  margin: 0;
+}
+
+.company-form fieldset {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid #e1e1e1;
+  border-radius: 0.5rem;
+}
+
+.company-form legend {
+  padding: 0 0.5rem;
+  font-weight: 700;
+}
+
+.company-form label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.company-form input,
+.company-form textarea {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #cfcfcf;
+  border-radius: 0.4rem;
+  font: inherit;
+}
+
+.company-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+
+.company-form-wide {
+  grid-column: 1 / -1;
+}
+
+.company-form-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  opacity: 0.7;
+}
+
+.company-form button {
+  justify-self: start;
+  min-width: 140px;
+  padding: 0.75rem 1.25rem;
+  border: 0;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.company-form button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.company-form-errors {
+  padding: 0.75rem 1rem;
+  border: 1px solid #c62828;
+  border-radius: 0.4rem;
+}
+
+.company-form-errors p {
+  margin: 0.25rem 0;
+}
+
+.company-form-success {
+  padding: 0.75rem 1rem;
+  border: 1px solid #2e7d32;
+  border-radius: 0.4rem;
+}

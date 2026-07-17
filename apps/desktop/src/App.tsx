@@ -3,6 +3,9 @@ import "./App.css";
 import {
   DatabaseStatusCard
 } from "./features/database/database-status-card";
+import {
+  CompanySetupForm
+} from "./features/company/company-setup-form";
 
 function App() {
   return (
@@ -20,6 +23,8 @@ function App() {
       </header>
 
       <DatabaseStatusCard />
+
+      <CompanySetupForm />
 
       <section className="localization-card">
         <h2>تنظیمات پایه</h2>
