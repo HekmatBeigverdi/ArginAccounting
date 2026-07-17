@@ -9,7 +9,31 @@ import {
 
 import { DESKTOP_DATABASE_URL } from "./constants";
 
+function getErrorMessage(error: unknown): string | null {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+
+  return null;
+}
+
 export class TauriSqliteExecutor implements DatabaseExecutor {
+  private transactionQueue: Promise<void> =
+    Promise.resolve();
+
   private constructor(
     private readonly connection: Database
   ) {}
@@ -50,9 +74,20 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
           : {})
       };
     } catch (error) {
+      const causeMessage = getErrorMessage(error);
+      const errorMessage = causeMessage
+        ? `Failed to execute SQLite statement: ${causeMessage}`
+        : "Failed to execute the SQLite statement.";
+
+      console.error("SQL Error:", {
+        sql: sql.substring(0, 200),
+        parameters,
+        error
+      });
+
       throw new DatabaseError(
         "QUERY_FAILED",
-        "Failed to execute the SQLite statement.",
+        errorMessage,
         error
       );
     }
@@ -68,9 +103,20 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
         [...parameters]
       );
     } catch (error) {
+      const causeMessage = getErrorMessage(error);
+      const errorMessage = causeMessage
+        ? `Failed to execute SQLite query: ${causeMessage}`
+        : "Failed to execute the SQLite query.";
+
+      console.error("SQL Query Error:", {
+        sql: sql.substring(0, 200),
+        parameters,
+        error
+      });
+
       throw new DatabaseError(
         "QUERY_FAILED",
-        "Failed to execute the SQLite query.",
+        errorMessage,
         error
       );
     }
@@ -83,6 +129,32 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
     const records = await this.query<T>(sql, parameters);
 
     return records[0] ?? null;
+  }
+
+  async transaction<T>(
+    operation: (transaction: DatabaseExecutor) => Promise<T>
+  ): Promise<T> {
+    const previousOperation = this.transactionQueue;
+    let releaseQueue!: () => void;
+
+    this.transactionQueue = new Promise<void>((resolve) => {
+      releaseQueue = resolve;
+    });
+
+    await previousOperation;
+
+    try {
+      /*
+       * tauri-plugin-sql executes every command through a connection
+       * pool. BEGIN/COMMIT calls are therefore not guaranteed to use
+       * the same SQLite connection and can leave the database locked.
+       * Serialize logical units of work until the plugin exposes a
+       * connection-bound transaction API.
+       */
+      return await operation(this);
+    } finally {
+      releaseQueue();
+    }
   }
 
   async close(): Promise<void> {

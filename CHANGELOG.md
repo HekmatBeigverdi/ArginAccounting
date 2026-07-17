@@ -4,28 +4,26 @@ All notable changes to this project will be documented here.
 
 ---
 
-## v0.1.0
+## [0.5.0] - Unreleased
 
 ### Added
 
-- Public repository
-- Architecture baseline
-- Architecture decisions
-- Localization strategy
-- Module map
-- Future roadmap
+- Company domain model
+- Branch domain model
+- Company and branch address support
+- Company taxpayer identity profile
+- Transactional company setup
+- SQLite company repositories
+- Persian company setup form
 
-## [0.4.0] - Unreleased
+### Database
 
-- Database-independent persistence contracts
-- Tauri SQLite infrastructure adapter
-- Official Tauri SQL plugin
-- Versioned SQLite migration support
-- Local database health check
-- Desktop database status component
+- Added `companies`
+- Added `branches`
+- Added `addresses`
+- Added `company_tax_profiles`
 
 ### Architecture
 
-- Database contracts are isolated from SQLite and Tauri
-- Desktop migrations are registered through the Rust plugin
-- Business schema creation is deferred to domain phases
+- Tax identity data is separated from Tax SDK configuration
+- Company creation and head-office creation are atomic
