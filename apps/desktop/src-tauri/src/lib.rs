@@ -21,13 +21,20 @@ fn database_migrations() -> Vec<Migration> {
             ),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 2,
+            description: "company_and_branch",
+            sql: include_str!(
+                "../migrations/0002_company_and_branch.sql"
+            ),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![greet])
         .plugin(

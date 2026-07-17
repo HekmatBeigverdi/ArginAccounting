@@ -1,0 +1,24 @@
+{
+  "name": "@argin/company-tauri",
+  "version": "0.5.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Company Tauri lint is not configured yet\"",
+    "test": "echo \"Company Tauri tests are not configured yet\"",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@argin/company": "workspace:*",
+    "@argin/database": "workspace:*"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.0"
+  }
+}

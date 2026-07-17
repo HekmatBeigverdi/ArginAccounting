@@ -17,5 +17,9 @@ export interface DatabaseExecutor {
     parameters?: readonly DatabaseValue[]
   ): Promise<T | null>;
 
+  transaction<T>(
+    operation: (transaction: DatabaseExecutor) => Promise<T>
+  ): Promise<T>;
+
   close(): Promise<void>;
 }

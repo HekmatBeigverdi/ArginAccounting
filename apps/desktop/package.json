@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@argin/company": "workspace:*",
+    "@argin/company-tauri": "workspace:*",
     "@argin/database": "workspace:*",
     "@argin/database-tauri": "workspace:*",
     "@tauri-apps/api": "^2",
