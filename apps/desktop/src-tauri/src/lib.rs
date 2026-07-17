@@ -21,6 +21,14 @@ fn database_migrations() -> Vec<Migration> {
             ),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 2,
+            description: "company_and_branch",
+            sql: include_str!(
+                "../migrations/0002_company_and_branch.sql"
+            ),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
