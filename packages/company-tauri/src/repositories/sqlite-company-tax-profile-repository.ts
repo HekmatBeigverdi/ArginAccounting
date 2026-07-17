@@ -82,7 +82,7 @@ export class SqliteCompanyTaxProfileRepository
         profile.fiscalId,
         profile.sellerBranchCode,
         profile.taxpayerType,
-        profile.isEnabled,
+        profile.isEnabled ? 1 : 0,
         profile.createdAt,
         profile.updatedAt
       ]
@@ -126,7 +126,7 @@ export class SqliteCompanyTaxProfileRepository
         profile.fiscalId,
         profile.sellerBranchCode,
         profile.taxpayerType,
-        profile.isEnabled,
+        profile.isEnabled ? 1 : 0,
         profile.updatedAt,
         profile.id
       ]

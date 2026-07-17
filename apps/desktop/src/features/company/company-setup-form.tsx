@@ -80,12 +80,15 @@ export function CompanySetupForm() {
     setIsSubmitting(true);
 
     try {
+      console.log("شروع ثبت شرکت...");
+
       const database = await getDesktopDatabase();
+      console.log("اتصال به پایگاه داده برقرار شد");
 
       const unitOfWork =
         new SqliteCompanyUnitOfWork(database);
 
-      await setupCompany(unitOfWork, {
+      const setupInput = {
         company: {
           code: form.companyCode,
           legalName: form.legalName,
@@ -117,14 +120,19 @@ export function CompanySetupForm() {
                     form.economicCode || null,
                   fiscalId: form.fiscalId || null,
                   sellerBranchCode: null,
-                  taxpayerType: "legal",
+                  taxpayerType: "legal" as const,
                   isEnabled: false
                 }
               }
             : {}
         )
-      });
+      };
 
+      console.log("داده‌های ارسالی:", setupInput);
+
+      await setupCompany(unitOfWork, setupInput);
+
+      console.log("ثبت شرکت با موفقیت انجام شد");
       setMessage("اطلاعات شرکت با موفقیت ثبت شد.");
     } catch (error) {
       if (error instanceof CompanyValidationError) {
@@ -132,11 +140,15 @@ export function CompanySetupForm() {
           error.issues.map((issue) => issue.message)
         );
       } else {
-        console.error(error);
+        console.error("خطا در ثبت شرکت:", error);
 
-        setErrors([
-          "ثبت اطلاعات شرکت با خطا مواجه شد."
-        ]);
+        // نمایش پیام خطای دقیق به کاربر
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "ثبت اطلاعات شرکت با خطا مواجه شد.";
+
+        setErrors([errorMessage]);
       }
     } finally {
       setIsSubmitting(false);

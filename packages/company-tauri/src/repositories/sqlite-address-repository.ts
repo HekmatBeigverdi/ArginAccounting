@@ -94,7 +94,7 @@ export class SqliteAddressRepository
         address.addressLine,
         address.postalCode,
         address.phone,
-        address.isPrimary,
+        address.isPrimary ? 1 : 0,
         address.createdAt,
         address.updatedAt
       ]

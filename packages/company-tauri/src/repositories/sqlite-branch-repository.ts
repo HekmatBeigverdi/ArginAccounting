@@ -73,7 +73,7 @@ export class SqliteBranchRepository
         branch.companyId,
         branch.code,
         branch.name,
-        branch.isHeadOffice,
+        branch.isHeadOffice ? 1 : 0,
         branch.status,
         branch.createdAt,
         branch.updatedAt
@@ -139,7 +139,7 @@ export class SqliteBranchRepository
       [
         branch.code,
         branch.name,
-        branch.isHeadOffice,
+        branch.isHeadOffice ? 1 : 0,
         branch.status,
         branch.updatedAt,
         branch.id
