@@ -1,0 +1,20 @@
+{
+  "name": "@argin/fiscal",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Fiscal lint is not configured yet\"",
+    "test": "echo \"Fiscal tests are not configured yet\"",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.0"
+  }
+}
