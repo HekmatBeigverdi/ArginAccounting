@@ -4,26 +4,30 @@ All notable changes to this project will be documented here.
 
 ---
 
-## [0.5.0] - Unreleased
+## [0.6.0] - Unreleased
 
 ### Added
 
-- Company domain model
-- Branch domain model
-- Company and branch address support
-- Company taxpayer identity profile
-- Transactional company setup
-- SQLite company repositories
-- Persian company setup form
+- Fiscal year domain
+- Fiscal period domain
+- Current fiscal year selection
+- Historical operation locks
+- Shared document number series
+- Operation date validation
+- SQLite fiscal repositories
+- Persian fiscal year setup form
 
 ### Database
 
-- Added `companies`
-- Added `branches`
-- Added `addresses`
-- Added `company_tax_profiles`
+- Added `fiscal_years`
+- Added `fiscal_periods`
+- Added `historical_locks`
+- Added `number_series`
 
 ### Architecture
 
-- Tax identity data is separated from Tax SDK configuration
-- Company creation and head-office creation are atomic
+- Business dates remain Gregorian in storage
+- Jalali remains the presentation calendar
+- Document numbering is shared across modules
+- Period and historical locking are independent
+-
