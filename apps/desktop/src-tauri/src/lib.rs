@@ -29,6 +29,14 @@ fn database_migrations() -> Vec<Migration> {
             ),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "fiscal_management",
+            sql: include_str!(
+                "../migrations/0003_fiscal_management.sql"
+            ),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
