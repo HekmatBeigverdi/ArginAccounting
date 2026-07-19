@@ -1,0 +1,24 @@
+{
+  "name": "@argin/fiscal-tauri",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Fiscal Tauri lint is not configured yet\"",
+    "test": "echo \"Fiscal Tauri tests are not configured yet\"",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@argin/database": "workspace:*",
+    "@argin/fiscal": "workspace:*"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.0"
+  }
+}
