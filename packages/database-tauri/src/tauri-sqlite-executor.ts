@@ -30,6 +30,14 @@ function getErrorMessage(error: unknown): string | null {
   return null;
 }
 
+function normalizeParameters(
+  parameters: readonly DatabaseValue[]
+): DatabaseValue[] {
+  return parameters.map((value) =>
+    typeof value === "boolean" ? Number(value) : value
+  );
+}
+
 export class TauriSqliteExecutor implements DatabaseExecutor {
   private transactionQueue: Promise<void> =
     Promise.resolve();
@@ -64,7 +72,7 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
     try {
       const result = await this.connection.execute(
         sql,
-        [...parameters]
+        normalizeParameters(parameters)
       );
 
       return {
@@ -100,7 +108,7 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
     try {
       return await this.connection.select<T[]>(
         sql,
-        [...parameters]
+        normalizeParameters(parameters)
       );
     } catch (error) {
       const causeMessage = getErrorMessage(error);

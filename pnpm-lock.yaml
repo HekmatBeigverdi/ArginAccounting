@@ -32,6 +32,12 @@ importers:
       '@argin/database-tauri':
         specifier: workspace:*
         version: link:../../packages/database-tauri
+      '@argin/fiscal':
+        specifier: workspace:*
+        version: link:../../packages/fiscal
+      '@argin/fiscal-tauri':
+        specifier: workspace:*
+        version: link:../../packages/fiscal-tauri
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1
@@ -165,6 +171,31 @@ importers:
       '@tauri-apps/plugin-sql':
         specifier: ^2.0.0
         version: 2.4.0
+    devDependencies:
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/fiscal:
+    devDependencies:
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/fiscal-tauri:
+    dependencies:
+      '@argin/database':
+        specifier: workspace:*
+        version: link:../database
+      '@argin/fiscal':
+        specifier: workspace:*
+        version: link:../fiscal
     devDependencies:
       rimraf:
         specifier: ^6.0.0
