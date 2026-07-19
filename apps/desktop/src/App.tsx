@@ -7,6 +7,10 @@ import {
   CompanySetupForm
 } from "./features/company/company-setup-form";
 
+import {
+  FiscalYearForm
+} from "./features/fiscal/fiscal-year-form";
+
 function App() {
   return (
     <main className="container" dir="rtl">
@@ -25,6 +29,8 @@ function App() {
       <DatabaseStatusCard />
 
       <CompanySetupForm />
+
+      <FiscalYearForm />
 
       <section className="localization-card">
         <h2>تنظیمات پایه</h2>

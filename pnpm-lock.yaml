@@ -32,6 +32,12 @@ importers:
       '@argin/database-tauri':
         specifier: workspace:*
         version: link:../../packages/database-tauri
+      '@argin/fiscal':
+        specifier: workspace:*
+        version: link:../../packages/fiscal
+      '@argin/fiscal-tauri':
+        specifier: workspace:*
+        version: link:../../packages/fiscal-tauri
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1
