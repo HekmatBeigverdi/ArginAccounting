@@ -1,0 +1,20 @@
+{
+  "name": "@argin/security",
+  "version": "0.7.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Security lint is not configured yet\"",
+    "test": "echo \"Security tests are not configured yet\"",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.0"
+  }
+}

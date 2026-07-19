@@ -207,6 +207,15 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  packages/security:
+    devDependencies:
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   packages/shared:
     devDependencies:
       rimraf:
