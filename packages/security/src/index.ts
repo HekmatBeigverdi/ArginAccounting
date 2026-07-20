@@ -109,3 +109,11 @@ export {
 export type {
   BootstrapSecurityResult
 } from "./application/bootstrap-security";
+
+export {
+  createInitialAdministrator
+} from "./application/create-initial-administrator";
+
+export type {
+  CreateInitialAdministratorCommand
+} from "./application/create-initial-administrator";
