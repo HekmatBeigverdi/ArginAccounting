@@ -101,3 +101,11 @@ export type {
 export {
   defaultPermissions
 } from "./application/default-permissions";
+
+export {
+  bootstrapSecurity
+} from "./application/bootstrap-security";
+
+export type {
+  BootstrapSecurityResult
+} from "./application/bootstrap-security";
