@@ -1,0 +1,25 @@
+{
+  "name": "@argin/security-tauri",
+  "version": "0.7.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Security Tauri lint is not configured yet\"",
+    "test": "echo \"Security Tauri tests are not configured yet\"",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@argin/database": "workspace:*",
+    "@argin/security": "workspace:*",
+    "@tauri-apps/api": "^2.0.0"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.0"
+  }
+}
