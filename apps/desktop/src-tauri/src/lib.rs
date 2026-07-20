@@ -37,6 +37,14 @@ fn database_migrations() -> Vec<Migration> {
             ),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "security",
+            sql: include_str!(
+                "../migrations/0004_security.sql"
+            ),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
