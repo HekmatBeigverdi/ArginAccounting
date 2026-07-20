@@ -10,6 +10,12 @@ export interface SecurityAssignmentRepository {
     roleId: string
   ): Promise<void>;
 
+  replaceUserRoles(
+    userId: string,
+    roleIds: string[],
+    assignedBy: string | null
+  ): Promise<void>;
+
   replaceRolePermissions(
     roleId: string,
     permissionIds: string[],

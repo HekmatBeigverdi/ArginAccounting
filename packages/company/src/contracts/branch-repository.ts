@@ -12,5 +12,7 @@ export interface BranchRepository {
 
   findHeadOffice(companyId: string): Promise<Branch | null>;
 
+  findAll(): Promise<Branch[]>;
+
   update(branch: Branch): Promise<void>;
 }

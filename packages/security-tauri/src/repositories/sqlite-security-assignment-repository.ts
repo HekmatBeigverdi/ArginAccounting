@@ -154,4 +154,44 @@ export class SqliteSecurityAssignmentRepository
 
     return rows.map((row) => row.branch_id);
   }
+
+  async replaceUserRoles(
+    userId: string,
+    roleIds: string[],
+    assignedBy: string | null
+  ): Promise<void> {
+    await this.database.transaction(
+      async (transaction) => {
+        await transaction.execute(
+          `
+            DELETE FROM user_roles
+            WHERE user_id = ?
+          `,
+          [userId]
+        );
+
+        const now = new Date().toISOString();
+
+        for (const roleId of roleIds) {
+          await transaction.execute(
+            `
+              INSERT INTO user_roles (
+                user_id,
+                role_id,
+                assigned_at,
+                assigned_by
+              )
+              VALUES (?, ?, ?, ?)
+            `,
+            [
+              userId,
+              roleId,
+              now,
+              assignedBy
+            ]
+          );
+        }
+      }
+    );
+  }
 }

@@ -3,6 +3,10 @@ import {
   UserManagement
 } from "../../features/security/user-management";
 
+import {
+  UserAccessManagement
+} from "../../features/security/user-access-management";
+
 export function UsersPage() {
   return (
     <section className="temporary-page">
@@ -29,6 +33,7 @@ export function UsersPage() {
       </header>
 
       <UserManagement />
+      <UserAccessManagement />
     </section>
   );
 }
