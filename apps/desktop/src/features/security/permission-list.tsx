@@ -3,9 +3,8 @@ import {
   useState
 } from "react";
 
-import {
-  defaultPermissions,
-  type Permission
+import type {
+  Permission
 } from "@argin/security";
 
 import {
@@ -24,27 +23,41 @@ export function PermissionList() {
     useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function load(): Promise<void> {
-      const database =
-        await getDesktopDatabase();
+      try {
+        const database =
+          await getDesktopDatabase();
 
-      const repository =
-        new SqlitePermissionRepository(
-          database
+        const repository =
+          new SqlitePermissionRepository(
+            database
+          );
+
+        const result =
+          await repository.findAll();
+
+        if (isMounted) {
+          setPermissions(result);
+        }
+      } catch (error) {
+        console.error(
+          "Loading permissions failed:",
+          error
         );
-
-      await repository.upsertDefinitions(
-        defaultPermissions
-      );
-
-      setPermissions(
-        await repository.findAll()
-      );
-
-      setIsLoading(false);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
     }
 
     void load();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (isLoading) {
