@@ -94,6 +94,11 @@ export function AppRouter() {
           />
 
           <Route
+            path="/fiscal/years/new"
+            element={<NewFiscalYearPage />}
+          />
+
+          <Route
             path="/system/diagnostics"
             element={<SystemDiagnosticsPage />}
           />
