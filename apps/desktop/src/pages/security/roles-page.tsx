@@ -3,6 +3,10 @@ import {
   RoleManagement
 } from "../../features/security/role-management";
 
+import {
+  RolePermissionManagement
+} from "../../features/security/role-permission-management";
+
 export function RolesPage() {
   return (
     <section className="temporary-page">
@@ -28,6 +32,9 @@ export function RolesPage() {
       </header>
 
       <RoleManagement />
+
+      <RolePermissionManagement />
+
     </section>
   );
 }
