@@ -41,6 +41,8 @@ import {
   PermissionsPage
 } from "../../pages/security/permissions-page";
 
+import { LoginPage } from "../../pages/security/login-page";
+
 export function AppRouter() {
   return (
     <HashRouter>
