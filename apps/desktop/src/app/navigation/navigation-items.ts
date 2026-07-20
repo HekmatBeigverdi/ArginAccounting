@@ -40,4 +40,9 @@ export const navigationItems: NavigationItem[] = [
     path: "/security/permissions",
     group: "مدیریت سیستم"
   },
+  {
+    label: "ورود آزمایشی",
+    path: "/login",
+    group: "سیستم"
+  }
 ];

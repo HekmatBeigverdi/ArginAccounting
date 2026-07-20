@@ -19,8 +19,12 @@ import {
 import {
   getDesktopDatabase
 } from "@argin/database-tauri";
+import { Link, useNavigate } from "react-router";
 
 export function LoginPage() {
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+
   const [username, setUsername] =
     useState("");
 
@@ -33,9 +37,12 @@ export function LoginPage() {
   const [errorMessage, setErrorMessage] =
     useState("");
 
+  const navigate = useNavigate();
+
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ): Promise<void> {
+    setIsSubmitting(true);
     event.preventDefault();
 
     setMessage("");
@@ -64,6 +71,9 @@ export function LoginPage() {
       setMessage(
         `ورود ${session.user.displayName} موفق بود.`
       );
+      navigate("/dashboard", {
+        replace: true
+      });
     } catch (error) {
       if (
         error instanceof
@@ -79,6 +89,8 @@ export function LoginPage() {
           "ورود با خطا مواجه شد."
         );
       }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -131,9 +143,20 @@ export function LoginPage() {
           </p>
         )}
 
-        <button type="submit">
-          ورود
+        <button
+          type="submit"
+          disabled={isSubmitting}
+        >
+          {isSubmitting
+            ? "در حال ورود..."
+            : "ورود"}
         </button>
+        <Link
+          to="/dashboard"
+          className="temporary-page__back"
+        >
+          بازگشت به داشبورد
+        </Link>
       </form>
     </section>
   );
