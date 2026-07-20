@@ -38,6 +38,49 @@ function normalizeParameters(
   );
 }
 
+class LogicalTransactionExecutor
+  implements DatabaseExecutor {
+  constructor(
+    private readonly executor: DatabaseExecutor
+  ) {}
+
+  execute(
+    sql: string,
+    parameters: readonly DatabaseValue[] = []
+  ): Promise<DatabaseExecuteResult> {
+    return this.executor.execute(sql, parameters);
+  }
+
+  query<T>(
+    sql: string,
+    parameters: readonly DatabaseValue[] = []
+  ): Promise<T[]> {
+    return this.executor.query<T>(sql, parameters);
+  }
+
+  queryOne<T>(
+    sql: string,
+    parameters: readonly DatabaseValue[] = []
+  ): Promise<T | null> {
+    return this.executor.queryOne<T>(
+      sql,
+      parameters
+    );
+  }
+
+  transaction<T>(
+    operation: (
+      transaction: DatabaseExecutor
+    ) => Promise<T>
+  ): Promise<T> {
+    return operation(this);
+  }
+
+  close(): Promise<void> {
+    return this.executor.close();
+  }
+}
+
 export class TauriSqliteExecutor implements DatabaseExecutor {
   private transactionQueue: Promise<void> =
     Promise.resolve();
@@ -159,7 +202,9 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
        * Serialize logical units of work until the plugin exposes a
        * connection-bound transaction API.
        */
-      return await operation(this);
+      return await operation(
+        new LogicalTransactionExecutor(this)
+      );
     } finally {
       releaseQueue();
     }
