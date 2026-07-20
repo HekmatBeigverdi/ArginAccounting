@@ -24,5 +24,20 @@ export const navigationItems: NavigationItem[] = [
     label: "وضعیت سیستم",
     path: "/system/diagnostics",
     group: "سیستم"
-  }
+  },
+  {
+    label: "کاربران",
+    path: "/security/users",
+    group: "مدیریت سیستم"
+  },
+  {
+    label: "نقش‌ها",
+    path: "/security/roles",
+    group: "مدیریت سیستم"
+  },
+  {
+    label: "مجوزها",
+    path: "/security/permissions",
+    group: "مدیریت سیستم"
+  },
 ];
