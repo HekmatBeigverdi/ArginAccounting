@@ -23,4 +23,5 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
-
+argon2 = { version = "0.5.3", features = ["password-hash"] }
+rand_core = { version = "0.6.4", features = ["getrandom"] }
