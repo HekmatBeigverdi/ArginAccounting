@@ -17,11 +17,14 @@
     "@argin/database-tauri": "workspace:*",
     "@argin/fiscal": "workspace:*",
     "@argin/fiscal-tauri": "workspace:*",
+    "@argin/security": "workspace:*",
+    "@argin/security-tauri": "workspace:*",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-sql": "~2.4.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-router": "^7.18.1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

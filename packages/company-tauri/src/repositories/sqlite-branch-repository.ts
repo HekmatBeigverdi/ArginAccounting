@@ -108,6 +108,21 @@ export class SqliteBranchRepository
     return rows.map(mapBranch);
   }
 
+  async findAll(): Promise<Branch[]> {
+    const rows =
+      await this.database.query<BranchRow>(
+        `
+          SELECT *
+          FROM branches
+          ORDER BY
+            is_head_office DESC,
+            name
+        `
+      );
+
+    return rows.map(mapBranch);
+  }
+
   async findHeadOffice(
     companyId: string
   ): Promise<Branch | null> {
