@@ -20,6 +20,12 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@argin/audit':
+        specifier: workspace:*
+        version: link:../../packages/audit
+      '@argin/audit-tauri':
+        specifier: workspace:*
+        version: link:../../packages/audit-tauri
       '@argin/company':
         specifier: workspace:*
         version: link:../../packages/company
@@ -117,6 +123,31 @@ importers:
         version: 4.3.2
       typescript:
         specifier: ^5
+        version: 5.9.3
+
+  packages/audit:
+    devDependencies:
+      '@argin/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/audit-tauri:
+    dependencies:
+      '@argin/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@argin/database':
+        specifier: workspace:*
+        version: link:../database
+    devDependencies:
+      '@argin/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.9.2
         version: 5.9.3
 
   packages/company:

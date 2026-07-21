@@ -1,0 +1,9 @@
+{
+  "extends": "@argin/config/tsconfig.package.json",
+  "compilerOptions": {
+    "rootDir": "src"
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}
