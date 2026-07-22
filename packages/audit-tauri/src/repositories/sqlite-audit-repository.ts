@@ -121,15 +121,33 @@ row.metadata_json
 
   }
 
-  async findById(
-    id: string
-  ): Promise<AuditEntry | null> {
+    async findById(
+      id: string
+    ): Promise<AuditEntry | null> {
 
-    throw new Error(
-      "Will be implemented next."
+      const rows =
+        await this.db.select(
+    `
+    SELECT *
+    FROM audit_entries
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [id]
     );
 
-  }
+      if (
+        !rows ||
+        rows.length === 0
+      ) {
+        return null;
+      }
+
+      return mapRowToAuditEntry(
+        rows[0]
+      );
+
+    }
 
   async search(
     query: AuditQuery
