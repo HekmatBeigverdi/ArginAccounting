@@ -183,3 +183,24 @@ export type {
 export {
   validateApprovalRequestInput
 } from "./validation/approval/validate-approval-request";
+
+export type {
+  AuditRepository
+} from "./contracts/audit-repository";
+
+export type {
+  ApprovalRepository
+} from "./contracts/approval-repository";
+
+export type {
+  AuditClock
+} from "./contracts/audit-clock";
+
+export type {
+  AuditIdGenerator
+} from "./contracts/audit-id-generator";
+
+export type {
+  AuditRepositories,
+  AuditUnitOfWork
+} from "./contracts/audit-unit-of-work";
