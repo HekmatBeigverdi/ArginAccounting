@@ -86,3 +86,100 @@ export type {
 export {
   validateAuditEntryInput
 } from "./validation/validate-audit-entry";
+
+export {
+  approvalActions,
+  isApprovalAction
+} from "./domain/approval/approval-action";
+
+export type {
+  ApprovalAction
+} from "./domain/approval/approval-action";
+
+export {
+  approvalActorTypes,
+  createSystemApprovalActor
+} from "./domain/approval/approval-actor";
+
+export type {
+  ApprovalActor,
+  ApprovalActorType
+} from "./domain/approval/approval-actor";
+
+export type {
+  ApprovalHistoryEntry,
+  CreateApprovalHistoryEntryInput
+} from "./domain/approval/approval-history-entry";
+
+export type {
+  ApprovalQuery,
+  ApprovalQueryResult
+} from "./domain/approval/approval-query";
+
+export type {
+  ApprovalRequest,
+  CreateApprovalRequestInput
+} from "./domain/approval/approval-request";
+
+export type {
+  ApprovalRequestSummary
+} from "./domain/approval/approval-request-summary";
+
+export {
+  emptyApprovalScope
+} from "./domain/approval/approval-scope";
+
+export type {
+  ApprovalScope
+} from "./domain/approval/approval-scope";
+
+export {
+  approvalStatuses,
+  isApprovalStatus
+} from "./domain/approval/approval-status";
+
+export type {
+  ApprovalStatus
+} from "./domain/approval/approval-status";
+
+export type {
+  ApprovalTarget
+} from "./domain/approval/approval-target";
+
+export {
+  approvalTransitions,
+  canApplyApprovalAction,
+  resolveApprovalTransition
+} from "./domain/approval/approval-transition";
+
+export type {
+  ApprovalTransition
+} from "./domain/approval/approval-transition";
+
+export {
+  isFinalApprovalStatus
+} from "./domain/approval/is-final-approval-status";
+
+export {
+  ApprovalTransitionError
+} from "./validation/approval/approval-transition-error";
+
+export {
+  ApprovalValidationError
+} from "./validation/approval/approval-validation-error";
+
+export type {
+  ApprovalValidationIssue
+} from "./validation/approval/approval-validation-error";
+
+export {
+  validateApprovalAction
+} from "./validation/approval/validate-approval-action";
+
+export type {
+  ValidateApprovalActionInput
+} from "./validation/approval/validate-approval-action";
+
+export {
+  validateApprovalRequestInput
+} from "./validation/approval/validate-approval-request";
