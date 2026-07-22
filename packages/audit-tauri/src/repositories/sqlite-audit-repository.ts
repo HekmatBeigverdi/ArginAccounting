@@ -1,10 +1,18 @@
 import type {
-  AuditRepository,
   AuditEntry,
+  AuditEntrySummary,
   AuditQuery,
   AuditQueryResult,
-  AuditEntrySummary
+  AuditRepository
 } from "@argin/audit";
+
+import {
+  mapAuditEntryToRow
+} from "../mappers/audit-entry-mapper";
+
+import {
+  mapRowToAuditEntry
+} from "../mappers/audit-entry-from-row";
 
 export class SqliteAuditRepository
 implements AuditRepository {
@@ -17,9 +25,99 @@ implements AuditRepository {
     entry: AuditEntry
   ): Promise<void> {
 
-    throw new Error(
-      "Implementation will be added in next step."
-    );
+    const row =
+      mapAuditEntryToRow(entry);
+
+    await this.db.execute(
+      `
+INSERT INTO audit_entries
+(
+id,
+
+occurred_at,
+
+action,
+outcome,
+source,
+
+actor_type,
+actor_id,
+actor_display_name,
+
+company_id,
+branch_id,
+fiscal_year_id,
+
+entity_type,
+entity_id,
+entity_display_name,
+
+message,
+reason,
+
+before_json,
+after_json,
+
+correlation_id,
+
+metadata_json
+)
+VALUES
+(
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?,
+?
+)
+`,
+[
+row.id,
+
+row.occurred_at,
+
+row.action,
+row.outcome,
+row.source,
+
+row.actor_type,
+row.actor_id,
+row.actor_display_name,
+
+row.company_id,
+row.branch_id,
+row.fiscal_year_id,
+
+row.entity_type,
+row.entity_id,
+row.entity_display_name,
+
+row.message,
+row.reason,
+
+row.before_json,
+row.after_json,
+
+row.correlation_id,
+
+row.metadata_json
+]
+);
 
   }
 
@@ -28,7 +126,7 @@ implements AuditRepository {
   ): Promise<AuditEntry | null> {
 
     throw new Error(
-      "Implementation will be added in next step."
+      "Will be implemented next."
     );
 
   }
@@ -36,13 +134,13 @@ implements AuditRepository {
   async search(
     query: AuditQuery
   ): Promise<
-      AuditQueryResult<
-        AuditEntrySummary
-      >
-    > {
+AuditQueryResult<
+AuditEntrySummary
+>
+> {
 
     throw new Error(
-      "Implementation will be added in next step."
+      "Will be implemented later."
     );
 
   }
