@@ -3,6 +3,10 @@ import type {
   AuditUnitOfWork
 } from "@argin/audit";
 
+import {
+  AsyncMutex
+} from "./data-access";
+
 import type {
   SqliteDatabase
 } from "./database";
@@ -17,6 +21,8 @@ import {
 
 export class SqliteAuditUnitOfWork
 implements AuditUnitOfWork {
+  private readonly transactionMutex =
+    new AsyncMutex();
 
   constructor(
     private readonly db:
@@ -29,43 +35,57 @@ implements AuditUnitOfWork {
         AuditRepositories
     ) => Promise<T>
   ): Promise<T> {
+    return this.transactionMutex
+      .runExclusive(
+        async () => {
+          await this.db.execute(
+            "BEGIN IMMEDIATE"
+          );
 
-    await this.db.beginTransaction();
+          try {
+            const repositories:
+              AuditRepositories = {
+                audit:
+                  new SqliteAuditRepository(
+                    this.db
+                  ),
 
-    try {
+                approval:
+                  new SqliteApprovalRepository(
+                    this.db
+                  )
+              };
 
-      const repositories: AuditRepositories = {
+            const result =
+              await action(
+                repositories
+              );
 
-        audit:
-          new SqliteAuditRepository(
-            this.db
-          ),
+            await this.db.execute(
+              "COMMIT"
+            );
 
-        approval:
-          new SqliteApprovalRepository(
-            this.db
-          )
+            return result;
+          } catch (error) {
+            try {
+              await this.db.execute(
+                "ROLLBACK"
+              );
+            } catch (
+              rollbackError
+            ) {
+              throw new AggregateError(
+                [
+                  error,
+                  rollbackError
+                ],
+                "The audit transaction failed and rollback was unsuccessful."
+              );
+            }
 
-      };
-
-      const result =
-        await action(
-          repositories
-        );
-
-      await this.db.commit();
-
-      return result;
-
-    }
-    catch (error) {
-
-      await this.db.rollback();
-
-      throw error;
-
-    }
-
+            throw error;
+          }
+        }
+      );
   }
-
 }

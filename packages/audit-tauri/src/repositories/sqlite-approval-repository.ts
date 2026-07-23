@@ -7,6 +7,10 @@ import type {
   ApprovalRequestSummary
 } from "@argin/audit";
 
+import {
+  executeSqlitePaginationQuery
+} from "../data-access";
+
 import type {
   SqliteDatabase
 } from "../database";
@@ -36,64 +40,6 @@ import {
 import {
   ApprovalQueryBuilder
 } from "../query";
-
-interface ApprovalCountRow {
-  total_count: number | string;
-}
-
-const DEFAULT_LIMIT = 50;
-const MAXIMUM_LIMIT = 200;
-
-function normalizeOffset(
-  offset?: number
-): number {
-  if (
-    offset === undefined ||
-    !Number.isFinite(offset)
-  ) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.trunc(offset)
-  );
-}
-
-function normalizeLimit(
-  limit?: number
-): number {
-  if (
-    limit === undefined ||
-    !Number.isFinite(limit)
-  ) {
-    return DEFAULT_LIMIT;
-  }
-
-  return Math.min(
-    MAXIMUM_LIMIT,
-    Math.max(
-      1,
-      Math.trunc(limit)
-    )
-  );
-}
-
-function normalizeTotalCount(
-  value: number | string | undefined
-): number {
-  const parsedValue =
-    Number(value ?? 0);
-
-  if (!Number.isFinite(parsedValue)) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.trunc(parsedValue)
-  );
-}
 
 export class SqliteApprovalRepository
 implements ApprovalRepository {
@@ -326,7 +272,6 @@ ORDER BY
       )
     );
   }
-
   async search(
     query: ApprovalQuery
   ): Promise<
@@ -334,13 +279,10 @@ ORDER BY
       ApprovalRequestSummary
     >
   > {
-    const offset =
-      normalizeOffset(query.offset);
-
-    const limit =
-      normalizeLimit(query.limit);
-
-    const builder =
+    const {
+      whereSql,
+      parameters
+    } =
       new ApprovalQueryBuilder()
         .whereAnyLike(
           [
@@ -399,96 +341,62 @@ ORDER BY
         .whereTo(
           "created_at",
           query.createdTo
-        );
+        )
+        .build();
 
-    const {
-      whereSql,
-      parameters
-    } = builder.build();
+    return executeSqlitePaginationQuery<
+      ApprovalRequestRow,
+      ApprovalRequestSummary
+    >({
+      database: this.db,
 
-    const countRows =
-      await this.db.select<
-        ApprovalCountRow[]
-      >(
-        `
-SELECT COUNT(*) AS total_count
-FROM approval_requests
-${whereSql}
-        `,
-        parameters
-      );
+      countSql: `
+  SELECT COUNT(*) AS total_count
+  FROM approval_requests
+  ${whereSql}
+      `,
 
-    const totalCount =
-      normalizeTotalCount(
-        countRows[0]?.total_count
-      );
+      selectSql: `
+  SELECT
+    id,
+    request_type,
+    title,
+    description,
+    status,
+    entity_type,
+    entity_id,
+    entity_display_name,
+    company_id,
+    branch_id,
+    fiscal_year_id,
+    requested_by_type,
+    requested_by_id,
+    requested_by_name,
+    requested_at,
+    decided_by_type,
+    decided_by_id,
+    decided_by_name,
+    decided_at,
+    decision_comment,
+    created_at,
+    updated_at
+  FROM approval_requests
+  ${whereSql}
+  ORDER BY
+    created_at DESC,
+    id DESC
+  LIMIT ?
+  OFFSET ?
+      `,
 
-    if (
-      totalCount === 0 ||
-      offset >= totalCount
-    ) {
-      return {
-        items: [],
-        totalCount,
-        offset,
-        limit
-      };
-    }
+      parameters,
+      ...(query.offset !== undefined && { offset: query.offset }),
+      ...(query.limit !== undefined && { limit: query.limit }),
 
-    const rows =
-      await this.db.select<
-        ApprovalRequestRow[]
-      >(
-        `
-SELECT
-  id,
-  request_type,
-  title,
-  description,
-  status,
-  entity_type,
-  entity_id,
-  entity_display_name,
-  company_id,
-  branch_id,
-  fiscal_year_id,
-  requested_by_type,
-  requested_by_id,
-  requested_by_name,
-  requested_at,
-  decided_by_type,
-  decided_by_id,
-  decided_by_name,
-  decided_at,
-  decision_comment,
-  created_at,
-  updated_at
-FROM approval_requests
-${whereSql}
-ORDER BY
-  created_at DESC,
-  id DESC
-LIMIT ?
-OFFSET ?
-        `,
-        [
-          ...parameters,
-          limit,
-          offset
-        ]
-      );
-
-    return {
-      items: rows.map(
+      mapRow:
         mapRowToApprovalRequestSummary
-      ),
-
-      totalCount,
-      offset,
-      limit
-    };
-  }
-
+    });
+  }  
   async addHistory(
     history: ApprovalHistoryEntry
   ): Promise<void> {

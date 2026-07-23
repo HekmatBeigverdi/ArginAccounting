@@ -1,6 +1,23 @@
 export type {
-  SqliteDatabase
+  SqliteDatabase,
+  SqliteExecuteResult
 } from "./database";
+
+export {
+  AsyncMutex,
+  SqlFilterBuilder,
+  executeSqlitePaginationQuery,
+  normalizePagination,
+  normalizeTotalCount
+} from "./data-access";
+
+export type {
+  BuiltSqlFilter,
+  NormalizedPagination,
+  PaginationOptions,
+  SqlitePaginationQueryOptions,
+  SqlitePaginationResult
+} from "./data-access";
 
 export {
   AuditQueryBuilder,

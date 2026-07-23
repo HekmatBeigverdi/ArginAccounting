@@ -1,3 +1,4 @@
 export type {
-  SqliteDatabase
+  SqliteDatabase,
+  SqliteExecuteResult
 } from "./sqlite-database";

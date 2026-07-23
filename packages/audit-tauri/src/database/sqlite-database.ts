@@ -1,19 +1,16 @@
-export interface SqliteDatabase {
+export interface SqliteExecuteResult {
+  rowsAffected?: number;
+  lastInsertId?: number;
+}
 
+export interface SqliteDatabase {
   execute(
     sql: string,
     parameters?: unknown[]
-  ): Promise<unknown>;
+  ): Promise<SqliteExecuteResult>;
 
   select<T>(
     sql: string,
     parameters?: unknown[]
   ): Promise<T>;
-
-  beginTransaction(): Promise<void>;
-
-  commit(): Promise<void>;
-
-  rollback(): Promise<void>;
-
 }

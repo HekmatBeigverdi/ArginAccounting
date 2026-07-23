@@ -6,6 +6,10 @@ import type {
   AuditRepository
 } from "@argin/audit";
 
+import {
+  executeSqlitePaginationQuery
+} from "../data-access";
+
 import type {
   SqliteDatabase
 } from "../database";
@@ -27,64 +31,6 @@ import {
 import {
   AuditQueryBuilder
 } from "../query";
-
-interface AuditCountRow {
-  total_count: number | string;
-}
-
-const DEFAULT_LIMIT = 50;
-const MAXIMUM_LIMIT = 200;
-
-function normalizeOffset(
-  offset?: number
-): number {
-  if (
-    offset === undefined ||
-    !Number.isFinite(offset)
-  ) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.trunc(offset)
-  );
-}
-
-function normalizeLimit(
-  limit?: number
-): number {
-  if (
-    limit === undefined ||
-    !Number.isFinite(limit)
-  ) {
-    return DEFAULT_LIMIT;
-  }
-
-  return Math.min(
-    MAXIMUM_LIMIT,
-    Math.max(
-      1,
-      Math.trunc(limit)
-    )
-  );
-}
-
-function normalizeTotalCount(
-  value: number | string | undefined
-): number {
-  const parsedValue =
-    Number(value ?? 0);
-
-  if (!Number.isFinite(parsedValue)) {
-    return 0;
-  }
-
-  return Math.max(
-    0,
-    Math.trunc(parsedValue)
-  );
-}
 
 export class SqliteAuditRepository
 implements AuditRepository {
@@ -139,29 +85,22 @@ VALUES
       [
         row.id,
         row.occurred_at,
-
         row.action,
         row.outcome,
         row.source,
-
         row.actor_type,
         row.actor_id,
         row.actor_display_name,
-
         row.company_id,
         row.branch_id,
         row.fiscal_year_id,
-
         row.entity_type,
         row.entity_id,
         row.entity_display_name,
-
         row.message,
         row.reason,
-
         row.before_json,
         row.after_json,
-
         row.correlation_id,
         row.metadata_json
       ]
@@ -224,13 +163,10 @@ LIMIT 1
       AuditEntrySummary
     >
   > {
-    const offset =
-      normalizeOffset(query.offset);
-
-    const limit =
-      normalizeLimit(query.limit);
-
-    const builder =
+    const {
+      whereSql,
+      parameters
+    } =
       new AuditQueryBuilder()
         .whereAnyLike(
           [
@@ -295,47 +231,22 @@ LIMIT 1
         .whereTo(
           "occurred_at",
           query.occurredTo
-        );
+        )
+        .build();
 
-    const {
-      whereSql,
-      parameters
-    } = builder.build();
+    return executeSqlitePaginationQuery<
+      AuditEntrySummaryRow,
+      AuditEntrySummary
+    >({
+      database: this.db,
 
-    const countRows =
-      await this.db.select<
-        AuditCountRow[]
-      >(
-        `
+      countSql: `
 SELECT COUNT(*) AS total_count
 FROM audit_entries
 ${whereSql}
-        `,
-        parameters
-      );
+      `,
 
-    const totalCount =
-      normalizeTotalCount(
-        countRows[0]?.total_count
-      );
-
-    if (
-      totalCount === 0 ||
-      offset >= totalCount
-    ) {
-      return {
-        items: [],
-        totalCount,
-        offset,
-        limit
-      };
-    }
-
-    const rows =
-      await this.db.select<
-        AuditEntrySummaryRow[]
-      >(
-        `
+      selectSql: `
 SELECT
   id,
   occurred_at,
@@ -361,21 +272,14 @@ ORDER BY
   id DESC
 LIMIT ?
 OFFSET ?
-        `,
-        [
-          ...parameters,
-          limit,
-          offset
-        ]
-      );
+      `,
 
-    return {
-      items: rows.map(
+      parameters,
+      ...(query.offset !== undefined && { offset: query.offset }),
+      ...(query.limit !== undefined && { limit: query.limit }),
+
+      mapRow:
         mapRowToAuditEntrySummary
-      ),
-      totalCount,
-      offset,
-      limit
-    };
+    });
   }
 }
