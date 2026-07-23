@@ -1,11 +1,19 @@
 export interface SqliteDatabase {
+
   execute(
-    query: string,
-    bindValues?: unknown[]
+    sql: string,
+    parameters?: unknown[]
   ): Promise<unknown>;
 
   select<T>(
-    query: string,
-    bindValues?: unknown[]
+    sql: string,
+    parameters?: unknown[]
   ): Promise<T>;
+
+  beginTransaction(): Promise<void>;
+
+  commit(): Promise<void>;
+
+  rollback(): Promise<void>;
+
 }

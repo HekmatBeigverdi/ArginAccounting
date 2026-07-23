@@ -7,23 +7,65 @@ import type {
   SqliteDatabase
 } from "./database";
 
+import {
+  SqliteApprovalRepository
+} from "./repositories/sqlite-approval-repository";
+
+import {
+  SqliteAuditRepository
+} from "./repositories/sqlite-audit-repository";
+
 export class SqliteAuditUnitOfWork
 implements AuditUnitOfWork {
+
   constructor(
     private readonly db:
       SqliteDatabase
-  ) {
-    void this.db;
-  }
+  ) {}
 
   async transaction<T>(
-    _action: (
+    action: (
       repositories:
         AuditRepositories
     ) => Promise<T>
   ): Promise<T> {
-    throw new Error(
-      "Audit transaction support has not been implemented yet."
-    );
+
+    await this.db.beginTransaction();
+
+    try {
+
+      const repositories: AuditRepositories = {
+
+        audit:
+          new SqliteAuditRepository(
+            this.db
+          ),
+
+        approval:
+          new SqliteApprovalRepository(
+            this.db
+          )
+
+      };
+
+      const result =
+        await action(
+          repositories
+        );
+
+      await this.db.commit();
+
+      return result;
+
+    }
+    catch (error) {
+
+      await this.db.rollback();
+
+      throw error;
+
+    }
+
   }
+
 }
