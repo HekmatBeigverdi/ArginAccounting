@@ -1,14 +1,25 @@
+function escapeLikePattern(
+  value: string
+): string {
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("%", "\\%")
+    .replaceAll("_", "\\_");
+}
+
+export interface BuiltAuditQuery {
+  whereSql: string;
+  parameters: unknown[];
+}
+
 export class AuditQueryBuilder {
-
-  private readonly where: string[] = [];
-
-  private readonly params: unknown[] = [];
+  private readonly conditions: string[] = [];
+  private readonly values: unknown[] = [];
 
   whereEquals(
     column: string,
     value: unknown
   ): this {
-
     if (
       value === undefined ||
       value === null ||
@@ -17,31 +28,11 @@ export class AuditQueryBuilder {
       return this;
     }
 
-    this.where.push(
+    this.conditions.push(
       `${column} = ?`
     );
 
-    this.params.push(value);
-
-    return this;
-  }
-
-  whereLike(
-    column: string,
-    value?: string
-  ): this {
-
-    if (!value?.trim()) {
-      return this;
-    }
-
-    this.where.push(
-      `${column} LIKE ?`
-    );
-
-    this.params.push(
-      `%${value}%`
-    );
+    this.values.push(value);
 
     return this;
   }
@@ -50,16 +41,15 @@ export class AuditQueryBuilder {
     column: string,
     value?: string
   ): this {
-
-    if (!value) {
+    if (!value?.trim()) {
       return this;
     }
 
-    this.where.push(
+    this.conditions.push(
       `${column} >= ?`
     );
 
-    this.params.push(value);
+    this.values.push(value);
 
     return this;
   }
@@ -68,39 +58,88 @@ export class AuditQueryBuilder {
     column: string,
     value?: string
   ): this {
-
-    if (!value) {
+    if (!value?.trim()) {
       return this;
     }
 
-    this.where.push(
+    this.conditions.push(
       `${column} <= ?`
     );
 
-    this.params.push(value);
+    this.values.push(value);
 
     return this;
   }
 
-  buildWhere(): string {
+  whereLike(
+    column: string,
+    value?: string
+  ): this {
+    const normalizedValue =
+      value?.trim();
 
-    if (
-      this.where.length === 0
-    ) {
-      return "";
+    if (!normalizedValue) {
+      return this;
     }
 
-    return (
-      " WHERE " +
-      this.where.join(" AND ")
+    this.conditions.push(
+      `${column} LIKE ? ESCAPE '\\'`
     );
 
+    this.values.push(
+      `%${escapeLikePattern(normalizedValue)}%`
+    );
+
+    return this;
   }
 
-  parameters(): unknown[] {
+  whereAnyLike(
+    columns: readonly string[],
+    value?: string
+  ): this {
+    const normalizedValue =
+      value?.trim();
 
-    return [...this.params];
+    if (
+      !normalizedValue ||
+      columns.length === 0
+    ) {
+      return this;
+    }
 
+    const condition = columns
+      .map(
+        (column) =>
+          `${column} LIKE ? ESCAPE '\\'`
+      )
+      .join(" OR ");
+
+    this.conditions.push(
+      `(${condition})`
+    );
+
+    const parameter =
+      `%${escapeLikePattern(normalizedValue)}%`;
+
+    for (let index = 0;
+      index < columns.length;
+      index += 1
+    ) {
+      this.values.push(parameter);
+    }
+
+    return this;
   }
 
+  build(): BuiltAuditQuery {
+    return {
+      whereSql:
+        this.conditions.length === 0
+          ? ""
+          : ` WHERE ${this.conditions.join(
+              " AND "
+            )}`,
+      parameters: [...this.values]
+    };
+  }
 }

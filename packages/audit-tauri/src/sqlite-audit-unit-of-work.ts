@@ -3,28 +3,27 @@ import type {
   AuditUnitOfWork
 } from "@argin/audit";
 
-import {
-  SqliteAuditRepository
-} from "./repositories/sqlite-audit-repository";
+import type {
+  SqliteDatabase
+} from "./database";
 
 export class SqliteAuditUnitOfWork
 implements AuditUnitOfWork {
-
   constructor(
-    private readonly db: any
-  ) {}
+    private readonly db:
+      SqliteDatabase
+  ) {
+    void this.db;
+  }
 
   async transaction<T>(
-    action: (
+    _action: (
       repositories:
         AuditRepositories
     ) => Promise<T>
   ): Promise<T> {
-
     throw new Error(
-      "Transaction implementation will be added later."
+      "Audit transaction support has not been implemented yet."
     );
-
   }
-
 }

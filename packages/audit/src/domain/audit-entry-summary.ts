@@ -3,7 +3,7 @@ import type {
 } from "./audit-action";
 
 import type {
-  AuditActorType
+  AuditActor
 } from "./audit-actor";
 
 import type {
@@ -11,8 +11,16 @@ import type {
 } from "./audit-outcome";
 
 import type {
+  AuditScope
+} from "./audit-scope";
+
+import type {
   AuditSource
 } from "./audit-source";
+
+import type {
+  AuditTarget
+} from "./audit-target";
 
 export interface AuditEntrySummary {
   id: string;
@@ -22,18 +30,12 @@ export interface AuditEntrySummary {
   outcome: AuditOutcome;
   source: AuditSource;
 
-  actorType: AuditActorType;
-  actorId: string | null;
-  actorDisplayName: string;
-
-  entityType: string;
-  entityId: string | null;
-  entityDisplayName: string | null;
-
-  companyId: string | null;
-  branchId: string | null;
-  fiscalYearId: string | null;
+  actor: AuditActor;
+  scope: AuditScope;
+  target: AuditTarget;
 
   message: string | null;
+  reason: string | null;
+
   correlationId: string | null;
 }

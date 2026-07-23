@@ -6,14 +6,34 @@ import {
 
 import type {
   AuditActorType,
-  AuditEntry,
-  AuditMetadata,
-  AuditSnapshot
+  AuditEntrySummary
 } from "@argin/audit";
 
-import type {
-  AuditEntryRow
-} from "./audit-entry-mapper";
+export interface AuditEntrySummaryRow {
+  id: string;
+  occurred_at: string;
+
+  action: string;
+  outcome: string;
+  source: string;
+
+  actor_type: string;
+  actor_id: string | null;
+  actor_display_name: string;
+
+  company_id: string | null;
+  branch_id: string | null;
+  fiscal_year_id: string | null;
+
+  entity_type: string;
+  entity_id: string | null;
+  entity_display_name: string | null;
+
+  message: string | null;
+  reason: string | null;
+
+  correlation_id: string | null;
+}
 
 const auditActorTypes:
   readonly AuditActorType[] = [
@@ -38,33 +58,9 @@ function parseActorType(
   );
 }
 
-function parseSnapshot(
-  value: string | null
-): AuditSnapshot | null {
-  if (value === null) {
-    return null;
-  }
-
-  return JSON.parse(
-    value
-  ) as AuditSnapshot;
-}
-
-function parseMetadata(
-  value: string | null
-): AuditMetadata | null {
-  if (value === null) {
-    return null;
-  }
-
-  return JSON.parse(
-    value
-  ) as AuditMetadata;
-}
-
-export function mapRowToAuditEntry(
-  row: AuditEntryRow
-): AuditEntry {
+export function mapRowToAuditEntrySummary(
+  row: AuditEntrySummaryRow
+): AuditEntrySummary {
   if (!isAuditAction(row.action)) {
     throw new Error(
       `Invalid audit action: ${row.action}`
@@ -117,19 +113,7 @@ export function mapRowToAuditEntry(
     message: row.message,
     reason: row.reason,
 
-    before: parseSnapshot(
-      row.before_json
-    ),
-
-    after: parseSnapshot(
-      row.after_json
-    ),
-
     correlationId:
-      row.correlation_id,
-
-    metadata: parseMetadata(
-      row.metadata_json
-    )
+      row.correlation_id
   };
 }

@@ -3,10 +3,6 @@ import type {
 } from "./audit-action";
 
 import type {
-  AuditActorType
-} from "./audit-actor";
-
-import type {
   AuditOutcome
 } from "./audit-outcome";
 
@@ -18,7 +14,7 @@ export interface AuditQuery {
   text?: string;
 
   actorId?: string;
-  actorType?: AuditActorType;
+  actorType?: string;
 
   companyId?: string;
   branchId?: string;
