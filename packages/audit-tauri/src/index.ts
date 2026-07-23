@@ -3,16 +3,22 @@ export type {
 } from "./database";
 
 export {
-  AuditQueryBuilder
+  AuditQueryBuilder,
+  ApprovalQueryBuilder
 } from "./query";
 
 export type {
-  BuiltAuditQuery
+  BuiltAuditQuery,
+  BuiltApprovalQuery
 } from "./query";
 
 export {
   SqliteAuditRepository
 } from "./repositories/sqlite-audit-repository";
+
+export {
+  SqliteApprovalRepository
+} from "./repositories/sqlite-approval-repository";
 
 export {
   SqliteAuditUnitOfWork
