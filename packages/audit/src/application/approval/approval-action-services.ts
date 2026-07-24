@@ -18,6 +18,7 @@ export interface ApprovalActionCommand {
   approvalRequestId: string;
   actor: ApprovalActor;
   comment?: string | null;
+  correlationId?: string | null;
 }
 
 function runAction(
@@ -37,6 +38,9 @@ function runAction(
     actor: command.actor,
     ...(command.comment !== undefined
       ? { comment: command.comment }
+      : {}),
+    ...(command.correlationId !== undefined
+      ? { correlationId: command.correlationId }
       : {})
   });
 }
