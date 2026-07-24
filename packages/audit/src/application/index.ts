@@ -11,6 +11,10 @@ export type {
   AuditPermissionCode
 } from "./audit-permissions";
 
+export {
+  createPermissionSetAuthorizer
+} from "./create-permission-set-authorizer";
+
 export type {
   AuditPermissionAuthorizer
 } from "../contracts/audit-permission-authorizer";
