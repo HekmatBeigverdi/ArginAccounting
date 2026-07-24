@@ -11,6 +11,11 @@ export const navigationItems: NavigationItem[] = [
     group: "اصلی"
   },
   {
+    label: "گردش تأیید",
+    path: "/approval/requests",
+    group: "اصلی"
+  },
+  {
     label: "تعریف شرکت",
     path: "/company/setup",
     group: "اطلاعات پایه"
