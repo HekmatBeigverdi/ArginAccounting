@@ -3,18 +3,18 @@ import type {
 } from "../../domain/audit-entry";
 
 import type {
-  AuditRepository
-} from "../../contracts/audit-repository";
+  AuditCommandContext
+} from "./audit-command-context";
 
 import {
   AuditEntryNotFoundError
 } from "./audit-entry-not-found-error";
 
 export async function getAuditEntry(
-  auditRepository: AuditRepository,
+  context: AuditCommandContext,
   auditEntryId: string
 ): Promise<AuditEntry> {
-  const entry = await auditRepository.findById(
+  const entry = await context.auditRepository.findById(
     auditEntryId
   );
 
