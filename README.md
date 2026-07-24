@@ -1,72 +1,42 @@
 # ArginAccounting
 
-ArginAccounting is a modular, offline-first, Persian accounting platform designed for Iranian companies and accounting professionals.
+ArginAccounting is a modular, offline-first, Persian accounting and ERP platform designed for Iranian companies and accounting professionals.
 
-The first production runtime is a desktop application built with React, TypeScript, Tauri, and SQLite. The domain and application layers are designed for future reuse in an ASP.NET Core Web API, PostgreSQL deployment, web application, and hybrid offline/online environment.
+The first production runtime is a desktop application built with React, TypeScript, Tauri, and SQLite. Domain and application contracts are designed for future reuse in ASP.NET Core, PostgreSQL, web, and hybrid offline/online runtimes.
 
 ## Product Requirements
 
-- Persian user interface
-- RTL layout
+- Persian and RTL user interface
 - Solar Hijri / Jalali input and presentation
+- Gregorian UTC internal date-time storage
 - Iranian Rial as the primary accounting currency
-- Optional Toman display
 - Fully offline desktop operation
 - Versioned SQLite migrations
-- Explicit permissions and branch access
+- Explicit permissions and organizational scope
 - Immutable audit history
-- Modular accounting architecture
+- Modular accounting and ERP architecture
 
-Source code identifiers, database identifiers, API contracts, GitHub documentation, branch names, and commit messages are written in English.
+Source identifiers, database identifiers, API contracts, GitHub documentation, branches, and commits use English.
 
 ## Current Status
 
-Phases 01 through 07 are complete. Phase 08, Audit Trail and Approval Workflow, is implemented on `phase/08-audit-approval` and is undergoing final validation and release preparation.
+- Phase 01–08: completed and merged into `develop` and `main`
+- Current target: Phase 09 — Platform Infrastructure
+- Next accounting milestone: Phase 10 — Chart of Accounts
 
-Phase 08 includes:
+Phase 09 establishes Event Bus, Money, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs before business modules are expanded.
 
-- Audit entries with actor, source, target, scope, outcome, snapshots, and correlation IDs
-- Sensitive-value sanitization
-- Approval request state machine and append-only history
-- Atomic Approval + History + Audit transactions
-- Optimistic concurrency
-- Permission-protected application services
-- SQLite repositories and Unit of Work
-- Desktop composition root and authenticated session integration
-- Persian Approval and Audit Viewer pages
-- Application and transaction tests
-
-See [ROADMAP.md](ROADMAP.md) for the full delivery plan and [ARCHITECTURE.md](ARCHITECTURE.md) for architectural boundaries.
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), and [ADR-0009](docs/adr/ADR-0009-platform-infrastructure-first.md).
 
 ## Main Modules
 
-- Company and Branch
-- Fiscal Management
-- Security
-- Audit and Approval
-- Accounting
-- Master Data
-- Inventory
-- Purchases
-- Sales
-- Treasury
-- Fixed Assets
-- Depreciation
-- Payroll
-- Human Resources
-- Manufacturing
-- Cost Accounting
-- Budgeting
-- Contracts and Projects
-- Reporting
-- Iranian Taxpayer System Integration
-- Synchronization
+Company and Branch, Fiscal Management, Security, Audit and Approval, Accounting, Master Data, Inventory, Purchases, Sales, Treasury, Fixed Assets, Depreciation, Payroll, Human Resources, Manufacturing, Cost Accounting, Budgeting, Contracts and Projects, Reporting, Iranian Taxpayer System Integration, and Synchronization.
 
 ## Repository Structure
 
 ```text
 apps/
-  desktop/             React + Tauri desktop application
+  desktop/             React + Tauri desktop runtime
   web/                 Future web runtime
 
 packages/
@@ -81,6 +51,18 @@ packages/
   security-tauri/      Security SQLite/Tauri infrastructure
   audit/               Audit and approval domain/application
   audit-tauri/         Audit and approval SQLite infrastructure
+
+docs/
+  adr/                  Architecture decisions
+  accounting/           Accounting and posting semantics
+  architecture/         System architecture
+  database/             Data architecture
+  development/          Engineering handbook and governance
+  glossary/             Domain terminology
+  phases/               Phase records
+  security/             Security model
+  templates/            Required documentation templates
+  vision/               Product direction
 ```
 
 ## Prerequisites
@@ -90,62 +72,24 @@ packages/
 - Rust toolchain
 - Tauri system prerequisites for the target operating system
 
-## Install
+## Development
 
 ```bash
 pnpm install
-```
-
-## Development
-
-Run the desktop application:
-
-```bash
 pnpm dev:desktop
-```
-
-Run the web workspace when available:
-
-```bash
-pnpm dev:web
 ```
 
 ## Validation
 
-Run all TypeScript checks:
-
 ```bash
 pnpm typecheck
-```
-
-Run all tests:
-
-```bash
 pnpm test
-```
-
-Build all workspaces:
-
-```bash
 pnpm build
-```
-
-Validate the Tauri/Rust application:
-
-```bash
 cd apps/desktop/src-tauri
 cargo check
 ```
 
-Phase 08 package-specific commands:
-
-```bash
-pnpm --filter @argin/audit typecheck
-pnpm --filter @argin/audit test
-pnpm --filter @argin/audit-tauri typecheck
-pnpm --filter @argin/audit-tauri test
-pnpm --filter @argin/desktop typecheck
-```
+Validation commands are requirements, not proof of success. Phase and release documents must record commands actually executed and their outcomes.
 
 ## Architecture Principles
 
@@ -153,47 +97,39 @@ pnpm --filter @argin/desktop typecheck
 - Offline-first and desktop-first delivery
 - Database-independent domain logic
 - UI-independent application rules
-- Explicit repository and Unit of Work contracts
+- Explicit repositories and Unit of Work
 - Atomic financial and workflow operations
-- Optimistic concurrency where required
-- Immutable posted documents
-- Auditability and traceability
-- Testability
-- Web and PostgreSQL readiness
-
-## Accounting Model
-
-The accounting core is planned to support:
-
-- Hierarchical chart of accounts
-- Account groups, general ledgers, and subsidiary ledgers
-- Floating detail accounts and reusable dimensions
-- Configurable coding templates
-- Journal vouchers and balanced debit/credit validation
-- Fiscal years and periods
-- Approval, posting, reversal, and correction workflows
-- Central posting rules
-- Drill-down reports
-- Iranian accounting terminology and workflows
+- Optimistic concurrency
+- Immutable posted documents and audit history
+- Testability and future runtime portability
 
 ## Branch Strategy
 
-- `main`: stable releases
+- `main`: stable integrated baseline
 - `develop`: integration branch
-- `phase/*`: phase development branches
-- `fix/*`: bug fixes
-- `release/*`: release preparation
-
-A phase branch is merged into `develop` with a non-fast-forward merge after validation and documentation.
+- `phase/*`: phase implementation
+- `fix/*`: focused corrections
+- `release/*`: release preparation when required
+- `docs/*`: documentation-only refactoring
 
 ## Documentation
 
-- [Vision](VISION.md)
+- [Documentation Hub](docs/README.md)
+- [Documentation Governance](docs/development/documentation-governance.md)
+- [Product Vision](docs/vision/product-vision.md)
 - [Architecture](ARCHITECTURE.md)
 - [Roadmap](ROADMAP.md)
+- [Phase 08 — Audit and Approval](docs/phases/phase-08-audit-approval.md)
+- [Phase 09 — Platform Infrastructure](docs/phases/phase-09-platform-infrastructure.md)
+- [ADR Registry](docs/adr/README.md)
+- [Database Design](docs/database/database-design.md)
+- [Accounting Engine](docs/accounting/accounting-engine.md)
+- [Posting Engine](docs/accounting/posting-engine.md)
+- [Security Model](docs/security/security-model.md)
+- [Testing Strategy](docs/development/testing-strategy.md)
+- [Domain Glossary](docs/glossary/domain-glossary.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
-- [Phase 08 Audit and Approval](docs/phase-08-audit-approval.md)
 - [Release Checklist](RELEASE_CHECKLIST.md)
 
 ## License
