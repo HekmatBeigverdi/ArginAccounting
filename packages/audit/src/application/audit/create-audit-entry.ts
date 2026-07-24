@@ -54,8 +54,14 @@ export function createAuditEntry(
     },
     message: input.message?.trim() || null,
     reason: input.reason?.trim() || null,
-    before: sanitizeAuditSnapshot(input.before ?? null),
-    after: sanitizeAuditSnapshot(input.after ?? null),
+    before:
+      input.before === undefined || input.before === null
+        ? null
+        : sanitizeAuditSnapshot(input.before),
+    after:
+      input.after === undefined || input.after === null
+        ? null
+        : sanitizeAuditSnapshot(input.after),
     correlationId: input.correlationId?.trim() || null,
     metadata: input.metadata ?? null
   };
