@@ -8,14 +8,14 @@ import type {
 } from "../../domain/approval/approval-request-summary";
 
 import type {
-  ApprovalRepository
-} from "../../contracts/approval-repository";
+  ApprovalCommandContext
+} from "./approval-command-context";
 
 export function searchApprovalRequests(
-  approvalRepository: ApprovalRepository,
+  context: ApprovalCommandContext,
   query: ApprovalQuery
 ): Promise<
   ApprovalQueryResult<ApprovalRequestSummary>
 > {
-  return approvalRepository.search(query);
+  return context.approvalRepository.search(query);
 }
