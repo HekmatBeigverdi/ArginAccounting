@@ -9,3 +9,19 @@ export {
 export type {
   CreateAuditEntryDependencies
 } from "./create-audit-entry";
+
+export {
+  AuditEntryNotFoundError
+} from "./audit-entry-not-found-error";
+
+export {
+  recordAuditEntry
+} from "./record-audit-entry";
+
+export {
+  getAuditEntry
+} from "./get-audit-entry";
+
+export {
+  searchAuditEntries
+} from "./search-audit-entries";
