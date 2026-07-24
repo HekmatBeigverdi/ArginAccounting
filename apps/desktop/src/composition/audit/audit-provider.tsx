@@ -12,6 +12,10 @@ import {
 } from "@argin/database-tauri";
 
 import {
+  DatabaseExecutorAdapter
+} from "@argin/audit-tauri";
+
+import {
   useAuthSession
 } from "../../app/providers/auth-session-provider";
 
@@ -77,7 +81,10 @@ export function AuditProvider({
       return null;
     }
 
-    return createAuditServices(database, session);
+    const adapter =
+      new DatabaseExecutorAdapter(database);
+
+    return createAuditServices(adapter, session);
   }, [database, session]);
 
   if (status === "error") {

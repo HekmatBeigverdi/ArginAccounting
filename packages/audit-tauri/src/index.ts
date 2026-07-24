@@ -4,6 +4,10 @@ export type {
 } from "./database";
 
 export {
+  DatabaseExecutorAdapter
+} from "./database";
+
+export {
   AsyncMutex,
   SqlFilterBuilder,
   executeSqlitePaginationQuery,
