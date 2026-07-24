@@ -1,5 +1,8 @@
 {
   "name": "@argin/config",
   "version": "0.2.0",
-  "private": true
+  "private": true,
+  "exports": {
+    "./tsconfig.package.json": "./tsconfig.package.json"
+  }
 }

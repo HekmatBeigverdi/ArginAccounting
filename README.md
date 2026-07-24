@@ -1,57 +1,49 @@
 # ArginAccounting
 
-ArginAccounting is a modular, offline-first, Persian accounting platform designed for Iranian companies.
+ArginAccounting is a modular, offline-first, Persian accounting platform designed for Iranian companies and accounting professionals.
 
-## Product Vision
+The first production runtime is a desktop application built with React, TypeScript, Tauri, and SQLite. The domain and application layers are designed for future reuse in an ASP.NET Core Web API, PostgreSQL deployment, web application, and hybrid offline/online environment.
 
-The first production version is a desktop accounting application built with Next.js, React, TypeScript, Tauri, and SQLite.
+## Product Requirements
 
-The architecture must support future migration to:
+- Persian user interface
+- RTL layout
+- Solar Hijri / Jalali input and presentation
+- Iranian Rial as the primary accounting currency
+- Optional Toman display
+- Fully offline desktop operation
+- Versioned SQLite migrations
+- Explicit permissions and branch access
+- Immutable audit history
+- Modular accounting architecture
 
-- ASP.NET Core Web API
-- PostgreSQL
-- Web application
-- Multi-user deployment
-- Hybrid offline and online operation
-- Synchronization between SQLite and PostgreSQL
+Source code identifiers, database identifiers, API contracts, GitHub documentation, branch names, and commit messages are written in English.
 
-## Product Language and Localization
+## Current Status
 
-- Application language: Persian
-- Layout direction: RTL
-- Primary calendar: Solar Hijri / Jalali
-- Primary currency: Iranian Rial
-- Optional display currency: Toman
-- Source code language: English
-- Database identifiers: English
-- API contracts: English
-- GitHub documentation: English
-- Commit messages: English
+Phases 01 through 07 are complete. Phase 08, Audit Trail and Approval Workflow, is implemented on `phase/08-audit-approval` and is undergoing final validation and release preparation.
 
-## Accounting Model
+Phase 08 includes:
 
-ArginAccounting follows Iranian accounting practices while using a modern modular architecture.
+- Audit entries with actor, source, target, scope, outcome, snapshots, and correlation IDs
+- Sensitive-value sanitization
+- Approval request state machine and append-only history
+- Atomic Approval + History + Audit transactions
+- Optimistic concurrency
+- Permission-protected application services
+- SQLite repositories and Unit of Work
+- Desktop composition root and authenticated session integration
+- Persian Approval and Audit Viewer pages
+- Application and transaction tests
 
-The accounting core supports:
-
-- Hierarchical chart of accounts
-- Floating detail accounts
-- Accounting dimensions
-- Journal vouchers
-- Debit and credit controls
-- Fiscal years and periods
-- Document approval
-- Final posting
-- Reverse posting
-- Audit trail
-- Automatic posting rules
-- Drill-down reporting
+See [ROADMAP.md](ROADMAP.md) for the full delivery plan and [ARCHITECTURE.md](ARCHITECTURE.md) for architectural boundaries.
 
 ## Main Modules
 
 - Company and Branch
 - Fiscal Management
 - Security
+- Audit and Approval
 - Accounting
 - Master Data
 - Inventory
@@ -70,18 +62,119 @@ The accounting core supports:
 - Iranian Taxpayer System Integration
 - Synchronization
 
+## Repository Structure
+
+```text
+apps/
+  desktop/             React + Tauri desktop application
+  web/                 Future web runtime
+
+packages/
+  config/              Shared TypeScript configuration
+  database/            Database-neutral contracts
+  database-tauri/      SQLite/Tauri database implementation
+  company/             Company and branch domain/application
+  company-tauri/       Company SQLite infrastructure
+  fiscal/              Fiscal domain/application
+  fiscal-tauri/        Fiscal SQLite infrastructure
+  security/            Security domain/application
+  security-tauri/      Security SQLite/Tauri infrastructure
+  audit/               Audit and approval domain/application
+  audit-tauri/         Audit and approval SQLite infrastructure
+```
+
+## Prerequisites
+
+- Node.js 22 or later
+- pnpm 11
+- Rust toolchain
+- Tauri system prerequisites for the target operating system
+
+## Install
+
+```bash
+pnpm install
+```
+
+## Development
+
+Run the desktop application:
+
+```bash
+pnpm dev:desktop
+```
+
+Run the web workspace when available:
+
+```bash
+pnpm dev:web
+```
+
+## Validation
+
+Run all TypeScript checks:
+
+```bash
+pnpm typecheck
+```
+
+Run all tests:
+
+```bash
+pnpm test
+```
+
+Build all workspaces:
+
+```bash
+pnpm build
+```
+
+Validate the Tauri/Rust application:
+
+```bash
+cd apps/desktop/src-tauri
+cargo check
+```
+
+Phase 08 package-specific commands:
+
+```bash
+pnpm --filter @argin/audit typecheck
+pnpm --filter @argin/audit test
+pnpm --filter @argin/audit-tauri typecheck
+pnpm --filter @argin/audit-tauri test
+pnpm --filter @argin/desktop typecheck
+```
+
 ## Architecture Principles
 
-- Modular
-- Offline-first
-- Desktop-first
-- Web-ready
-- Database-independent domain
-- UI-independent business logic
+- Modular domain boundaries
+- Offline-first and desktop-first delivery
+- Database-independent domain logic
+- UI-independent application rules
+- Explicit repository and Unit of Work contracts
+- Atomic financial and workflow operations
+- Optimistic concurrency where required
 - Immutable posted documents
-- Event-driven integration
-- Auditability
+- Auditability and traceability
 - Testability
+- Web and PostgreSQL readiness
+
+## Accounting Model
+
+The accounting core is planned to support:
+
+- Hierarchical chart of accounts
+- Account groups, general ledgers, and subsidiary ledgers
+- Floating detail accounts and reusable dimensions
+- Configurable coding templates
+- Journal vouchers and balanced debit/credit validation
+- Fiscal years and periods
+- Approval, posting, reversal, and correction workflows
+- Central posting rules
+- Drill-down reports
+- Iranian accounting terminology and workflows
 
 ## Branch Strategy
 
@@ -91,6 +184,18 @@ The accounting core supports:
 - `fix/*`: bug fixes
 - `release/*`: release preparation
 
-## Current Phase
+A phase branch is merged into `develop` with a non-fast-forward merge after validation and documentation.
 
-Phase 01 - Repository and Architecture Baseline
+## Documentation
+
+- [Vision](VISION.md)
+- [Architecture](ARCHITECTURE.md)
+- [Roadmap](ROADMAP.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
+- [Phase 08 Audit and Approval](docs/phase-08-audit-approval.md)
+- [Release Checklist](RELEASE_CHECKLIST.md)
+
+## License
+
+The repository license and distribution policy must be reviewed before production or third-party distribution.

@@ -3,6 +3,8 @@ export type PermissionModule =
   | "security"
   | "company"
   | "fiscal"
+  | "audit"
+  | "approval"
   | "accounting"
   | "master-data"
   | "inventory"
