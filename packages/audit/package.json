@@ -12,10 +12,11 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "echo \"No audit tests configured yet\""
+    "test": "vitest run"
   },
   "devDependencies": {
     "@argin/config": "workspace:*",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }
