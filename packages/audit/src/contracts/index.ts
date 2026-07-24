@@ -15,6 +15,10 @@ export type {
 } from "./audit-id-generator";
 
 export type {
+  AuditPermissionAuthorizer
+} from "./audit-permission-authorizer";
+
+export type {
   AuditRepositories,
   AuditUnitOfWork
 } from "./audit-unit-of-work";
