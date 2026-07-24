@@ -1,0 +1,50 @@
+name: Feature or Phase Work
+description: Propose or track a feature, module, or phase deliverable
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and business context
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and exclusions
+    validations:
+      required: true
+  - type: input
+    id: phase
+    attributes:
+      label: Owning roadmap phase
+      placeholder: "Phase 09 — Platform Infrastructure"
+    validations:
+      required: true
+  - type: textarea
+    id: architecture
+    attributes:
+      label: Architecture, modules, ADRs, and contracts
+  - type: textarea
+    id: data
+    attributes:
+      label: Database, migration, and data impact
+  - type: textarea
+    id: security
+    attributes:
+      label: Permissions, audit, approval, and security impact
+  - type: textarea
+    id: testing
+    attributes:
+      label: Acceptance criteria and validation plan
+    validations:
+      required: true
+  - type: checkboxes
+    id: documentation
+    attributes:
+      label: Documentation obligations
+      options:
+        - label: Phase document and roadmap impact identified
+        - label: Canonical documents, registries, and dictionaries identified
+        - label: ADR requirement evaluated
