@@ -3,18 +3,18 @@ import type {
 } from "../../domain/approval/approval-request";
 
 import type {
-  ApprovalRepository
-} from "../../contracts/approval-repository";
+  ApprovalCommandContext
+} from "./approval-command-context";
 
 import {
   ApprovalNotFoundError
 } from "./approval-application-errors";
 
 export async function getApprovalRequest(
-  approvalRepository: ApprovalRepository,
+  context: ApprovalCommandContext,
   approvalRequestId: string
 ): Promise<ApprovalRequest> {
-  const request = await approvalRepository.findById(
+  const request = await context.approvalRepository.findById(
     approvalRequestId
   );
 
