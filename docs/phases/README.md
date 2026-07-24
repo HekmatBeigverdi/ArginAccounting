@@ -6,7 +6,7 @@ All phase records live in this directory and follow the permanent [phase templat
 
 1. [Phase 01 — Architecture Baseline](phase-01-architecture-baseline.md)
 2. [Phase 02 — Monorepo Bootstrap](phase-02-monorepo-bootstrap.md)
-3. Phase 03 — Domain Foundation
+3. [Phase 03 — Domain Foundation](phase-03-domain-foundation.md)
 4. [Phase 04 — Database and SQLite](phase-04-database-sqlite.md)
 5. [Phase 05 — Company and Branch](phase-05-company-branch.md)
 6. [Phase 06 — Fiscal Management](phase-06-fiscal-management.md)
@@ -23,4 +23,4 @@ The insertion of Platform Infrastructure as Phase 09 shifts Chart of Accounts an
 
 ## Historical Refactor Policy
 
-Phase 01–08 documents retain their implementation history. Link repair, status correction, and standardized cross-references are permitted; claims about validation must remain evidence-based.
+Phase 01–08 documents retain their implementation history. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
