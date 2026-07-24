@@ -50,3 +50,11 @@ export {
 export type {
   ApprovalActionCommand
 } from "./approval-action-services";
+
+export {
+  getApprovalRequest
+} from "./get-approval-request";
+
+export {
+  searchApprovalRequests
+} from "./search-approval-requests";
