@@ -80,19 +80,6 @@ export function AuditProvider({
     return createAuditServices(database, session);
   }, [database, session]);
 
-  if (status === "loading" || services === null) {
-    return (
-      <main className="application-bootstrap">
-        <section className="application-bootstrap__card">
-          <h1>نرم‌افزار حسابداری شرکتی آرگین</h1>
-          <p>
-            در حال آماده‌سازی گردش تأیید و زیرساخت ممیزی...
-          </p>
-        </section>
-      </main>
-    );
-  }
-
   if (status === "error") {
     return (
       <main className="application-bootstrap">
@@ -105,6 +92,19 @@ export function AuditProvider({
           >
             تلاش مجدد
           </button>
+        </section>
+      </main>
+    );
+  }
+
+  if (status === "loading" || services === null) {
+    return (
+      <main className="application-bootstrap">
+        <section className="application-bootstrap__card">
+          <h1>نرم‌افزار حسابداری شرکتی آرگین</h1>
+          <p>
+            در حال آماده‌سازی گردش تأیید و زیرساخت ممیزی...
+          </p>
         </section>
       </main>
     );
