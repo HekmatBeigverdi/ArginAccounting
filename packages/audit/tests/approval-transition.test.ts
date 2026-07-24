@@ -1,20 +1,21 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 
 import {
   resolveApprovalTransition
-} from "../src/domain/approval/approval-transition";
+} from "../src/domain/approval/approval-transition.ts";
 
 import {
   ApprovalInvalidTransitionError
-} from "../src/application/approval/approval-application-errors";
+} from "../src/application/approval/approval-application-errors.ts";
 
 import {
   applyApprovalAction
-} from "../src/application/approval/apply-approval-action";
+} from "../src/application/approval/apply-approval-action.ts";
 
 import type {
   ApprovalRequest
-} from "../src/domain/approval/approval-request";
+} from "../src/domain/approval/approval-request.ts";
 
 const actor = {
   type: "user" as const,
@@ -54,22 +55,26 @@ function createRequest(
 }
 
 describe("approval transition rules", () => {
-  it.each([
+  const validCases = [
     ["draft", "submit", "pending"],
     ["pending", "approve", "approved"],
     ["pending", "reject", "rejected"],
     ["pending", "return-to-draft", "draft"],
     ["draft", "cancel", "cancelled"],
     ["pending", "cancel", "cancelled"]
-  ] as const)("moves %s with %s to %s", (from, action, expected) => {
-    expect(resolveApprovalTransition(from, action)).toBe(expected);
-  });
+  ] as const;
+
+  for (const [from, action, expected] of validCases) {
+    it(`moves ${from} with ${action} to ${expected}`, () => {
+      assert.equal(resolveApprovalTransition(from, action), expected);
+    });
+  }
 
   it("returns null for an invalid transition", () => {
-    expect(resolveApprovalTransition("approved", "approve")).toBeNull();
+    assert.equal(resolveApprovalTransition("approved", "approve"), null);
   });
 
-  it("throws application error and does not persist an invalid transition", async () => {
+  it("does not persist an invalid transition", async () => {
     const request = createRequest("approved");
     let updateCount = 0;
     let historyCount = 0;
@@ -103,16 +108,17 @@ describe("approval transition rules", () => {
       }
     };
 
-    await expect(
-      applyApprovalAction(context, {
+    await assert.rejects(
+      () => applyApprovalAction(context, {
         approvalRequestId: request.id,
         action: "approve",
         actor
-      })
-    ).rejects.toBeInstanceOf(ApprovalInvalidTransitionError);
+      }),
+      ApprovalInvalidTransitionError
+    );
 
-    expect(updateCount).toBe(0);
-    expect(historyCount).toBe(0);
-    expect(auditCount).toBe(0);
+    assert.equal(updateCount, 0);
+    assert.equal(historyCount, 0);
+    assert.equal(auditCount, 0);
   });
 });
