@@ -50,7 +50,9 @@ export function createAuditEntry(
     },
     target: {
       entityType: input.target.entityType.trim(),
-      entityId: input.target.entityId.trim()
+      entityId: input.target.entityId?.trim() || null,
+      entityDisplayName:
+        input.target.entityDisplayName?.trim() || null
     },
     message: input.message?.trim() || null,
     reason: input.reason?.trim() || null,
