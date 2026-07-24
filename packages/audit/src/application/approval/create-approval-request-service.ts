@@ -8,6 +8,10 @@ import type {
 } from "./approval-command-context";
 
 import {
+  createApprovalAuditEntry
+} from "./create-approval-audit-entry";
+
+import {
   createApprovalHistoryEntry
 } from "./create-approval-history-entry";
 
@@ -15,9 +19,14 @@ import {
   createApprovalRequest
 } from "./create-approval-request";
 
+export interface CreateApprovalRequestCommand
+extends CreateApprovalRequestInput {
+  correlationId?: string | null;
+}
+
 export async function createApprovalRequestService(
   context: ApprovalCommandContext,
-  input: CreateApprovalRequestInput
+  input: CreateApprovalRequestCommand
 ): Promise<ApprovalRequest> {
   const request = createApprovalRequest(
     context,
@@ -36,11 +45,30 @@ export async function createApprovalRequestService(
     }
   );
 
-  await context.approvalRepository.create(request);
-  await context.approvalRepository.addHistory(history);
-
-  return {
+  const completedRequest: ApprovalRequest = {
     ...request,
     history: [history]
   };
+
+  const auditEntry = createApprovalAuditEntry(
+    context,
+    {
+      action: "create",
+      source: context.auditSource,
+      actor: request.requestedBy,
+      request: completedRequest,
+      occurredAt: request.createdAt,
+      correlationId: input.correlationId ?? null
+    }
+  );
+
+  return context.unitOfWork.transaction(
+    async (repositories) => {
+      await repositories.approval.create(request);
+      await repositories.approval.addHistory(history);
+      await repositories.audit.create(auditEntry);
+
+      return completedRequest;
+    }
+  );
 }
