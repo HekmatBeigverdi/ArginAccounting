@@ -8,12 +8,12 @@ import type {
 } from "../../domain/audit-query";
 
 import type {
-  AuditRepository
-} from "../../contracts/audit-repository";
+  AuditCommandContext
+} from "./audit-command-context";
 
 export function searchAuditEntries(
-  auditRepository: AuditRepository,
+  context: AuditCommandContext,
   query: AuditQuery
 ): Promise<AuditQueryResult<AuditEntrySummary>> {
-  return auditRepository.search(query);
+  return context.auditRepository.search(query);
 }
