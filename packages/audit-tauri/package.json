@@ -12,7 +12,7 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "echo \"No audit-tauri tests configured yet\""
+    "test": "node --experimental-strip-types --experimental-transform-types --experimental-specifier-resolution=node --test tests/*.test.ts"
   },
   "dependencies": {
     "@argin/audit": "workspace:*",
