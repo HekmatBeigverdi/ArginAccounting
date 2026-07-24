@@ -14,7 +14,7 @@ export interface ApprovalRepository {
 
   update(
     request: ApprovalRequest
-  ): Promise<void>;
+  ): Promise<ApprovalRequest>;
 
   findById(
     id: string

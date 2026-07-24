@@ -204,3 +204,15 @@ export type {
   AuditRepositories,
   AuditUnitOfWork
 } from "./contracts/audit-unit-of-work";
+
+export {
+  initialApprovalRequestVersion
+} from "./domain/approval/approval-request";
+
+export {
+  ApprovalConcurrencyError
+} from "./domain/approval/approval-concurrency-error";
+
+export type {
+  ApprovalConcurrencyErrorOptions
+} from "./domain/approval/approval-concurrency-error";

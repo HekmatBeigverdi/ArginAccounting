@@ -5,6 +5,8 @@ import type {
 export interface ApprovalRequestSummary {
   id: string;
 
+  version: number;
+
   requestType: string;
   title: string;
 

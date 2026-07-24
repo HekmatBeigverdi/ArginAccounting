@@ -18,8 +18,12 @@ import type {
   ApprovalTarget
 } from "./approval-target";
 
+export const initialApprovalRequestVersion = 1;
+
 export interface ApprovalRequest {
   id: string;
+
+  version: number;
 
   requestType: string;
   title: string;

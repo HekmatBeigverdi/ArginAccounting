@@ -14,7 +14,11 @@ export function mapRowToApprovalRequestSummary(
   row: ApprovalRequestRow
 ): ApprovalRequestSummary {
   return {
-    id: row.id,
+    id:
+      row.id,
+
+    version:
+      row.version,
 
     requestType:
       row.request_type,

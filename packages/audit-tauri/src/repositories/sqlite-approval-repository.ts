@@ -1,3 +1,7 @@
+import {
+  ApprovalConcurrencyError
+} from "@argin/audit";
+
 import type {
   ApprovalHistoryEntry,
   ApprovalQuery,
@@ -59,6 +63,7 @@ implements ApprovalRepository {
 INSERT INTO approval_requests
 (
   id,
+  version,
   request_type,
   title,
   description,
@@ -83,7 +88,8 @@ INSERT INTO approval_requests
 )
 VALUES
 (
-  ?, ?, ?, ?, ?,
+  ?, ?,
+  ?, ?, ?, ?,
   ?, ?, ?,
   ?, ?, ?,
   ?, ?, ?, ?,
@@ -93,11 +99,11 @@ VALUES
       `,
       [
         row.id,
+        row.version,
 
         row.request_type,
         row.title,
         row.description,
-
         row.status,
 
         row.entity_type,
@@ -127,14 +133,22 @@ VALUES
 
   async update(
     request: ApprovalRequest
-  ): Promise<void> {
+  ): Promise<ApprovalRequest> {
     const row =
       mapApprovalRequestToRow(request);
 
-    await this.db.execute(
-      `
+    const expectedVersion =
+      row.version;
+
+    const nextVersion =
+      expectedVersion + 1;
+
+    const result =
+      await this.db.execute(
+        `
 UPDATE approval_requests
 SET
+  version = ?,
   request_type = ?,
   title = ?,
   description = ?,
@@ -155,38 +169,57 @@ SET
   decided_at = ?,
   decision_comment = ?,
   updated_at = ?
-WHERE id = ?
-      `,
-      [
-        row.request_type,
-        row.title,
-        row.description,
+WHERE
+  id = ?
+  AND version = ?
+        `,
+        [
+          nextVersion,
 
-        row.status,
+          row.request_type,
+          row.title,
+          row.description,
+          row.status,
 
-        row.entity_type,
-        row.entity_id,
-        row.entity_display_name,
+          row.entity_type,
+          row.entity_id,
+          row.entity_display_name,
 
-        row.company_id,
-        row.branch_id,
-        row.fiscal_year_id,
+          row.company_id,
+          row.branch_id,
+          row.fiscal_year_id,
 
-        row.requested_by_type,
-        row.requested_by_id,
-        row.requested_by_name,
-        row.requested_at,
+          row.requested_by_type,
+          row.requested_by_id,
+          row.requested_by_name,
+          row.requested_at,
 
-        row.decided_by_type,
-        row.decided_by_id,
-        row.decided_by_name,
-        row.decided_at,
-        row.decision_comment,
+          row.decided_by_type,
+          row.decided_by_id,
+          row.decided_by_name,
+          row.decided_at,
+          row.decision_comment,
 
-        row.updated_at,
-        row.id
-      ]
-    );
+          row.updated_at,
+
+          row.id,
+          expectedVersion
+        ]
+      );
+
+    if (result.rowsAffected !== 1) {
+      throw new ApprovalConcurrencyError({
+        approvalRequestId:
+          request.id,
+
+        expectedVersion
+      });
+    }
+
+    return {
+      ...request,
+      version: nextVersion
+    };
   }
 
   async findById(
@@ -205,6 +238,7 @@ WHERE id = ?
         `
 SELECT
   id,
+  version,
   request_type,
   title,
   description,
@@ -272,6 +306,7 @@ ORDER BY
       )
     );
   }
+
   async search(
     query: ApprovalQuery
   ): Promise<
@@ -351,52 +386,60 @@ ORDER BY
       database: this.db,
 
       countSql: `
-  SELECT COUNT(*) AS total_count
-  FROM approval_requests
-  ${whereSql}
+SELECT COUNT(*) AS total_count
+FROM approval_requests
+${whereSql}
       `,
 
       selectSql: `
-  SELECT
-    id,
-    request_type,
-    title,
-    description,
-    status,
-    entity_type,
-    entity_id,
-    entity_display_name,
-    company_id,
-    branch_id,
-    fiscal_year_id,
-    requested_by_type,
-    requested_by_id,
-    requested_by_name,
-    requested_at,
-    decided_by_type,
-    decided_by_id,
-    decided_by_name,
-    decided_at,
-    decision_comment,
-    created_at,
-    updated_at
-  FROM approval_requests
-  ${whereSql}
-  ORDER BY
-    created_at DESC,
-    id DESC
-  LIMIT ?
-  OFFSET ?
+SELECT
+  id,
+  version,
+  request_type,
+  title,
+  description,
+  status,
+  entity_type,
+  entity_id,
+  entity_display_name,
+  company_id,
+  branch_id,
+  fiscal_year_id,
+  requested_by_type,
+  requested_by_id,
+  requested_by_name,
+  requested_at,
+  decided_by_type,
+  decided_by_id,
+  decided_by_name,
+  decided_at,
+  decision_comment,
+  created_at,
+  updated_at
+FROM approval_requests
+${whereSql}
+ORDER BY
+  created_at DESC,
+  id DESC
+LIMIT ?
+OFFSET ?
       `,
 
       parameters,
-      ...(query.offset !== undefined && { offset: query.offset }),
-      ...(query.limit !== undefined && { limit: query.limit }),
+
+      ...(query.offset !== undefined
+        ? { offset: query.offset }
+        : {}),
+
+      ...(query.limit !== undefined
+        ? { limit: query.limit }
+        : {}),
 
       mapRow:
         mapRowToApprovalRequestSummary
     });
-  }  
+  }
+
   async addHistory(
     history: ApprovalHistoryEntry
   ): Promise<void> {

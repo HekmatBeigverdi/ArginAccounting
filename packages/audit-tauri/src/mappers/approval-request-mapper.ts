@@ -4,6 +4,7 @@ import type {
 
 export interface ApprovalRequestRow {
   id: string;
+  version: number;
 
   request_type: string;
   title: string;
@@ -41,12 +42,19 @@ export function mapApprovalRequestToRow(
 ): ApprovalRequestRow {
   return {
     id: request.id,
+    version: request.version,
 
-    request_type: request.requestType,
-    title: request.title,
-    description: request.description,
+    request_type:
+      request.requestType,
 
-    status: request.status,
+    title:
+      request.title,
+
+    description:
+      request.description,
+
+    status:
+      request.status,
 
     entity_type:
       request.target.entityType,

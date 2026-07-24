@@ -33,7 +33,11 @@ export function mapRowToApprovalRequest(
         };
 
   return {
-    id: row.id,
+    id:
+      row.id,
+
+    version:
+      row.version,
 
     requestType:
       row.request_type,
