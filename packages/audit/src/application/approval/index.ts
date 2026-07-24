@@ -30,6 +30,10 @@ export {
   createApprovalRequestService
 } from "./create-approval-request-service";
 
+export type {
+  CreateApprovalRequestCommand
+} from "./create-approval-request-service";
+
 export {
   applyApprovalAction
 } from "./apply-approval-action";
