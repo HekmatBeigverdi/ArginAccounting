@@ -7,15 +7,23 @@ import type {
   ApprovalRequestSummary
 } from "../../domain/approval/approval-request-summary";
 
+import {
+  auditPermissions,
+  requireAuditPermission
+} from "../audit-permissions";
+
 import type {
   ApprovalCommandContext
 } from "./approval-command-context";
 
-export function searchApprovalRequests(
+export async function searchApprovalRequests(
   context: ApprovalCommandContext,
   query: ApprovalQuery
-): Promise<
-  ApprovalQueryResult<ApprovalRequestSummary>
-> {
+): Promise<ApprovalQueryResult<ApprovalRequestSummary>> {
+  await requireAuditPermission(
+    context.authorizer,
+    auditPermissions.approvalsView
+  );
+
   return context.approvalRepository.search(query);
 }
