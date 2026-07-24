@@ -25,3 +25,28 @@ export {
   ApprovalInvalidTransitionError,
   ApprovalPermissionDeniedError
 } from "./approval-application-errors";
+
+export {
+  createApprovalRequestService
+} from "./create-approval-request-service";
+
+export {
+  applyApprovalAction
+} from "./apply-approval-action";
+
+export type {
+  ApplyApprovalActionCommand
+} from "./apply-approval-action";
+
+export {
+  submitApprovalRequest,
+  approveApprovalRequest,
+  rejectApprovalRequest,
+  returnApprovalRequestToDraft,
+  cancelApprovalRequest,
+  commentOnApprovalRequest
+} from "./approval-action-services";
+
+export type {
+  ApprovalActionCommand
+} from "./approval-action-services";
