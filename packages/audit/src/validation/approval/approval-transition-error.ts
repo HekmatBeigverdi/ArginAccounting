@@ -1,10 +1,10 @@
 import type {
   ApprovalAction
-} from "../../domain/approval/approval-action";
+} from "../../domain/approval/approval-action.ts";
 
 import type {
   ApprovalStatus
-} from "../../domain/approval/approval-status";
+} from "../../domain/approval/approval-status.ts";
 
 export class ApprovalTransitionError
   extends Error {

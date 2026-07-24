@@ -1,22 +1,22 @@
 import type {
   ApprovalActor
-} from "./approval-actor";
+} from "./approval-actor.ts";
 
 import type {
   ApprovalHistoryEntry
-} from "./approval-history-entry";
+} from "./approval-history-entry.ts";
 
 import type {
   ApprovalScope
-} from "./approval-scope";
+} from "./approval-scope.ts";
 
 import type {
   ApprovalStatus
-} from "./approval-status";
+} from "./approval-status.ts";
 
 import type {
   ApprovalTarget
-} from "./approval-target";
+} from "./approval-target.ts";
 
 export const initialApprovalRequestVersion = 1;
 

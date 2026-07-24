@@ -1,11 +1,11 @@
 export type {
   SqliteDatabase,
   SqliteExecuteResult
-} from "./database";
+} from "./database/index.ts";
 
 export {
   DatabaseExecutorAdapter
-} from "./database";
+} from "./database/index.ts";
 
 export {
   AsyncMutex,
@@ -13,7 +13,7 @@ export {
   executeSqlitePaginationQuery,
   normalizePagination,
   normalizeTotalCount
-} from "./data-access";
+} from "./data-access/index.ts";
 
 export type {
   BuiltSqlFilter,
@@ -21,26 +21,26 @@ export type {
   PaginationOptions,
   SqlitePaginationQueryOptions,
   SqlitePaginationResult
-} from "./data-access";
+} from "./data-access/index.ts";
 
 export {
   AuditQueryBuilder,
   ApprovalQueryBuilder
-} from "./query";
+} from "./query/index.ts";
 
 export type {
   BuiltAuditQuery,
   BuiltApprovalQuery
-} from "./query";
+} from "./query/index.ts";
 
 export {
   SqliteAuditRepository
-} from "./repositories/sqlite-audit-repository";
+} from "./repositories/sqlite-audit-repository.ts";
 
 export {
   SqliteApprovalRepository
-} from "./repositories/sqlite-approval-repository";
+} from "./repositories/sqlite-approval-repository.ts";
 
 export {
   SqliteAuditUnitOfWork
-} from "./sqlite-audit-unit-of-work";
+} from "./sqlite-audit-unit-of-work.ts";

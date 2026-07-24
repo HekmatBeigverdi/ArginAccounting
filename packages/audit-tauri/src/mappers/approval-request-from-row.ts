@@ -5,12 +5,12 @@ import type {
 
 import type {
   ApprovalRequestRow
-} from "./approval-request-mapper";
+} from "./approval-request-mapper.ts";
 
 import {
   parseApprovalActorType,
   parseApprovalStatus
-} from "./approval-value-parsers";
+} from "./approval-value-parsers.ts";
 
 export function mapRowToApprovalRequest(
   row: ApprovalRequestRow,

@@ -1,11 +1,11 @@
 import type {
   CreateAuditEntryInput
-} from "../domain/audit-entry";
+} from "../domain/audit-entry.ts";
 
 import {
   AuditValidationError,
   type AuditValidationIssue
-} from "./audit-validation-error";
+} from "./audit-validation-error.ts";
 
 export function validateAuditEntryInput(
   input: CreateAuditEntryInput

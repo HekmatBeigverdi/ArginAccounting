@@ -1,11 +1,11 @@
 import type {
   CreateApprovalRequestInput
-} from "../../domain/approval/approval-request";
+} from "../../domain/approval/approval-request.ts";
 
 import {
   ApprovalValidationError,
   type ApprovalValidationIssue
-} from "./approval-validation-error";
+} from "./approval-validation-error.ts";
 
 export function validateApprovalRequestInput(
   input: CreateApprovalRequestInput

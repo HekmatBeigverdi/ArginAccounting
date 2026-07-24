@@ -1,4 +1,4 @@
-import type { AuditPermissionAuthorizer } from "../contracts/audit-permission-authorizer";
+import type { AuditPermissionAuthorizer } from "../contracts/audit-permission-authorizer.ts";
 
 export const auditPermissions = {
   entriesView: "audit.entries.view",

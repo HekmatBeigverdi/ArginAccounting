@@ -1,10 +1,10 @@
 import {
   SqlFilterBuilder
-} from "../data-access";
+} from "../data-access/index.ts";
 
 import type {
   BuiltSqlFilter
-} from "../data-access";
+} from "../data-access/index.ts";
 
 export type BuiltAuditQuery =
   BuiltSqlFilter;

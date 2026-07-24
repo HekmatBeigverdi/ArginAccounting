@@ -1,10 +1,10 @@
 import type {
   AuditRepository
-} from "./audit-repository";
+} from "./audit-repository.ts";
 
 import type {
   ApprovalRepository
-} from "./approval-repository";
+} from "./approval-repository.ts";
 
 export interface AuditRepositories {
 

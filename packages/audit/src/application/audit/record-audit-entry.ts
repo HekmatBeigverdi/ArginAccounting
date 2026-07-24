@@ -1,20 +1,20 @@
 import type {
   AuditEntry,
   CreateAuditEntryInput
-} from "../../domain/audit-entry";
+} from "../../domain/audit-entry.ts";
 
 import {
   auditPermissions,
   requireAuditPermission
-} from "../audit-permissions";
+} from "../audit-permissions.ts";
 
 import type {
   AuditCommandContext
-} from "./audit-command-context";
+} from "./audit-command-context.ts";
 
 import {
   createAuditEntry
-} from "./create-audit-entry";
+} from "./create-audit-entry.ts";
 
 export async function recordAuditEntry(
   context: AuditCommandContext,

@@ -1,7 +1,7 @@
 import type {
   AuditSnapshot,
   AuditValue
-} from "./audit-value";
+} from "./audit-value.ts";
 
 const sensitiveKeyFragments = [
   "password",

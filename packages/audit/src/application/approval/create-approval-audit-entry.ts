@@ -2,27 +2,27 @@ import type {
   AuditAction,
   AuditEntry,
   AuditSource
-} from "../../index";
+} from "../../index.ts";
 
 import type {
   ApprovalAction
-} from "../../domain/approval/approval-action";
+} from "../../domain/approval/approval-action.ts";
 
 import type {
   ApprovalActor
-} from "../../domain/approval/approval-actor";
+} from "../../domain/approval/approval-actor.ts";
 
 import type {
   ApprovalRequest
-} from "../../domain/approval/approval-request";
+} from "../../domain/approval/approval-request.ts";
 
 import {
   createAuditEntry
-} from "../audit/create-audit-entry";
+} from "../audit/create-audit-entry.ts";
 
 import type {
   CreateAuditEntryDependencies
-} from "../audit/create-audit-entry";
+} from "../audit/create-audit-entry.ts";
 
 function resolveAuditAction(
   action: ApprovalAction

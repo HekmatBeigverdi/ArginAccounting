@@ -1,18 +1,18 @@
 import type {
   ApprovalActor
-} from "../../domain/approval/approval-actor";
+} from "../../domain/approval/approval-actor.ts";
 
 import type {
   ApprovalRequest
-} from "../../domain/approval/approval-request";
+} from "../../domain/approval/approval-request.ts";
 
 import type {
   ApprovalCommandContext
-} from "./approval-command-context";
+} from "./approval-command-context.ts";
 
 import {
   applyApprovalAction
-} from "./apply-approval-action";
+} from "./apply-approval-action.ts";
 
 export interface ApprovalActionCommand {
   approvalRequestId: string;

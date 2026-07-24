@@ -1,6 +1,7 @@
 {
   "extends": "@argin/config/tsconfig.package.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "rootDir": "src"
   },
   "include": [

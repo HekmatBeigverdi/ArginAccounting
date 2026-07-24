@@ -1,27 +1,27 @@
 import type {
   ApprovalRequest,
   CreateApprovalRequestInput
-} from "../../domain/approval/approval-request";
+} from "../../domain/approval/approval-request.ts";
 
 import {
   initialApprovalRequestVersion
-} from "../../domain/approval/approval-request";
+} from "../../domain/approval/approval-request.ts";
 
 import {
   emptyApprovalScope
-} from "../../domain/approval/approval-scope";
+} from "../../domain/approval/approval-scope.ts";
 
 import type {
   AuditClock
-} from "../../contracts/audit-clock";
+} from "../../contracts/audit-clock.ts";
 
 import type {
   AuditIdGenerator
-} from "../../contracts/audit-id-generator";
+} from "../../contracts/audit-id-generator.ts";
 
 import {
   validateApprovalRequestInput
-} from "../../validation/approval/validate-approval-request";
+} from "../../validation/approval/validate-approval-request.ts";
 
 export interface CreateApprovalRequestDependencies {
   idGenerator: AuditIdGenerator;

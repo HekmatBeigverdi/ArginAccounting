@@ -1,34 +1,34 @@
 import type {
   AuditAction
-} from "./audit-action";
+} from "./audit-action.ts";
 
 import type {
   AuditActor
-} from "./audit-actor";
+} from "./audit-actor.ts";
 
 import type {
   AuditMetadata
-} from "./audit-metadata";
+} from "./audit-metadata.ts";
 
 import type {
   AuditOutcome
-} from "./audit-outcome";
+} from "./audit-outcome.ts";
 
 import type {
   AuditScope
-} from "./audit-scope";
+} from "./audit-scope.ts";
 
 import type {
   AuditSource
-} from "./audit-source";
+} from "./audit-source.ts";
 
 import type {
   AuditTarget
-} from "./audit-target";
+} from "./audit-target.ts";
 
 import type {
   AuditSnapshot
-} from "./audit-value";
+} from "./audit-value.ts";
 
 export interface AuditEntry {
   id: string;

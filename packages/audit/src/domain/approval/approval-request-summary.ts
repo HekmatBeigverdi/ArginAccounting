@@ -1,6 +1,6 @@
 import type {
   ApprovalStatus
-} from "./approval-status";
+} from "./approval-status.ts";
 
 export interface ApprovalRequestSummary {
   id: string;

@@ -1,14 +1,14 @@
 import type {
   AuditAction
-} from "./audit-action";
+} from "./audit-action.ts";
 
 import type {
   AuditOutcome
-} from "./audit-outcome";
+} from "./audit-outcome.ts";
 
 import type {
   AuditSource
-} from "./audit-source";
+} from "./audit-source.ts";
 
 export interface AuditQuery {
   text?: string;

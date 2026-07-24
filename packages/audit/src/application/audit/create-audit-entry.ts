@@ -1,27 +1,27 @@
 import type {
   AuditClock
-} from "../../contracts/audit-clock";
+} from "../../contracts/audit-clock.ts";
 
 import type {
   AuditIdGenerator
-} from "../../contracts/audit-id-generator";
+} from "../../contracts/audit-id-generator.ts";
 
 import type {
   AuditEntry,
   CreateAuditEntryInput
-} from "../../domain/audit-entry";
+} from "../../domain/audit-entry.ts";
 
 import {
   emptyAuditScope
-} from "../../domain/audit-scope";
+} from "../../domain/audit-scope.ts";
 
 import {
   sanitizeAuditSnapshot
-} from "../../domain/sanitize-audit-snapshot";
+} from "../../domain/sanitize-audit-snapshot.ts";
 
 import {
   validateAuditEntryInput
-} from "../../validation/validate-audit-entry";
+} from "../../validation/validate-audit-entry.ts";
 
 export interface CreateAuditEntryDependencies {
   idGenerator: AuditIdGenerator;

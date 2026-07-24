@@ -1,15 +1,15 @@
 import type {
   AuditClock
-} from "../../contracts/audit-clock";
+} from "../../contracts/audit-clock.ts";
 
 import type {
   AuditIdGenerator
-} from "../../contracts/audit-id-generator";
+} from "../../contracts/audit-id-generator.ts";
 
 import type {
   ApprovalHistoryEntry,
   CreateApprovalHistoryEntryInput
-} from "../../domain/approval/approval-history-entry";
+} from "../../domain/approval/approval-history-entry.ts";
 
 export interface CreateApprovalHistoryEntryDependencies {
   idGenerator: AuditIdGenerator;

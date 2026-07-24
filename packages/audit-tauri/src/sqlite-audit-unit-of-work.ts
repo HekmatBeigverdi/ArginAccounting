@@ -5,19 +5,19 @@ import type {
 
 import {
   AsyncMutex
-} from "./data-access";
+} from "./data-access/index.ts";
 
 import type {
   SqliteDatabase
-} from "./database";
+} from "./database/index.ts";
 
 import {
   SqliteApprovalRepository
-} from "./repositories/sqlite-approval-repository";
+} from "./repositories/sqlite-approval-repository.ts";
 
 import {
   SqliteAuditRepository
-} from "./repositories/sqlite-audit-repository";
+} from "./repositories/sqlite-audit-repository.ts";
 
 export class SqliteAuditUnitOfWork
 implements AuditUnitOfWork {

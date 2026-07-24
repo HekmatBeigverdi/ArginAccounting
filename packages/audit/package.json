@@ -12,10 +12,11 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "node --experimental-strip-types --experimental-transform-types --experimental-specifier-resolution=node --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts"
   },
   "devDependencies": {
     "@argin/config": "workspace:*",
+    "@types/node": "^20",
     "typescript": "^5.9.2"
   }
 }

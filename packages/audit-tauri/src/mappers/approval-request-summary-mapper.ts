@@ -4,11 +4,11 @@ import type {
 
 import type {
   ApprovalRequestRow
-} from "./approval-request-mapper";
+} from "./approval-request-mapper.ts";
 
 import {
   parseApprovalStatus
-} from "./approval-value-parsers";
+} from "./approval-value-parsers.ts";
 
 export function mapRowToApprovalRequestSummary(
   row: ApprovalRequestRow

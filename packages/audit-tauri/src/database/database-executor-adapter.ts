@@ -5,7 +5,7 @@ import type {
 import type {
   SqliteDatabase,
   SqliteExecuteResult
-} from "./sqlite-database";
+} from "./sqlite-database.ts";
 
 export class DatabaseExecutorAdapter
 implements SqliteDatabase {

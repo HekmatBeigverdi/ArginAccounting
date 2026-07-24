@@ -1,27 +1,27 @@
 import type {
   ApprovalAction
-} from "../../domain/approval/approval-action";
+} from "../../domain/approval/approval-action.ts";
 
 import type {
   ApprovalActor
-} from "../../domain/approval/approval-actor";
+} from "../../domain/approval/approval-actor.ts";
 
 import type {
   ApprovalStatus
-} from "../../domain/approval/approval-status";
+} from "../../domain/approval/approval-status.ts";
 
 import {
   canApplyApprovalAction
-} from "../../domain/approval/approval-transition";
+} from "../../domain/approval/approval-transition.ts";
 
 import {
   ApprovalTransitionError
-} from "./approval-transition-error";
+} from "./approval-transition-error.ts";
 
 import {
   ApprovalValidationError,
   type ApprovalValidationIssue
-} from "./approval-validation-error";
+} from "./approval-validation-error.ts";
 
 export interface ValidateApprovalActionInput {
   currentStatus: ApprovalStatus;

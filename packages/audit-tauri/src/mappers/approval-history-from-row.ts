@@ -4,14 +4,14 @@ import type {
 
 import type {
   ApprovalHistoryRow
-} from "./approval-history-mapper";
+} from "./approval-history-mapper.ts";
 
 import {
   parseApprovalAction,
   parseApprovalActorType,
   parseApprovalStatus,
   parseNullableApprovalStatus
-} from "./approval-value-parsers";
+} from "./approval-value-parsers.ts";
 
 export function mapRowToApprovalHistory(
   row: ApprovalHistoryRow

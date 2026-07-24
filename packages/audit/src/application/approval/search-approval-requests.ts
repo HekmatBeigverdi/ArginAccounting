@@ -1,20 +1,20 @@
 import type {
   ApprovalQuery,
   ApprovalQueryResult
-} from "../../domain/approval/approval-query";
+} from "../../domain/approval/approval-query.ts";
 
 import type {
   ApprovalRequestSummary
-} from "../../domain/approval/approval-request-summary";
+} from "../../domain/approval/approval-request-summary.ts";
 
 import {
   auditPermissions,
   requireAuditPermission
-} from "../audit-permissions";
+} from "../audit-permissions.ts";
 
 import type {
   ApprovalCommandContext
-} from "./approval-command-context";
+} from "./approval-command-context.ts";
 
 export async function searchApprovalRequests(
   context: ApprovalCommandContext,

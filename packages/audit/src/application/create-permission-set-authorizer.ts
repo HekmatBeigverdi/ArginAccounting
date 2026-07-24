@@ -1,6 +1,6 @@
 import type {
   AuditPermissionAuthorizer
-} from "../contracts/audit-permission-authorizer";
+} from "../contracts/audit-permission-authorizer.ts";
 
 export function createPermissionSetAuthorizer(
   permissionCodes: Iterable<string>

@@ -8,29 +8,29 @@ import type {
 
 import {
   executeSqlitePaginationQuery
-} from "../data-access";
+} from "../data-access/index.ts";
 
 import type {
   SqliteDatabase
-} from "../database";
+} from "../database/index.ts";
 
 import {
   mapRowToAuditEntry
-} from "../mappers/audit-entry-from-row";
+} from "../mappers/audit-entry-from-row.ts";
 
 import {
   mapAuditEntryToRow,
   type AuditEntryRow
-} from "../mappers/audit-entry-mapper";
+} from "../mappers/audit-entry-mapper.ts";
 
 import {
   mapRowToAuditEntrySummary,
   type AuditEntrySummaryRow
-} from "../mappers/audit-entry-summary-mapper";
+} from "../mappers/audit-entry-summary-mapper.ts";
 
 import {
   AuditQueryBuilder
-} from "../query";
+} from "../query/index.ts";
 
 export class SqliteAuditRepository
 implements AuditRepository {

@@ -6,7 +6,7 @@ import type {
   AuditRepository,
   AuditSource,
   AuditUnitOfWork
-} from "../../index";
+} from "../../index.ts";
 
 export interface ApprovalCommandContext {
   idGenerator: AuditIdGenerator;

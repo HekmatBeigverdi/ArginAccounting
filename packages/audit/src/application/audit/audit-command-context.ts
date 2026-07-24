@@ -3,7 +3,7 @@ import type {
   AuditIdGenerator,
   AuditPermissionAuthorizer,
   AuditRepository
-} from "../../index";
+} from "../../index.ts";
 
 export interface AuditCommandContext {
   idGenerator: AuditIdGenerator;

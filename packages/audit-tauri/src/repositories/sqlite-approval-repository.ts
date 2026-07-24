@@ -13,37 +13,37 @@ import type {
 
 import {
   executeSqlitePaginationQuery
-} from "../data-access";
+} from "../data-access/index.ts";
 
 import type {
   SqliteDatabase
-} from "../database";
+} from "../database/index.ts";
 
 import {
   mapRowToApprovalHistory
-} from "../mappers/approval-history-from-row";
+} from "../mappers/approval-history-from-row.ts";
 
 import {
   mapApprovalHistoryToRow,
   type ApprovalHistoryRow
-} from "../mappers/approval-history-mapper";
+} from "../mappers/approval-history-mapper.ts";
 
 import {
   mapRowToApprovalRequest
-} from "../mappers/approval-request-from-row";
+} from "../mappers/approval-request-from-row.ts";
 
 import {
   mapApprovalRequestToRow,
   type ApprovalRequestRow
-} from "../mappers/approval-request-mapper";
+} from "../mappers/approval-request-mapper.ts";
 
 import {
   mapRowToApprovalRequestSummary
-} from "../mappers/approval-request-summary-mapper";
+} from "../mappers/approval-request-summary-mapper.ts";
 
 import {
   ApprovalQueryBuilder
-} from "../query";
+} from "../query/index.ts";
 
 export class SqliteApprovalRepository
 implements ApprovalRepository {

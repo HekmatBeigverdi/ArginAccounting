@@ -1,10 +1,10 @@
 import type {
   ApprovalAction
-} from "./approval-action";
+} from "./approval-action.ts";
 
 import type {
   ApprovalStatus
-} from "./approval-status";
+} from "./approval-status.ts";
 
 export interface ApprovalTransition {
   from: ApprovalStatus;

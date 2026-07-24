@@ -13,7 +13,7 @@ import type {
 
 import type {
   AuditEntryRow
-} from "./audit-entry-mapper";
+} from "./audit-entry-mapper.ts";
 
 const auditActorTypes:
   readonly AuditActorType[] = [

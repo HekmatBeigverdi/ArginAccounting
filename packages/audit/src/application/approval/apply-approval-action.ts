@@ -1,20 +1,20 @@
-import type { ApprovalAction } from "../../domain/approval/approval-action";
-import type { ApprovalActor } from "../../domain/approval/approval-actor";
-import type { ApprovalRequest } from "../../domain/approval/approval-request";
-import { resolveApprovalTransition } from "../../domain/approval/approval-transition";
-import { validateApprovalAction } from "../../validation/approval/validate-approval-action";
+import type { ApprovalAction } from "../../domain/approval/approval-action.ts";
+import type { ApprovalActor } from "../../domain/approval/approval-actor.ts";
+import type { ApprovalRequest } from "../../domain/approval/approval-request.ts";
+import { resolveApprovalTransition } from "../../domain/approval/approval-transition.ts";
+import { validateApprovalAction } from "../../validation/approval/validate-approval-action.ts";
 import {
   auditPermissions,
   requireAuditPermission,
   type AuditPermissionCode
-} from "../audit-permissions";
-import type { ApprovalCommandContext } from "./approval-command-context";
+} from "../audit-permissions.ts";
+import type { ApprovalCommandContext } from "./approval-command-context.ts";
 import {
   ApprovalInvalidTransitionError,
   ApprovalNotFoundError
-} from "./approval-application-errors";
-import { createApprovalAuditEntry } from "./create-approval-audit-entry";
-import { createApprovalHistoryEntry } from "./create-approval-history-entry";
+} from "./approval-application-errors.ts";
+import { createApprovalAuditEntry } from "./create-approval-audit-entry.ts";
+import { createApprovalHistoryEntry } from "./create-approval-history-entry.ts";
 
 export interface ApplyApprovalActionCommand {
   approvalRequestId: string;
@@ -84,19 +84,19 @@ export async function applyApprovalAction(
     const request = await repositories.approval.findById(requestId);
     if (request === null) throw new ApprovalNotFoundError(requestId);
 
-    validateApprovalAction({
-      currentStatus: request.status,
-      action: command.action,
-      actor: command.actor,
-      ...(command.comment !== undefined ? { comment: command.comment } : {})
-    });
-
     const nextStatus = command.action === "comment"
       ? request.status
       : resolveApprovalTransition(request.status, command.action);
     if (nextStatus === null) {
       throw new ApprovalInvalidTransitionError(request.id, request.status, command.action);
     }
+
+    validateApprovalAction({
+      currentStatus: request.status,
+      action: command.action,
+      actor: command.actor,
+      ...(command.comment !== undefined ? { comment: command.comment } : {})
+    });
 
     const occurredAt = context.clock.now();
     const changed = applyStatusFields(request, command, occurredAt, nextStatus);

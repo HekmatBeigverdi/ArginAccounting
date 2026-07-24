@@ -3,7 +3,7 @@ import type {
   AuditEntrySummary,
   AuditQuery,
   AuditQueryResult
-} from "../index";
+} from "../index.ts";
 
 export interface AuditRepository {
 

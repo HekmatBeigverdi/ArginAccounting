@@ -1,12 +1,12 @@
 import type {
   SqliteDatabase
-} from "../database";
+} from "../database/index.ts";
 
 import {
   normalizePagination,
   normalizeTotalCount,
   type PaginationOptions
-} from "./pagination";
+} from "./pagination.ts";
 
 export interface SqlitePaginationQueryOptions<
   TRow,

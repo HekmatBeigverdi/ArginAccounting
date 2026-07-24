@@ -4,7 +4,7 @@ import type {
   ApprovalQueryResult,
   ApprovalRequest,
   ApprovalRequestSummary
-} from "../index";
+} from "../index.ts";
 
 export interface ApprovalRepository {
 

@@ -1,28 +1,28 @@
 import type {
   CreateApprovalRequestInput,
   ApprovalRequest
-} from "../../domain/approval/approval-request";
+} from "../../domain/approval/approval-request.ts";
 
 import {
   auditPermissions,
   requireAuditPermission
-} from "../audit-permissions";
+} from "../audit-permissions.ts";
 
 import type {
   ApprovalCommandContext
-} from "./approval-command-context";
+} from "./approval-command-context.ts";
 
 import {
   createApprovalAuditEntry
-} from "./create-approval-audit-entry";
+} from "./create-approval-audit-entry.ts";
 
 import {
   createApprovalHistoryEntry
-} from "./create-approval-history-entry";
+} from "./create-approval-history-entry.ts";
 
 import {
   createApprovalRequest
-} from "./create-approval-request";
+} from "./create-approval-request.ts";
 
 export interface CreateApprovalRequestCommand
 extends CreateApprovalRequestInput {

@@ -1,6 +1,6 @@
 import type {
   AuditValue
-} from "./audit-value";
+} from "./audit-value.ts";
 
 export type AuditMetadata =
   Record<string, AuditValue>;
