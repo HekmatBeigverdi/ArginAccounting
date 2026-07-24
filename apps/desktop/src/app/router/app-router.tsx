@@ -53,6 +53,14 @@ import {
   ApprovalRequestDetailsPage
 } from "../../pages/approval/approval-request-details-page";
 
+import {
+  AuditEntriesPage
+} from "../../pages/audit/audit-entries-page";
+
+import {
+  AuditEntryDetailsPage
+} from "../../pages/audit/audit-entry-details-page";
+
 export function AppRouter() {
   return (
     <HashRouter>
@@ -74,6 +82,8 @@ export function AppRouter() {
           <Route path="/fiscal/years/new" element={<NewFiscalYearPage />} />
           <Route path="/approval/requests" element={<ApprovalRequestsPage />} />
           <Route path="/approval/requests/:id" element={<ApprovalRequestDetailsPage />} />
+          <Route path="/audit/entries" element={<AuditEntriesPage />} />
+          <Route path="/audit/entries/:id" element={<AuditEntryDetailsPage />} />
           <Route path="/system/diagnostics" element={<SystemDiagnosticsPage />} />
 
           <Route
