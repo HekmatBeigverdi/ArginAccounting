@@ -61,39 +61,39 @@ export class SqliteSecurityAssignmentRepository
     permissionIds: string[],
     assignedBy: string | null
   ): Promise<void> {
-    await this.database.transaction(
-      async (transaction) => {
-        await transaction.execute(
-          `
-            DELETE FROM role_permissions
-            WHERE role_id = ?
-          `,
-          [roleId]
-        );
-
-        const now = new Date().toISOString();
-
-        for (const permissionId of permissionIds) {
-          await transaction.execute(
-            `
-              INSERT INTO role_permissions (
-                role_id,
-                permission_id,
-                assigned_at,
-                assigned_by
-              )
-              VALUES (?, ?, ?, ?)
-            `,
-            [
-              roleId,
-              permissionId,
-              now,
-              assignedBy
-            ]
-          );
-        }
-      }
+    await this.database.execute(
+      `
+        DELETE FROM role_permissions
+        WHERE role_id = ?
+      `,
+      [roleId]
     );
+
+    const now = new Date().toISOString();
+
+    for (const permissionId of permissionIds) {
+      await this.database.execute(
+        `
+          INSERT INTO role_permissions (
+            role_id,
+            permission_id,
+            assigned_at,
+            assigned_by
+          )
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(role_id, permission_id)
+          DO UPDATE SET
+            assigned_at = excluded.assigned_at,
+            assigned_by = excluded.assigned_by
+        `,
+        [
+          roleId,
+          permissionId,
+          now,
+          assignedBy
+        ]
+      );
+    }
   }
 
   async replaceUserBranchAccess(
@@ -101,40 +101,41 @@ export class SqliteSecurityAssignmentRepository
     branchIds: string[],
     assignedBy: string | null
   ): Promise<void> {
-    await this.database.transaction(
-      async (transaction) => {
-        await transaction.execute(
-          `
-            DELETE FROM user_branch_access
-            WHERE user_id = ?
-          `,
-          [userId]
-        );
-
-        const now = new Date().toISOString();
-
-        for (const branchId of branchIds) {
-          await transaction.execute(
-            `
-              INSERT INTO user_branch_access (
-                user_id,
-                branch_id,
-                can_access,
-                assigned_at,
-                assigned_by
-              )
-              VALUES (?, ?, 1, ?, ?)
-            `,
-            [
-              userId,
-              branchId,
-              now,
-              assignedBy
-            ]
-          );
-        }
-      }
+    await this.database.execute(
+      `
+        DELETE FROM user_branch_access
+        WHERE user_id = ?
+      `,
+      [userId]
     );
+
+    const now = new Date().toISOString();
+
+    for (const branchId of branchIds) {
+      await this.database.execute(
+        `
+          INSERT INTO user_branch_access (
+            user_id,
+            branch_id,
+            can_access,
+            assigned_at,
+            assigned_by
+          )
+          VALUES (?, ?, 1, ?, ?)
+          ON CONFLICT(user_id, branch_id)
+          DO UPDATE SET
+            can_access = excluded.can_access,
+            assigned_at = excluded.assigned_at,
+            assigned_by = excluded.assigned_by
+        `,
+        [
+          userId,
+          branchId,
+          now,
+          assignedBy
+        ]
+      );
+    }
   }
 
   async findBranchIdsByUserId(
@@ -160,38 +161,38 @@ export class SqliteSecurityAssignmentRepository
     roleIds: string[],
     assignedBy: string | null
   ): Promise<void> {
-    await this.database.transaction(
-      async (transaction) => {
-        await transaction.execute(
-          `
-            DELETE FROM user_roles
-            WHERE user_id = ?
-          `,
-          [userId]
-        );
-
-        const now = new Date().toISOString();
-
-        for (const roleId of roleIds) {
-          await transaction.execute(
-            `
-              INSERT INTO user_roles (
-                user_id,
-                role_id,
-                assigned_at,
-                assigned_by
-              )
-              VALUES (?, ?, ?, ?)
-            `,
-            [
-              userId,
-              roleId,
-              now,
-              assignedBy
-            ]
-          );
-        }
-      }
+    await this.database.execute(
+      `
+        DELETE FROM user_roles
+        WHERE user_id = ?
+      `,
+      [userId]
     );
+
+    const now = new Date().toISOString();
+
+    for (const roleId of roleIds) {
+      await this.database.execute(
+        `
+          INSERT INTO user_roles (
+            user_id,
+            role_id,
+            assigned_at,
+            assigned_by
+          )
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(user_id, role_id)
+          DO UPDATE SET
+            assigned_at = excluded.assigned_at,
+            assigned_by = excluded.assigned_by
+        `,
+        [
+          userId,
+          roleId,
+          now,
+          assignedBy
+        ]
+      );
+    }
   }
 }
