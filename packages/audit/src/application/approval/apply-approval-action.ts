@@ -28,6 +28,10 @@ import {
 } from "./approval-application-errors";
 
 import {
+  createApprovalAuditEntry
+} from "./create-approval-audit-entry";
+
+import {
   createApprovalHistoryEntry
 } from "./create-approval-history-entry";
 
@@ -36,6 +40,7 @@ export interface ApplyApprovalActionCommand {
   action: Exclude<ApprovalAction, "create">;
   actor: ApprovalActor;
   comment?: string | null;
+  correlationId?: string | null;
 }
 
 function applyStatusFields(
@@ -95,68 +100,90 @@ export async function applyApprovalAction(
   command: ApplyApprovalActionCommand
 ): Promise<ApprovalRequest> {
   const requestId = command.approvalRequestId.trim();
-  const request =
-    await context.approvalRepository.findById(requestId);
 
-  if (request === null) {
-    throw new ApprovalNotFoundError(requestId);
-  }
+  return context.unitOfWork.transaction(
+    async (repositories) => {
+      const request =
+        await repositories.approval.findById(requestId);
 
-  validateApprovalAction({
-    currentStatus: request.status,
-    action: command.action,
-    actor: command.actor,
-    ...(command.comment !== undefined
-      ? { comment: command.comment }
-      : {})
-  });
+      if (request === null) {
+        throw new ApprovalNotFoundError(requestId);
+      }
 
-  const nextStatus =
-    command.action === "comment"
-      ? request.status
-      : resolveApprovalTransition(
+      validateApprovalAction({
+        currentStatus: request.status,
+        action: command.action,
+        actor: command.actor,
+        ...(command.comment !== undefined
+          ? { comment: command.comment }
+          : {})
+      });
+
+      const nextStatus =
+        command.action === "comment"
+          ? request.status
+          : resolveApprovalTransition(
+              request.status,
+              command.action
+            );
+
+      if (nextStatus === null) {
+        throw new ApprovalInvalidTransitionError(
+          request.id,
           request.status,
           command.action
         );
+      }
 
-  if (nextStatus === null) {
-    throw new ApprovalInvalidTransitionError(
-      request.id,
-      request.status,
-      command.action
-    );
-  }
+      const occurredAt = context.clock.now();
+      const changed = applyStatusFields(
+        request,
+        command,
+        occurredAt,
+        nextStatus
+      );
 
-  const occurredAt = context.clock.now();
-  const changed = applyStatusFields(
-    request,
-    command,
-    occurredAt,
-    nextStatus
-  );
+      const updated =
+        await repositories.approval.update(changed);
 
-  const updated =
-    await context.approvalRepository.update(changed);
+      const history = createApprovalHistoryEntry(
+        context,
+        request.id,
+        {
+          action: command.action,
+          fromStatus: request.status,
+          toStatus: nextStatus,
+          actor: command.actor,
+          ...(command.comment !== undefined
+            ? { comment: command.comment }
+            : {}),
+          occurredAt
+        }
+      );
 
-  const history = createApprovalHistoryEntry(
-    context,
-    request.id,
-    {
-      action: command.action,
-      fromStatus: request.status,
-      toStatus: nextStatus,
-      actor: command.actor,
-      ...(command.comment !== undefined
-        ? { comment: command.comment }
-        : {}),
-      occurredAt
+      const completedRequest: ApprovalRequest = {
+        ...updated,
+        history: [...request.history, history]
+      };
+
+      const auditEntry = createApprovalAuditEntry(
+        context,
+        {
+          action: command.action,
+          source: context.auditSource,
+          actor: command.actor,
+          request: completedRequest,
+          previousRequest: request,
+          occurredAt,
+          comment: command.comment ?? null,
+          correlationId: command.correlationId ?? null
+        }
+      );
+
+      await repositories.approval.addHistory(history);
+      await repositories.audit.create(auditEntry);
+
+      return completedRequest;
     }
   );
-
-  await context.approvalRepository.addHistory(history);
-
-  return {
-    ...updated,
-    history: [...request.history, history]
-  };
 }
