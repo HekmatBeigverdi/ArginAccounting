@@ -1,0 +1,15 @@
+# Architecture Decision Registry
+
+| ADR | Decision | Status | Introduced |
+|---|---|---|---|
+| ADR-0001 | Offline-first delivery | Accepted | Foundation |
+| ADR-0002 | Database-independent domain | Accepted | Foundation |
+| ADR-0003 | Modular monolith | Accepted | Foundation |
+| ADR-0004 | SQLite desktop infrastructure | Accepted | Phase 04 |
+| ADR-0005 | Repository and Unit of Work | Accepted | Phase 04/08 |
+| ADR-0006 | Application-service boundary | Accepted | Foundation |
+| ADR-0007 | Immutable audit trail | Accepted | Phase 08 |
+| ADR-0008 | Approval optimistic concurrency | Accepted | Phase 08 |
+| ADR-0009 | Platform infrastructure before accounting core | Accepted | Phase 09 planning |
+
+The detailed records live under `docs/adr/`. This registry must be updated in the same commit as any ADR addition, supersession, or deprecation.

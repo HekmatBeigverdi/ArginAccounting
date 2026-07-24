@@ -1,246 +1,102 @@
 # ArginAccounting Architecture
 
-## Overview
+ArginAccounting is a modular, offline-first accounting and ERP platform. The first runtime is a Persian React + TypeScript + Tauri desktop application backed by SQLite. Business rules are designed for future ASP.NET Core, PostgreSQL, web, and synchronized hybrid runtimes.
 
-ArginAccounting is a modular, offline-first accounting platform. The first runtime is a Persian desktop application built with React, TypeScript, Tauri, and SQLite. The architecture is designed so that business rules can later be reused by a web application and an ASP.NET Core backend without rewriting the accounting domain.
+Detailed documents are indexed in [`docs/architecture/README.md`](docs/architecture/README.md). Architectural rationale is preserved in [`docs/adr/`](docs/adr/README.md).
 
-## Architectural Layers
+## Layers
 
 ### Domain
 
-The domain layer contains business entities, value objects, state transitions, accounting invariants, validation rules, and domain errors.
-
-The domain layer must not depend on:
-
-- React or any UI framework
-- Tauri
-- SQLite or PostgreSQL
-- HTTP or ASP.NET Core
-- File-system APIs
+Entities, value objects, invariants, state transitions, and domain errors. No dependency on React, Tauri, SQLite, PostgreSQL, HTTP, or file-system APIs.
 
 ### Application
 
-The application layer exposes use cases and coordinates domain behavior. It is responsible for:
-
-- Permission checks
-- Transaction boundaries
-- Repository orchestration
-- Clock and ID abstractions
-- Application errors
-- Atomic multi-entity operations
-
-Application services depend only on contracts, not concrete infrastructure.
+Use cases, permissions, orchestration, transactions, repositories, clocks, IDs, concurrency handling, and structured application errors. Depends on contracts, not concrete infrastructure.
 
 ### Infrastructure
 
-Infrastructure packages implement application contracts for a specific runtime or storage engine.
-
-Examples:
-
-- `@argin/database-tauri`
-- `@argin/security-tauri`
-- `@argin/audit-tauri`
-
-Infrastructure responsibilities include:
-
-- SQLite queries
-- Row mapping
-- Versioned migrations
-- Transaction execution
-- Password hashing adapters
-- Tauri command integration
+Runtime and persistence adapters: SQL, row mapping, migrations, transactions, password hashing, background execution, and Tauri commands.
 
 ### Presentation
 
-Presentation code lives in desktop or web applications. UI components may call application services but must not contain accounting rules, permission policy, transaction logic, or direct SQL.
-
-## Monorepo Structure
-
-```text
-apps/
-  desktop/             React + Tauri desktop application
-  web/                 Future web runtime
-
-packages/
-  config/              Shared TypeScript configuration
-  database/            Database-neutral contracts
-  database-tauri/      SQLite/Tauri database implementation
-  company/             Company and branch domain/application
-  company-tauri/       Company SQLite infrastructure
-  fiscal/              Fiscal management domain/application
-  fiscal-tauri/        Fiscal SQLite infrastructure
-  security/            Users, roles, permissions, authentication
-  security-tauri/      Security SQLite and Tauri implementation
-  audit/               Audit and approval domain/application
-  audit-tauri/         Audit and approval SQLite implementation
-```
+Persian RTL desktop or future web UI. Presentation calls application services and contains no accounting, authorization, transaction, or SQL rules.
 
 ## Dependency Direction
 
-Dependencies point inward:
-
 ```text
-Desktop UI
-    ↓
-Composition Root
-    ↓
-Application Services
-    ↓
-Domain + Contracts
-
-Infrastructure
-    ───────────────→ Domain + Contracts
+Presentation → Composition Root → Application → Domain + Contracts
+Infrastructure ───────────────────────────────→ Domain + Contracts
 ```
 
-The domain never imports infrastructure or presentation packages.
+Dependencies always point inward. Modules expose public contracts and do not access another module's private implementation or tables.
 
-## Desktop Composition Root
+## Shared Platform Layer — Phase 09
 
-The desktop composition root is the only place that creates concrete repositories and runtime adapters.
+Before Accounting Core, Phase 09 establishes:
 
-For audit and approval, it constructs:
+- Event Bus
+- Money
+- Query Framework
+- Number Series Engine
+- Metadata Engine
+- Notification
+- Plugin Contracts
+- Shared Data Access
+- Optimistic Concurrency
+- Background Jobs
 
-```text
-Desktop database
-    ↓
-SQLite repositories
-    ↓
-SQLite Unit of Work
-    ↓
-Permission authorizer, clock, ID generator
-    ↓
-Audit and approval application contexts
-    ↓
-React provider and hooks
-```
+These capabilities remain domain-neutral and portable. Business modules depend on the platform; the platform never depends on business modules. See [ADR-0009](docs/adr/ADR-0009-platform-infrastructure-first.md).
 
-This allows the UI to depend on use cases rather than storage details.
+## Persistence and Transactions
 
-## Database Independence
+SQLite details remain in infrastructure packages. Business contracts are database-neutral. Schema changes use immutable versioned migrations. Multi-record operations use explicit Unit of Work boundaries and leave no partial financial or workflow state.
 
-Business entities and application contracts use database-neutral TypeScript structures. SQLite-specific SQL, rows, pagination, and mapping remain inside infrastructure packages.
+See [Database Design](docs/database/database-design.md) and [ADR-0005](docs/adr/ADR-0005-repository-unit-of-work.md).
 
-Future PostgreSQL repositories must implement the same contracts without changing domain rules or UI workflows.
+## Security, Audit, and Approval
 
-## Database Migrations
+Authorization is enforced in application services. Audit entries are append-only and sanitized. Approval transitions use explicit permissions, state rules, atomic history/audit persistence, and optimistic concurrency.
 
-All schema changes are versioned and applied in order. A migration must be additive whenever possible and must preserve existing accounting data.
+See [Security Model](docs/security/security-model.md), [Phase 08](docs/phases/phase-08-audit-approval.md), [ADR-0007](docs/adr/ADR-0007-immutable-audit-trail.md), and [ADR-0008](docs/adr/ADR-0008-approval-optimistic-concurrency.md).
 
-Phase 08 includes:
+## Accounting and Posting
 
-- `0005_audit_and_approval.sql`
-- `0006_approval_optimistic_concurrency.sql`
+The accounting engine owns double-entry invariants, voucher lifecycle, posting eligibility, reversal, and traceability. Operational modules do not write arbitrary journal entries. They submit deterministic, idempotent posting requests to the Posting Engine.
 
-## Transactions
-
-Critical operations that write multiple records must be atomic.
-
-Phase 08 persists these records in one transaction:
-
-```text
-Approval Request
-Approval History
-Audit Entry
-```
-
-The SQLite Unit of Work uses `BEGIN IMMEDIATE`, `COMMIT`, and `ROLLBACK`, guarded by an asynchronous mutex to prevent overlapping transactions on a shared connection.
-
-## Optimistic Concurrency
-
-Mutable workflow records include a numeric version. Updates use the expected version in the SQL predicate. A stale update raises a domain-specific concurrency error rather than silently overwriting newer data.
-
-Financial documents introduced in later phases must use the same principle where concurrent editing is possible.
-
-## Security and Authorization
-
-Authorization is enforced at application boundaries. UI visibility is a usability concern and is never the only security control.
-
-The current model supports:
-
-- Explicit permissions
-- Role-permission assignment
-- User-role assignment
-- Branch access
-- Full-access administrative permission
-- Permission adapters independent of the security package
-
-## Audit Architecture
-
-Audit entries are immutable records containing:
-
-- Actor
-- Action
-- Outcome
-- Source
-- Scope
-- Target
-- Message and reason
-- Before and after snapshots
-- Correlation ID
-- Metadata
-- UTC occurrence time
-
-Sensitive snapshot fields are sanitized before persistence.
-
-## Approval Architecture
-
-Approval requests support:
-
-```text
-draft → pending → approved
-                → rejected
-                → draft
-                → cancelled
-```
-
-A request maintains an append-only history. Every state-changing action creates both an approval history entry and a corresponding audit entry.
-
-## Posting Engine
-
-Operational modules must not directly create arbitrary journal entries. Future modules submit accounting effects to a centralized posting engine through explicit posting contracts and rules.
-
-The posting engine will provide:
-
-- Deterministic posting rules
-- Idempotency
-- Atomic document and journal creation
-- Source-document linkage
-- Reversal support
-- Branch and company overrides
+See [Accounting Engine](docs/accounting/accounting-engine.md) and [Posting Engine](docs/accounting/posting-engine.md).
 
 ## Date, Time, and Money
 
-- User-facing business dates use the Jalali calendar.
-- Business dates are stored as Gregorian dates.
-- System timestamps are stored in UTC.
-- Iranian Rial is the primary accounting storage unit.
-- Monetary values must never use floating-point storage.
+- UI dates: Jalali input and presentation
+- Stored business dates: Gregorian
+- System timestamps: UTC
+- Primary accounting currency: Iranian Rial
+- Financial values: never binary floating point
 
-## Future Backend and Synchronization
-
-The planned online architecture is:
+## Future Runtime
 
 ```text
-Web/Desktop Client
-    ↓
-ASP.NET Core Web API
-    ↓
-Application and Domain Core
-    ↓
+Desktop / Web Client
+        ↓
+ASP.NET Core Application API
+        ↓
+Shared Application and Domain Contracts
+        ↓
 PostgreSQL Infrastructure
 ```
 
-The hybrid architecture adds a synchronization engine between local SQLite and the central API. Synchronization must preserve source identity, versions, audit history, and conflict information.
+Hybrid synchronization must preserve identity, scope, versions, audit evidence, idempotency, and conflict information.
 
 ## Non-Negotiable Boundaries
 
-1. Domain logic must remain outside UI components.
-2. Domain packages must remain database-independent.
-3. Accounting writes must be atomic.
-4. Posted documents must not be silently edited or deleted.
-5. Iranian Taxpayer System tables must remain separate from accounting source tables.
-6. Permissions must be checked in application services.
-7. Audit history must be immutable and queryable.
-8. All schema changes must use migrations.
-9. Public contracts and technical documentation use English.
-10. User-facing application text uses Persian and RTL layout.
+1. Domain logic stays outside UI.
+2. Domain and application layers remain database-independent.
+3. Cross-module writes use public contracts.
+4. Financial and workflow multi-writes are atomic.
+5. Posted records and audit history are not silently edited or deleted.
+6. Permissions are enforced at the application boundary.
+7. All schema changes use migrations.
+8. Documentation changes follow [Documentation Governance](docs/development/documentation-governance.md).
+9. Repository contracts and technical documentation use English.
+10. End-user desktop text uses Persian and RTL.

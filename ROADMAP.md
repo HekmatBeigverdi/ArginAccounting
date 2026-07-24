@@ -1,11 +1,11 @@
 # ArginAccounting Roadmap
 
-This roadmap defines the planned delivery sequence for ArginAccounting. Each phase is developed on a dedicated `phase/*` branch, validated, documented, and merged into `develop` before the next phase begins.
+This roadmap is the canonical phase-numbering source. Every phase follows the permanent [Documentation Governance](docs/development/documentation-governance.md).
 
 ## Status Legend
 
-- ✅ Completed
-- 🚧 In progress
+- ✅ Completed and merged
+- 🚧 Current target
 - ⏳ Planned
 
 ## Foundation
@@ -17,102 +17,108 @@ This roadmap defines the planned delivery sequence for ArginAccounting. Each pha
 5. ✅ Company and Branch
 6. ✅ Fiscal Year and Period
 7. ✅ Security and Permissions
-8. 🚧 Audit Trail and Approval Workflow
+8. ✅ Audit Trail and Approval Workflow
+
+## Shared Platform
+
+9. 🚧 Platform Infrastructure
+   - Event Bus
+   - Money
+   - Query Framework
+   - Number Series Engine
+   - Metadata Engine
+   - Notification
+   - Plugin Contracts
+   - Shared Data Access
+   - Optimistic Concurrency
+   - Background Jobs
 
 ## Accounting Core
 
-9. ⏳ Chart of Accounts
-10. ⏳ Accounting Dimensions
-11. ⏳ Coding Templates
-12. ⏳ Journal Voucher Engine
-13. ⏳ Journal Lifecycle
-14. ⏳ Accounting Reports
+10. ⏳ Chart of Accounts
+11. ⏳ Accounting Dimensions
+12. ⏳ Coding Templates
+13. ⏳ Journal Voucher Engine
+14. ⏳ Journal Lifecycle
+15. ⏳ Accounting Reports
 
 ## Master Data
 
-15. ⏳ Parties
-16. ⏳ Products and Services
-17. ⏳ Warehouses
+16. ⏳ Parties
+17. ⏳ Products and Services
+18. ⏳ Warehouses
 
 ## Inventory
 
-18. ⏳ Inventory Documents
-19. ⏳ Inventory Valuation
+19. ⏳ Inventory Documents
+20. ⏳ Inventory Valuation
 
 ## Purchases
 
-20. ⏳ Purchase Workflow
-21. ⏳ Purchase Posting
+21. ⏳ Purchase Workflow
+22. ⏳ Purchase Posting
 
 ## Sales
 
-22. ⏳ Sales Workflow
-23. ⏳ Sales Posting
+23. ⏳ Sales Workflow
+24. ⏳ Sales Posting
 
 ## Treasury
 
-24. ⏳ Cash and Bank
-25. ⏳ Cheques and Receivables
-26. ⏳ Treasury Posting
+25. ⏳ Cash and Bank
+26. ⏳ Cheques and Receivables
+27. ⏳ Treasury Posting
 
 ## Posting Engine
 
-27. ⏳ Posting Rules
-28. ⏳ Source Document Integrity
+28. ⏳ Posting Rules
+29. ⏳ Source Document Integrity
 
 ## Iranian Taxpayer System
 
-29. ⏳ Tax Data Model
-30. ⏳ Tax Invoice Projection
-31. ⏳ Validation and Signing
-32. ⏳ Submission and Inquiry
-33. ⏳ Retry and Error History
+30. ⏳ Tax Data Model
+31. ⏳ Tax Invoice Projection
+32. ⏳ Validation and Signing
+33. ⏳ Submission and Inquiry
+34. ⏳ Retry and Error History
 
 ## Extended Enterprise Modules
 
-34. ⏳ Fixed Assets
-35. ⏳ Depreciation
-36. ⏳ Payroll
-37. ⏳ Human Resources
-38. ⏳ Manufacturing
-39. ⏳ Cost Accounting
-40. ⏳ Budgeting
-41. ⏳ Contracts and Projects
-42. ⏳ Advanced Reporting
-43. ⏳ Synchronization
-44. ⏳ Backup and Restore
-45. ⏳ Deployment and Production Hardening
+35. ⏳ Fixed Assets
+36. ⏳ Depreciation
+37. ⏳ Payroll
+38. ⏳ Human Resources
+39. ⏳ Manufacturing
+40. ⏳ Cost Accounting
+41. ⏳ Budgeting
+42. ⏳ Contracts and Projects
+43. ⏳ Advanced Reporting
+44. ⏳ Synchronization
+45. ⏳ Backup and Restore
+46. ⏳ Deployment and Production Hardening
 
-## Phase 08 Scope
+## Phase 09 Rationale
 
-Phase 08 delivers:
-
-- Immutable audit entries with before and after snapshots
-- Sensitive-value sanitization
-- Audit actor, source, target, scope, outcome, and correlation identifiers
-- Configurable approval requests and state transitions
-- Approval history and decision metadata
-- Permission-protected application services
-- Atomic Approval + History + Audit persistence
-- Optimistic concurrency through record versions
-- SQLite repositories and transaction orchestration
-- Desktop composition root and authenticated permission injection
-- Persian Approval and Audit Viewer pages
-- Application and Unit of Work tests
+Platform Infrastructure is intentionally placed before the Accounting Core. Building these shared capabilities after Accounting, Sales, Inventory, and Treasury would require broad refactoring and duplicated contracts. See [ADR-0009](docs/adr/ADR-0009-platform-infrastructure-first.md).
 
 ## Delivery Rules
 
 A phase is complete only when:
 
-1. Domain and application rules are implemented outside UI components.
+1. Domain and application rules are outside UI components.
 2. Database changes use versioned migrations.
-3. Permission checks exist at the application boundary.
-4. Critical multi-write operations are atomic.
-5. Type checking, tests, desktop build, and Rust checks pass.
-6. Documentation and changelog are updated.
-7. The phase branch is merged into `develop` with a non-fast-forward merge.
-8. A semantic version tag and release are created when appropriate.
+3. Permissions are enforced at the application boundary.
+4. Multi-write operations are atomic.
+5. Required checks are actually executed and their results recorded.
+6. Canonical documents, phase guide, glossary, ADRs, and changelog are updated.
+7. Internal links are verified.
+8. The phase branch is merged according to the branch strategy.
+9. A semantic release is created when appropriate.
 
-## Next Phase
+## Current Target
 
-Phase 09 introduces the Chart of Accounts domain, hierarchical coding rules, account nature, posting eligibility, configurable code lengths, and Persian desktop management screens.
+[Phase 09 — Platform Infrastructure](docs/phases/phase-09-platform-infrastructure.md)
+
+## Next Accounting Milestone
+
+Phase 10 — Chart of Accounts.
