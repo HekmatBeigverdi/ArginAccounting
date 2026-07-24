@@ -19,32 +19,36 @@ import {
 import {
   getDesktopDatabase
 } from "@argin/database-tauri";
-import { Link, useNavigate } from "react-router";
+
+import {
+  Link,
+  useNavigate
+} from "react-router";
+
+import {
+  useAuthSession
+} from "../../app/providers/auth-session-provider";
 
 export function LoginPage() {
   const [isSubmitting, setIsSubmitting] =
     useState(false);
-
   const [username, setUsername] =
     useState("");
-
   const [password, setPassword] =
     useState("");
-
   const [message, setMessage] =
     useState("");
-
   const [errorMessage, setErrorMessage] =
     useState("");
 
   const navigate = useNavigate();
+  const { setSession } = useAuthSession();
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ): Promise<void> {
-    setIsSubmitting(true);
     event.preventDefault();
-
+    setIsSubmitting(true);
     setMessage("");
     setErrorMessage("");
 
@@ -55,9 +59,7 @@ export function LoginPage() {
       const session = await authenticateUser(
         new SqliteUserRepository(database),
         new SqliteRoleRepository(database),
-        new SqlitePermissionRepository(
-          database
-        ),
+        new SqlitePermissionRepository(database),
         new SqliteSecurityAssignmentRepository(
           database
         ),
@@ -68,6 +70,7 @@ export function LoginPage() {
         }
       );
 
+      setSession(session);
       setMessage(
         `ورود ${session.user.displayName} موفق بود.`
       );
