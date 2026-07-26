@@ -5,6 +5,7 @@
  * depend on accounting, company, fiscal, security, audit, or UI modules.
  */
 
+export * from "./background-jobs/index.ts";
 export * from "./common/index.ts";
 export * from "./events/index.ts";
 export * from "./messaging/index.ts";
