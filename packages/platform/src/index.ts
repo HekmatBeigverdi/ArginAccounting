@@ -7,4 +7,5 @@
 
 export * from "./common/index.ts";
 export * from "./events/index.ts";
+export * from "./messaging/index.ts";
 export * from "./money/index.ts";
