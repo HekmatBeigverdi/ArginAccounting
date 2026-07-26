@@ -10,4 +10,5 @@ export * from "./events/index.ts";
 export * from "./messaging/index.ts";
 export * from "./metadata/index.ts";
 export * from "./money/index.ts";
+export * from "./notifications/index.ts";
 export * from "./number-series/index.ts";
