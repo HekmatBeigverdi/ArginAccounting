@@ -13,7 +13,7 @@ export interface BootstrapSecurityResult {
 export async function bootstrapSecurity(
   unitOfWork: SecurityUnitOfWork
 ): Promise<BootstrapSecurityResult> {
-  return unitOfWork.transaction(
+  return unitOfWork.run(
     async (repositories) => {
       await repositories.permissions
         .upsertDefinitions(defaultPermissions);

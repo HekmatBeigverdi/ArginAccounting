@@ -16,7 +16,7 @@ export interface AuditRepositories {
 
 export interface AuditUnitOfWork {
 
-  transaction<T>(
+  run<T>(
     action: (
       repositories: AuditRepositories
     ) => Promise<T>

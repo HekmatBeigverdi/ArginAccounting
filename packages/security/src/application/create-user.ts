@@ -3,8 +3,8 @@ import type {
 } from "../contracts/password-hasher";
 
 import type {
-  UserRepository
-} from "../contracts/user-repository";
+  SecurityUnitOfWork
+} from "../contracts/security-unit-of-work";
 
 import type {
   UserSummary
@@ -30,7 +30,7 @@ export interface CreateUserCommand {
 }
 
 export async function createUser(
-  users: UserRepository,
+  unitOfWork: SecurityUnitOfWork,
   passwordHasher: PasswordHasher,
   command: CreateUserCommand
 ): Promise<UserSummary> {
@@ -58,44 +58,46 @@ export async function createUser(
   const normalizedUsername =
     normalizeUsername(command.username);
 
-  const existing =
-    await users.findByNormalizedUsername(
-      normalizedUsername
-    );
-
-  if (existing !== null) {
-    throw new SecurityValidationError([
-      {
-        field: "username",
-        message: "این نام کاربری قبلاً ثبت شده است."
-      }
-    ]);
-  }
-
   const passwordHash = await passwordHasher.hash(
     command.password
   );
 
-  const user = await users.create({
-    username: command.username.trim(),
-    normalizedUsername,
-    displayName: command.displayName.trim(),
-    passwordHash,
-    status: "active",
-    mustChangePassword:
-      command.mustChangePassword
-  });
+  return unitOfWork.run(async ({ users }) => {
+    const existing =
+      await users.findByNormalizedUsername(
+        normalizedUsername
+      );
 
-  return {
-    id: user.id,
-    username: user.username,
-    displayName: user.displayName,
-    status: user.status,
-    mustChangePassword: user.mustChangePassword,
-    failedLoginCount: user.failedLoginCount,
-    lockedUntil: user.lockedUntil,
-    lastLoginAt: user.lastLoginAt,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
-  };
+    if (existing !== null) {
+      throw new SecurityValidationError([
+        {
+          field: "username",
+          message: "این نام کاربری قبلاً ثبت شده است."
+        }
+      ]);
+    }
+
+    const user = await users.create({
+      username: command.username.trim(),
+      normalizedUsername,
+      displayName: command.displayName.trim(),
+      passwordHash,
+      status: "active",
+      mustChangePassword:
+        command.mustChangePassword
+    });
+
+    return {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      status: user.status,
+      mustChangePassword: user.mustChangePassword,
+      failedLoginCount: user.failedLoginCount,
+      lockedUntil: user.lockedUntil,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+  });
 }

@@ -5,7 +5,7 @@ import type {
 } from "@argin/fiscal";
 
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 interface NumberSeriesRow {
@@ -51,7 +51,7 @@ function mapNumberSeries(
 export class SqliteNumberSeriesRepository
   implements NumberSeriesRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async create(
@@ -191,8 +191,8 @@ export class SqliteNumberSeriesRepository
     series: NumberSeries;
     reservedNumber: number;
   }> {
-    return this.database.transaction(
-      async (transaction) => {
+    {
+      const transaction = this.database;
         const row =
           await transaction.queryOne<NumberSeriesRow>(
             `
@@ -249,7 +249,6 @@ export class SqliteNumberSeriesRepository
           },
           reservedNumber
         };
-      }
-    );
+    }
   }
 }

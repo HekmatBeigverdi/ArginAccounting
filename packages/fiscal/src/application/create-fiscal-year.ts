@@ -142,7 +142,7 @@ export async function createFiscalYear(
 
   validatePeriods(command);
 
-  return unitOfWork.transaction(async (repositories) => {
+  return unitOfWork.run(async (repositories) => {
     const overlap =
       await repositories.fiscalYears.findOverlapping(
         command.companyId,

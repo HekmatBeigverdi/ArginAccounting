@@ -1,5 +1,5 @@
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 import type {
@@ -13,7 +13,7 @@ interface BranchAccessRow {
 export class SqliteSecurityAssignmentRepository
   implements SecurityAssignmentRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async assignRoleToUser(

@@ -4,7 +4,8 @@ import type {
 } from "@argin/company";
 
 import type {
-  DatabaseExecutor
+  DatabaseExecutor,
+  DatabaseSession
 } from "@argin/database";
 
 import {
@@ -24,7 +25,7 @@ import {
 } from "./repositories/sqlite-company-tax-profile-repository";
 
 function createRepositories(
-  database: DatabaseExecutor
+  database: DatabaseSession
 ): CompanyUnitOfWorkRepositories {
   return {
     companies: new SqliteCompanyRepository(database),
@@ -41,7 +42,7 @@ export class SqliteCompanyUnitOfWork
     private readonly database: DatabaseExecutor
   ) {}
 
-  async transaction<T>(
+  async run<T>(
     operation: (
       repositories: CompanyUnitOfWorkRepositories
     ) => Promise<T>

@@ -1,6 +1,6 @@
 import type {
-  NumberSeriesRepository
-} from "../contracts/number-series-repository";
+  FiscalUnitOfWork
+} from "../contracts/fiscal-unit-of-work";
 
 import {
   FiscalValidationError
@@ -14,37 +14,39 @@ export interface GenerateDocumentNumberInput {
 }
 
 export async function generateDocumentNumber(
-  repository: NumberSeriesRepository,
+  unitOfWork: FiscalUnitOfWork,
   input: GenerateDocumentNumberInput
 ): Promise<string> {
-  const series = await repository.findApplicable(
-    input.companyId,
-    input.branchId,
-    input.fiscalYearId,
-    input.entityType
-  );
+  return unitOfWork.run(async ({ numberSeries }) => {
+    const series = await numberSeries.findApplicable(
+      input.companyId,
+      input.branchId,
+      input.fiscalYearId,
+      input.entityType
+    );
 
-  if (series === null) {
-    throw new FiscalValidationError([
-      {
-        field: "numberSeries",
-        message:
-          "سری شماره‌گذاری مناسب برای این سند تعریف نشده است."
-      }
-    ]);
-  }
+    if (series === null) {
+      throw new FiscalValidationError([
+        {
+          field: "numberSeries",
+          message:
+            "سری شماره‌گذاری مناسب برای این سند تعریف نشده است."
+        }
+      ]);
+    }
 
-  const reservation =
-    await repository.reserveNext(series.id);
+    const reservation =
+      await numberSeries.reserveNext(series.id);
 
-  const numberPart =
-    reservation.reservedNumber
-      .toString()
-      .padStart(series.paddingLength, "0");
+    const numberPart =
+      reservation.reservedNumber
+        .toString()
+        .padStart(series.paddingLength, "0");
 
-  return [
-    series.prefix,
-    numberPart,
-    series.suffix
-  ].join("");
+    return [
+      series.prefix,
+      numberPart,
+      series.suffix
+    ].join("");
+  });
 }

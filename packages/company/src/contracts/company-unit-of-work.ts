@@ -22,7 +22,7 @@ export interface CompanyUnitOfWorkRepositories {
 }
 
 export interface CompanyUnitOfWork {
-  transaction<T>(
+  run<T>(
     operation: (
       repositories: CompanyUnitOfWorkRepositories
     ) => Promise<T>

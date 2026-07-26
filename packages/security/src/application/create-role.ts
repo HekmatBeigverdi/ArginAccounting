@@ -1,6 +1,6 @@
 import type {
-  RoleRepository
-} from "../contracts/role-repository";
+  SecurityUnitOfWork
+} from "../contracts/security-unit-of-work";
 
 import type {
   Role
@@ -21,7 +21,7 @@ export interface CreateRoleCommand {
 }
 
 export async function createRole(
-  roles: RoleRepository,
+  unitOfWork: SecurityUnitOfWork,
   command: CreateRoleCommand
 ): Promise<Role> {
   const normalizedCode =
@@ -45,27 +45,29 @@ export async function createRole(
     ]);
   }
 
-  const existing =
-    await roles.findByNormalizedCode(
-      normalizedCode
-    );
+  return unitOfWork.run(async ({ roles }) => {
+    const existing =
+      await roles.findByNormalizedCode(
+        normalizedCode
+      );
 
-  if (existing !== null) {
-    throw new SecurityValidationError([
-      {
-        field: "code",
-        message: "این کد نقش قبلاً ثبت شده است."
-      }
-    ]);
-  }
+    if (existing !== null) {
+      throw new SecurityValidationError([
+        {
+          field: "code",
+          message: "این کد نقش قبلاً ثبت شده است."
+        }
+      ]);
+    }
 
-  return roles.create({
-    code: command.code.trim(),
-    normalizedCode,
-    title: command.title.trim(),
-    description:
-      command.description?.trim() || null,
-    isSystem: false,
-    isActive: true
+    return roles.create({
+      code: command.code.trim(),
+      normalizedCode,
+      title: command.title.trim(),
+      description:
+        command.description?.trim() || null,
+      isSystem: false,
+      isActive: true
+    });
   });
 }
