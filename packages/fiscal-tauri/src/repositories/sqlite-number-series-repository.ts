@@ -4,8 +4,10 @@ import type {
   NumberSeriesRepository
 } from "@argin/fiscal";
 
-import type {
-  DatabaseSession
+import {
+  assertVersionedUpdate,
+  nextEntityVersion,
+  type DatabaseSession
 } from "@argin/database";
 
 interface NumberSeriesRow {
@@ -191,64 +193,67 @@ export class SqliteNumberSeriesRepository
     series: NumberSeries;
     reservedNumber: number;
   }> {
-    {
-      const transaction = this.database;
-        const row =
-          await transaction.queryOne<NumberSeriesRow>(
-            `
-              SELECT *
-              FROM number_series
-              WHERE id = ?
-                AND is_active = 1
-            `,
-            [seriesId]
-          );
+    const row =
+      await this.database.queryOne<NumberSeriesRow>(
+        `
+          SELECT *
+          FROM number_series
+          WHERE id = ?
+            AND is_active = 1
+        `,
+        [seriesId]
+      );
 
-        if (!row) {
-          throw new Error(
-            "Number series does not exist."
-          );
-        }
-
-        const series = mapNumberSeries(row);
-        const reservedNumber = series.nextNumber;
-        const nextVersion = series.version + 1;
-        const updatedAt = new Date().toISOString();
-
-        const result = await transaction.execute(
-          `
-            UPDATE number_series
-            SET
-              next_number = ?,
-              version = ?,
-              updated_at = ?
-            WHERE id = ?
-              AND version = ?
-          `,
-          [
-            reservedNumber + 1,
-            nextVersion,
-            updatedAt,
-            series.id,
-            series.version
-          ]
-        );
-
-        if (result.rowsAffected !== 1) {
-          throw new Error(
-            "Number series concurrency conflict."
-          );
-        }
-
-        return {
-          series: {
-            ...series,
-            nextNumber: reservedNumber + 1,
-            version: nextVersion,
-            updatedAt
-          },
-          reservedNumber
-        };
+    if (!row) {
+      throw new Error(
+        "Number series does not exist."
+      );
     }
+
+    const series = mapNumberSeries(row);
+    const reservedNumber = series.nextNumber;
+    const nextVersion =
+      nextEntityVersion(series.version);
+    const updatedAt = new Date().toISOString();
+
+    const result = await this.database.execute(
+      `
+        UPDATE number_series
+        SET
+          next_number = ?,
+          version = ?,
+          updated_at = ?
+        WHERE id = ?
+          AND version = ?
+          AND company_id = ?
+      `,
+      [
+        reservedNumber + 1,
+        nextVersion,
+        updatedAt,
+        series.id,
+        series.version,
+        series.companyId
+      ]
+    );
+
+    assertVersionedUpdate(
+      result,
+      {
+        entityType: "number-series",
+        entityId: series.id,
+        expectedVersion: series.version
+      }
+    );
+
+    return {
+      series: {
+        ...series,
+        nextNumber: reservedNumber + 1,
+        version: nextVersion,
+        updatedAt
+      },
+      reservedNumber
+    };
   }
 }
