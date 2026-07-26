@@ -44,6 +44,9 @@ importers:
       '@argin/fiscal-tauri':
         specifier: workspace:*
         version: link:../../packages/fiscal-tauri
+      '@argin/platform':
+        specifier: workspace:*
+        version: link:../../packages/platform
       '@argin/security':
         specifier: workspace:*
         version: link:../../packages/security
@@ -72,6 +75,9 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2
         version: 2.11.4
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
       '@types/react':
         specifier: ^19.1.8
         version: 19.2.17
