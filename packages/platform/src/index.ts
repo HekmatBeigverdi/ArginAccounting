@@ -14,3 +14,4 @@ export * from "./money/index.ts";
 export * from "./notifications/index.ts";
 export * from "./number-series/index.ts";
 export * from "./plugins/index.ts";
+export * from "./querying/index.ts";
