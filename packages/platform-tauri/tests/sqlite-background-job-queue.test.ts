@@ -34,6 +34,14 @@ const migrationSql = readFileSync(
   "utf8"
 );
 
+const contextMigrationSql = readFileSync(
+  new URL(
+    "../../../apps/desktop/src-tauri/migrations/0009_background_job_context.sql",
+    import.meta.url
+  ),
+  "utf8"
+);
+
 class TestSqliteExecutor
   implements DatabaseExecutor {
   constructor(
@@ -41,6 +49,9 @@ class TestSqliteExecutor
       DatabaseSync = new DatabaseSync(":memory:")
   ) {
     this.database.exec(migrationSql);
+    this.database.exec(
+      contextMigrationSql
+    );
   }
 
   async execute(
@@ -135,6 +146,10 @@ async function enqueueReadyJob(
     jobId?: string;
     maximumAttempts?: number;
     scheduledAt?: string;
+    companyId?: string;
+    branchId?: string;
+    actorId?: string;
+    correlationId?: string;
   } = {}
 ) {
   return queue.enqueue(
@@ -154,6 +169,21 @@ async function enqueueReadyJob(
         ? {
             scheduledAt:
               options.scheduledAt
+          }
+        : {}),
+      ...(options.companyId !== undefined
+        ? { companyId: options.companyId }
+        : {}),
+      ...(options.branchId !== undefined
+        ? { branchId: options.branchId }
+        : {}),
+      ...(options.actorId !== undefined
+        ? { actorId: options.actorId }
+        : {}),
+      ...(options.correlationId !== undefined
+        ? {
+            correlationId:
+              options.correlationId
           }
         : {})
     },
@@ -209,6 +239,40 @@ describe(
     );
 
     it(
+      "stores and restores execution context",
+      async () => {
+        const { queue } = createQueue();
+
+        await enqueueReadyJob(queue, {
+          companyId: " company-1 ",
+          branchId: "branch-1",
+          actorId: "user-1",
+          correlationId: "correlation-1"
+        });
+
+        const restored =
+          await queue.get("job-1");
+
+        assert.equal(
+          restored?.companyId,
+          "company-1"
+        );
+        assert.equal(
+          restored?.branchId,
+          "branch-1"
+        );
+        assert.equal(
+          restored?.actorId,
+          "user-1"
+        );
+        assert.equal(
+          restored?.correlationId,
+          "correlation-1"
+        );
+      }
+    );
+
+    it(
       "rejects duplicate identifiers",
       async () => {
         const { queue } = createQueue();
@@ -218,6 +282,21 @@ describe(
         await assert.rejects(
           () => enqueueReadyJob(queue),
           DuplicateBackgroundJobError
+        );
+      }
+    );
+
+    it(
+      "rejects empty context values",
+      async () => {
+        const { queue } = createQueue();
+
+        await assert.rejects(
+          () =>
+            enqueueReadyJob(queue, {
+              actorId: "   "
+            }),
+          /actorId cannot be empty/
         );
       }
     );
@@ -526,12 +605,77 @@ describe(
   "background job migration",
   () => {
     it(
+      "preserves jobs created before context migration",
+      () => {
+        const database =
+          new DatabaseSync(":memory:");
+
+        database.exec(migrationSql);
+        database.prepare(
+          `
+          INSERT INTO background_jobs
+          (
+            job_id,
+            job_type,
+            payload_json,
+            scheduled_at,
+            created_at
+          )
+          VALUES (?, ?, ?, ?, ?)
+          `
+        ).run(
+          "legacy-job",
+          "test.process",
+          "{}",
+          firstTime,
+          firstTime
+        );
+
+        database.exec(
+          contextMigrationSql
+        );
+
+        const row = database.prepare(
+          `
+          SELECT
+            company_id,
+            branch_id,
+            actor_id,
+            correlation_id
+          FROM background_jobs
+          WHERE job_id = ?
+          `
+        ).get("legacy-job");
+
+        assert.equal(
+          row?.company_id,
+          null
+        );
+        assert.equal(
+          row?.branch_id,
+          null
+        );
+        assert.equal(
+          row?.actor_id,
+          null
+        );
+        assert.equal(
+          row?.correlation_id,
+          null
+        );
+      }
+    );
+
+    it(
       "creates the table and ready index",
       () => {
         const database =
           new DatabaseSync(":memory:");
 
         database.exec(migrationSql);
+        database.exec(
+          contextMigrationSql
+        );
 
         const names =
           database
@@ -541,7 +685,9 @@ describe(
               FROM sqlite_master
               WHERE name IN (
                 'background_jobs',
-                'idx_background_jobs_ready'
+                'idx_background_jobs_ready',
+                'idx_background_jobs_company_branch',
+                'idx_background_jobs_correlation'
               )
               ORDER BY name
               `
@@ -551,6 +697,8 @@ describe(
 
         assert.deepEqual(names, [
           "background_jobs",
+          "idx_background_jobs_company_branch",
+          "idx_background_jobs_correlation",
           "idx_background_jobs_ready"
         ]);
       }

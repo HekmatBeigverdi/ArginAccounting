@@ -11,6 +11,7 @@ import {
   assertBackgroundJobId,
   assertBackgroundJobType,
   assertMaximumAttempts,
+  normalizeBackgroundJobContext,
   type BackgroundJob,
   type BackgroundJobQueue,
   type BackgroundJobStatus,
@@ -22,6 +23,10 @@ interface BackgroundJobRow {
   job_id: string;
   job_type: string;
   payload_json: string;
+  company_id: string | null;
+  branch_id: string | null;
+  actor_id: string | null;
+  correlation_id: string | null;
   status: string;
   attempt_count: number;
   maximum_attempts: number;
@@ -37,6 +42,10 @@ const SELECT_BACKGROUND_JOB = `
       job_id,
       job_type,
       payload_json,
+      company_id,
+      branch_id,
+      actor_id,
+      correlation_id,
       status,
       attempt_count,
       maximum_attempts,
@@ -73,6 +82,21 @@ function mapBackgroundJob<TPayload = unknown>(
     payload: JSON.parse(
       row.payload_json
     ) as TPayload,
+    ...(row.company_id === null
+      ? {}
+      : { companyId: row.company_id }),
+    ...(row.branch_id === null
+      ? {}
+      : { branchId: row.branch_id }),
+    ...(row.actor_id === null
+      ? {}
+      : { actorId: row.actor_id }),
+    ...(row.correlation_id === null
+      ? {}
+      : {
+          correlationId:
+            row.correlation_id
+        }),
     status: assertStatus(row.status),
     attemptCount: row.attempt_count,
     maximumAttempts: row.maximum_attempts,
@@ -132,6 +156,10 @@ export class SqliteBackgroundJobQueue
 
     const maximumAttempts =
       request.maximumAttempts ?? 3;
+    const context =
+      normalizeBackgroundJobContext(
+        request
+      );
 
     assertMaximumAttempts(maximumAttempts);
 
@@ -148,18 +176,26 @@ export class SqliteBackgroundJobQueue
             job_id,
             job_type,
             payload_json,
+            company_id,
+            branch_id,
+            actor_id,
+            correlation_id,
             status,
             attempt_count,
             maximum_attempts,
             scheduled_at,
             created_at
         )
-        VALUES (?, ?, ?, 'pending', 0, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)
         `,
         [
           request.jobId,
           request.jobType,
           payloadJson,
+          context.companyId ?? null,
+          context.branchId ?? null,
+          context.actorId ?? null,
+          context.correlationId ?? null,
           maximumAttempts,
           scheduledAt,
           now
@@ -182,6 +218,7 @@ export class SqliteBackgroundJobQueue
       jobId: request.jobId,
       jobType: request.jobType,
       payload: request.payload,
+      ...context,
       status: "pending",
       attemptCount: 0,
       maximumAttempts,

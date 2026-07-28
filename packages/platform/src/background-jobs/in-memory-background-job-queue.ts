@@ -6,6 +6,7 @@ import {
   assertBackgroundJobId,
   assertBackgroundJobType,
   assertMaximumAttempts,
+  normalizeBackgroundJobContext,
 } from "./background-job.ts";
 import {
   BackgroundJobNotFoundError,
@@ -41,6 +42,10 @@ export class InMemoryBackgroundJobQueue
 
     const maximumAttempts =
       request.maximumAttempts ?? 3;
+    const context =
+      normalizeBackgroundJobContext(
+        request,
+      );
 
     assertMaximumAttempts(
       maximumAttempts,
@@ -56,6 +61,7 @@ export class InMemoryBackgroundJobQueue
       jobId: request.jobId,
       jobType: request.jobType,
       payload: request.payload,
+      ...context,
       status: "pending",
       attemptCount: 0,
       maximumAttempts,

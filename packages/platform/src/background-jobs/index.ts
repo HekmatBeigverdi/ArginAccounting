@@ -3,6 +3,7 @@ export {
   assertBackgroundJobType,
   assertMaximumAttempts,
   BACKGROUND_JOB_STATUSES,
+  normalizeBackgroundJobContext,
 } from "./background-job.ts";
 
 export type {

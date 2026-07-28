@@ -198,6 +198,11 @@ test("runner completes a successful job", async () => {
       payload: {
         value: "hello",
       },
+      companyId: "company-1",
+      branchId: "branch-1",
+      actorId: "user-1",
+      correlationId:
+        "correlation-1",
     },
     clock.now().toISOString(),
   );
@@ -225,6 +230,19 @@ test("runner completes a successful job", async () => {
   assert.equal(
     handler.received[0]?.payload.value,
     "hello",
+  );
+  assert.deepEqual(
+    handler.received[0]?.context,
+    {
+      jobId: "job-1",
+      attemptNumber: 1,
+      maximumAttempts: 3,
+      companyId: "company-1",
+      branchId: "branch-1",
+      actorId: "user-1",
+      correlationId:
+        "correlation-1",
+    },
   );
 
   const job =

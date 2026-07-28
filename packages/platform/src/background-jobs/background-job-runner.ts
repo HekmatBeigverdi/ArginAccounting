@@ -139,6 +139,31 @@ export class BackgroundJobRunner {
             job.attemptCount,
           maximumAttempts:
             job.maximumAttempts,
+          ...(job.companyId === undefined
+            ? {}
+            : {
+                companyId:
+                  job.companyId,
+              }),
+          ...(job.branchId === undefined
+            ? {}
+            : {
+                branchId:
+                  job.branchId,
+              }),
+          ...(job.actorId === undefined
+            ? {}
+            : {
+                actorId:
+                  job.actorId,
+              }),
+          ...(job.correlationId ===
+          undefined
+            ? {}
+            : {
+                correlationId:
+                  job.correlationId,
+              }),
         },
       );
 

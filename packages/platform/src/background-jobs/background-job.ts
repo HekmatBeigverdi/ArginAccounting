@@ -14,6 +14,10 @@ export interface BackgroundJob<
   readonly jobId: string;
   readonly jobType: string;
   readonly payload: TPayload;
+  readonly companyId?: string;
+  readonly branchId?: string;
+  readonly actorId?: string;
+  readonly correlationId?: string;
   readonly status: BackgroundJobStatus;
   readonly attemptCount: number;
   readonly maximumAttempts: number;
@@ -30,6 +34,10 @@ export interface EnqueueBackgroundJob<
   readonly jobId: string;
   readonly jobType: string;
   readonly payload: TPayload;
+  readonly companyId?: string;
+  readonly branchId?: string;
+  readonly actorId?: string;
+  readonly correlationId?: string;
   readonly scheduledAt?: string;
   readonly maximumAttempts?: number;
 }
@@ -38,6 +46,77 @@ export interface BackgroundJobExecutionContext {
   readonly jobId: string;
   readonly attemptNumber: number;
   readonly maximumAttempts: number;
+  readonly companyId?: string;
+  readonly branchId?: string;
+  readonly actorId?: string;
+  readonly correlationId?: string;
+}
+
+export function normalizeBackgroundJobContext(
+  request: Pick<
+    EnqueueBackgroundJob,
+    | "companyId"
+    | "branchId"
+    | "actorId"
+    | "correlationId"
+  >,
+): {
+  readonly companyId?: string;
+  readonly branchId?: string;
+  readonly actorId?: string;
+  readonly correlationId?: string;
+} {
+  return {
+    ...normalizeOptionalContextValue(
+      request.companyId,
+      "companyId",
+    ),
+    ...normalizeOptionalContextValue(
+      request.branchId,
+      "branchId",
+    ),
+    ...normalizeOptionalContextValue(
+      request.actorId,
+      "actorId",
+    ),
+    ...normalizeOptionalContextValue(
+      request.correlationId,
+      "correlationId",
+    ),
+  };
+}
+
+function normalizeOptionalContextValue(
+  value: string | undefined,
+  name:
+    | "companyId"
+    | "branchId"
+    | "actorId"
+    | "correlationId",
+): Partial<
+  Record<
+    | "companyId"
+    | "branchId"
+    | "actorId"
+    | "correlationId",
+    string
+  >
+> {
+  if (value === undefined) {
+    return {};
+  }
+
+  const normalized = value.trim();
+
+  if (normalized.length === 0) {
+    throw new TypeError(
+      `Background job ${name} cannot be empty.`,
+    );
+  }
+
+  return {
+    [name]: normalized,
+  };
 }
 
 export function assertBackgroundJobId(
