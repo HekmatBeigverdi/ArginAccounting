@@ -97,7 +97,24 @@ cargo fmt --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 cargo build
+```
 
+Validation results:
+
+- `@argin/platform`: 131 tests passed
+- `@argin/platform-tauri`: 27 tests passed
+- Monorepo type checking passed
+- Monorepo lint passed
+- Monorepo tests passed
+- Monorepo build passed
+- Rust formatting, Clippy, tests, and build passed
+- Desktop application build passed
+
+## Known Limitations
+
+- Platform Infrastructure provides domain-neutral contracts and adapters only.
+- Accounting-specific queries, notifications, jobs, and number series begin in Phase 10 and later phases.
+- Remote server-backed implementations remain part of the future hybrid runtime.
 
 ## Next Phase
 
