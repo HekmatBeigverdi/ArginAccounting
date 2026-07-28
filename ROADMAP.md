@@ -21,7 +21,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 ## Shared Platform
 
-9. 🚧 Platform Infrastructure
+9. ✅ Platform Infrastructure
    - Event Bus
    - Money
    - Query Framework
@@ -117,7 +117,7 @@ A phase is complete only when:
 
 ## Current Target
 
-[Phase 09 — Platform Infrastructure](docs/phases/phase-09-platform-infrastructure.md)
+Phase 10 — Chart of Accounts
 
 ## Next Accounting Milestone
 

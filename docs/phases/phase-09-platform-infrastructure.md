@@ -2,7 +2,7 @@
 
 ## Status
 
-Planned.
+Implemented and validated.
 
 ## Overview
 
@@ -56,6 +56,48 @@ Update architecture, database, testing, security, module guidelines, glossary, A
 ## Exit Criteria
 
 All ten platform capabilities have approved contracts, implementations, tests, composition wiring, migrations where required, canonical documentation, and successful validation evidence.
+
+## Implemented Capabilities
+
+- Event Bus with typed events and handlers
+- Money value objects and Iranian rial currency policy
+- Command and Query buses
+- Filtering, sorting, projection, and pagination contracts
+- Number Series Engine
+- Metadata Engine
+- Notification contracts and persistent SQLite notification store
+- Plugin compatibility and version contracts
+- Shared Data Access and Unit of Work contracts
+- Standard Optimistic Concurrency
+- Persistent SQLite Background Jobs
+- Company, branch, actor, and correlation context preservation for background jobs
+- Desktop composition for platform services
+
+## Database Migrations
+
+- `0007_background_jobs.sql`
+- `0008_notifications.sql`
+- `0009_background_job_context.sql`
+
+## Validation Evidence
+
+The following checks were executed successfully on the completed phase branch:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm --filter @argin/platform test
+pnpm --filter @argin/platform-tauri test
+
+cd apps/desktop/src-tauri
+cargo fmt --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test
+cargo build
+
 
 ## Next Phase
 
