@@ -8,3 +8,7 @@
 export {
   SqliteBackgroundJobQueue
 } from "./sqlite-background-job-queue.ts";
+
+export {
+  SqliteNotificationStore
+} from "./sqlite-notification-store.ts";

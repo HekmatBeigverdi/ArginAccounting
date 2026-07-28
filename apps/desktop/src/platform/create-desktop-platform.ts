@@ -7,7 +7,6 @@ import {
   BackgroundJobRunner,
   DefaultNotificationService,
   InMemoryEventBus,
-  InMemoryNotificationStore,
   InMemoryPluginRegistry,
   SystemClock,
   UuidGenerator,
@@ -23,7 +22,8 @@ import {
 } from "@argin/platform";
 
 import {
-  SqliteBackgroundJobQueue
+  SqliteBackgroundJobQueue,
+  SqliteNotificationStore
 } from "@argin/platform-tauri";
 
 import {
@@ -72,8 +72,13 @@ export async function createDesktopPlatform(
   const pluginRegistry =
     new InMemoryPluginRegistry();
 
+  const database =
+    await getDesktopDatabase();
+
   const notificationStore =
-    new InMemoryNotificationStore();
+    new SqliteNotificationStore(
+      database
+    );
 
   const notificationService =
     new DefaultNotificationService(
@@ -83,9 +88,6 @@ export async function createDesktopPlatform(
         idGenerator
       }
     );
-
-  const database =
-    await getDesktopDatabase();
 
   const backgroundJobQueue =
     new SqliteBackgroundJobQueue(
