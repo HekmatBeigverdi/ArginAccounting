@@ -4,7 +4,8 @@ import type {
 } from "@argin/fiscal";
 
 import type {
-  DatabaseExecutor
+  DatabaseExecutor,
+  DatabaseSession
 } from "@argin/database";
 
 import {
@@ -24,7 +25,7 @@ import {
 } from "./repositories/sqlite-number-series-repository";
 
 function createRepositories(
-  database: DatabaseExecutor
+  database: DatabaseSession
 ): FiscalUnitOfWorkRepositories {
   return {
     fiscalYears:
@@ -44,7 +45,7 @@ export class SqliteFiscalUnitOfWork
     private readonly database: DatabaseExecutor
   ) {}
 
-  async transaction<T>(
+  async run<T>(
     operation: (
       repositories: FiscalUnitOfWorkRepositories
     ) => Promise<T>

@@ -1,5 +1,5 @@
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 import type {
@@ -38,7 +38,7 @@ function mapPermission(
 export class SqlitePermissionRepository
   implements PermissionRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async upsertDefinitions(

@@ -1,5 +1,5 @@
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 import type {
@@ -69,7 +69,7 @@ function mapUserSummary(
 export class SqliteUserRepository
   implements UserRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async create(

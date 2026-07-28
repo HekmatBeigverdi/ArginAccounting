@@ -61,7 +61,7 @@ export async function createApprovalRequestService(
     correlationId: input.correlationId ?? null
   });
 
-  return context.unitOfWork.transaction(async (repositories) => {
+  return context.unitOfWork.run(async (repositories) => {
     await repositories.approval.create(request);
     await repositories.approval.addHistory(history);
     await repositories.audit.create(auditEntry);

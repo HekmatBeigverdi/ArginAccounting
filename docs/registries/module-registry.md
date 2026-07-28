@@ -8,7 +8,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Fiscal Management | `@argin/fiscal`, `@argin/fiscal-tauri` | Implemented | 06 | `docs/phases/phase-06-fiscal-management.md` |
 | Security | `@argin/security`, `@argin/security-tauri` | Implemented | 07 | `docs/security/security-model.md` |
 | Audit and Approval | `@argin/audit`, `@argin/audit-tauri` | Implemented | 08 | `docs/phases/phase-08-audit-approval.md` |
-| Platform Infrastructure | To be defined | Planned | 09 | `docs/phases/phase-09-platform-infrastructure.md` |
+| Platform Infrastructure | `@argin/platform`, `@argin/platform-tauri` | Implemented | 09 | `docs/phases/phase-09-platform-infrastructure.md` |
 | Accounting Core | To be defined | Planned | 10+ | `docs/accounting/accounting-engine.md` |
 
 ## Required Fields for Future Entries

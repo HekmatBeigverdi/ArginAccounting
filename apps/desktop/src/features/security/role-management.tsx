@@ -12,7 +12,8 @@ import {
 } from "@argin/security";
 
 import {
-  SqliteRoleRepository
+  SqliteRoleRepository,
+  SqliteSecurityUnitOfWork
 } from "@argin/security-tauri";
 
 import {
@@ -60,10 +61,10 @@ export function RoleManagement() {
       const database =
         await getDesktopDatabase();
 
-      const repository =
-        new SqliteRoleRepository(database);
+      const unitOfWork =
+        new SqliteSecurityUnitOfWork(database);
 
-      await createRole(repository, {
+      await createRole(unitOfWork, {
         code,
         title,
         description

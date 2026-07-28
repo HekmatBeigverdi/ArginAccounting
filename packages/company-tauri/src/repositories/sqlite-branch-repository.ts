@@ -5,7 +5,7 @@ import type {
 } from "@argin/company";
 
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 interface BranchRow {
@@ -35,7 +35,7 @@ function mapBranch(row: BranchRow): Branch {
 export class SqliteBranchRepository
   implements BranchRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async create(

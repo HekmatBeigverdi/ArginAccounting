@@ -37,7 +37,7 @@ describe("SqliteAuditUnitOfWork", () => {
     const { database, statements } = createDatabase();
     const unitOfWork = new SqliteAuditUnitOfWork(database);
 
-    const result = await unitOfWork.transaction(
+    const result = await unitOfWork.run(
       async (repositories) => {
         assert.ok(repositories.audit);
         assert.ok(repositories.approval);
@@ -57,7 +57,7 @@ describe("SqliteAuditUnitOfWork", () => {
     const unitOfWork = new SqliteAuditUnitOfWork(database);
 
     await assert.rejects(
-      () => unitOfWork.transaction(async () => {
+      () => unitOfWork.run(async () => {
         throw new Error("write failed");
       }),
       /write failed/
@@ -76,7 +76,7 @@ describe("SqliteAuditUnitOfWork", () => {
     const unitOfWork = new SqliteAuditUnitOfWork(database);
 
     await assert.rejects(
-      () => unitOfWork.transaction(async () => {
+      () => unitOfWork.run(async () => {
         throw new Error("write failed");
       }),
       (error: unknown) => {
@@ -97,13 +97,13 @@ describe("SqliteAuditUnitOfWork", () => {
     const unitOfWork = new SqliteAuditUnitOfWork(database);
     const order: string[] = [];
 
-    const first = unitOfWork.transaction(async () => {
+    const first = unitOfWork.run(async () => {
       order.push("first-start");
       await new Promise((resolve) => setTimeout(resolve, 10));
       order.push("first-end");
     });
 
-    const second = unitOfWork.transaction(async () => {
+    const second = unitOfWork.run(async () => {
       order.push("second-start");
       order.push("second-end");
     });

@@ -6,7 +6,7 @@ import type {
 } from "@argin/fiscal";
 
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 interface HistoricalLockRow {
@@ -44,7 +44,7 @@ function mapHistoricalLock(
 export class SqliteHistoricalLockRepository
   implements HistoricalLockRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async create(

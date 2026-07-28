@@ -1,7 +1,3 @@
-import {
-  ApprovalConcurrencyError
-} from "@argin/audit";
-
 import type {
   ApprovalHistoryEntry,
   ApprovalQuery,
@@ -10,6 +6,11 @@ import type {
   ApprovalRequest,
   ApprovalRequestSummary
 } from "@argin/audit";
+
+import {
+  assertVersionedUpdate,
+  nextEntityVersion
+} from "@argin/database";
 
 import {
   executeSqlitePaginationQuery
@@ -141,7 +142,7 @@ VALUES
       row.version;
 
     const nextVersion =
-      expectedVersion + 1;
+      nextEntityVersion(expectedVersion);
 
     const result =
       await this.db.execute(
@@ -172,6 +173,7 @@ SET
 WHERE
   id = ?
   AND version = ?
+  AND company_id = ?
         `,
         [
           nextVersion,
@@ -203,18 +205,22 @@ WHERE
           row.updated_at,
 
           row.id,
-          expectedVersion
+          expectedVersion,
+          row.company_id
         ]
       );
 
-    if (result.rowsAffected !== 1) {
-      throw new ApprovalConcurrencyError({
-        approvalRequestId:
-          request.id,
-
+    assertVersionedUpdate(
+      {
+        rowsAffected:
+          result.rowsAffected ?? 0
+      },
+      {
+        entityType: "approval-request",
+        entityId: request.id,
         expectedVersion
-      });
-    }
+      }
+    );
 
     return {
       ...request,

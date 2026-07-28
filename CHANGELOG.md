@@ -6,6 +6,61 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.9.0] - 2026-07-28
+
+### Added
+
+- Typed Event Bus
+- Money value objects and currency policy
+- Command and Query buses
+- Structured filtering, sorting, projection, and pagination
+- Number Series Engine
+- Metadata Engine
+- Notification contracts and delivery infrastructure
+- Plugin contracts and compatibility policies
+- Shared Data Access and Unit of Work contracts
+- Standard Optimistic Concurrency
+- Persistent Background Jobs
+
+### Database
+
+- Added persistent SQLite Background Job storage
+- Added persistent SQLite Notification storage
+- Added company, branch, actor, and correlation context to Background Jobs
+- Added migrations:
+  - `0007_background_jobs.sql`
+  - `0008_notifications.sql`
+  - `0009_background_job_context.sql`
+
+### Desktop
+
+- Connected Platform Infrastructure to the desktop composition root
+- Replaced in-memory notification storage with SQLite
+- Added persistent Background Job processing
+
+### Security
+
+- Background Jobs preserve company and branch scope
+- Background Jobs preserve actor identity
+- Correlation IDs are preserved during queued execution
+- Context values are validated before persistence
+
+### Tests
+
+- Added Query Framework validation tests
+- Added SQLite Notification Store integration tests
+- Added Background Job context and migration tests
+- Verified compatibility with existing Background Job records
+
+### Validation
+
+- Platform tests passed: 131
+- Platform Tauri tests passed: 27
+- Monorepo lint, typecheck, tests, and build passed
+- Rust formatting, Clippy, tests, and build passed
+
+---
+
 ## [0.8.0] - Unreleased
 
 ### Added

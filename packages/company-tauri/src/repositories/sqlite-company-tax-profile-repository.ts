@@ -5,7 +5,7 @@ import type {
 } from "@argin/company";
 
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 interface TaxProfileRow {
@@ -39,7 +39,7 @@ function mapTaxProfile(
 export class SqliteCompanyTaxProfileRepository
   implements CompanyTaxProfileRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async create(

@@ -14,17 +14,23 @@ import {
   AuditProvider
 } from "./composition/audit";
 
+import {
+  PlatformProvider
+} from "./platform";
+
 import "./App.css";
 
 function App() {
   return (
-    <SecurityBootstrapProvider>
-      <AuthSessionProvider>
-        <AuditProvider>
-          <AppRouter />
-        </AuditProvider>
-      </AuthSessionProvider>
-    </SecurityBootstrapProvider>
+    <PlatformProvider>
+      <SecurityBootstrapProvider>
+        <AuthSessionProvider>
+          <AuditProvider>
+            <AppRouter />
+          </AuditProvider>
+        </AuthSessionProvider>
+      </SecurityBootstrapProvider>
+    </PlatformProvider>
   );
 }
 

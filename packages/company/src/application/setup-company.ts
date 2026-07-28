@@ -45,7 +45,7 @@ export async function setupCompany(
     throw new CompanyValidationError(issues);
   }
 
-  return unitOfWork.transaction(async (repositories) => {
+  return unitOfWork.run(async (repositories) => {
     console.log("شروع تراکنش...");
 
     const existingCompany =

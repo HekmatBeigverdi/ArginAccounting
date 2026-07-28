@@ -1,5 +1,5 @@
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 import type {
@@ -37,7 +37,7 @@ function mapRole(row: RoleRow): Role {
 export class SqliteRoleRepository
   implements RoleRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async create(

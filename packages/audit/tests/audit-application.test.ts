@@ -52,6 +52,19 @@ function createContext(permissions: string[]) {
       authorizer: {
         hasPermission: async (permission: string) => permissionSet.has(permission)
       },
+      unitOfWork: {
+        run: async <T>(
+          action: (
+            repositories: {
+              audit: typeof auditRepository;
+              approval: never;
+            }
+          ) => Promise<T>
+        ): Promise<T> => action({
+          audit: auditRepository,
+          approval: undefined as never
+        })
+      },
       auditRepository
     },
     entries

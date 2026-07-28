@@ -81,7 +81,7 @@ function createContext(options?: {
   };
 
   const unitOfWork = {
-    async transaction<T>(action: (repositories: any) => Promise<T>): Promise<T> {
+    async run<T>(action: (repositories: any) => Promise<T>): Promise<T> {
       transactionCount += 1;
       const approvalSnapshot = approvals.slice();
       const historySnapshot = histories.slice();

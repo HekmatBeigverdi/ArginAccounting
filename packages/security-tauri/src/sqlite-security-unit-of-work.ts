@@ -1,5 +1,6 @@
 import type {
-  DatabaseExecutor
+  DatabaseExecutor,
+  DatabaseSession
 } from "@argin/database";
 
 import type {
@@ -24,7 +25,7 @@ import {
 } from "./repositories/sqlite-user-repository";
 
 function createRepositories(
-  database: DatabaseExecutor
+  database: DatabaseSession
 ): SecurityUnitOfWorkRepositories {
   return {
     users:
@@ -46,7 +47,7 @@ export class SqliteSecurityUnitOfWork
     private readonly database: DatabaseExecutor
   ) {}
 
-  async transaction<T>(
+  async run<T>(
     operation: (
       repositories: SecurityUnitOfWorkRepositories
     ) => Promise<T>

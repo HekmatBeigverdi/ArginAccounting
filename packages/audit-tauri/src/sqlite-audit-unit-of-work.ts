@@ -29,7 +29,7 @@ implements AuditUnitOfWork {
       SqliteDatabase
   ) {}
 
-  async transaction<T>(
+  async run<T>(
     action: (
       repositories:
         AuditRepositories
