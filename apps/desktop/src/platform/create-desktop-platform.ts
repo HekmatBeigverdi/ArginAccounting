@@ -1,8 +1,11 @@
 import {
+  getDesktopDatabase
+} from "@argin/database-tauri";
+
+import {
   BackgroundJobRegistry,
   BackgroundJobRunner,
   DefaultNotificationService,
-  InMemoryBackgroundJobQueue,
   InMemoryEventBus,
   InMemoryNotificationStore,
   InMemoryPluginRegistry,
@@ -18,6 +21,10 @@ import {
   type PluginDefinition,
   type PluginRegistry
 } from "@argin/platform";
+
+import {
+  SqliteBackgroundJobQueue
+} from "@argin/platform-tauri";
 
 import {
   DesktopBackgroundWorker
@@ -52,10 +59,10 @@ export interface DesktopPlatform {
   stop(): void;
 }
 
-export function createDesktopPlatform(
+export async function createDesktopPlatform(
   registrations:
     readonly DesktopPlatformRegistration[] = []
-): DesktopPlatform {
+): Promise<DesktopPlatform> {
   const clock = new SystemClock();
   const idGenerator = new UuidGenerator();
 
@@ -77,8 +84,17 @@ export function createDesktopPlatform(
       }
     );
 
+  const database =
+    await getDesktopDatabase();
+
   const backgroundJobQueue =
-    new InMemoryBackgroundJobQueue();
+    new SqliteBackgroundJobQueue(
+      database
+    );
+
+  await backgroundJobQueue.recoverInterrupted(
+    clock.now().toISOString()
+  );
 
   const backgroundJobRegistry =
     new BackgroundJobRegistry();

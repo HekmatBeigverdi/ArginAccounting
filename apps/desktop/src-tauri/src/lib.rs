@@ -50,6 +50,12 @@ fn database_migrations() -> Vec<Migration> {
             ),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "background_jobs",
+            sql: include_str!("../migrations/0007_background_jobs.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
