@@ -33,6 +33,8 @@ export async function recordAuditEntry(
     input
   );
 
-  await context.auditRepository.create(entry);
-  return entry;
+  return context.unitOfWork.run(async ({ audit }) => {
+    await audit.create(entry);
+    return entry;
+  });
 }

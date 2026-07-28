@@ -70,7 +70,7 @@ export async function createInitialAdministrator(
       command.password
     );
 
-  return unitOfWork.transaction(
+  return unitOfWork.run(
     async (repositories) => {
       const existingUsers =
         await repositories.users.findAll();

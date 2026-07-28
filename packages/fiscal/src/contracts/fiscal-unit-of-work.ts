@@ -22,7 +22,7 @@ export interface FiscalUnitOfWorkRepositories {
 }
 
 export interface FiscalUnitOfWork {
-  transaction<T>(
+  run<T>(
     operation: (
       repositories: FiscalUnitOfWorkRepositories
     ) => Promise<T>

@@ -4,7 +4,8 @@ import {
   DatabaseError,
   type DatabaseExecuteResult,
   type DatabaseExecutor,
-  type DatabaseValue
+  type DatabaseSession,
+  type DatabaseValue,
 } from "@argin/database";
 
 import { DESKTOP_DATABASE_URL } from "./constants";
@@ -38,48 +39,46 @@ function normalizeParameters(
   );
 }
 
-class LogicalTransactionExecutor
-  implements DatabaseExecutor {
-  constructor(
-    private readonly executor: DatabaseExecutor
-  ) {}
+class LogicalTransactionSession
+    implements DatabaseSession {
+    constructor(
+      private readonly executor:
+        DatabaseExecutor,
+    ) {}
 
-  execute(
-    sql: string,
-    parameters: readonly DatabaseValue[] = []
-  ): Promise<DatabaseExecuteResult> {
-    return this.executor.execute(sql, parameters);
-  }
+    execute(
+      sql: string,
+      parameters:
+        readonly DatabaseValue[] = [],
+    ): Promise<DatabaseExecuteResult> {
+      return this.executor.execute(
+        sql,
+        parameters,
+      );
+    }
 
-  query<T>(
-    sql: string,
-    parameters: readonly DatabaseValue[] = []
-  ): Promise<T[]> {
-    return this.executor.query<T>(sql, parameters);
-  }
+    query<T>(
+      sql: string,
+      parameters:
+        readonly DatabaseValue[] = [],
+    ): Promise<T[]> {
+      return this.executor.query<T>(
+        sql,
+        parameters,
+      );
+    }
 
-  queryOne<T>(
-    sql: string,
-    parameters: readonly DatabaseValue[] = []
-  ): Promise<T | null> {
-    return this.executor.queryOne<T>(
-      sql,
-      parameters
-    );
+    queryOne<T>(
+      sql: string,
+      parameters:
+        readonly DatabaseValue[] = [],
+    ): Promise<T | null> {
+      return this.executor.queryOne<T>(
+        sql,
+        parameters,
+      );
+    }
   }
-
-  transaction<T>(
-    operation: (
-      transaction: DatabaseExecutor
-    ) => Promise<T>
-  ): Promise<T> {
-    return operation(this);
-  }
-
-  close(): Promise<void> {
-    return this.executor.close();
-  }
-}
 
 export class TauriSqliteExecutor implements DatabaseExecutor {
   private transactionQueue: Promise<void> =
@@ -183,27 +182,25 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
   }
 
   async transaction<T>(
-    operation: (transaction: DatabaseExecutor) => Promise<T>
+    operation: (
+      transaction: DatabaseSession,
+    ) => Promise<T>,
   ): Promise<T> {
-    const previousOperation = this.transactionQueue;
+    const previousOperation =
+      this.transactionQueue;
+
     let releaseQueue!: () => void;
 
-    this.transactionQueue = new Promise<void>((resolve) => {
-      releaseQueue = resolve;
-    });
+    this.transactionQueue =
+      new Promise<void>((resolve) => {
+        releaseQueue = resolve;
+      });
 
     await previousOperation;
 
     try {
-      /*
-       * tauri-plugin-sql executes every command through a connection
-       * pool. BEGIN/COMMIT calls are therefore not guaranteed to use
-       * the same SQLite connection and can leave the database locked.
-       * Serialize logical units of work until the plugin exposes a
-       * connection-bound transaction API.
-       */
       return await operation(
-        new LogicalTransactionExecutor(this)
+        new LogicalTransactionSession(this),
       );
     } finally {
       releaseQueue();

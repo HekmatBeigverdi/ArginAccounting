@@ -12,6 +12,7 @@ import {
 } from "@argin/security";
 
 import {
+  SqliteSecurityUnitOfWork,
   SqliteUserRepository,
   TauriPasswordHasher
 } from "@argin/security-tauri";
@@ -98,14 +99,14 @@ export function UserManagement() {
       const database =
         await getDesktopDatabase();
 
-      const repository =
-        new SqliteUserRepository(database);
+      const unitOfWork =
+        new SqliteSecurityUnitOfWork(database);
 
       const passwordHasher =
         new TauriPasswordHasher();
 
       await createUser(
-        repository,
+        unitOfWork,
         passwordHasher,
         form
       );

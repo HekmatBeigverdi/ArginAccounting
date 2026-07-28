@@ -5,7 +5,7 @@ import type {
 } from "@argin/company";
 
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 interface AddressRow {
@@ -43,7 +43,7 @@ function mapAddress(row: AddressRow): Address {
 export class SqliteAddressRepository
   implements AddressRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async create(

@@ -22,7 +22,7 @@ export interface SecurityUnitOfWorkRepositories {
 }
 
 export interface SecurityUnitOfWork {
-  transaction<T>(
+  run<T>(
     operation: (
       repositories: SecurityUnitOfWorkRepositories
     ) => Promise<T>

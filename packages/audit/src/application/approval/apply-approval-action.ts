@@ -80,7 +80,7 @@ export async function applyApprovalAction(
   await requireAuditPermission(context.authorizer, permissionByAction[command.action]);
   const requestId = command.approvalRequestId.trim();
 
-  return context.unitOfWork.transaction(async (repositories) => {
+  return context.unitOfWork.run(async (repositories) => {
     const request = await repositories.approval.findById(requestId);
     if (request === null) throw new ApprovalNotFoundError(requestId);
 

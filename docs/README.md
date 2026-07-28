@@ -44,8 +44,8 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Stable baseline: Phase 08 — Audit and Approval
-- Current development target: Phase 09 — Platform Infrastructure
+- Stable baseline: Phase 09 — Platform Infrastructure
+- Current development target: Phase 10 — Chart of Accounts
 - Next accounting phase: Phase 10 — Chart of Accounts
 
 ## Source-of-Truth Policy

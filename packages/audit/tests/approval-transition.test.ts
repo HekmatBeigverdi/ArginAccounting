@@ -88,7 +88,7 @@ describe("approval transition rules", () => {
       approvalRepository: {} as never,
       auditRepository: {} as never,
       unitOfWork: {
-        transaction: async <T>(action: (repositories: any) => Promise<T>) => action({
+        run: async <T>(action: (repositories: any) => Promise<T>) => action({
           approval: {
             findById: async () => request,
             update: async (value: ApprovalRequest) => {

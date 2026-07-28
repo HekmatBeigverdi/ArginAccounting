@@ -10,11 +10,13 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "echo \"Database lint is not configured yet\"",
-    "test": "echo \"Database tests are not configured yet\"",
+    "test": "tsx --test tests/**/*.test.ts",
     "clean": "rimraf dist"
   },
   "devDependencies": {
+    "@types/node": "^20",
     "rimraf": "^6.0.0",
+    "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   }
 }

@@ -5,7 +5,7 @@ import type {
 } from "@argin/fiscal";
 
 import type {
-  DatabaseExecutor
+  DatabaseSession
 } from "@argin/database";
 
 interface FiscalPeriodRow {
@@ -47,7 +47,7 @@ function mapFiscalPeriod(
 export class SqliteFiscalPeriodRepository
   implements FiscalPeriodRepository {
   constructor(
-    private readonly database: DatabaseExecutor
+    private readonly database: DatabaseSession
   ) {}
 
   async create(
