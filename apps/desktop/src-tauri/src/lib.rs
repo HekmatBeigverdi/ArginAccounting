@@ -45,15 +45,25 @@ fn database_migrations() -> Vec<Migration> {
         Migration {
             version: 6,
             description: "approval_optimistic_concurrency",
-            sql: include_str!(
-                "../migrations/0006_approval_optimistic_concurrency.sql"
-            ),
+            sql: include_str!("../migrations/0006_approval_optimistic_concurrency.sql"),
             kind: MigrationKind::Up,
         },
         Migration {
             version: 7,
             description: "background_jobs",
             sql: include_str!("../migrations/0007_background_jobs.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 8,
+            description: "notifications",
+            sql: include_str!("../migrations/0008_notifications.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 9,
+            description: "background_job_context",
+            sql: include_str!("../migrations/0009_background_job_context.sql"),
             kind: MigrationKind::Up,
         },
     ]
