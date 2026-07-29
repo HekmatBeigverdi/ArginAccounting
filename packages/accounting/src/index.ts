@@ -23,3 +23,31 @@ export type {
 export {
   validateAccountCodingSettings,
 } from "./validation/validate-account-coding-settings.ts";
+
+export type {
+  Account,
+  AccountLevel,
+  AccountNature,
+  NormalBalance,
+  AccountStatementType,
+  AccountStatus,
+  AccountSourceType,
+  CreateAccountInput,
+} from "./domain/account.ts";
+
+export {
+  createAccount,
+} from "./domain/create-account.ts";
+
+export {
+  AccountValidationError,
+} from "./validation/account-validation-error.ts";
+
+export type {
+  AccountField,
+  AccountValidationIssue,
+} from "./validation/account-validation-error.ts";
+
+export {
+  validateAccount,
+} from "./validation/validate-account.ts";
