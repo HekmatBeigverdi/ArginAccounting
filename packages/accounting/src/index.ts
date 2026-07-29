@@ -88,3 +88,29 @@ export {
 export {
   assertValidAccountTree,
 } from "./validation/assert-valid-account-tree.ts";
+
+export type {
+  AccountReportClassification,
+  BalanceSheetSection,
+  CashFlowCategory,
+  CreateAccountReportClassificationContext,
+  CreateAccountReportClassificationInput,
+  IncomeStatementSection,
+} from "./domain/account-report-classification.ts";
+
+export {
+  createAccountReportClassification,
+} from "./domain/create-account-report-classification.ts";
+
+export {
+  AccountReportClassificationValidationError,
+} from "./validation/account-report-classification-validation-error.ts";
+
+export type {
+  AccountReportClassificationField,
+  AccountReportClassificationValidationIssue,
+} from "./validation/account-report-classification-validation-error.ts";
+
+export {
+  validateAccountReportClassification,
+} from "./validation/validate-account-report-classification.ts";

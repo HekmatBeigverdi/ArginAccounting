@@ -35,6 +35,15 @@ test("creates an immutable account with initial version", () => {
 
   assert.deepEqual(account, {
     ...VALID_INPUT,
+    reportClassification: {
+      balanceSheetSection: null,
+      incomeStatementSection: null,
+      cashFlowCategory: null,
+      cashEquivalent: false,
+      receivable: false,
+      payable: false,
+      managementTags: [],
+    },
     parentId: "general-1",
     englishName: "Cash on hand",
     status: "active",

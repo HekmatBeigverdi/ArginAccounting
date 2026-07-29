@@ -4,6 +4,10 @@ import type {
 import type {
   AccountName,
 } from "./account-name.ts";
+import type {
+  AccountReportClassification,
+  CreateAccountReportClassificationInput,
+} from "./account-report-classification.ts";
 
 export type AccountLevel =
   | "group"
@@ -48,6 +52,8 @@ export interface Account {
   readonly nature: AccountNature;
   readonly normalBalance: NormalBalance;
   readonly statementType: AccountStatementType;
+  readonly reportClassification:
+    AccountReportClassification;
 
   readonly postingAllowed: boolean;
   readonly currencyEnabled: boolean;
@@ -79,6 +85,8 @@ export interface CreateAccountInput {
   readonly nature: AccountNature;
   readonly normalBalance: NormalBalance;
   readonly statementType: AccountStatementType;
+  readonly reportClassification?:
+    CreateAccountReportClassificationInput;
 
   readonly postingAllowed?: boolean;
   readonly currencyEnabled?: boolean;

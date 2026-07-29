@@ -16,6 +16,9 @@ import {
 import {
   validateAccount,
 } from "../validation/validate-account.ts";
+import {
+  createAccountReportClassification,
+} from "./create-account-report-classification.ts";
 
 export function createAccount(
   input: CreateAccountInput,
@@ -37,6 +40,11 @@ export function createAccount(
     nature: input.nature,
     normalBalance: input.normalBalance,
     statementType: input.statementType,
+    reportClassification:
+      createAccountReportClassification(
+        input.reportClassification,
+        { statementType: input.statementType },
+      ),
 
     postingAllowed: input.postingAllowed ?? false,
     currencyEnabled: input.currencyEnabled ?? false,
