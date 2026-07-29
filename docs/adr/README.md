@@ -13,5 +13,6 @@ ADRs are immutable decision records. Superseded decisions remain in the reposito
 - [ADR-0007 — Immutable Audit Trail](ADR-0007-immutable-audit-trail.md)
 - [ADR-0008 — Approval Workflow with Optimistic Concurrency](ADR-0008-approval-optimistic-concurrency.md)
 - [ADR-0009 — Shared Platform Infrastructure Before Accounting Core](ADR-0009-platform-infrastructure-first.md)
+- [ADR-0010 — Chart of Accounts Model](ADR-0010-chart-of-accounts-model.md)
 
 Use the [ADR template](../templates/adr-template.md) for new decisions.
