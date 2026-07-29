@@ -1,6 +1,14 @@
 import type {
   Account,
 } from "../domain/account.ts";
+import {
+  AccountCodeValidationError,
+  createAccountCode,
+} from "../domain/account-code.ts";
+import {
+  AccountNameValidationError,
+  createAccountName,
+} from "../domain/account-name.ts";
 import type {
   AccountValidationIssue,
 } from "./account-validation-error.ts";
@@ -19,6 +27,8 @@ export function validateAccount(
   );
   requireText(account.code, "code", "کد حساب", issues);
   requireText(account.name, "name", "عنوان حساب", issues);
+  validateCode(account.code, issues);
+  validateName(account.name, issues);
   requireText(
     account.createdAt,
     "createdAt",
@@ -86,6 +96,52 @@ export function validateAccount(
   }
 
   return Object.freeze(issues);
+}
+
+function validateCode(
+  value: string,
+  issues: AccountValidationIssue[],
+): void {
+  if (value.length === 0) {
+    return;
+  }
+
+  try {
+    createAccountCode(value);
+  } catch (error) {
+    if (error instanceof AccountCodeValidationError) {
+      issues.push({
+        field: "code",
+        message: error.message,
+      });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+function validateName(
+  value: string,
+  issues: AccountValidationIssue[],
+): void {
+  if (value.length === 0) {
+    return;
+  }
+
+  try {
+    createAccountName(value);
+  } catch (error) {
+    if (error instanceof AccountNameValidationError) {
+      issues.push({
+        field: "name",
+        message: error.message,
+      });
+      return;
+    }
+
+    throw error;
+  }
 }
 
 function requireText(

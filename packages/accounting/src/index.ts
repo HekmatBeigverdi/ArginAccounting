@@ -40,6 +40,26 @@ export {
 } from "./domain/create-account.ts";
 
 export {
+  AccountCodeValidationError,
+  createAccountCode,
+  normalizeAccountCodeDigits,
+} from "./domain/account-code.ts";
+
+export type {
+  AccountCode,
+} from "./domain/account-code.ts";
+
+export {
+  AccountNameValidationError,
+  createAccountName,
+  normalizeAccountName,
+} from "./domain/account-name.ts";
+
+export type {
+  AccountName,
+} from "./domain/account-name.ts";
+
+export {
   AccountValidationError,
 } from "./validation/account-validation-error.ts";
 

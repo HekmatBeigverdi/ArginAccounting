@@ -1,3 +1,10 @@
+import type {
+  AccountCode,
+} from "./account-code.ts";
+import type {
+  AccountName,
+} from "./account-name.ts";
+
 export type AccountLevel =
   | "group"
   | "general"
@@ -34,8 +41,8 @@ export interface Account {
   readonly parentId: string | null;
 
   readonly level: AccountLevel;
-  readonly code: string;
-  readonly name: string;
+  readonly code: AccountCode;
+  readonly name: AccountName;
   readonly englishName: string | null;
 
   readonly nature: AccountNature;

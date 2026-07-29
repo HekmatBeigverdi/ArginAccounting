@@ -3,6 +3,14 @@ import type {
   CreateAccountInput,
 } from "./account.ts";
 import {
+  normalizeAccountCodeDigits,
+  type AccountCode,
+} from "./account-code.ts";
+import {
+  normalizeAccountName,
+  type AccountName,
+} from "./account-name.ts";
+import {
   AccountValidationError,
 } from "../validation/account-validation-error.ts";
 import {
@@ -20,8 +28,10 @@ export function createAccount(
     parentId: input.parentId?.trim() || null,
 
     level: input.level,
-    code: input.code.trim(),
-    name: input.name.trim(),
+    code: normalizeAccountCodeDigits(
+      input.code.trim(),
+    ) as AccountCode,
+    name: normalizeAccountName(input.name) as AccountName,
     englishName: input.englishName?.trim() || null,
 
     nature: input.nature,
