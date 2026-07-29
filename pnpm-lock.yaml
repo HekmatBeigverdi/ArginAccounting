@@ -134,6 +134,21 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/accounting:
+    devDependencies:
+      '@argin/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/audit:
     devDependencies:
       '@argin/config':
