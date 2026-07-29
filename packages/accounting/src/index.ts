@@ -71,3 +71,20 @@ export type {
 export {
   validateAccount,
 } from "./validation/validate-account.ts";
+
+export {
+  AccountTreeValidationError,
+} from "./validation/account-tree-validation-error.ts";
+
+export type {
+  AccountTreeField,
+  AccountTreeValidationIssue,
+} from "./validation/account-tree-validation-error.ts";
+
+export {
+  validateAccountTree,
+} from "./validation/validate-account-tree.ts";
+
+export {
+  assertValidAccountTree,
+} from "./validation/assert-valid-account-tree.ts";
