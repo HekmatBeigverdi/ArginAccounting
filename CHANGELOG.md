@@ -6,6 +6,63 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.10.0] - Unreleased
+
+### Added
+
+- Company-scoped three-level Chart of Accounts: Group, General, and Subsidiary
+- Stable account identity with normalized company-unique numeric codes
+- Company coding settings and hierarchical-code policy
+- Explicit account nature, normal balance, statement, cash-flow, and management classifications
+- Account create, update, move, status, and delete workflows
+- Account source provenance for manual, coding-template, and Excel-import creation
+- `AccountUsageReader` boundary for future journal-backed usage detection
+- Persian RTL Chart of Accounts desktop workspace
+- Company selector, tree search, filtering, and coding-settings UI
+- Actionable Persian accounting error messages
+
+### Database
+
+- Added `account_coding_settings`
+- Added `accounts`
+- Added `account_management_tags`
+- Added migration `0010_chart_of_accounts.sql`
+- Added company-scoped code uniqueness, same-company hierarchy, classification checks, and optimistic-concurrency versions
+
+### Security and Audit
+
+- Added view, create, update, move, status, settings, and delete permissions
+- Enforced authorization at the Application Service boundary
+- Added account and coding-settings audit events
+- Preserved actor, company, source, correlation, and causation context
+- Recorded complete pre-deletion snapshots after successful transactional deletion
+
+### Change Policies
+
+- Prevented deletion of accounts with children or financial activity
+- Allowed physical deletion only for unused leaf accounts
+- Controlled used-account code changes through company settings
+- Prevented deactivation of parents with active children
+- Rejected stale updates and deletes through optimistic concurrency
+
+### Tests and Validation
+
+- Accounting tests passed: 63
+- Accounting Tauri SQLite tests passed: 8
+- Desktop tests passed: 12
+- Accounting, SQLite adapter, Security, and Desktop builds passed
+- Monorepo lint and type checking passed
+- Local validation was repeated successfully after commit `eb86584`
+
+### Deferred
+
+- Accounting dimensions and detailed accounts: Phase 11
+- Service, trading, and manufacturing coding templates: Phase 12
+- Template versioning and atomic Excel import: Phase 12
+- Production Journal Line usage adapter: Phase 13 and later
+
+---
+
 ## [0.9.0] - 2026-07-28
 
 ### Added
