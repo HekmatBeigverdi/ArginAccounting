@@ -489,7 +489,9 @@ test("deletes an unused leaf account and publishes its audit snapshot", async ()
   assert.equal(repositories.accountValues.has("group-1"), false);
   assert.equal(events[0]?.eventType, "accounting.account.deleted");
   assert.equal(events[0]?.payload.action, "delete");
-  assert.equal(events[0]?.payload.before?.id, "group-1");
+  const before = events[0]?.payload.before;
+  assert.ok(before !== null && before !== undefined && "id" in before);
+  assert.equal(before.id, "group-1");
   assert.equal(events[0]?.payload.after, null);
 });
 

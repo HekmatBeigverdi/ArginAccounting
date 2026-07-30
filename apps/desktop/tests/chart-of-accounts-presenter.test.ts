@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { Account, AccountTreeNode } from "@argin/accounting";
+import {
+  type Account,
+  type AccountTreeNode,
+  createAccountCode,
+  createAccountName
+} from "@argin/accounting";
 import {
   flattenAccountTree,
   getAccountingErrorMessage
@@ -17,8 +22,8 @@ function createAccount(
     companyId: "company-1",
     parentId,
     level,
-    code: id,
-    name: id,
+    code: createAccountCode(id),
+    name: createAccountName(id),
     englishName: null,
     nature: "uncontrolled",
     normalBalance: "debit",
