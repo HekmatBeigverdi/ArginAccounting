@@ -12,6 +12,8 @@
     "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts"
   },
   "dependencies": {
+    "@argin/accounting": "workspace:*",
+    "@argin/accounting-tauri": "workspace:*",
     "@argin/audit": "workspace:*",
     "@argin/audit-tauri": "workspace:*",
     "@argin/company": "workspace:*",
@@ -33,7 +35,7 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",

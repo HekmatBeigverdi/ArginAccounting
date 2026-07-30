@@ -66,6 +66,12 @@ fn database_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0009_background_job_context.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 10,
+            description: "chart_of_accounts",
+            sql: include_str!("../migrations/0010_chart_of_accounts.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

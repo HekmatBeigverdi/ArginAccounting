@@ -15,6 +15,10 @@ import {
 } from "./composition/audit";
 
 import {
+  AccountingProvider
+} from "./composition/accounting/accounting-provider";
+
+import {
   PlatformProvider
 } from "./platform";
 
@@ -26,7 +30,9 @@ function App() {
       <SecurityBootstrapProvider>
         <AuthSessionProvider>
           <AuditProvider>
-            <AppRouter />
+            <AccountingProvider>
+              <AppRouter />
+            </AccountingProvider>
           </AuditProvider>
         </AuthSessionProvider>
       </SecurityBootstrapProvider>

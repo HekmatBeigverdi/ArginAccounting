@@ -44,9 +44,10 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Stable baseline: Phase 09 — Platform Infrastructure
-- Current development target: Phase 10 — Chart of Accounts
-- Next accounting phase: Phase 10 — Chart of Accounts
+- Stable merged baseline: Phase 09 — Platform Infrastructure
+- Implemented and validated: [Phase 10 — Chart of Accounts](phases/phase-10-chart-of-accounts.md)
+- Pending delivery action: merge Phase 10 and prepare release
+- Next implementation target: Phase 11 — Accounting Dimensions
 
 ## Source-of-Truth Policy
 
