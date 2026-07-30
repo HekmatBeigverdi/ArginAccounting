@@ -114,3 +114,11 @@ export type {
 export {
   validateAccountReportClassification,
 } from "./validation/validate-account-report-classification.ts";
+
+export type {
+  AccountRepository,
+} from "./contracts/account-repository.ts";
+
+export type {
+  AccountCodingSettingsRepository,
+} from "./contracts/account-coding-settings-repository.ts";
