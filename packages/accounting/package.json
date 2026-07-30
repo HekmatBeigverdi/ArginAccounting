@@ -15,6 +15,9 @@
     "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts",
     "clean": "rimraf dist"
   },
+  "dependencies": {
+    "@argin/platform": "workspace:*"
+  },
   "devDependencies": {
     "@argin/config": "workspace:*",
     "@types/node": "^20",

@@ -122,3 +122,28 @@ export type {
 export type {
   AccountCodingSettingsRepository,
 } from "./contracts/account-coding-settings-repository.ts";
+
+export type {
+  AccountingUnitOfWork,
+  AccountingUnitOfWorkRepositories,
+} from "./contracts/accounting-unit-of-work.ts";
+
+export {
+  ChartOfAccountsService,
+} from "./application/chart-of-accounts-service.ts";
+
+export type {
+  AccountSearch,
+  AccountTreeNode,
+  CreateAccountCommand,
+  UpdateAccountCommand,
+  UpdateCodingSettingsCommand,
+} from "./application/chart-of-accounts-service.ts";
+
+export {
+  ChartOfAccountsError,
+} from "./application/chart-of-accounts-error.ts";
+
+export type {
+  ChartOfAccountsErrorCode,
+} from "./application/chart-of-accounts-error.ts";

@@ -6,6 +6,7 @@ import {
   createAccountCodingSettings,
 } from "@argin/accounting";
 import type {
+  DatabaseExecutor,
   DatabaseExecuteResult,
   DatabaseSession,
   DatabaseValue,
@@ -13,6 +14,7 @@ import type {
 
 import {
   SqliteAccountCodingSettingsRepository,
+  SqliteAccountingUnitOfWork,
   SqliteAccountRepository,
 } from "../src/index.ts";
 
@@ -40,6 +42,19 @@ class FakeDatabase implements DatabaseSession {
   async queryOne<T>(): Promise<T | null> {
     return this.queryOneRow as T | null;
   }
+}
+
+class FakeExecutor extends FakeDatabase implements DatabaseExecutor {
+  transactionRuns = 0;
+
+  async transaction<T>(
+    operation: (session: DatabaseSession) => Promise<T>,
+  ): Promise<T> {
+    this.transactionRuns += 1;
+    return operation(this);
+  }
+
+  async close(): Promise<void> {}
 }
 
 const createdAt = "2026-07-30T00:00:00.000Z";
@@ -108,6 +123,40 @@ test("account repository maps report classification and tags", async () => {
   );
 });
 
+test("account lists load management tags without N+1 queries", async () => {
+  const database = new FakeDatabase();
+  database.queryRows = [
+    {
+      id: "account-1", company_id: "company-1", parent_id: null,
+      level: "group", code: "11", name: "دارایی‌ها", english_name: null,
+      nature: "debit", normal_balance: "debit",
+      statement_type: "balance_sheet", balance_sheet_section: "assets",
+      income_statement_section: null, cash_flow_category: null,
+      is_cash_equivalent: 0, is_receivable: 0, is_payable: 0,
+      posting_allowed: 0, currency_enabled: 0, revaluation_enabled: 0,
+      tracking_enabled: 0, due_date_enabled: 0, status: "active",
+      display_order: 0, source_type: "manual", source_reference_id: null,
+      created_at: createdAt, updated_at: createdAt, version: 1,
+    },
+  ];
+  let queryCount = 0;
+  database.query = async <T>() => {
+    queryCount += 1;
+    return (queryCount === 1
+      ? database.queryRows
+      : [{ account_id: "account-1", tag: "کلیدی" }]) as T[];
+  };
+
+  const accounts = await new SqliteAccountRepository(database)
+    .findByCompanyId("company-1");
+
+  assert.equal(queryCount, 2);
+  assert.deepEqual(
+    accounts[0]?.reportClassification.managementTags,
+    ["کلیدی"],
+  );
+});
+
 test("account update enforces optimistic concurrency", async () => {
   const database = new FakeDatabase();
   database.rowsAffected = 0;
@@ -150,4 +199,29 @@ test("coding settings map SQLite booleans", async () => {
   assert.equal(settings?.enforceHierarchicalCodes, true);
   assert.equal(settings?.allowCodeChangeAfterUse, false);
   assert.equal(settings?.version, 3);
+});
+
+test("accounting unit of work shares one transactional session", async () => {
+  const database = new FakeExecutor();
+
+  await new SqliteAccountingUnitOfWork(database).run(
+    async ({ accounts, codingSettings }) => {
+      await accounts.create(sampleAccount());
+      await codingSettings.save(createAccountCodingSettings({
+        companyId: "company-1",
+      }));
+    },
+  );
+
+  assert.equal(database.transactionRuns, 1);
+  assert.equal(
+    database.executions.some(({ sql }) => sql.includes("INSERT INTO accounts")),
+    true,
+  );
+  assert.equal(
+    database.executions.some(
+      ({ sql }) => sql.includes("INSERT INTO account_coding_settings"),
+    ),
+    true,
+  );
 });

@@ -177,8 +177,22 @@ export class SqliteAccountRepository implements AccountRepository {
     parameters: readonly string[],
   ): Promise<Account[]> {
     const rows = await this.database.query<AccountRow>(sql, parameters);
-    const result: Account[] = [];
-    for (const row of rows) result.push(await this.withTags(row));
-    return result;
+    if (rows.length === 0) return [];
+
+    const tags = await this.database.query<TagRow>(
+      `SELECT account_id, tag FROM account_management_tags
+       WHERE account_id IN (${rows.map(() => "?").join(", ")})
+       ORDER BY account_id, display_order, tag`,
+      rows.map(({ id }) => id),
+    );
+    const tagsByAccount = new Map<string, string[]>();
+    for (const { account_id: accountId, tag } of tags) {
+      const values = tagsByAccount.get(accountId) ?? [];
+      values.push(tag);
+      tagsByAccount.set(accountId, values);
+    }
+    return rows.map((row) =>
+      mapAccount(row, tagsByAccount.get(row.id) ?? [])
+    );
   }
 }

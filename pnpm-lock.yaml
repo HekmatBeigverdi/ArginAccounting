@@ -135,6 +135,10 @@ importers:
         version: 5.9.3
 
   packages/accounting:
+    dependencies:
+      '@argin/platform':
+        specifier: workspace:*
+        version: link:../platform
     devDependencies:
       '@argin/config':
         specifier: workspace:*
