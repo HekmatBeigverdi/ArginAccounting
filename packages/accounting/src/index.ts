@@ -1,4 +1,8 @@
 export type {
+  ChartOfAccountsAuthorizer,
+} from "./contracts/chart-of-accounts-authorizer.ts";
+
+export type {
   AccountCodingSettings,
   CreateAccountCodingSettingsInput,
 } from "./domain/account-coding-settings.ts";
@@ -131,6 +135,29 @@ export type {
 export {
   ChartOfAccountsService,
 } from "./application/chart-of-accounts-service.ts";
+
+export {
+  chartOfAccountsPermissions,
+} from "./application/chart-of-accounts-permissions.ts";
+
+export type {
+  ChartOfAccountsPermission,
+} from "./application/chart-of-accounts-permissions.ts";
+
+export type {
+  ChartOfAccountsActor,
+  ChartOfAccountsContext,
+} from "./application/chart-of-accounts-context.ts";
+
+export {
+  createChartOfAccountsEvent,
+} from "./application/chart-of-accounts-events.ts";
+
+export type {
+  ChartOfAccountsEvent,
+  ChartOfAccountsEventPayload,
+  ChartOfAccountsEventType,
+} from "./application/chart-of-accounts-events.ts";
 
 export type {
   AccountSearch,

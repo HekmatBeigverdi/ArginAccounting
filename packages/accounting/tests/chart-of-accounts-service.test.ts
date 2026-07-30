@@ -7,11 +7,14 @@ import {
   type AccountingUnitOfWorkRepositories,
   ChartOfAccountsError,
   ChartOfAccountsService,
+  chartOfAccountsPermissions,
   createAccount,
   createAccountCodingSettings,
+  type ChartOfAccountsEvent,
 } from "../src/index.ts";
 import {
   FixedClock,
+  InMemoryEventBus,
   SequenceIdGenerator,
 } from "@argin/platform";
 
@@ -67,19 +70,52 @@ class MemoryUnitOfWork implements AccountingUnitOfWork {
 
 const timestamp = "2026-07-30T10:00:00.000Z";
 
-function createFixture() {
+function createFixture(
+  permissions: readonly string[] = ["system.full-access"],
+) {
   const repositories = new MemoryRepositories();
   repositories.settingValues.set(
     "company-1",
     createAccountCodingSettings({ companyId: "company-1" }),
   );
   const unitOfWork = new MemoryUnitOfWork(repositories);
+  const eventBus = new InMemoryEventBus();
+  const events: ChartOfAccountsEvent[] = [];
+  for (
+    const eventType of [
+      "accounting.account.created",
+      "accounting.account.updated",
+      "accounting.account.status-changed",
+      "accounting.coding-settings.created",
+      "accounting.coding-settings.updated",
+    ] as const
+  ) {
+    eventBus.subscribe<ChartOfAccountsEvent>(eventType, (event) => {
+      events.push(event);
+    });
+  }
   const service = new ChartOfAccountsService(
     unitOfWork,
     new FixedClock(timestamp),
     new SequenceIdGenerator("account"),
+    {
+      hasPermission: async (permission) => permissions.includes(permission),
+    },
+    eventBus,
+    {
+      actor: {
+        type: "user",
+        id: "user-1",
+        displayName: "کاربر آزمون",
+      },
+      source: "desktop",
+      correlation: {
+        correlationId: "correlation-1",
+        causationId: "command-1",
+      },
+    },
   );
-  return { repositories, service, unitOfWork };
+  return { events, repositories, service, unitOfWork };
 }
 
 function group(overrides: Partial<Account> = {}): Account {
@@ -263,6 +299,15 @@ test("creates defaults and validates coding-setting changes against accounts", a
     new MemoryUnitOfWork(repositories),
     new FixedClock(timestamp),
     new SequenceIdGenerator("account"),
+    { hasPermission: async () => true },
+    new InMemoryEventBus(),
+    {
+      actor: {
+        type: "system",
+        id: null,
+        displayName: "آزمون",
+      },
+    },
   );
   const defaults = await service.saveDefaultCodingSettings("company-1");
   repositories.accountValues.set("group-1", group());
@@ -276,4 +321,92 @@ test("creates defaults and validates coding-setting changes against accounts", a
     enforceHierarchicalCodes: true,
     allowCodeChangeAfterUse: false,
   }));
+});
+
+test("rejects commands without the required application permission", async () => {
+  const { repositories, service, unitOfWork } = createFixture([
+    chartOfAccountsPermissions.view,
+  ]);
+
+  await assert.rejects(
+    service.createAccount({
+      companyId: "company-1",
+      level: "group",
+      code: "10",
+      name: "دارایی‌ها",
+      nature: "debit",
+      normalBalance: "debit",
+      statementType: "balance_sheet",
+    }),
+    (error) =>
+      error instanceof ChartOfAccountsError &&
+      error.code === "PERMISSION_DENIED",
+  );
+  assert.equal(unitOfWork.runs, 0);
+  assert.equal(repositories.accountValues.size, 0);
+});
+
+test("requires dedicated permissions for code changes and account moves", async () => {
+  const { repositories, service } = createFixture([
+    chartOfAccountsPermissions.update,
+  ]);
+  repositories.accountValues.set("group-1", group());
+
+  await assert.rejects(
+    service.updateAccount({
+      companyId: "company-1",
+      accountId: "group-1",
+      expectedVersion: 1,
+      changes: { code: "20" },
+    }),
+    (error) =>
+      error instanceof ChartOfAccountsError &&
+      error.code === "PERMISSION_DENIED",
+  );
+  assert.equal(repositories.accountValues.get("group-1")?.code, "10");
+});
+
+test("publishes an auditable account event after a successful commit", async () => {
+  const { events, service } = createFixture([
+    chartOfAccountsPermissions.create,
+  ]);
+
+  const account = await service.createAccount({
+    companyId: "company-1",
+    level: "group",
+    code: "10",
+    name: "دارایی‌ها",
+    nature: "debit",
+    normalBalance: "debit",
+    statementType: "balance_sheet",
+  });
+
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.eventType, "accounting.account.created");
+  assert.equal(events[0]?.aggregateId, account.id);
+  assert.equal(events[0]?.correlationId, "correlation-1");
+  assert.equal(events[0]?.causationId, "command-1");
+  assert.equal(events[0]?.payload.actor.id, "user-1");
+  assert.equal(events[0]?.payload.before, null);
+  assert.equal(events[0]?.payload.after, account);
+  assert.equal(events[0]?.metadata.audit, true);
+});
+
+test("publishes before and after snapshots for sensitive status changes", async () => {
+  const { events, repositories, service } = createFixture([
+    chartOfAccountsPermissions.changeStatus,
+  ]);
+  repositories.accountValues.set("group-1", group());
+
+  const result = await service.setAccountStatus(
+    "company-1",
+    "group-1",
+    "inactive",
+    1,
+  );
+
+  assert.equal(events[0]?.eventType, "accounting.account.status-changed");
+  assert.equal(events[0]?.payload.before?.version, 1);
+  assert.equal(events[0]?.payload.after.version, 2);
+  assert.equal(result.status, "inactive");
 });

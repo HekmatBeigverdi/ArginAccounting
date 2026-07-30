@@ -1,4 +1,5 @@
-import type { Clock, IdGenerator } from "@argin/platform";
+import type { Clock, EventBus, IdGenerator } from "@argin/platform";
+import type { ChartOfAccountsAuthorizer } from "../contracts/chart-of-accounts-authorizer.ts";
 import type { AccountingUnitOfWorkRepositories } from "../contracts/accounting-unit-of-work.ts";
 import type { AccountingUnitOfWork } from "../contracts/accounting-unit-of-work.ts";
 import type { AccountCodingSettings } from "../domain/account-coding-settings.ts";
@@ -11,6 +12,12 @@ import { validateAccountCodingSettings } from "../validation/validate-account-co
 import { validateAccount } from "../validation/validate-account.ts";
 import { AccountValidationError } from "../validation/account-validation-error.ts";
 import { ChartOfAccountsError } from "./chart-of-accounts-error.ts";
+import type { ChartOfAccountsContext } from "./chart-of-accounts-context.ts";
+import { createChartOfAccountsEvent } from "./chart-of-accounts-events.ts";
+import {
+  chartOfAccountsPermissions,
+  type ChartOfAccountsPermission,
+} from "./chart-of-accounts-permissions.ts";
 
 export type CreateAccountCommand = Omit<
   CreateAccountInput,
@@ -55,10 +62,14 @@ export class ChartOfAccountsService {
     private readonly unitOfWork: AccountingUnitOfWork,
     private readonly clock: Clock,
     private readonly idGenerator: IdGenerator,
+    private readonly authorizer: ChartOfAccountsAuthorizer,
+    private readonly eventBus: EventBus,
+    private readonly context: ChartOfAccountsContext,
   ) {}
 
-  createAccount(command: CreateAccountCommand): Promise<Account> {
-    return this.unitOfWork.run(async (repositories) => {
+  async createAccount(command: CreateAccountCommand): Promise<Account> {
+    await this.requirePermission(chartOfAccountsPermissions.create);
+    const account = await this.unitOfWork.run(async (repositories) => {
       const settings = await this.requireSettings(
         repositories,
         command.companyId,
@@ -78,16 +89,40 @@ export class ChartOfAccountsService {
       await repositories.accounts.create(account);
       return account;
     });
+    await this.publishChange({
+      eventType: "accounting.account.created",
+      action: "create",
+      aggregateId: account.id,
+      aggregateType: "account",
+      aggregateVersion: account.version,
+      companyId: account.companyId,
+      before: null,
+      after: account,
+    });
+    return account;
   }
 
-  updateAccount(command: UpdateAccountCommand): Promise<Account> {
-    return this.unitOfWork.run(async (repositories) => {
+  async updateAccount(command: UpdateAccountCommand): Promise<Account> {
+    await this.requirePermission(chartOfAccountsPermissions.update);
+    const result = await this.unitOfWork.run(async (repositories) => {
       const current = await this.requireAccount(
         repositories,
         command.companyId,
         command.accountId,
       );
       this.assertVersion(current.version, command.expectedVersion);
+      if (
+        command.changes.code !== undefined &&
+        command.changes.code !== current.code
+      ) {
+        await this.requirePermission(chartOfAccountsPermissions.changeCode);
+      }
+      if (
+        command.changes.parentId !== undefined &&
+        command.changes.parentId !== current.parentId
+      ) {
+        await this.requirePermission(chartOfAccountsPermissions.move);
+      }
       const settings = await this.requireSettings(
         repositories,
         command.companyId,
@@ -119,17 +154,29 @@ export class ChartOfAccountsService {
       assertValidAccountTree(updated, parent, settings);
       await this.assertNoCycle(repositories, updated);
       await repositories.accounts.update(updated);
-      return updated;
+      return { before: current, after: updated };
     });
+    await this.publishChange({
+      eventType: "accounting.account.updated",
+      action: "update",
+      aggregateId: result.after.id,
+      aggregateType: "account",
+      aggregateVersion: result.after.version,
+      companyId: result.after.companyId,
+      before: result.before,
+      after: result.after,
+    });
+    return result.after;
   }
 
-  setAccountStatus(
+  async setAccountStatus(
     companyId: string,
     accountId: string,
     status: Account["status"],
     expectedVersion: number,
   ): Promise<Account> {
-    return this.unitOfWork.run(async (repositories) => {
+    await this.requirePermission(chartOfAccountsPermissions.changeStatus);
+    const result = await this.unitOfWork.run(async (repositories) => {
       const current = await this.requireAccount(
         repositories,
         companyId,
@@ -144,14 +191,26 @@ export class ChartOfAccountsService {
       });
       this.assertAccount(updated);
       await repositories.accounts.update(updated);
-      return updated;
+      return { before: current, after: updated };
     });
+    await this.publishChange({
+      eventType: "accounting.account.status-changed",
+      action: "status-change",
+      aggregateId: result.after.id,
+      aggregateType: "account",
+      aggregateVersion: result.after.version,
+      companyId: result.after.companyId,
+      before: result.before,
+      after: result.after,
+    });
+    return result.after;
   }
 
   async getAccountById(
     companyId: string,
     accountId: string,
   ): Promise<Account> {
+    await this.requirePermission(chartOfAccountsPermissions.view);
     return this.unitOfWork.run((repositories) =>
       this.requireAccount(repositories, companyId, accountId)
     );
@@ -161,6 +220,7 @@ export class ChartOfAccountsService {
     companyId: string,
     code: string,
   ): Promise<Account> {
+    await this.requirePermission(chartOfAccountsPermissions.view);
     return this.unitOfWork.run(async ({ accounts }) => {
       const account = await accounts.findByCode(companyId, code);
       if (account === null) {
@@ -173,7 +233,8 @@ export class ChartOfAccountsService {
     });
   }
 
-  searchAccounts(query: AccountSearch): Promise<readonly Account[]> {
+  async searchAccounts(query: AccountSearch): Promise<readonly Account[]> {
+    await this.requirePermission(chartOfAccountsPermissions.view);
     return this.unitOfWork.run(async ({ accounts }) => {
       const normalizedText = query.text?.trim().toLocaleLowerCase("fa") ?? "";
       const values = await accounts.findByCompanyId(query.companyId);
@@ -192,7 +253,8 @@ export class ChartOfAccountsService {
     });
   }
 
-  getAccountTree(companyId: string): Promise<readonly AccountTreeNode[]> {
+  async getAccountTree(companyId: string): Promise<readonly AccountTreeNode[]> {
+    await this.requirePermission(chartOfAccountsPermissions.view);
     return this.unitOfWork.run(async ({ accounts }) => {
       const values = await accounts.findByCompanyId(companyId);
       const children = new Map<string | null, Account[]>();
@@ -210,28 +272,44 @@ export class ChartOfAccountsService {
     });
   }
 
-  getCodingSettings(companyId: string): Promise<AccountCodingSettings> {
+  async getCodingSettings(companyId: string): Promise<AccountCodingSettings> {
+    await this.requirePermission(chartOfAccountsPermissions.view);
     return this.unitOfWork.run((repositories) =>
       this.requireSettings(repositories, companyId)
     );
   }
 
-  saveDefaultCodingSettings(
+  async saveDefaultCodingSettings(
     companyId: string,
   ): Promise<AccountCodingSettings> {
-    return this.unitOfWork.run(async ({ codingSettings }) => {
+    await this.requirePermission(chartOfAccountsPermissions.manageSettings);
+    const result = await this.unitOfWork.run(async ({ codingSettings }) => {
       const existing = await codingSettings.findByCompanyId(companyId);
-      if (existing !== null) return existing;
+      if (existing !== null) return { created: false, settings: existing };
       const settings = createAccountCodingSettings({ companyId });
       await codingSettings.save(settings);
-      return settings;
+      return { created: true, settings };
     });
+    if (result.created) {
+      await this.publishChange({
+        eventType: "accounting.coding-settings.created",
+        action: "create",
+        aggregateId: result.settings.companyId,
+        aggregateType: "account-coding-settings",
+        aggregateVersion: result.settings.version,
+        companyId: result.settings.companyId,
+        before: null,
+        after: result.settings,
+      });
+    }
+    return result.settings;
   }
 
-  updateCodingSettings(
+  async updateCodingSettings(
     command: UpdateCodingSettingsCommand,
   ): Promise<AccountCodingSettings> {
-    return this.unitOfWork.run(async (repositories) => {
+    await this.requirePermission(chartOfAccountsPermissions.manageSettings);
+    const result = await this.unitOfWork.run(async (repositories) => {
       const current = await this.requireSettings(
         repositories,
         command.companyId,
@@ -255,8 +333,46 @@ export class ChartOfAccountsService {
         assertValidAccountTree(account, parent, updated);
       }
       await repositories.codingSettings.save(updated);
-      return updated;
+      return { before: current, after: updated };
     });
+    await this.publishChange({
+      eventType: "accounting.coding-settings.updated",
+      action: "update",
+      aggregateId: result.after.companyId,
+      aggregateType: "account-coding-settings",
+      aggregateVersion: result.after.version,
+      companyId: result.after.companyId,
+      before: result.before,
+      after: result.after,
+    });
+    return result.after;
+  }
+
+  private async requirePermission(
+    permission: ChartOfAccountsPermission,
+  ): Promise<void> {
+    const hasFullAccess = await this.authorizer.hasPermission(
+      "system.full-access",
+    );
+    if (hasFullAccess || await this.authorizer.hasPermission(permission)) {
+      return;
+    }
+    throw new ChartOfAccountsError(
+      "PERMISSION_DENIED",
+      "شما مجوز انجام این عملیات در کدینگ حساب‌ها را ندارید.",
+    );
+  }
+
+  private publishChange(
+    input: Parameters<typeof createChartOfAccountsEvent>[2],
+  ): Promise<void> {
+    return this.eventBus.publish(
+      createChartOfAccountsEvent(
+        { clock: this.clock, idGenerator: this.idGenerator },
+        this.context,
+        input,
+      ),
+    );
   }
 
   private async requireAccount(

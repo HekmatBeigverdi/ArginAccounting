@@ -1,4 +1,5 @@
 export type ChartOfAccountsErrorCode =
+  | "PERMISSION_DENIED"
   | "ACCOUNT_NOT_FOUND"
   | "CODING_SETTINGS_NOT_FOUND"
   | "DUPLICATE_ACCOUNT_CODE"
