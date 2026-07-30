@@ -19,6 +19,7 @@
 - [ADR-0007 — Immutable Audit Trail](adr/ADR-0007-immutable-audit-trail.md)
 - [ADR-0008 — Approval Workflow with Optimistic Concurrency](adr/ADR-0008-approval-optimistic-concurrency.md)
 - [ADR-0009 — Shared Platform Infrastructure Before Accounting Core](adr/ADR-0009-platform-infrastructure-first.md)
+- [ADR-0010 — Chart of Accounts Model](adr/ADR-0010-chart-of-accounts-model.md)
 - [Architecture Decision Records](adr/README.md)
 
 ## architecture
@@ -76,6 +77,7 @@
 - [Phase 07 — Security and Local Authentication](phases/phase-07-security.md)
 - [Phase 08 — Audit Trail and Approval Workflow](phases/phase-08-audit-approval.md)
 - [Phase 09 — Platform Infrastructure](phases/phase-09-platform-infrastructure.md)
+- [Phase 10 — Chart of Accounts](phases/phase-10-chart-of-accounts.md)
 - [Phase Documentation](phases/README.md)
 
 ## registries
