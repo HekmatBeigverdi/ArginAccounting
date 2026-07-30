@@ -12,16 +12,17 @@ export type ChartOfAccountsEventType =
   | "accounting.account.created"
   | "accounting.account.updated"
   | "accounting.account.status-changed"
+  | "accounting.account.deleted"
   | "accounting.coding-settings.created"
   | "accounting.coding-settings.updated";
 
 export interface ChartOfAccountsEventPayload {
   readonly companyId: string;
-  readonly action: "create" | "update" | "status-change";
+  readonly action: "create" | "update" | "status-change" | "delete";
   readonly actor: ChartOfAccountsContext["actor"];
   readonly source: NonNullable<ChartOfAccountsContext["source"]>;
   readonly before: Account | AccountCodingSettings | null;
-  readonly after: Account | AccountCodingSettings;
+  readonly after: Account | AccountCodingSettings | null;
 }
 
 export type ChartOfAccountsEvent = DomainEvent<

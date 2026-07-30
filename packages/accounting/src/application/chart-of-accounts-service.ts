@@ -1,5 +1,6 @@
 import type { Clock, EventBus, IdGenerator } from "@argin/platform";
 import type { ChartOfAccountsAuthorizer } from "../contracts/chart-of-accounts-authorizer.ts";
+import type { AccountUsageReader } from "../contracts/account-usage-reader.ts";
 import type { AccountingUnitOfWorkRepositories } from "../contracts/accounting-unit-of-work.ts";
 import type { AccountingUnitOfWork } from "../contracts/accounting-unit-of-work.ts";
 import type { AccountCodingSettings } from "../domain/account-coding-settings.ts";
@@ -44,6 +45,12 @@ export interface UpdateCodingSettingsCommand {
   readonly allowCodeChangeAfterUse: boolean;
 }
 
+export interface DeleteAccountCommand {
+  readonly companyId: string;
+  readonly accountId: string;
+  readonly expectedVersion: number;
+}
+
 export interface AccountSearch {
   readonly companyId: string;
   readonly text?: string;
@@ -62,6 +69,7 @@ export class ChartOfAccountsService {
     private readonly unitOfWork: AccountingUnitOfWork,
     private readonly clock: Clock,
     private readonly idGenerator: IdGenerator,
+    private readonly usageReader: AccountUsageReader,
     private readonly authorizer: ChartOfAccountsAuthorizer,
     private readonly eventBus: EventBus,
     private readonly context: ChartOfAccountsContext,
@@ -127,6 +135,20 @@ export class ChartOfAccountsService {
         repositories,
         command.companyId,
       );
+      if (
+        command.changes.code !== undefined &&
+        command.changes.code !== current.code &&
+        !settings.allowCodeChangeAfterUse &&
+        await this.usageReader.hasFinancialActivity(
+          command.companyId,
+          current.id,
+        )
+      ) {
+        throw new ChartOfAccountsError(
+          "ACCOUNT_CODE_CHANGE_AFTER_USE_NOT_ALLOWED",
+          "تغییر کد حساب استفاده‌شده در تنظیمات این شرکت مجاز نیست.",
+        );
+      }
       const candidate = createAccount({
         ...current,
         ...command.changes,
@@ -183,6 +205,15 @@ export class ChartOfAccountsService {
         accountId,
       );
       this.assertVersion(current.version, expectedVersion);
+      if (status === "inactive") {
+        const children = await repositories.accounts.findChildren(current.id);
+        if (children.some((child) => child.status === "active")) {
+          throw new ChartOfAccountsError(
+            "ACCOUNT_HAS_ACTIVE_CHILDREN",
+            "حساب دارای زیرحساب فعال را نمی‌توان غیرفعال کرد.",
+          );
+        }
+      }
       const updated = Object.freeze({
         ...current,
         status,
@@ -204,6 +235,47 @@ export class ChartOfAccountsService {
       after: result.after,
     });
     return result.after;
+  }
+
+  async deleteAccount(command: DeleteAccountCommand): Promise<void> {
+    await this.requirePermission(chartOfAccountsPermissions.delete);
+    const deleted = await this.unitOfWork.run(async (repositories) => {
+      const current = await this.requireAccount(
+        repositories,
+        command.companyId,
+        command.accountId,
+      );
+      this.assertVersion(current.version, command.expectedVersion);
+      if ((await repositories.accounts.findChildren(current.id)).length > 0) {
+        throw new ChartOfAccountsError(
+          "ACCOUNT_HAS_CHILDREN",
+          "حساب دارای زیرمجموعه را نمی‌توان حذف کرد.",
+        );
+      }
+      if (
+        await this.usageReader.hasFinancialActivity(
+          command.companyId,
+          current.id,
+        )
+      ) {
+        throw new ChartOfAccountsError(
+          "ACCOUNT_HAS_FINANCIAL_ACTIVITY",
+          "حساب دارای گردش مالی را نمی‌توان حذف کرد؛ آن را غیرفعال کنید.",
+        );
+      }
+      await repositories.accounts.delete(current);
+      return current;
+    });
+    await this.publishChange({
+      eventType: "accounting.account.deleted",
+      action: "delete",
+      aggregateId: deleted.id,
+      aggregateType: "account",
+      aggregateVersion: deleted.version,
+      companyId: deleted.companyId,
+      before: deleted,
+      after: null,
+    });
   }
 
   async getAccountById(

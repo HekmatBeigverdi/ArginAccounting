@@ -169,6 +169,20 @@ test("account update enforces optimistic concurrency", async () => {
   assert.equal(database.executions.length, 1);
 });
 
+test("account delete enforces optimistic concurrency", async () => {
+  const database = new FakeDatabase();
+  const account = sampleAccount();
+
+  await new SqliteAccountRepository(database).delete(account);
+
+  assert.match(database.executions[0]!.sql, /DELETE FROM accounts/);
+  assert.deepEqual(database.executions[0]!.parameters, [
+    account.id,
+    account.companyId,
+    account.version,
+  ]);
+});
+
 test("coding settings are inserted at version one", async () => {
   const database = new FakeDatabase();
   const settings = createAccountCodingSettings({

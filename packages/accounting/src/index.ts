@@ -124,6 +124,10 @@ export type {
 } from "./contracts/account-repository.ts";
 
 export type {
+  AccountUsageReader,
+} from "./contracts/account-usage-reader.ts";
+
+export type {
   AccountCodingSettingsRepository,
 } from "./contracts/account-coding-settings-repository.ts";
 
@@ -163,6 +167,7 @@ export type {
   AccountSearch,
   AccountTreeNode,
   CreateAccountCommand,
+  DeleteAccountCommand,
   UpdateAccountCommand,
   UpdateCodingSettingsCommand,
 } from "./application/chart-of-accounts-service.ts";

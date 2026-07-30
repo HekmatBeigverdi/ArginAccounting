@@ -131,6 +131,19 @@ export class SqliteAccountRepository implements AccountRepository {
     await this.replaceTags(account);
   }
 
+  async delete(account: Account): Promise<void> {
+    const result = await this.database.execute(
+      `DELETE FROM accounts
+       WHERE id = ? AND company_id = ? AND version = ?`,
+      [account.id, account.companyId, account.version],
+    );
+    assertVersionedUpdate(result, {
+      entityType: "Account",
+      entityId: account.id,
+      expectedVersion: account.version,
+    });
+  }
+
   private parameters(account: Account) {
     const report = account.reportClassification;
     return [

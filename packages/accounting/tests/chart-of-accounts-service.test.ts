@@ -43,6 +43,9 @@ class MemoryRepositories implements AccountingUnitOfWorkRepositories {
     update: async (account: Account) => {
       this.accountValues.set(account.id, account);
     },
+    delete: async (account: Account) => {
+      this.accountValues.delete(account.id);
+    },
   };
 
   readonly codingSettings = {
@@ -72,6 +75,7 @@ const timestamp = "2026-07-30T10:00:00.000Z";
 
 function createFixture(
   permissions: readonly string[] = ["system.full-access"],
+  usedAccountIds: readonly string[] = [],
 ) {
   const repositories = new MemoryRepositories();
   repositories.settingValues.set(
@@ -86,6 +90,7 @@ function createFixture(
       "accounting.account.created",
       "accounting.account.updated",
       "accounting.account.status-changed",
+      "accounting.account.deleted",
       "accounting.coding-settings.created",
       "accounting.coding-settings.updated",
     ] as const
@@ -98,6 +103,10 @@ function createFixture(
     unitOfWork,
     new FixedClock(timestamp),
     new SequenceIdGenerator("account"),
+    {
+      hasFinancialActivity: async (_companyId, accountId) =>
+        usedAccountIds.includes(accountId),
+    },
     {
       hasPermission: async (permission) => permissions.includes(permission),
     },
@@ -299,6 +308,7 @@ test("creates defaults and validates coding-setting changes against accounts", a
     new MemoryUnitOfWork(repositories),
     new FixedClock(timestamp),
     new SequenceIdGenerator("account"),
+    { hasFinancialActivity: async () => false },
     { hasPermission: async () => true },
     new InMemoryEventBus(),
     {
@@ -407,6 +417,164 @@ test("publishes before and after snapshots for sensitive status changes", async 
 
   assert.equal(events[0]?.eventType, "accounting.account.status-changed");
   assert.equal(events[0]?.payload.before?.version, 1);
-  assert.equal(events[0]?.payload.after.version, 2);
+  assert.equal(events[0]?.payload.after?.version, 2);
   assert.equal(result.status, "inactive");
+});
+
+test("rejects deleting an account that has children", async () => {
+  const { repositories, service } = createFixture([
+    chartOfAccountsPermissions.delete,
+  ]);
+  const parent = group();
+  const child = createAccount({
+    id: "general-1",
+    companyId: "company-1",
+    parentId: parent.id,
+    level: "general",
+    code: "1001",
+    name: "وجوه نقد",
+    nature: "debit",
+    normalBalance: "debit",
+    statementType: "balance_sheet",
+    createdAt: timestamp,
+  });
+  repositories.accountValues.set(parent.id, parent);
+  repositories.accountValues.set(child.id, child);
+
+  await assert.rejects(
+    service.deleteAccount({
+      companyId: "company-1",
+      accountId: parent.id,
+      expectedVersion: parent.version,
+    }),
+    (error) =>
+      error instanceof ChartOfAccountsError &&
+      error.code === "ACCOUNT_HAS_CHILDREN",
+  );
+  assert.equal(repositories.accountValues.has(parent.id), true);
+});
+
+test("rejects deleting a used account and recommends deactivation", async () => {
+  const { repositories, service } = createFixture(
+    [chartOfAccountsPermissions.delete],
+    ["group-1"],
+  );
+  repositories.accountValues.set("group-1", group());
+
+  await assert.rejects(
+    service.deleteAccount({
+      companyId: "company-1",
+      accountId: "group-1",
+      expectedVersion: 1,
+    }),
+    (error) =>
+      error instanceof ChartOfAccountsError &&
+      error.code === "ACCOUNT_HAS_FINANCIAL_ACTIVITY",
+  );
+  assert.equal(repositories.accountValues.has("group-1"), true);
+});
+
+test("deletes an unused leaf account and publishes its audit snapshot", async () => {
+  const { events, repositories, service } = createFixture([
+    chartOfAccountsPermissions.delete,
+  ]);
+  repositories.accountValues.set("group-1", group());
+
+  await service.deleteAccount({
+    companyId: "company-1",
+    accountId: "group-1",
+    expectedVersion: 1,
+  });
+
+  assert.equal(repositories.accountValues.has("group-1"), false);
+  assert.equal(events[0]?.eventType, "accounting.account.deleted");
+  assert.equal(events[0]?.payload.action, "delete");
+  assert.equal(events[0]?.payload.before?.id, "group-1");
+  assert.equal(events[0]?.payload.after, null);
+});
+
+test("rejects changing the code of a used account when company policy forbids it", async () => {
+  const { repositories, service } = createFixture(
+    [
+      chartOfAccountsPermissions.update,
+      chartOfAccountsPermissions.changeCode,
+    ],
+    ["group-1"],
+  );
+  repositories.accountValues.set("group-1", group());
+
+  await assert.rejects(
+    service.updateAccount({
+      companyId: "company-1",
+      accountId: "group-1",
+      expectedVersion: 1,
+      changes: { code: "20" },
+    }),
+    (error) =>
+      error instanceof ChartOfAccountsError &&
+      error.code === "ACCOUNT_CODE_CHANGE_AFTER_USE_NOT_ALLOWED",
+  );
+  assert.equal(repositories.accountValues.get("group-1")?.code, "10");
+});
+
+test("allows changing the code of a used account when company policy permits it", async () => {
+  const { repositories, service } = createFixture(
+    [
+      chartOfAccountsPermissions.update,
+      chartOfAccountsPermissions.changeCode,
+    ],
+    ["group-1"],
+  );
+  repositories.settingValues.set(
+    "company-1",
+    createAccountCodingSettings({
+      companyId: "company-1",
+      allowCodeChangeAfterUse: true,
+    }),
+  );
+  repositories.accountValues.set("group-1", group());
+
+  const updated = await service.updateAccount({
+    companyId: "company-1",
+    accountId: "group-1",
+    expectedVersion: 1,
+    changes: { code: "20" },
+  });
+
+  assert.equal(updated.code, "20");
+  assert.equal(updated.version, 2);
+});
+
+test("rejects deactivating a parent while it has active children", async () => {
+  const { repositories, service } = createFixture([
+    chartOfAccountsPermissions.changeStatus,
+  ]);
+  const parent = group();
+  const child = createAccount({
+    id: "general-1",
+    companyId: "company-1",
+    parentId: parent.id,
+    level: "general",
+    code: "1001",
+    name: "وجوه نقد",
+    nature: "debit",
+    normalBalance: "debit",
+    statementType: "balance_sheet",
+    createdAt: timestamp,
+  });
+  repositories.accountValues.set(parent.id, parent);
+  repositories.accountValues.set(child.id, child);
+
+  await assert.rejects(
+    service.setAccountStatus(
+      "company-1",
+      parent.id,
+      "inactive",
+      parent.version,
+    ),
+    (error) =>
+      error instanceof ChartOfAccountsError &&
+      error.code === "ACCOUNT_HAS_ACTIVE_CHILDREN",
+  );
+  assert.equal(repositories.accountValues.get(parent.id)?.status, "active");
 });

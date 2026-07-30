@@ -7,4 +7,5 @@ export interface AccountRepository {
   findByCompanyId(companyId: string): Promise<Account[]>;
   findChildren(parentId: string): Promise<Account[]>;
   update(account: Account): Promise<void>;
+  delete(account: Account): Promise<void>;
 }

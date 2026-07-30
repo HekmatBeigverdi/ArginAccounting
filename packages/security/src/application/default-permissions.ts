@@ -31,6 +31,7 @@ export const defaultPermissions:
     { code: "accounting.chart-of-accounts.change-code", module: "accounting", title: "تغییر کد حساب" },
     { code: "accounting.chart-of-accounts.move", module: "accounting", title: "تغییر والد حساب" },
     { code: "accounting.chart-of-accounts.change-status", module: "accounting", title: "فعال یا غیرفعال‌کردن حساب" },
+    { code: "accounting.chart-of-accounts.delete", module: "accounting", title: "حذف حساب استفاده‌نشده" },
     { code: "accounting.chart-of-accounts.manage-settings", module: "accounting", title: "مدیریت تنظیمات کدینگ" },
     { code: "audit.entries.view", module: "audit", title: "مشاهده رویدادهای ممیزی" },
     { code: "audit.entries.record", module: "audit", title: "ثبت رویداد ممیزی" },

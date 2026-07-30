@@ -5,9 +5,9 @@ export const chartOfAccountsPermissions = Object.freeze({
   changeCode: "accounting.chart-of-accounts.change-code",
   move: "accounting.chart-of-accounts.move",
   changeStatus: "accounting.chart-of-accounts.change-status",
+  delete: "accounting.chart-of-accounts.delete",
   manageSettings: "accounting.chart-of-accounts.manage-settings",
 } as const);
 
 export type ChartOfAccountsPermission =
   (typeof chartOfAccountsPermissions)[keyof typeof chartOfAccountsPermissions];
-
