@@ -2,7 +2,7 @@
 
 All phase records live in this directory and follow the permanent [phase template](../templates/phase-template.md) and [documentation governance](../development/documentation-governance.md).
 
-## Completed Baseline
+## Completed Implementation
 
 1. [Phase 01 — Architecture Baseline](phase-01-architecture-baseline.md)
 2. [Phase 02 — Monorepo Bootstrap](phase-02-monorepo-bootstrap.md)
@@ -12,10 +12,14 @@ All phase records live in this directory and follow the permanent [phase templat
 6. [Phase 06 — Fiscal Management](phase-06-fiscal-management.md)
 7. [Phase 07 — Security](phase-07-security.md)
 8. [Phase 08 — Audit and Approval](phase-08-audit-approval.md)
-
-## Current Target
-
 9. [Phase 09 — Platform Infrastructure](phase-09-platform-infrastructure.md)
+10. [Phase 10 — Chart of Accounts](phase-10-chart-of-accounts.md)
+
+Phase 10 is implemented and validated on its phase branch. Merge and release remain delivery actions.
+
+## Next Target
+
+11. Phase 11 — Accounting Dimensions
 
 ## Renumbering Rule
 
@@ -23,4 +27,4 @@ The insertion of Platform Infrastructure as Phase 09 shifts Chart of Accounts an
 
 ## Historical Refactor Policy
 
-Phase 01–08 documents retain their implementation history. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
+Phase 01–10 documents retain their implementation history. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.

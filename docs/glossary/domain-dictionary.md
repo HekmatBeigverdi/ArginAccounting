@@ -15,7 +15,7 @@ Each term must include:
 - lifecycle/status values;
 - prohibited ambiguous synonyms.
 
-## Initial Terms
+## Terms
 
 | Term | Persian | Definition | Context |
 |---|---|---|---|
@@ -25,6 +25,15 @@ Each term must include:
 | Permission | مجوز | Stable application-boundary authorization capability. | Security |
 | Audit Entry | رویداد حسابرسی | Immutable trace of a significant action and outcome. | Audit |
 | Approval Request | درخواست تأیید | Versioned workflow request with append-only decision history. | Approval |
+| Account | حساب | Stable company-scoped accounting identity whose code and name are controlled business attributes. | Accounting |
+| Account Code | کد حساب | Company-unique normalized numeric code; Persian and Arabic digits normalize to English digits. | Accounting |
+| Group Account | حساب گروه | Root level of the operational Chart of Accounts; never posting-enabled. | Accounting |
+| General Account | حساب کل | Child of a Group account; never posting-enabled. | Accounting |
+| Subsidiary Account | حساب معین | Child of a General account; may be posting-enabled. | Accounting |
+| Account Coding Settings | تنظیمات کدینگ حساب‌ها | Versioned company policy for code lengths, hierarchical codes, and code changes after use. | Accounting |
+| Account Usage | گردش حساب | Evidence that an account has financial or protected operational references and therefore cannot be physically deleted. | Accounting |
+| Accounting Dimension | بُعد حسابداری / تفصیلی | Independent detailed classification planned for Phase 11; not a fourth account-tree level. | Accounting |
+| Coding Template | الگوی کدینگ | Versioned service, trading, or manufacturing account template planned for Phase 12. | Accounting |
 | Journal Voucher | سند حسابداری | Balanced accounting document composed of debit and credit lines. | Accounting |
 | Posting Rule | قاعده صدور سند | Deterministic mapping from source document effects to journal lines. | Posting |
 

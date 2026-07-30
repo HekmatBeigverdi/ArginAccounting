@@ -9,7 +9,9 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Security | `@argin/security`, `@argin/security-tauri` | Implemented | 07 | `docs/security/security-model.md` |
 | Audit and Approval | `@argin/audit`, `@argin/audit-tauri` | Implemented | 08 | `docs/phases/phase-08-audit-approval.md` |
 | Platform Infrastructure | `@argin/platform`, `@argin/platform-tauri` | Implemented | 09 | `docs/phases/phase-09-platform-infrastructure.md` |
-| Accounting Core | To be defined | Planned | 10+ | `docs/accounting/accounting-engine.md` |
+| Accounting — Chart of Accounts | `@argin/accounting`, `@argin/accounting-tauri`, Desktop | Implemented | 10 | `docs/phases/phase-10-chart-of-accounts.md` |
+| Accounting Dimensions | To be defined | Planned | 11 | `docs/accounting/accounting-engine.md` |
+| Coding Templates | To be defined | Planned | 12 | `docs/adr/ADR-0010-chart-of-accounts-model.md` |
 
 ## Required Fields for Future Entries
 

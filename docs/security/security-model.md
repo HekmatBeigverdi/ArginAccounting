@@ -20,11 +20,25 @@ Desktop sessions expose a stable authenticated principal and selected organizati
 
 ## Permissions
 
-Permission names follow `<module>.<resource>.<action>`. Seed changes are versioned and tested. UI gates improve usability but never replace backend/application authorization.
+Permission names follow `<module>.<resource>.<action>`. Seed changes are versioned and tested. UI gates improve usability but never replace application authorization.
+
+### Chart of Accounts
+
+- `accounting.chart-of-accounts.view`
+- `accounting.chart-of-accounts.create`
+- `accounting.chart-of-accounts.update`
+- `accounting.chart-of-accounts.move`
+- `accounting.chart-of-accounts.change-status`
+- `accounting.chart-of-accounts.manage-settings`
+- `accounting.chart-of-accounts.delete`
+
+`system.full-access` covers all Chart of Accounts operations. Mutations preserve company scope, actor identity, source, correlation ID, and causation ID in audit events.
 
 ## Audit and Approval
 
 Audit history is append-only. Approval transitions require valid state, permission, scope, actor, and optimistic-concurrency version. Multi-record changes commit atomically.
+
+Chart of Accounts changes publish audit events only after successful commit. Physical deletion records the complete previous account snapshot. Used accounts cannot be deleted; policy-controlled code changes and stale versions are rejected at the application boundary.
 
 ## Future Online Runtime
 

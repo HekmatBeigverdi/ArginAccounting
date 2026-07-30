@@ -1,0 +1,26 @@
+{
+  "name": "@argin/accounting-tauri",
+  "version": "0.10.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Accounting Tauri lint is not configured yet\"",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@argin/accounting": "workspace:*",
+    "@argin/database": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "rimraf": "^6.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}
