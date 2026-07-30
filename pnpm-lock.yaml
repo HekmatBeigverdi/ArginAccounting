@@ -20,6 +20,12 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@argin/accounting':
+        specifier: workspace:*
+        version: link:../../packages/accounting
+      '@argin/accounting-tauri':
+        specifier: workspace:*
+        version: link:../../packages/accounting-tauri
       '@argin/audit':
         specifier: workspace:*
         version: link:../../packages/audit

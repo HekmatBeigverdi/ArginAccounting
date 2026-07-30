@@ -31,6 +31,11 @@ export const navigationItems: NavigationItem[] = [
     group: "مدیریت مالی"
   },
   {
+    label: "کدینگ حساب‌ها",
+    path: "/accounting/chart-of-accounts",
+    group: "حسابداری"
+  },
+  {
     label: "وضعیت سیستم",
     path: "/system/diagnostics",
     group: "سیستم"

@@ -12,6 +12,8 @@
     "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts"
   },
   "dependencies": {
+    "@argin/accounting": "workspace:*",
+    "@argin/accounting-tauri": "workspace:*",
     "@argin/audit": "workspace:*",
     "@argin/audit-tauri": "workspace:*",
     "@argin/company": "workspace:*",
