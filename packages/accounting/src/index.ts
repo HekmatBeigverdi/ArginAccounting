@@ -179,3 +179,28 @@ export {
 export type {
   ChartOfAccountsErrorCode,
 } from "./application/chart-of-accounts-error.ts";
+
+export type {
+  AccountingDimensionType,
+  AccountingDimensionTypeSource,
+  AccountingDimensionTypeStatus,
+  CreateAccountingDimensionTypeInput,
+} from "./domain/accounting-dimension-type.ts";
+
+export {
+  createAccountingDimensionType,
+  normalizeDimensionTypeCode,
+} from "./domain/create-accounting-dimension-type.ts";
+
+export {
+  AccountingDimensionTypeValidationError,
+} from "./validation/accounting-dimension-type-validation-error.ts";
+
+export type {
+  AccountingDimensionTypeField,
+  AccountingDimensionTypeValidationIssue,
+} from "./validation/accounting-dimension-type-validation-error.ts";
+
+export {
+  validateAccountingDimensionType,
+} from "./validation/validate-accounting-dimension-type.ts";
