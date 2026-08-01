@@ -1,0 +1,1116 @@
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  accountingDimensionsPermissions,
+  chartOfAccountsPermissions,
+  type Account,
+  type AccountDimensionPolicy,
+  type AccountDimensionRequirement,
+  type AccountingDimensionMember,
+  type AccountingDimensionType,
+} from "@argin/accounting";
+import type { Company } from "@argin/company";
+import { SqliteCompanyRepository } from "@argin/company-tauri";
+import { getDesktopDatabase } from "@argin/database-tauri";
+
+import { useAuthSession } from "../../app/providers/auth-session-provider";
+import { useAccountingServices } from "../../composition/accounting/accounting-provider";
+import {
+  dimensionRequirementLabels,
+  getAccountingDimensionsErrorMessage,
+} from "../../features/accounting/accounting-dimensions-presenter";
+import { flattenAccountTree } from "../../features/accounting/chart-of-accounts-presenter";
+
+import "./accounting-dimensions-page.css";
+
+type View = "types" | "members" | "policies";
+
+interface TypeDraft {
+  code: string;
+  name: string;
+  englishName: string;
+  hierarchical: boolean;
+  allowMultipleMembers: boolean;
+  displayOrder: string;
+}
+
+interface MemberDraft {
+  code: string;
+  name: string;
+  englishName: string;
+  parentId: string;
+  displayOrder: string;
+}
+
+const emptyTypeDraft: TypeDraft = {
+  code: "",
+  name: "",
+  englishName: "",
+  hierarchical: false,
+  allowMultipleMembers: false,
+  displayOrder: "0",
+};
+
+const emptyMemberDraft: MemberDraft = {
+  code: "",
+  name: "",
+  englishName: "",
+  parentId: "",
+  displayOrder: "0",
+};
+
+export function AccountingDimensionsPage() {
+  const { chartOfAccounts, dimensions } = useAccountingServices();
+  const { session } = useAuthSession();
+  const [companies, setCompanies] = useState<readonly Company[]>([]);
+  const [companyId, setCompanyId] = useState("");
+  const [types, setTypes] = useState<readonly AccountingDimensionType[]>([]);
+  const [members, setMembers] = useState<readonly AccountingDimensionMember[]>(
+    [],
+  );
+  const [policies, setPolicies] = useState<readonly AccountDimensionPolicy[]>(
+    [],
+  );
+  const [accounts, setAccounts] = useState<readonly Account[]>([]);
+  const [view, setView] = useState<View>("types");
+  const [selectedTypeId, setSelectedTypeId] = useState("");
+  const [typeDraft, setTypeDraft] = useState<TypeDraft>(emptyTypeDraft);
+  const [memberDraft, setMemberDraft] = useState<MemberDraft>(emptyMemberDraft);
+  const [editingType, setEditingType] =
+    useState<AccountingDimensionType | null>(null);
+  const [editingMember, setEditingMember] =
+    useState<AccountingDimensionMember | null>(null);
+  const [policyAccountId, setPolicyAccountId] = useState("");
+  const [policyTypeId, setPolicyTypeId] = useState("");
+  const [requirement, setRequirement] =
+    useState<AccountDimensionRequirement>("optional");
+  const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const permissions = useMemo(
+    () => new Set(session?.user.permissions ?? []),
+    [session],
+  );
+  const can = useCallback(
+    (permission: string) =>
+      permissions.has("system.full-access") || permissions.has(permission),
+    [permissions],
+  );
+
+  useEffect(() => {
+    void getDesktopDatabase()
+      .then((database) => new SqliteCompanyRepository(database).findAll())
+      .then((values) => {
+        setCompanies(values);
+        setCompanyId((current) => current || values[0]?.id || "");
+      })
+      .catch((reason: unknown) => {
+        setError(getAccountingDimensionsErrorMessage(reason));
+      });
+  }, []);
+
+  const reload = useCallback(async () => {
+    if (companyId === "" || !can(accountingDimensionsPermissions.view)) {
+      setTypes([]);
+      setMembers([]);
+      setPolicies([]);
+      setAccounts([]);
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const [typeResult, memberResult, policyResult] =
+        await Promise.all([
+          dimensions.searchDimensionTypes({
+            companyId,
+            pagination: { page: 1, pageSize: 200 },
+          }),
+          dimensions.searchMembers({
+            companyId,
+            pagination: { page: 1, pageSize: 500 },
+          }),
+          dimensions.searchPolicies({
+            companyId,
+            pagination: { page: 1, pageSize: 500 },
+          }),
+        ]);
+      const accountTree = can(chartOfAccountsPermissions.view)
+        ? await chartOfAccounts.getAccountTree(companyId)
+        : [];
+      setTypes(typeResult.items);
+      setMembers(memberResult.items);
+      setPolicies(policyResult.items);
+      setAccounts(
+        flattenAccountTree(accountTree).map(({ account }) => account),
+      );
+      setSelectedTypeId((current) =>
+        typeResult.items.some((item) => item.id === current)
+          ? current
+          : (typeResult.items[0]?.id ?? ""),
+      );
+      setPolicyTypeId((current) => current || typeResult.items[0]?.id || "");
+      setPolicyAccountId(
+        (current) => current || accountTree[0]?.account.id || "",
+      );
+    } catch (reason) {
+      setError(getAccountingDimensionsErrorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }, [can, chartOfAccounts, companyId, dimensions]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const selectedType = types.find((item) => item.id === selectedTypeId) ?? null;
+  const visibleMembers = members.filter(
+    (member) =>
+      member.dimensionTypeId === selectedTypeId &&
+      matches(member.code, member.name, search),
+  );
+  const visibleTypes = types.filter((type) =>
+    matches(type.code, type.name, search),
+  );
+  const accountById = useMemo(
+    () => new Map(accounts.map((item) => [item.id, item])),
+    [accounts],
+  );
+  const typeById = useMemo(
+    () => new Map(types.map((item) => [item.id, item])),
+    [types],
+  );
+
+  function clearFeedback(): void {
+    setMessage("");
+    setError("");
+  }
+
+  function editType(type: AccountingDimensionType): void {
+    clearFeedback();
+    setEditingType(type);
+    setTypeDraft({
+      code: type.code,
+      name: type.name,
+      englishName: type.englishName ?? "",
+      hierarchical: type.hierarchical,
+      allowMultipleMembers: type.allowMultipleMembers,
+      displayOrder: String(type.displayOrder),
+    });
+  }
+
+  async function submitType(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setBusy(true);
+    clearFeedback();
+    try {
+      const values = {
+        code: typeDraft.code,
+        name: typeDraft.name,
+        englishName: typeDraft.englishName || null,
+        hierarchical: typeDraft.hierarchical,
+        allowMultipleMembers: typeDraft.allowMultipleMembers,
+        displayOrder: Number(typeDraft.displayOrder),
+        source: "manual" as const,
+        sourceReferenceId: null,
+      };
+      if (editingType === null) {
+        await dimensions.createDimensionType({ companyId, ...values });
+        setMessage("نوع بُعد حسابداری ایجاد شد.");
+      } else {
+        await dimensions.updateDimensionType({
+          companyId,
+          dimensionTypeId: editingType.id,
+          expectedVersion: editingType.version,
+          changes: values,
+        });
+        setMessage("تغییرات نوع بُعد ذخیره شد.");
+      }
+      setEditingType(null);
+      setTypeDraft(emptyTypeDraft);
+      await reload();
+    } catch (reason) {
+      setError(getAccountingDimensionsErrorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function editMember(member: AccountingDimensionMember): void {
+    clearFeedback();
+    setEditingMember(member);
+    setMemberDraft({
+      code: member.code,
+      name: member.name,
+      englishName: member.englishName ?? "",
+      parentId: member.parentId ?? "",
+      displayOrder: String(member.displayOrder),
+    });
+  }
+
+  async function submitMember(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+    if (selectedType === null) return;
+    setBusy(true);
+    clearFeedback();
+    try {
+      const values = {
+        code: memberDraft.code,
+        name: memberDraft.name,
+        englishName: memberDraft.englishName || null,
+        parentId: memberDraft.parentId || null,
+        displayOrder: Number(memberDraft.displayOrder),
+        validFrom: null,
+        validTo: null,
+        source: "manual" as const,
+        sourceReferenceId: null,
+      };
+      if (editingMember === null) {
+        await dimensions.createMember({
+          companyId,
+          dimensionTypeId: selectedType.id,
+          ...values,
+        });
+        setMessage("عضو بُعد حسابداری ایجاد شد.");
+      } else {
+        await dimensions.updateMember({
+          companyId,
+          memberId: editingMember.id,
+          expectedVersion: editingMember.version,
+          changes: values,
+        });
+        setMessage("تغییرات عضو بُعد ذخیره شد.");
+      }
+      setEditingMember(null);
+      setMemberDraft(emptyMemberDraft);
+      await reload();
+    } catch (reason) {
+      setError(getAccountingDimensionsErrorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleType(type: AccountingDimensionType): Promise<void> {
+    await runAction(
+      () =>
+        dimensions.setDimensionTypeStatus(
+          companyId,
+          type.id,
+          type.status === "active" ? "inactive" : "active",
+          type.version,
+        ),
+      type.status === "active" ? "نوع بُعد غیرفعال شد." : "نوع بُعد فعال شد.",
+    );
+  }
+
+  async function toggleMember(
+    member: AccountingDimensionMember,
+  ): Promise<void> {
+    await runAction(
+      () =>
+        dimensions.setMemberStatus(
+          companyId,
+          member.id,
+          member.status === "active" ? "inactive" : "active",
+          member.version,
+        ),
+      member.status === "active" ? "عضو بُعد غیرفعال شد." : "عضو بُعد فعال شد.",
+    );
+  }
+
+  async function removeType(type: AccountingDimensionType): Promise<void> {
+    if (!window.confirm(`نوع بُعد «${type.name}» حذف شود؟`)) return;
+    await runAction(
+      () => dimensions.deleteDimensionType(companyId, type.id, type.version),
+      "نوع بُعد حذف شد.",
+    );
+  }
+
+  async function removeMember(
+    member: AccountingDimensionMember,
+  ): Promise<void> {
+    if (!window.confirm(`عضو «${member.name}» حذف شود؟`)) return;
+    await runAction(
+      () => dimensions.deleteMember(companyId, member.id, member.version),
+      "عضو بُعد حذف شد.",
+    );
+  }
+
+  async function submitPolicy(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    event.preventDefault();
+    await runAction(
+      () =>
+        dimensions.createPolicy({
+          companyId,
+          accountId: policyAccountId,
+          dimensionTypeId: policyTypeId,
+          requirement,
+        }),
+      "سیاست حساب و بُعد ایجاد شد.",
+    );
+  }
+
+  async function updatePolicy(
+    policy: AccountDimensionPolicy,
+    next: AccountDimensionRequirement,
+  ): Promise<void> {
+    await runAction(
+      () =>
+        dimensions.updatePolicy({
+          companyId,
+          policyId: policy.id,
+          expectedVersion: policy.version,
+          requirement: next,
+        }),
+      "سیاست حساب و بُعد به‌روزرسانی شد.",
+    );
+  }
+
+  async function removePolicy(policy: AccountDimensionPolicy): Promise<void> {
+    if (!window.confirm("این سیاست حساب و بُعد حذف شود؟")) return;
+    await runAction(
+      () => dimensions.deletePolicy(companyId, policy.id, policy.version),
+      "سیاست حساب و بُعد حذف شد.",
+    );
+  }
+
+  async function runAction(
+    action: () => Promise<unknown>,
+    success: string,
+  ): Promise<void> {
+    setBusy(true);
+    clearFeedback();
+    try {
+      await action();
+      setMessage(success);
+      await reload();
+    } catch (reason) {
+      setError(getAccountingDimensionsErrorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!can(accountingDimensionsPermissions.view)) {
+    return (
+      <section className="dimensions-page" lang="fa" dir="rtl">
+        <p className="dimensions-alert dimensions-alert--error" role="alert">
+          شما مجوز مشاهده ابعاد حسابداری را ندارید.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="dimensions-page" lang="fa" dir="rtl">
+      <header className="dimensions-header">
+        <div>
+          <p className="dimensions-eyebrow">حسابداری / اطلاعات پایه</p>
+          <h1>ابعاد حسابداری</h1>
+          <p>
+            تعریف انواع بُعد، اعضای سلسله‌مراتبی و سیاست‌های تخصیص به حساب
+          </p>
+        </div>
+        <label>
+          شرکت
+          <select
+            value={companyId}
+            onChange={(event) => setCompanyId(event.target.value)}
+          >
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.legalName}
+              </option>
+            ))}
+          </select>
+        </label>
+      </header>
+
+      <nav className="dimensions-tabs" aria-label="بخش‌های ابعاد حسابداری">
+        {(["types", "members", "policies"] as const).map((item) => (
+          <button
+            key={item}
+            type="button"
+            aria-current={view === item ? "page" : undefined}
+            onClick={() => {
+              setView(item);
+              setSearch("");
+              clearFeedback();
+            }}
+          >
+            {item === "types"
+              ? "انواع بُعد"
+              : item === "members"
+                ? "اعضای بُعد"
+                : "سیاست حساب–بُعد"}
+          </button>
+        ))}
+      </nav>
+
+      {companies.length === 0 && !busy && (
+        <p className="dimensions-notice">
+          ابتدا از بخش «تعریف شرکت» یک شرکت ایجاد کنید.
+        </p>
+      )}
+      {error && (
+        <p className="dimensions-alert dimensions-alert--error" role="alert">
+          {error}
+        </p>
+      )}
+      {message && (
+        <p className="dimensions-alert dimensions-alert--success" role="status">
+          {message}
+        </p>
+      )}
+
+      {view !== "policies" && (
+        <div className="dimensions-toolbar">
+          {view === "members" && (
+            <label>
+              نوع بُعد
+              <select
+                value={selectedTypeId}
+                onChange={(event) => setSelectedTypeId(event.target.value)}
+              >
+                {types.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="dimensions-toolbar__search">
+            جست‌وجو
+            <input
+              value={search}
+              placeholder="کد یا عنوان"
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </label>
+          <button type="button" disabled={busy} onClick={() => void reload()}>
+            تازه‌سازی
+          </button>
+        </div>
+      )}
+
+      {view === "types" && (
+        <div className="dimensions-layout">
+          <DimensionTable
+            rows={visibleTypes}
+            busy={busy}
+            canUpdate={can(accountingDimensionsPermissions.update)}
+            canChangeStatus={can(accountingDimensionsPermissions.changeStatus)}
+            canDelete={can(accountingDimensionsPermissions.delete)}
+            onEdit={editType}
+            onToggle={(item) => void toggleType(item)}
+            onDelete={(item) => void removeType(item)}
+          />
+          {(can(accountingDimensionsPermissions.create) ||
+            can(accountingDimensionsPermissions.update)) && (
+            <TypeForm
+              draft={typeDraft}
+              editing={editingType !== null}
+              busy={busy}
+              onChange={setTypeDraft}
+              onCancel={() => {
+                setEditingType(null);
+                setTypeDraft(emptyTypeDraft);
+              }}
+              onSubmit={(event) => void submitType(event)}
+            />
+          )}
+        </div>
+      )}
+
+      {view === "members" && (
+        <div className="dimensions-layout">
+          <MemberTable
+            rows={visibleMembers}
+            busy={busy}
+            canUpdate={can(accountingDimensionsPermissions.update)}
+            canChangeStatus={can(accountingDimensionsPermissions.changeStatus)}
+            canDelete={can(accountingDimensionsPermissions.delete)}
+            onEdit={editMember}
+            onToggle={(item) => void toggleMember(item)}
+            onDelete={(item) => void removeMember(item)}
+          />
+          {selectedType !== null &&
+            (can(accountingDimensionsPermissions.create) ||
+              can(accountingDimensionsPermissions.update)) && (
+              <MemberForm
+                draft={memberDraft}
+                editing={editingMember !== null}
+                hierarchical={selectedType.hierarchical}
+                members={visibleMembers}
+                editingId={editingMember?.id ?? null}
+                busy={busy}
+                onChange={setMemberDraft}
+                onCancel={() => {
+                  setEditingMember(null);
+                  setMemberDraft(emptyMemberDraft);
+                }}
+                onSubmit={(event) => void submitMember(event)}
+              />
+            )}
+        </div>
+      )}
+
+      {view === "policies" && (
+        <>
+          {!can(chartOfAccountsPermissions.view) && (
+            <p className="dimensions-notice">
+              برای مشاهده نام حساب‌ها و مدیریت سیاست‌ها، مجوز مشاهده
+              کدینگ حساب‌ها نیز لازم است.
+            </p>
+          )}
+          <PolicyView
+            policies={policies}
+            accounts={accounts}
+            types={types}
+            accountById={accountById}
+            typeById={typeById}
+            accountId={policyAccountId}
+            typeId={policyTypeId}
+            requirement={requirement}
+            busy={busy}
+            canManage={
+              can(accountingDimensionsPermissions.managePolicies) &&
+              can(chartOfAccountsPermissions.view)
+            }
+            onAccountChange={setPolicyAccountId}
+            onTypeChange={setPolicyTypeId}
+            onRequirementChange={setRequirement}
+            onSubmit={(event) => void submitPolicy(event)}
+            onUpdate={(policy, next) => void updatePolicy(policy, next)}
+            onDelete={(policy) => void removePolicy(policy)}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
+function matches(code: string, name: string, search: string): boolean {
+  const text = search.trim().toLocaleLowerCase("fa");
+  return (
+    text === "" ||
+    code.toLocaleLowerCase().includes(text) ||
+    name.toLocaleLowerCase("fa").includes(text)
+  );
+}
+
+interface TableActions<T> {
+  rows: readonly T[];
+  busy: boolean;
+  canUpdate: boolean;
+  canChangeStatus: boolean;
+  canDelete: boolean;
+  onEdit: (item: T) => void;
+  onToggle: (item: T) => void;
+  onDelete: (item: T) => void;
+}
+
+function DimensionTable(props: TableActions<AccountingDimensionType>) {
+  return (
+    <div className="dimensions-card dimensions-table-wrap">
+      <table className="dimensions-table">
+        <thead>
+          <tr>
+            <th>کد و عنوان</th>
+            <th>ساختار</th>
+            <th>وضعیت</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.rows.map((item) => (
+            <tr key={item.id}>
+              <td>
+                <b dir="ltr">{item.code}</b>
+                <span>{item.name}</span>
+              </td>
+              <td>
+                {item.hierarchical ? "سلسله‌مراتبی" : "تخت"} ·{" "}
+                {item.allowMultipleMembers ? "چندانتخابی" : "تک‌انتخابی"}
+              </td>
+              <td>
+                <StatusBadge status={item.status} />
+              </td>
+              <td>
+                <Actions item={item} status={item.status} {...props} />
+              </td>
+            </tr>
+          ))}
+          {props.rows.length === 0 && (
+            <tr>
+              <td colSpan={4} className="dimensions-empty">
+                نوع بُعدی برای نمایش وجود ندارد.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MemberTable(props: TableActions<AccountingDimensionMember>) {
+  const byId = new Map(props.rows.map((item) => [item.id, item]));
+  return (
+    <div className="dimensions-card dimensions-table-wrap">
+      <table className="dimensions-table">
+        <thead>
+          <tr>
+            <th>کد و عنوان</th>
+            <th>والد</th>
+            <th>وضعیت</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.rows.map((item) => (
+            <tr key={item.id}>
+              <td>
+                <b dir="ltr">{item.code}</b>
+                <span>{item.name}</span>
+              </td>
+              <td>
+                {item.parentId === null
+                  ? "—"
+                  : (byId.get(item.parentId)?.name ?? "عضو خارج از فیلتر")}
+              </td>
+              <td>
+                <StatusBadge status={item.status} />
+              </td>
+              <td>
+                <Actions item={item} status={item.status} {...props} />
+              </td>
+            </tr>
+          ))}
+          {props.rows.length === 0 && (
+            <tr>
+              <td colSpan={4} className="dimensions-empty">
+                عضوی برای نوع بُعد انتخاب‌شده وجود ندارد.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Actions<T>(
+  props: TableActions<T> & { item: T; status: "active" | "inactive" },
+) {
+  return (
+    <div className="dimensions-actions">
+      {props.canUpdate && (
+        <button
+          type="button"
+          disabled={props.busy}
+          onClick={() => props.onEdit(props.item)}
+        >
+          ویرایش
+        </button>
+      )}
+      {props.canChangeStatus && (
+        <button
+          type="button"
+          disabled={props.busy}
+          onClick={() => props.onToggle(props.item)}
+        >
+          {props.status === "active" ? "غیرفعال‌سازی" : "فعال‌سازی"}
+        </button>
+      )}
+      {props.canDelete && (
+        <button
+          type="button"
+          className="dimensions-danger"
+          disabled={props.busy}
+          onClick={() => props.onDelete(props.item)}
+        >
+          حذف
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: "active" | "inactive" }) {
+  return (
+    <span className={`dimensions-badge dimensions-badge--${status}`}>
+      {status === "active" ? "فعال" : "غیرفعال"}
+    </span>
+  );
+}
+
+function TypeForm({
+  draft,
+  editing,
+  busy,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  draft: TypeDraft;
+  editing: boolean;
+  busy: boolean;
+  onChange: (value: TypeDraft) => void;
+  onCancel: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="dimensions-card dimensions-form" onSubmit={onSubmit}>
+      <header>
+        <h2>{editing ? "ویرایش نوع بُعد" : "نوع بُعد جدید"}</h2>
+        {editing && (
+          <button type="button" onClick={onCancel}>
+            انصراف
+          </button>
+        )}
+      </header>
+      <label>
+        کد
+        <input
+          required
+          dir="ltr"
+          value={draft.code}
+          onChange={(event) => onChange({ ...draft, code: event.target.value })}
+        />
+      </label>
+      <label>
+        عنوان فارسی
+        <input
+          required
+          value={draft.name}
+          onChange={(event) => onChange({ ...draft, name: event.target.value })}
+        />
+      </label>
+      <label>
+        عنوان انگلیسی (اختیاری)
+        <input
+          dir="ltr"
+          value={draft.englishName}
+          onChange={(event) =>
+            onChange({ ...draft, englishName: event.target.value })
+          }
+        />
+      </label>
+      <label>
+        ترتیب نمایش
+        <input
+          required
+          min="0"
+          type="number"
+          value={draft.displayOrder}
+          onChange={(event) =>
+            onChange({ ...draft, displayOrder: event.target.value })
+          }
+        />
+      </label>
+      <label className="dimensions-check">
+        <input
+          type="checkbox"
+          checked={draft.hierarchical}
+          onChange={(event) =>
+            onChange({ ...draft, hierarchical: event.target.checked })
+          }
+        />
+        ساختار سلسله‌مراتبی
+      </label>
+      <label className="dimensions-check">
+        <input
+          type="checkbox"
+          checked={draft.allowMultipleMembers}
+          onChange={(event) =>
+            onChange({ ...draft, allowMultipleMembers: event.target.checked })
+          }
+        />
+        امکان انتخاب چند عضو در هر آرتیکل
+      </label>
+      <button className="dimensions-primary" disabled={busy} type="submit">
+        {editing ? "ذخیره تغییرات" : "ایجاد نوع بُعد"}
+      </button>
+    </form>
+  );
+}
+
+function MemberForm({
+  draft,
+  editing,
+  hierarchical,
+  members,
+  editingId,
+  busy,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  draft: MemberDraft;
+  editing: boolean;
+  hierarchical: boolean;
+  members: readonly AccountingDimensionMember[];
+  editingId: string | null;
+  busy: boolean;
+  onChange: (value: MemberDraft) => void;
+  onCancel: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="dimensions-card dimensions-form" onSubmit={onSubmit}>
+      <header>
+        <h2>{editing ? "ویرایش عضو بُعد" : "عضو جدید"}</h2>
+        {editing && (
+          <button type="button" onClick={onCancel}>
+            انصراف
+          </button>
+        )}
+      </header>
+      <label>
+        کد
+        <input
+          required
+          dir="ltr"
+          value={draft.code}
+          onChange={(event) => onChange({ ...draft, code: event.target.value })}
+        />
+      </label>
+      <label>
+        عنوان فارسی
+        <input
+          required
+          value={draft.name}
+          onChange={(event) => onChange({ ...draft, name: event.target.value })}
+        />
+      </label>
+      <label>
+        عنوان انگلیسی (اختیاری)
+        <input
+          dir="ltr"
+          value={draft.englishName}
+          onChange={(event) =>
+            onChange({ ...draft, englishName: event.target.value })
+          }
+        />
+      </label>
+      {hierarchical && (
+        <label>
+          عضو والد
+          <select
+            value={draft.parentId}
+            onChange={(event) =>
+              onChange({ ...draft, parentId: event.target.value })
+            }
+          >
+            <option value="">بدون والد</option>
+            {members
+              .filter((item) => item.id !== editingId)
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.code} — {item.name}
+                </option>
+              ))}
+          </select>
+        </label>
+      )}
+      <label>
+        ترتیب نمایش
+        <input
+          required
+          min="0"
+          type="number"
+          value={draft.displayOrder}
+          onChange={(event) =>
+            onChange({ ...draft, displayOrder: event.target.value })
+          }
+        />
+      </label>
+      <button className="dimensions-primary" disabled={busy} type="submit">
+        {editing ? "ذخیره تغییرات" : "ایجاد عضو"}
+      </button>
+    </form>
+  );
+}
+
+function PolicyView(props: {
+  policies: readonly AccountDimensionPolicy[];
+  accounts: readonly Account[];
+  types: readonly AccountingDimensionType[];
+  accountById: ReadonlyMap<string, Account>;
+  typeById: ReadonlyMap<string, AccountingDimensionType>;
+  accountId: string;
+  typeId: string;
+  requirement: AccountDimensionRequirement;
+  busy: boolean;
+  canManage: boolean;
+  onAccountChange: (value: string) => void;
+  onTypeChange: (value: string) => void;
+  onRequirementChange: (value: AccountDimensionRequirement) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onUpdate: (
+    policy: AccountDimensionPolicy,
+    value: AccountDimensionRequirement,
+  ) => void;
+  onDelete: (policy: AccountDimensionPolicy) => void;
+}) {
+  return (
+    <div className="dimensions-policy-layout">
+      <div className="dimensions-card dimensions-table-wrap">
+        <table className="dimensions-table">
+          <thead>
+            <tr>
+              <th>حساب</th>
+              <th>نوع بُعد</th>
+              <th>الزام</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {props.policies.map((policy) => (
+              <tr key={policy.id}>
+                <td>
+                  {props.accountById.get(policy.accountId)?.code} —{" "}
+                  {props.accountById.get(policy.accountId)?.name ??
+                    "حساب ناموجود"}
+                </td>
+                <td>
+                  {props.typeById.get(policy.dimensionTypeId)?.name ??
+                    "نوع بُعد ناموجود"}
+                </td>
+                <td>
+                  {props.canManage ? (
+                    <select
+                      value={policy.requirement}
+                      onChange={(event) =>
+                        props.onUpdate(
+                          policy,
+                          event.target.value as AccountDimensionRequirement,
+                        )
+                      }
+                    >
+                      {requirementOptions()}
+                    </select>
+                  ) : (
+                    dimensionRequirementLabels[policy.requirement]
+                  )}
+                </td>
+                <td>
+                  {props.canManage && (
+                    <button
+                      type="button"
+                      className="dimensions-danger"
+                      disabled={props.busy}
+                      onClick={() => props.onDelete(policy)}
+                    >
+                      حذف
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {props.policies.length === 0 && (
+              <tr>
+                <td colSpan={4} className="dimensions-empty">
+                  سیاستی تعریف نشده است.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {props.canManage && (
+        <form
+          className="dimensions-card dimensions-form"
+          onSubmit={props.onSubmit}
+        >
+          <header>
+            <h2>سیاست جدید</h2>
+          </header>
+          <label>
+            حساب
+            <select
+              required
+              value={props.accountId}
+              onChange={(event) => props.onAccountChange(event.target.value)}
+            >
+              <option value="">انتخاب کنید</option>
+              {props.accounts
+                .filter((item) => item.status === "active")
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.code} — {item.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            نوع بُعد
+            <select
+              required
+              value={props.typeId}
+              onChange={(event) => props.onTypeChange(event.target.value)}
+            >
+              <option value="">انتخاب کنید</option>
+              {props.types
+                .filter((item) => item.status === "active")
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            نوع الزام
+            <select
+              value={props.requirement}
+              onChange={(event) =>
+                props.onRequirementChange(
+                  event.target.value as AccountDimensionRequirement,
+                )
+              }
+            >
+              {requirementOptions()}
+            </select>
+          </label>
+          <button
+            className="dimensions-primary"
+            disabled={props.busy || !props.accountId || !props.typeId}
+            type="submit"
+          >
+            ایجاد سیاست
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function requirementOptions() {
+  return (
+    Object.entries(dimensionRequirementLabels) as [
+      AccountDimensionRequirement,
+      string,
+    ][]
+  ).map(([value, label]) => (
+    <option key={value} value={value}>
+      {label}
+    </option>
+  ));
+}
