@@ -1,7 +1,9 @@
 export const accountingDimensionsPermissions = Object.freeze({
   view: "accounting.dimensions.view",
-  manageTypes: "accounting.dimensions.manage-types",
-  manageMembers: "accounting.dimensions.manage-members",
+  create: "accounting.dimensions.create",
+  update: "accounting.dimensions.update",
+  changeStatus: "accounting.dimensions.change-status",
+  delete: "accounting.dimensions.delete",
   managePolicies: "accounting.dimensions.manage-policies",
 } as const);
 
