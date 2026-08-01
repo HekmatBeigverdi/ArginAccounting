@@ -204,3 +204,28 @@ export type {
 export {
   validateAccountingDimensionType,
 } from "./validation/validate-accounting-dimension-type.ts";
+
+export type {
+  AccountingDimensionMember,
+  AccountingDimensionMemberSource,
+  AccountingDimensionMemberStatus,
+  CreateAccountingDimensionMemberInput,
+} from "./domain/accounting-dimension-member.ts";
+
+export {
+  createAccountingDimensionMember,
+  normalizeDimensionMemberCode,
+} from "./domain/create-accounting-dimension-member.ts";
+
+export {
+  AccountingDimensionMemberValidationError,
+} from "./validation/accounting-dimension-member-validation-error.ts";
+
+export type {
+  AccountingDimensionMemberField,
+  AccountingDimensionMemberValidationIssue,
+} from "./validation/accounting-dimension-member-validation-error.ts";
+
+export {
+  validateAccountingDimensionMember,
+} from "./validation/validate-accounting-dimension-member.ts";
