@@ -72,6 +72,12 @@ fn database_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0010_chart_of_accounts.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 11,
+            description: "accounting_dimensions",
+            sql: include_str!("../migrations/0011_accounting_dimensions.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
