@@ -252,3 +252,25 @@ export type {
 export {
   validateAccountDimensionPolicy,
 } from "./validation/validate-account-dimension-policy.ts";
+
+export type {
+  AccountingDimensionAssignment,
+} from "./domain/accounting-dimension-assignment.ts";
+
+export {
+  AccountingDimensionAssignmentValidationError,
+} from "./validation/accounting-dimension-assignment-validation-error.ts";
+
+export type {
+  AccountingDimensionAssignmentValidationCode,
+  AccountingDimensionAssignmentValidationIssue,
+} from "./validation/accounting-dimension-assignment-validation-error.ts";
+
+export {
+  assertValidAccountingDimensionAssignments,
+  validateAccountingDimensionAssignments,
+} from "./validation/validate-accounting-dimension-assignments.ts";
+
+export type {
+  ValidateAccountingDimensionAssignmentsInput,
+} from "./validation/validate-accounting-dimension-assignments.ts";
