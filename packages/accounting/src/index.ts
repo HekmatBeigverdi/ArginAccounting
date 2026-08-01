@@ -274,3 +274,42 @@ export {
 export type {
   ValidateAccountingDimensionAssignmentsInput,
 } from "./validation/validate-accounting-dimension-assignments.ts";
+
+export type {
+  AccountingDimensionTypeRepository,
+} from "./contracts/accounting-dimension-type-repository.ts";
+
+export type {
+  AccountingDimensionMemberRepository,
+} from "./contracts/accounting-dimension-member-repository.ts";
+
+export type {
+  AccountDimensionPolicyRepository,
+} from "./contracts/account-dimension-policy-repository.ts";
+
+export type {
+  AccountingDimensionUsageReader,
+} from "./contracts/accounting-dimension-usage-reader.ts";
+
+export type {
+  AccountingDimensionAssignmentValidationService,
+  ValidateDimensionAssignmentsRequest,
+} from "./contracts/accounting-dimension-assignment-validation-service.ts";
+
+export {
+  normalizeAccountDimensionPolicySearchQuery,
+  normalizeAccountingDimensionMemberSearchQuery,
+  normalizeAccountingDimensionTypeSearchQuery,
+} from "./contracts/accounting-dimension-queries.ts";
+
+export type {
+  AccountDimensionPolicySearchQuery,
+  AccountDimensionPolicySortField,
+  AccountingDimensionMemberSearchQuery,
+  AccountingDimensionMemberSortField,
+  AccountingDimensionTypeSearchQuery,
+  AccountingDimensionTypeSortField,
+  NormalizedAccountDimensionPolicySearchQuery,
+  NormalizedAccountingDimensionMemberSearchQuery,
+  NormalizedAccountingDimensionTypeSearchQuery,
+} from "./contracts/accounting-dimension-queries.ts";
