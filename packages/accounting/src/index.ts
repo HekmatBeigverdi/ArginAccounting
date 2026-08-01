@@ -180,6 +180,26 @@ export type {
   ChartOfAccountsErrorCode,
 } from "./application/chart-of-accounts-error.ts";
 
+export { AccountingDimensionsService } from "./application/accounting-dimensions-service.ts";
+export type {
+  CreateDimensionMemberCommand,
+  CreateDimensionPolicyCommand,
+  CreateDimensionTypeCommand,
+  UpdateDimensionMemberCommand,
+  UpdateDimensionPolicyCommand,
+  UpdateDimensionTypeCommand,
+} from "./application/accounting-dimensions-service.ts";
+export { AccountingDimensionsError } from "./application/accounting-dimensions-error.ts";
+export type { AccountingDimensionsErrorCode } from "./application/accounting-dimensions-error.ts";
+export { accountingDimensionsPermissions } from "./application/accounting-dimensions-permissions.ts";
+export type { AccountingDimensionsPermission } from "./application/accounting-dimensions-permissions.ts";
+export { createAccountingDimensionsEvent } from "./application/accounting-dimensions-events.ts";
+export type {
+  AccountingDimensionsEvent,
+  AccountingDimensionsEventPayload,
+  AccountingDimensionsEventType,
+} from "./application/accounting-dimensions-events.ts";
+
 export type {
   AccountingDimensionType,
   AccountingDimensionTypeSource,
