@@ -22,9 +22,9 @@ import { getDesktopDatabase } from "@argin/database-tauri";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { useAccountingServices } from "../../composition/accounting/accounting-provider";
 import {
-  dimensionRequirementLabels,
   getAccountingDimensionsErrorMessage,
 } from "../../features/accounting/accounting-dimensions-presenter";
+import { AccountDimensionPolicyWorkspace } from "../../features/accounting/account-dimension-policy-workspace";
 import { flattenAccountTree } from "../../features/accounting/chart-of-accounts-presenter";
 
 import "./accounting-dimensions-page.css";
@@ -149,9 +149,10 @@ export function AccountingDimensionsPage() {
       setTypes(typeResult.items);
       setMembers(memberResult.items);
       setPolicies(policyResult.items);
-      setAccounts(
-        flattenAccountTree(accountTree).map(({ account }) => account),
+      const flattenedAccounts = flattenAccountTree(accountTree).map(
+        ({ account }) => account,
       );
+      setAccounts(flattenedAccounts);
       setSelectedTypeId((current) =>
         typeResult.items.some((item) => item.id === current)
           ? current
@@ -159,7 +160,12 @@ export function AccountingDimensionsPage() {
       );
       setPolicyTypeId((current) => current || typeResult.items[0]?.id || "");
       setPolicyAccountId(
-        (current) => current || accountTree[0]?.account.id || "",
+        (current) =>
+          current ||
+          flattenedAccounts.find(
+            (account) => account.status === "active" && account.postingAllowed,
+          )?.id ||
+          "",
       );
     } catch (reason) {
       setError(getAccountingDimensionsErrorMessage(reason));
@@ -181,15 +187,6 @@ export function AccountingDimensionsPage() {
   const visibleTypes = types.filter((type) =>
     matches(type.code, type.name, search),
   );
-  const accountById = useMemo(
-    () => new Map(accounts.map((item) => [item.id, item])),
-    [accounts],
-  );
-  const typeById = useMemo(
-    () => new Map(types.map((item) => [item.id, item])),
-    [types],
-  );
-
   function clearFeedback(): void {
     setMessage("");
     setError("");
@@ -578,12 +575,10 @@ export function AccountingDimensionsPage() {
               کدینگ حساب‌ها نیز لازم است.
             </p>
           )}
-          <PolicyView
+          <AccountDimensionPolicyWorkspace
             policies={policies}
             accounts={accounts}
             types={types}
-            accountById={accountById}
-            typeById={typeById}
             accountId={policyAccountId}
             typeId={policyTypeId}
             requirement={requirement}
@@ -946,171 +941,4 @@ function MemberForm({
       </button>
     </form>
   );
-}
-
-function PolicyView(props: {
-  policies: readonly AccountDimensionPolicy[];
-  accounts: readonly Account[];
-  types: readonly AccountingDimensionType[];
-  accountById: ReadonlyMap<string, Account>;
-  typeById: ReadonlyMap<string, AccountingDimensionType>;
-  accountId: string;
-  typeId: string;
-  requirement: AccountDimensionRequirement;
-  busy: boolean;
-  canManage: boolean;
-  onAccountChange: (value: string) => void;
-  onTypeChange: (value: string) => void;
-  onRequirementChange: (value: AccountDimensionRequirement) => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  onUpdate: (
-    policy: AccountDimensionPolicy,
-    value: AccountDimensionRequirement,
-  ) => void;
-  onDelete: (policy: AccountDimensionPolicy) => void;
-}) {
-  return (
-    <div className="dimensions-policy-layout">
-      <div className="dimensions-card dimensions-table-wrap">
-        <table className="dimensions-table">
-          <thead>
-            <tr>
-              <th>حساب</th>
-              <th>نوع بُعد</th>
-              <th>الزام</th>
-              <th>عملیات</th>
-            </tr>
-          </thead>
-          <tbody>
-            {props.policies.map((policy) => (
-              <tr key={policy.id}>
-                <td>
-                  {props.accountById.get(policy.accountId)?.code} —{" "}
-                  {props.accountById.get(policy.accountId)?.name ??
-                    "حساب ناموجود"}
-                </td>
-                <td>
-                  {props.typeById.get(policy.dimensionTypeId)?.name ??
-                    "نوع بُعد ناموجود"}
-                </td>
-                <td>
-                  {props.canManage ? (
-                    <select
-                      value={policy.requirement}
-                      onChange={(event) =>
-                        props.onUpdate(
-                          policy,
-                          event.target.value as AccountDimensionRequirement,
-                        )
-                      }
-                    >
-                      {requirementOptions()}
-                    </select>
-                  ) : (
-                    dimensionRequirementLabels[policy.requirement]
-                  )}
-                </td>
-                <td>
-                  {props.canManage && (
-                    <button
-                      type="button"
-                      className="dimensions-danger"
-                      disabled={props.busy}
-                      onClick={() => props.onDelete(policy)}
-                    >
-                      حذف
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {props.policies.length === 0 && (
-              <tr>
-                <td colSpan={4} className="dimensions-empty">
-                  سیاستی تعریف نشده است.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {props.canManage && (
-        <form
-          className="dimensions-card dimensions-form"
-          onSubmit={props.onSubmit}
-        >
-          <header>
-            <h2>سیاست جدید</h2>
-          </header>
-          <label>
-            حساب
-            <select
-              required
-              value={props.accountId}
-              onChange={(event) => props.onAccountChange(event.target.value)}
-            >
-              <option value="">انتخاب کنید</option>
-              {props.accounts
-                .filter((item) => item.status === "active")
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.code} — {item.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label>
-            نوع بُعد
-            <select
-              required
-              value={props.typeId}
-              onChange={(event) => props.onTypeChange(event.target.value)}
-            >
-              <option value="">انتخاب کنید</option>
-              {props.types
-                .filter((item) => item.status === "active")
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label>
-            نوع الزام
-            <select
-              value={props.requirement}
-              onChange={(event) =>
-                props.onRequirementChange(
-                  event.target.value as AccountDimensionRequirement,
-                )
-              }
-            >
-              {requirementOptions()}
-            </select>
-          </label>
-          <button
-            className="dimensions-primary"
-            disabled={props.busy || !props.accountId || !props.typeId}
-            type="submit"
-          >
-            ایجاد سیاست
-          </button>
-        </form>
-      )}
-    </div>
-  );
-}
-
-function requirementOptions() {
-  return (
-    Object.entries(dimensionRequirementLabels) as [
-      AccountDimensionRequirement,
-      string,
-    ][]
-  ).map(([value, label]) => (
-    <option key={value} value={value}>
-      {label}
-    </option>
-  ));
 }
