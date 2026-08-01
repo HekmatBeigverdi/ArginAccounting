@@ -229,3 +229,26 @@ export type {
 export {
   validateAccountingDimensionMember,
 } from "./validation/validate-accounting-dimension-member.ts";
+
+export type {
+  AccountDimensionPolicy,
+  AccountDimensionRequirement,
+  CreateAccountDimensionPolicyInput,
+} from "./domain/account-dimension-policy.ts";
+
+export {
+  createAccountDimensionPolicy,
+} from "./domain/create-account-dimension-policy.ts";
+
+export {
+  AccountDimensionPolicyValidationError,
+} from "./validation/account-dimension-policy-validation-error.ts";
+
+export type {
+  AccountDimensionPolicyField,
+  AccountDimensionPolicyValidationIssue,
+} from "./validation/account-dimension-policy-validation-error.ts";
+
+export {
+  validateAccountDimensionPolicy,
+} from "./validation/validate-account-dimension-policy.ts";
