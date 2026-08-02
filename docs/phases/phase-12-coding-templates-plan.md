@@ -122,6 +122,16 @@ Exit criteria:
 
 - Domain invariants and lifecycle transitions are covered by focused tests.
 
+Status: Completed
+
+Evidence:
+
+- Added company-independent `CodingTemplate` aggregate with explicit activity type, ownership, lifecycle, and optimistic version metadata.
+- Added branded template/version identifiers, normalized stable code, localized names, and positive version-number value objects.
+- Added immutable published-version metadata with source provenance and SHA-256 content fingerprint validation.
+- Added draft-to-published version sequencing and published-to-retired lifecycle guards.
+- Added focused domain tests for normalization, validation, independence from company scope, immutability, sequential publishing, and retirement rules.
+
 ### Step 5 — Template Item Model
 
 - Model template accounts with stable logical keys and explicit parent logical keys.

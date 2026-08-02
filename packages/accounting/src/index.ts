@@ -7,6 +7,62 @@ export type {
   CreateAccountCodingSettingsInput,
 } from "./domain/account-coding-settings.ts";
 
+export type {
+  CodingTemplate,
+  CodingTemplateActivityType,
+  CodingTemplateLifecycle,
+  CodingTemplateOwnership,
+  CreateCodingTemplateInput,
+  PublishCodingTemplateInput,
+  PublishCodingTemplateResult,
+} from "./domain/coding-template.ts";
+
+export {
+  createCodingTemplate,
+  publishCodingTemplate,
+  retireCodingTemplate,
+} from "./domain/coding-template.ts";
+
+export type { CodingTemplateCode } from "./domain/coding-template-code.ts";
+export {
+  createCodingTemplateCode,
+  normalizeCodingTemplateCode,
+} from "./domain/coding-template-code.ts";
+
+export type {
+  CodingTemplateId,
+  CodingTemplateVersionId,
+} from "./domain/coding-template-identity.ts";
+export {
+  createCodingTemplateId,
+  createCodingTemplateVersionId,
+} from "./domain/coding-template-identity.ts";
+
+export type { CodingTemplateName } from "./domain/coding-template-name.ts";
+export {
+  createCodingTemplateName,
+  normalizeCodingTemplateName,
+} from "./domain/coding-template-name.ts";
+
+export type {
+  CodingTemplateVersion,
+  CodingTemplateVersionNumber,
+  CodingTemplateVersionSource,
+  CodingTemplateSourceType,
+  CreateCodingTemplateVersionInput,
+} from "./domain/coding-template-version.ts";
+export {
+  createCodingTemplateVersion,
+  createCodingTemplateVersionNumber,
+} from "./domain/coding-template-version.ts";
+
+export type {
+  CodingTemplateValidationCode,
+} from "./domain/coding-template-validation-error.ts";
+export {
+  CodingTemplateValidationError,
+} from "./domain/coding-template-validation-error.ts";
+
 export {
   DEFAULT_ACCOUNT_CODE_LENGTHS,
 } from "./domain/account-coding-settings.ts";
