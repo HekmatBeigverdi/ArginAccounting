@@ -35,8 +35,8 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 ## Accounting Core
 
-10. 🚧 Chart of Accounts — implemented and validated; merge pending
-11. ⏳ Accounting Dimensions
+10. ✅ Chart of Accounts
+11. 🚧 Accounting Dimensions — implemented and validated; merge pending
 12. ⏳ Coding Templates
 13. ⏳ Journal Voucher Engine
 14. ⏳ Journal Lifecycle
@@ -117,8 +117,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 10 — Chart of Accounts closure: documentation, merge, and release.
+Phase 11 — Accounting Dimensions closure: documentation, merge, and release.
 
 ## Next Accounting Milestone
 
-Phase 11 — Accounting Dimensions.
+Phase 12 — Coding Templates.

@@ -27,6 +27,7 @@ For every table record:
 | Audit and Approval | `audit_entries`, `approval_requests`, `approval_history` | Phase 08 |
 | Platform Infrastructure | `background_jobs`, `notifications` | Phase 09 |
 | Chart of Accounts | `account_coding_settings`, `accounts`, `account_management_tags` | Phase 10 |
+| Accounting Dimensions | `accounting_dimension_types`, `accounting_dimension_members`, `account_dimension_policies` | Phase 11 |
 
 ## Phase 10 — Chart of Accounts
 
@@ -49,3 +50,21 @@ Ordered management-report tags keyed by account and case-insensitive tag value. 
 - `apps/desktop/src-tauri/migrations/0010_chart_of_accounts.sql`
 
 The detailed column-level catalog must be expanded whenever a migration adds or changes a database object.
+
+## Phase 11 — Accounting Dimensions
+
+### `accounting_dimension_types`
+
+Company-scoped analytical-axis definitions with unique case-insensitive code, names, hierarchy and multiple-member flags, lifecycle status, display order, source provenance, timestamps, and optimistic-concurrency version. Company deletion is restricted.
+
+### `accounting_dimension_members`
+
+Members scoped to a company and dimension type. Codes are unique within that scope. Optional parents must belong to the same company and type; self-parenting is rejected. Effective dates are nullable Gregorian `YYYY-MM-DD` values with ordered range validation. Type, parent, and company deletion is restricted.
+
+### `account_dimension_policies`
+
+Versioned relationship between a company-scoped account and dimension type. One row per account/type pair declares `required`, `optional`, or `forbidden`. Account and dimension-type deletion is restricted.
+
+### Migration
+
+- `apps/desktop/src-tauri/migrations/0011_accounting_dimensions.sql`

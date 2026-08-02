@@ -32,7 +32,10 @@ Each term must include:
 | Subsidiary Account | حساب معین | Child of a General account; may be posting-enabled. | Accounting |
 | Account Coding Settings | تنظیمات کدینگ حساب‌ها | Versioned company policy for code lengths, hierarchical codes, and code changes after use. | Accounting |
 | Account Usage | گردش حساب | Evidence that an account has financial or protected operational references and therefore cannot be physically deleted. | Accounting |
-| Accounting Dimension | بُعد حسابداری / تفصیلی | Independent detailed classification planned for Phase 11; not a fourth account-tree level. | Accounting |
+| Accounting Dimension Type | نوع بُعد حسابداری | Company-scoped analytical axis independent from the account tree; controls hierarchy and whether multiple members may be selected. | Accounting |
+| Accounting Dimension Member | عضو بُعد حسابداری / تفصیلی | Versioned classification value belonging to one dimension type, optionally hierarchical and effective-dated. | Accounting |
+| Account-Dimension Policy | سیاست حساب و بُعد | Unique rule declaring a dimension required, optional, or forbidden for a Subsidiary account. | Accounting |
+| Dimension Assignment | تخصیص بُعد | Dimension type and selected member identifiers validated for an accounting line and document date. | Accounting |
 | Coding Template | الگوی کدینگ | Versioned service, trading, or manufacturing account template planned for Phase 12. | Accounting |
 | Journal Voucher | سند حسابداری | Balanced accounting document composed of debit and credit lines. | Accounting |
 | Posting Rule | قاعده صدور سند | Deterministic mapping from source document effects to journal lines. | Posting |

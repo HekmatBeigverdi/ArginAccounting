@@ -20,13 +20,13 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 
 ## Current Status
 
-- Phase 01–08: completed and merged into `develop` and `main`
-- Current target: Phase 09 — Platform Infrastructure
-- Next accounting milestone: Phase 10 — Chart of Accounts
+- Phase 01–10: completed and merged into `develop` and `main`
+- Current target: Phase 11 — Accounting Dimensions closure
+- Next accounting milestone: Phase 12 — Coding Templates
 
-Phase 09 establishes Event Bus, Money, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs before business modules are expanded.
+Phase 11 introduces reusable company-scoped analytical dimensions independently from the three-level Chart of Accounts.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), and [ADR-0009](docs/adr/ADR-0009-platform-infrastructure-first.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), and [ADR-0011](docs/adr/ADR-0011-independent-accounting-dimensions.md).
 
 ## Main Modules
 

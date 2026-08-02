@@ -21,9 +21,9 @@ The engine owns vouchers, lines, balance validation, lifecycle transitions, post
 
 It does not own invoice calculation, inventory valuation, payroll calculation, cheque lifecycle, or tax-system transport. Those modules produce posting requests through stable contracts.
 
-## Planned Integration
+## Implemented Foundations
 
-Phase 09 supplies shared Money, Event Bus, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs. Phase 10 begins the Chart of Accounts.
+Phase 09 supplies shared Money, Event Bus, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs. Phase 10 supplies the three-level Chart of Accounts. Phase 11 supplies independent dimension types, members, account requirement policies, assignment validation, and dynamic selector contracts. Persisted vouchers, lines, and journal-backed usage detection begin in Phase 13.
 
 ## Auditability
 

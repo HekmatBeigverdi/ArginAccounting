@@ -8,56 +8,61 @@ export const navigationItems: NavigationItem[] = [
   {
     label: "داشبورد",
     path: "/dashboard",
-    group: "اصلی"
+    group: "اصلی",
   },
   {
     label: "گردش تأیید",
     path: "/approval/requests",
-    group: "اصلی"
+    group: "اصلی",
   },
   {
     label: "گزارش ممیزی",
     path: "/audit/entries",
-    group: "اصلی"
+    group: "اصلی",
   },
   {
     label: "تعریف شرکت",
     path: "/company/setup",
-    group: "اطلاعات پایه"
+    group: "اطلاعات پایه",
   },
   {
     label: "سال‌های مالی",
     path: "/fiscal/years",
-    group: "مدیریت مالی"
+    group: "مدیریت مالی",
   },
   {
     label: "کدینگ حساب‌ها",
     path: "/accounting/chart-of-accounts",
-    group: "حسابداری"
+    group: "حسابداری",
+  },
+  {
+    label: "ابعاد حسابداری",
+    path: "/accounting/dimensions",
+    group: "حسابداری",
   },
   {
     label: "وضعیت سیستم",
     path: "/system/diagnostics",
-    group: "سیستم"
+    group: "سیستم",
   },
   {
     label: "کاربران",
     path: "/security/users",
-    group: "مدیریت سیستم"
+    group: "مدیریت سیستم",
   },
   {
     label: "نقش‌ها",
     path: "/security/roles",
-    group: "مدیریت سیستم"
+    group: "مدیریت سیستم",
   },
   {
     label: "مجوزها",
     path: "/security/permissions",
-    group: "مدیریت سیستم"
+    group: "مدیریت سیستم",
   },
   {
     label: "ورود آزمایشی",
     path: "/login",
-    group: "سیستم"
-  }
+    group: "سیستم",
+  },
 ];
