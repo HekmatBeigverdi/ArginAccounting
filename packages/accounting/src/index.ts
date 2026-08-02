@@ -63,6 +63,33 @@ export {
   CodingTemplateValidationError,
 } from "./domain/coding-template-validation-error.ts";
 
+export type {
+  CodingTemplateAccountDimensionPolicyItem,
+  CodingTemplateAccountItem,
+  CodingTemplateAccountReportClassification,
+  CodingTemplateDimensionMemberItem,
+  CodingTemplateDimensionTypeItem,
+  CodingTemplateVersionContent,
+} from "./domain/coding-template-items.ts";
+
+export {
+  createCodingTemplateVersionContent,
+} from "./domain/create-coding-template-version-content.ts";
+
+export type {
+  CodingTemplateGraphItemType,
+  CodingTemplateGraphValidationCode,
+  CodingTemplateGraphValidationIssue,
+} from "./validation/coding-template-graph-validation-error.ts";
+
+export {
+  CodingTemplateGraphValidationError,
+} from "./validation/coding-template-graph-validation-error.ts";
+
+export {
+  validateCodingTemplateGraph,
+} from "./validation/validate-coding-template-graph.ts";
+
 export {
   DEFAULT_ACCOUNT_CODE_LENGTHS,
 } from "./domain/account-coding-settings.ts";

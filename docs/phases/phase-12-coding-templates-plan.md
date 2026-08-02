@@ -144,6 +144,16 @@ Exit criteria:
 - A complete template can be validated without persistence or UI dependencies.
 - Invalid hierarchy, references, duplicate codes, and policy combinations are rejected.
 
+Status: Completed
+
+Evidence:
+
+- Added company-independent account, dimension type, dimension member, and account-dimension policy item contracts using stable logical keys.
+- Added explicit account hierarchy, behavior flags, report classifications, management tags, dimension hierarchy, and policy requirements.
+- Added a complete in-memory graph validator covering item validity, duplicate keys/codes/policies, missing or cross-type references, hierarchy levels/cycles, and policy compatibility.
+- Added immutable validated version content so a complete graph is accepted or rejected before persistence and UI boundaries.
+- Added focused tests for valid complete graphs and every required invalid graph category.
+
 ### Step 6 — Built-in Iranian Coding Catalogs
 
 - Convert the approved supplied coding data into canonical service, trading, and manufacturing catalogs.
