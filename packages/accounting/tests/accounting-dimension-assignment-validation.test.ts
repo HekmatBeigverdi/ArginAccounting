@@ -143,6 +143,38 @@ test("rejects assignments without an explicit account policy", () => {
   );
 });
 
+test("ignores policies from another company or account", () => {
+  const input = createInput();
+  const foreignPolicies = input.policies.map((policy, index) =>
+    createAccountDimensionPolicy({
+      ...policy,
+      id: `foreign-policy-${index}`,
+      companyId: index === 0 ? "company-2" : input.companyId,
+      accountId: index === 0 ? input.accountId : "account-other",
+    }),
+  );
+
+  const issues = validateAccountingDimensionAssignments({
+    ...input,
+    policies: foreignPolicies,
+  });
+
+  assert.ok(issues.some((issue) => issue.code === "policy_not_defined"));
+});
+
+test("accepts an omitted optional dimension and an empty assignment", () => {
+  const input = createInput();
+  const issues = validateAccountingDimensionAssignments({
+    ...input,
+    assignments: [
+      input.assignments[0]!,
+      { dimensionTypeId: "type-cost-center", memberIds: [] },
+    ],
+  });
+
+  assert.deepEqual(issues, []);
+});
+
 test("enforces single-member dimension types and detects duplicates", () => {
   const input = createInput();
   const issues = validateAccountingDimensionAssignments({

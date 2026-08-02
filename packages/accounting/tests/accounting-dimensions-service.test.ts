@@ -227,6 +227,19 @@ function memberValue(overrides: Partial<AccountingDimensionMember> = {}) {
     ...overrides,
   });
 }
+function policyValue(overrides: Partial<AccountDimensionPolicy> = {}) {
+  return Object.freeze({
+    id: "policy-1",
+    companyId: "company-1",
+    accountId: "account-1",
+    dimensionTypeId: "type-1",
+    requirement: "required" as const,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    version: 1,
+    ...overrides,
+  });
+}
 function seedAccount(
   repositories: MemoryRepositories,
   overrides: { status?: "active" | "inactive"; companyId?: string } = {},
@@ -523,4 +536,288 @@ test("publishes an auditable event only after a successful transaction", async (
   );
 
   assert.equal(events.length, 1);
+});
+
+test("updates a type and prevents removing hierarchy while members exist", async () => {
+  const { repositories, service } = fixture();
+  repositories.typeValues.set("type-1", typeValue());
+
+  const updated = await service.updateDimensionType({
+    companyId: "company-1",
+    dimensionTypeId: "type-1",
+    expectedVersion: 1,
+    changes: { name: "پروژه‌ها", displayOrder: 20 },
+  });
+
+  assert.equal(updated.name, "پروژه‌ها");
+  assert.equal(updated.displayOrder, 20);
+  assert.equal(updated.version, 2);
+  assert.equal(repositories.typeValues.get("type-1"), updated);
+
+  repositories.memberValues.set("member-1", memberValue());
+  await assert.rejects(
+    service.updateDimensionType({
+      companyId: "company-1",
+      dimensionTypeId: "type-1",
+      expectedVersion: 2,
+      changes: { hierarchical: false },
+    }),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_TYPE_HAS_MEMBERS",
+  );
+});
+
+test("protects a dimension type from every unsafe deletion path", async () => {
+  const used = fixture({ usedTypes: ["type-1"] });
+  used.repositories.typeValues.set("type-1", typeValue());
+  await assert.rejects(
+    used.service.deleteDimensionType("company-1", "type-1", 1),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_TYPE_IN_USE",
+  );
+
+  const withMember = fixture();
+  withMember.repositories.typeValues.set("type-1", typeValue());
+  withMember.repositories.memberValues.set("member-1", memberValue());
+  await assert.rejects(
+    withMember.service.deleteDimensionType("company-1", "type-1", 1),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_TYPE_HAS_MEMBERS",
+  );
+
+  const withPolicy = fixture();
+  withPolicy.repositories.typeValues.set("type-1", typeValue());
+  withPolicy.repositories.policyValues.set("policy-1", policyValue());
+  await assert.rejects(
+    withPolicy.service.deleteDimensionType("company-1", "type-1", 1),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_TYPE_HAS_POLICIES",
+  );
+});
+
+test("deletes an unused empty type with optimistic concurrency", async () => {
+  const { repositories, service } = fixture();
+  repositories.typeValues.set("type-1", typeValue());
+
+  await service.deleteDimensionType("company-1", "type-1", 1);
+
+  assert.equal(repositories.typeValues.has("type-1"), false);
+});
+
+test("rejects duplicate member codes within a dimension type", async () => {
+  const { repositories, service } = fixture();
+  repositories.typeValues.set("type-1", typeValue());
+  repositories.memberValues.set("member-1", memberValue());
+
+  await assert.rejects(
+    service.createMember({
+      companyId: "company-1",
+      dimensionTypeId: "type-1",
+      code: " p01 ",
+      name: "پروژه تکراری",
+    }),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DUPLICATE_DIMENSION_MEMBER_CODE",
+  );
+});
+
+test("requires a member parent from the same company and dimension type", async () => {
+  const { repositories, service } = fixture();
+  repositories.typeValues.set("type-1", typeValue());
+  repositories.memberValues.set(
+    "parent-1",
+    memberValue({ id: "parent-1", companyId: "company-2" }),
+  );
+
+  await assert.rejects(
+    service.createMember({
+      companyId: "company-1",
+      dimensionTypeId: "type-1",
+      parentId: "parent-1",
+      code: "P02",
+      name: "فرزند",
+    }),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_MEMBER_PARENT_MISMATCH",
+  );
+});
+
+test("updates a member and enforces its optimistic version", async () => {
+  const { repositories, service } = fixture();
+  repositories.typeValues.set("type-1", typeValue());
+  repositories.memberValues.set("member-1", memberValue());
+
+  const updated = await service.updateMember({
+    companyId: "company-1",
+    memberId: "member-1",
+    expectedVersion: 1,
+    changes: { name: "پروژه اصلی", validTo: "2027-12-31" },
+  });
+
+  assert.equal(updated.name, "پروژه اصلی");
+  assert.equal(updated.validTo, "2027-12-31");
+  assert.equal(updated.version, 2);
+  await assert.rejects(
+    service.updateMember({
+      companyId: "company-1",
+      memberId: "member-1",
+      expectedVersion: 1,
+      changes: { name: "ویرایش قدیمی" },
+    }),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "VERSION_MISMATCH",
+  );
+});
+
+test("does not delete a member that still has children", async () => {
+  const { repositories, service } = fixture();
+  repositories.memberValues.set("member-1", memberValue());
+  repositories.memberValues.set(
+    "child-1",
+    memberValue({ id: "child-1", parentId: "member-1" }),
+  );
+
+  await assert.rejects(
+    service.deleteMember("company-1", "member-1", 1),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_MEMBER_HAS_CHILDREN",
+  );
+});
+
+test("requires an active same-company account when creating a policy", async () => {
+  const inactive = fixture();
+  inactive.repositories.typeValues.set("type-1", typeValue());
+  seedAccount(inactive.repositories, { status: "inactive" });
+  await assert.rejects(
+    inactive.service.createPolicy({
+      companyId: "company-1",
+      accountId: "account-1",
+      dimensionTypeId: "type-1",
+      requirement: "required",
+    }),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "ACCOUNT_INACTIVE",
+  );
+
+  const otherCompany = fixture();
+  otherCompany.repositories.typeValues.set("type-1", typeValue());
+  seedAccount(otherCompany.repositories, { companyId: "company-2" });
+  await assert.rejects(
+    otherCompany.service.createPolicy({
+      companyId: "company-1",
+      accountId: "account-1",
+      dimensionTypeId: "type-1",
+      requirement: "required",
+    }),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "ACCOUNT_NOT_FOUND",
+  );
+});
+
+test("updates and deletes a policy with version protection", async () => {
+  const { repositories, service } = fixture();
+  repositories.policyValues.set("policy-1", policyValue());
+
+  const updated = await service.updatePolicy({
+    companyId: "company-1",
+    policyId: "policy-1",
+    expectedVersion: 1,
+    requirement: "forbidden",
+  });
+  assert.equal(updated.requirement, "forbidden");
+  assert.equal(updated.version, 2);
+
+  await assert.rejects(
+    service.deletePolicy("company-1", "policy-1", 1),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "VERSION_MISMATCH",
+  );
+  await service.deletePolicy("company-1", "policy-1", 2);
+  assert.equal(repositories.policyValues.has("policy-1"), false);
+});
+
+test("scopes member and policy reads to the active company", async () => {
+  const { repositories, service } = fixture();
+  repositories.memberValues.set("member-1", memberValue());
+  repositories.policyValues.set("policy-1", policyValue());
+
+  assert.equal(
+    (await service.getMember("company-1", "member-1")).id,
+    "member-1",
+  );
+  await assert.rejects(
+    service.getMember("company-2", "member-1"),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_MEMBER_NOT_FOUND",
+  );
+  await assert.rejects(
+    service.deletePolicy("company-2", "policy-1", 1),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_POLICY_NOT_FOUND",
+  );
+});
+
+test("normalizes and delegates all dimension searches", async () => {
+  const { repositories, service } = fixture();
+  repositories.typeValues.set("type-1", typeValue());
+  repositories.memberValues.set("member-1", memberValue());
+  repositories.policyValues.set("policy-1", policyValue());
+
+  const types = await service.searchDimensionTypes({
+    companyId: "company-1",
+  });
+  const members = await service.searchMembers({
+    companyId: "company-1",
+    dimensionTypeId: "type-1",
+  });
+  const policies = await service.searchPolicies({
+    companyId: "company-1",
+    dimensionTypeId: "type-1",
+  });
+
+  assert.deepEqual(types.items.map((value) => value.id), ["type-1"]);
+  assert.deepEqual(members.items.map((value) => value.id), ["member-1"]);
+  assert.deepEqual(policies.items.map((value) => value.id), ["policy-1"]);
+});
+
+test("fails clearly when dimension repositories are not configured", async () => {
+  const unitOfWork: AccountingUnitOfWork = {
+    run: async (operation) =>
+      operation({
+        accounts: new MemoryRepositories().accounts,
+        codingSettings: new MemoryRepositories().codingSettings,
+      }),
+  };
+  const service = new AccountingDimensionsService(
+    unitOfWork,
+    new FixedClock(timestamp),
+    new SequenceIdGenerator("dimension"),
+    {
+      isDimensionTypeInUse: async () => false,
+      isMemberInUse: async () => false,
+    },
+    { hasPermission: async () => true },
+    new InMemoryEventBus(),
+    { actor: { type: "user", id: "user-1" }, source: "desktop" },
+  );
+
+  await assert.rejects(
+    service.searchDimensionTypes({ companyId: "company-1" }),
+    (error) =>
+      error instanceof AccountingDimensionsError &&
+      error.code === "DIMENSION_REPOSITORIES_NOT_CONFIGURED",
+  );
 });
