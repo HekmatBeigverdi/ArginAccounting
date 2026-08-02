@@ -11,10 +11,11 @@ This plan is frozen for the duration of Phase 12.
 Before starting every step:
 
 1. Read this document.
-2. Confirm the current branch and latest commit.
-3. Confirm the previous step's exit criteria.
-4. State the current step number, scope, files expected to change, and validation commands.
-5. Update only the status and evidence sections of this document.
+2. Read the permanent [GitHub Publishing Workflow](../development/github-publishing-workflow.md).
+3. Confirm the current branch and latest commit.
+4. Confirm the previous step's exit criteria.
+5. State the current step number, scope, files expected to change, and validation commands.
+6. Update only the status and evidence sections of this document.
 
 A step may not be reordered, split, merged, removed, or expanded without explicit user approval. Newly discovered work must be recorded under **Change Requests** and must not silently alter the sequence.
 
