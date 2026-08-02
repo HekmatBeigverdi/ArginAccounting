@@ -35,6 +35,12 @@ export const defaultPermissions: PermissionDefinition[] = [
     module: "company",
     title: "مدیریت اطلاعات شرکت",
   },
+  {
+    code: "company.profile.update-activity-type",
+    module: "company",
+    title: "تغییر نوع فعالیت شرکت",
+    description: "تغییر نوع فعالیت فقط پیشنهاد الگوی کدینگ را به‌روزرسانی می‌کند",
+  },
   { code: "company.branches.view", module: "company", title: "مشاهده شعب" },
   { code: "company.branches.manage", module: "company", title: "مدیریت شعب" },
   { code: "fiscal.years.view", module: "fiscal", title: "مشاهده سال‌های مالی" },

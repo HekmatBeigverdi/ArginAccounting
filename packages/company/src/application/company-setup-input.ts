@@ -1,6 +1,9 @@
 import type {
   TaxpayerType
 } from "../domain/company-tax-profile";
+import type {
+  CompanyActivityType
+} from "../domain/company";
 
 export interface CompanySetupInput {
   company: {
@@ -9,6 +12,7 @@ export interface CompanySetupInput {
     tradeName?: string | null;
     nationalId?: string | null;
     registrationNumber?: string | null;
+    activityType: CompanyActivityType;
   };
 
   headOffice: {

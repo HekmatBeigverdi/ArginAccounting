@@ -4,6 +4,8 @@ import {
 } from "react";
 
 import {
+  companyActivityTypeLabels,
+  type CompanyActivityType,
   CompanyValidationError,
   setupCompany
 } from "@argin/company";
@@ -22,6 +24,7 @@ interface FormState {
   tradeName: string;
   nationalId: string;
   registrationNumber: string;
+  activityType: CompanyActivityType;
   branchCode: string;
   branchName: string;
   province: string;
@@ -39,6 +42,7 @@ const initialState: FormState = {
   tradeName: "",
   nationalId: "",
   registrationNumber: "",
+  activityType: "custom",
   branchCode: "01",
   branchName: "دفتر مرکزی",
   province: "",
@@ -95,7 +99,8 @@ export function CompanySetupForm() {
           tradeName: form.tradeName || null,
           nationalId: form.nationalId || null,
           registrationNumber:
-            form.registrationNumber || null
+            form.registrationNumber || null,
+          activityType: form.activityType
         },
         headOffice: {
           code: form.branchCode,
@@ -209,6 +214,31 @@ export function CompanySetupForm() {
               );
             }}
           />
+        </label>
+
+        <label>
+          نوع فعالیت شرکت
+          <select
+            value={form.activityType}
+            onChange={(event) => {
+              updateField(
+                "activityType",
+                event.target.value as CompanyActivityType
+              );
+            }}
+          >
+            {Object.entries(companyActivityTypeLabels).map(
+              ([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              )
+            )}
+          </select>
+          <small>
+            این انتخاب فقط الگوی مناسب را پیشنهاد می‌دهد؛ اعمال کدینگ
+            پس از پیش‌نمایش و تأیید جداگانه انجام می‌شود.
+          </small>
         </label>
 
         <label>
