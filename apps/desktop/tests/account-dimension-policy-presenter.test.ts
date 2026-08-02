@@ -12,6 +12,10 @@ import {
   findAccountDimensionPolicy,
   summarizeAccountDimensionPolicies,
 } from "../src/features/accounting/account-dimension-policy-presenter.ts";
+import {
+  dimensionRequirementLabels,
+  getAccountingDimensionsErrorMessage,
+} from "../src/features/accounting/accounting-dimensions-presenter.ts";
 
 const accounts = new Map([
   ["cash", { id: "cash", code: "1101", name: "وجوه نقد" } as Account],
@@ -57,6 +61,35 @@ test("summarizes requirements and detects an existing account/type pair", () => 
   });
   assert.equal(findAccountDimensionPolicy(policies, "cash", "branch")?.id, "p2");
   assert.equal(findAccountDimensionPolicy(policies, "sales", "branch"), undefined);
+});
+
+test("provides stable Persian labels for every policy requirement", () => {
+  assert.deepEqual(dimensionRequirementLabels, {
+    required: "اجباری",
+    optional: "اختیاری",
+    forbidden: "ممنوع",
+  });
+});
+
+test("maps known dimension errors and preserves useful unknown errors", () => {
+  assert.equal(
+    getAccountingDimensionsErrorMessage({ code: "VERSION_MISMATCH" }),
+    "اطلاعات توسط کاربر دیگری تغییر کرده است؛ فهرست را تازه‌سازی کنید.",
+  );
+  assert.equal(
+    getAccountingDimensionsErrorMessage({
+      code: "DUPLICATE_ACCOUNT_DIMENSION_POLICY",
+    }),
+    "برای این حساب و نوع بُعد قبلاً سیاست تعریف شده است.",
+  );
+  assert.equal(
+    getAccountingDimensionsErrorMessage(new Error("Database unavailable")),
+    "Database unavailable",
+  );
+  assert.equal(
+    getAccountingDimensionsErrorMessage({ code: "UNKNOWN" }),
+    "عملیات ابعاد حسابداری با خطا مواجه شد.",
+  );
 });
 
 function policy(

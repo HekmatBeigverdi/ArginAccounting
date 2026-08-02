@@ -303,4 +303,102 @@ describe("accounting dimensions migration", () => {
       /FOREIGN KEY constraint failed/u,
     );
   });
+
+  it("restricts deletion while dimension records are referenced", () => {
+    const database = createDatabase();
+    insertCompany(database, "company-1", "C01");
+    insertAccount(database, "account-1", "company-1", "11");
+    insertDimensionType(database, {
+      id: "type-1",
+      code: "PROJECT",
+      hierarchical: 1,
+    });
+    insertMember(database, {
+      id: "parent-1",
+      dimensionTypeId: "type-1",
+      code: "PARENT",
+    });
+    insertMember(database, {
+      id: "child-1",
+      dimensionTypeId: "type-1",
+      code: "CHILD",
+      parentId: "parent-1",
+    });
+    database.prepare(`
+      INSERT INTO account_dimension_policies (
+        id, company_id, account_id, dimension_type_id,
+        requirement, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "policy-1",
+      "company-1",
+      "account-1",
+      "type-1",
+      "required",
+      timestamp,
+      timestamp,
+    );
+
+    assert.throws(
+      () => database.prepare(
+        "DELETE FROM accounting_dimension_members WHERE id = 'parent-1'",
+      ).run(),
+      /FOREIGN KEY constraint failed/u,
+    );
+    assert.throws(
+      () => database.prepare(
+        "DELETE FROM accounting_dimension_types WHERE id = 'type-1'",
+      ).run(),
+      /FOREIGN KEY constraint failed/u,
+    );
+    assert.throws(
+      () => database.prepare(
+        "DELETE FROM companies WHERE id = 'company-1'",
+      ).run(),
+      /FOREIGN KEY constraint failed/u,
+    );
+  });
+
+  it("rejects self-parenting and invalid optimistic-concurrency versions", () => {
+    const database = createDatabase();
+    insertCompany(database, "company-1", "C01");
+    insertDimensionType(database, { id: "type-1", code: "PROJECT" });
+
+    assert.throws(
+      () => insertMember(database, {
+        id: "self-parent",
+        dimensionTypeId: "type-1",
+        code: "SELF",
+        parentId: "self-parent",
+      }),
+      /CHECK constraint failed/u,
+    );
+    assert.throws(
+      () => database.prepare(`
+        UPDATE accounting_dimension_types SET version = 0 WHERE id = 'type-1'
+      `).run(),
+      /CHECK constraint failed/u,
+    );
+  });
+
+  it("creates the indexes used by scoped repository queries", () => {
+    const database = createDatabase();
+    const indexes = database.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type = 'index' AND name LIKE 'ix_account%dimension%'
+      ORDER BY name
+    `).all().map((row) => (row as { name: string }).name);
+
+    assert.deepEqual(indexes, [
+      "ix_account_dimension_policies_account",
+      "ix_account_dimension_policies_type",
+      "ix_accounting_dimension_members_name",
+      "ix_accounting_dimension_members_type_parent",
+      "ix_accounting_dimension_members_type_status",
+      "ix_accounting_dimension_members_validity",
+      "ix_accounting_dimension_types_company_name",
+      "ix_accounting_dimension_types_company_status",
+      "ix_accounting_dimension_types_source",
+    ]);
+  });
 });

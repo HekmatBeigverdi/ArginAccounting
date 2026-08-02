@@ -217,6 +217,160 @@ test("dimension update enforces optimistic concurrency", async () => {
   );
 });
 
+test("dimension repositories map complete rows and scoped lookup queries", async () => {
+  const database = new FakeDatabase();
+  database.queryOneRows = [
+    {
+      id: "member-1",
+      company_id: "company-1",
+      dimension_type_id: "type-1",
+      code: "P-01",
+      name: "پروژه یک",
+      english_name: "Project one",
+      parent_id: "member-parent",
+      status: "inactive",
+      valid_from: "2026-01-01",
+      valid_to: "2026-12-31",
+      display_order: 4,
+      source: "module",
+      source_reference_id: "projects",
+      created_at: now,
+      updated_at: now,
+      version: 3,
+    },
+    {
+      id: "policy-1",
+      company_id: "company-1",
+      account_id: "account-1",
+      dimension_type_id: "type-1",
+      requirement: "forbidden",
+      created_at: now,
+      updated_at: now,
+      version: 2,
+    },
+  ];
+
+  const member = await new SqliteAccountingDimensionMemberRepository(
+    database,
+  ).findByCode("company-1", "type-1", "p-01");
+  const policy = await new SqliteAccountDimensionPolicyRepository(
+    database,
+  ).findByAccountAndType("company-1", "account-1", "type-1");
+
+  assert.deepEqual(member, {
+    id: "member-1",
+    companyId: "company-1",
+    dimensionTypeId: "type-1",
+    code: "P-01",
+    name: "پروژه یک",
+    englishName: "Project one",
+    parentId: "member-parent",
+    status: "inactive",
+    validFrom: "2026-01-01",
+    validTo: "2026-12-31",
+    displayOrder: 4,
+    source: "module",
+    sourceReferenceId: "projects",
+    createdAt: now,
+    updatedAt: now,
+    version: 3,
+  });
+  assert.equal(policy?.requirement, "forbidden");
+  assert.deepEqual(database.queries[0]!.parameters, [
+    "company-1",
+    "type-1",
+    "p-01",
+  ]);
+  assert.deepEqual(database.queries[1]!.parameters, [
+    "company-1",
+    "account-1",
+    "type-1",
+  ]);
+});
+
+test("member search escapes LIKE tokens and supports root members", async () => {
+  const database = new FakeDatabase();
+  database.queryOneRows = [{ total: 0 }];
+
+  await new SqliteAccountingDimensionMemberRepository(database).search({
+    companyId: "company-1",
+    parentId: null,
+    text: "50%_\\",
+  });
+
+  assert.match(database.queries[0]!.sql, /parent_id IS NULL/u);
+  assert.match(database.queries[0]!.sql, /LIKE \? ESCAPE '\\'/u);
+  assert.deepEqual(database.queries[0]!.parameters.slice(-3), [
+    "%50\\%\\_\\\\%",
+    "%50\\%\\_\\\\%",
+    "%50\\%\\_\\\\%",
+  ]);
+});
+
+test("updates and deletes remain company scoped and version guarded", async () => {
+  const database = new FakeDatabase();
+  const dimensionType = { ...createDimensionType(), version: 2 };
+  const policy = {
+    ...createDimensionPolicy(),
+    requirement: "optional" as const,
+    version: 2,
+  };
+
+  await new SqliteAccountingDimensionTypeRepository(database).update(
+    dimensionType,
+  );
+  await new SqliteAccountDimensionPolicyRepository(database).update(policy);
+  await new SqliteAccountingDimensionTypeRepository(database).delete(
+    dimensionType,
+  );
+  await new SqliteAccountDimensionPolicyRepository(database).delete(policy);
+
+  assert.deepEqual(database.executions[0]!.parameters.slice(-3), [
+    "type-1",
+    "company-1",
+    1,
+  ]);
+  assert.deepEqual(database.executions[1]!.parameters.slice(-3), [
+    "policy-1",
+    "company-1",
+    1,
+  ]);
+  assert.deepEqual(database.executions[2]!.parameters, [
+    "type-1",
+    "company-1",
+    2,
+  ]);
+  assert.deepEqual(database.executions[3]!.parameters, [
+    "policy-1",
+    "company-1",
+    2,
+  ]);
+});
+
+test("all aggregate deletes report optimistic concurrency conflicts", async () => {
+  const database = new FakeDatabase();
+  database.rowsAffected = 0;
+
+  await assert.rejects(
+    new SqliteAccountingDimensionTypeRepository(database).delete(
+      createDimensionType(),
+    ),
+    { name: "ConcurrencyConflictError" },
+  );
+  await assert.rejects(
+    new SqliteAccountingDimensionMemberRepository(database).delete(
+      createDimensionMember(),
+    ),
+    { name: "ConcurrencyConflictError" },
+  );
+  await assert.rejects(
+    new SqliteAccountDimensionPolicyRepository(database).delete(
+      createDimensionPolicy(),
+    ),
+    { name: "ConcurrencyConflictError" },
+  );
+});
+
 test("unit of work exposes all dimension repositories in one transaction", async () => {
   const database = new FakeExecutor();
 
