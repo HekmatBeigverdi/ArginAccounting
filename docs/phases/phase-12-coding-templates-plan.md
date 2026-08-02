@@ -298,9 +298,9 @@ Exit criteria:
 
 | Step | Title | Status | Evidence |
 |---:|---|---|---|
-| 1 | Baseline, Branch, and Frozen Plan | In progress | Branch and plan creation |
-| 2 | Domain Analysis and ADR | Not started | — |
-| 3 | Company Activity Type and Compatibility Policy | Not started | — |
+| 1 | Baseline, Branch, and Frozen Plan | Completed | Branch `phase/12-coding-templates` created from released Phase 11 commit `999c215`; package, migration, permission, event, UI, test, account, dimension, and company baselines recorded below; frozen plan committed as `e06c904` |
+| 2 | Domain Analysis and ADR | Completed | `ADR-0012` accepts company-independent immutable template versions, deterministic preview, atomic retry-safe apply/import, non-destructive upgrades, one Excel/domain validation path, and Argin Bridge ports |
+| 3 | Company Activity Type and Compatibility Policy | Completed | Added explicit `service`, `trading`, `manufacturing`, and `custom` types; existing-company backfill policy remains `custom` for migration 0012; added validation, dedicated update permission, authorized update use case, SQLite mapping, Persian setup selector, recommendation-only policy, and focused tests |
 | 4 | Template Aggregate and Value Objects | Not started | — |
 | 5 | Template Item Model | Not started | — |
 | 6 | Built-in Iranian Coding Catalogs | Not started | — |
@@ -326,6 +326,16 @@ Exit criteria:
 - Existing account source provenance already recognizes template and Excel origins; dimension provenance supports system/module sources and must be reconciled explicitly in ADR-0012.
 - Journal persistence is absent and remains outside Phase 12.
 - No Phase 12 branch or implementation existed at baseline.
+
+## Step 3 Compatibility Record
+
+- New companies must choose an explicit activity type; the Persian form defaults to `custom` so no business activity is inferred.
+- Migration `0012` will add the durable `activity_type` column in Step 13 and backfill every existing company with `custom` before enforcing the allowed-value constraint.
+- Until Step 13, the SQLite repository detects the Phase 11 schema and reads missing activity values as `custom`, keeping upgraded development databases usable without changing an earlier migration.
+- `custom` is the compatibility value for an unknown, mixed, or user-defined activity. It is not a hidden null state.
+- Changing activity requires `company.profile.update-activity-type` and updates only company metadata.
+- Service, trading, and manufacturing values return a stable template recommendation code. `custom` returns no recommendation.
+- Every recommendation explicitly requires a later preview and user confirmation. Company creation and activity changes never apply account coding.
 
 ## Change Requests
 

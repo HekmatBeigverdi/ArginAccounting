@@ -21,6 +21,7 @@
 - [ADR-0009 — Shared Platform Infrastructure Before Accounting Core](adr/ADR-0009-platform-infrastructure-first.md)
 - [ADR-0010 — Chart of Accounts Model](adr/ADR-0010-chart-of-accounts-model.md)
 - [ADR-0011 — Independent Accounting Dimensions](adr/ADR-0011-independent-accounting-dimensions.md)
+- [ADR-0012 — Versioned Coding Templates](adr/ADR-0012-versioned-coding-templates.md)
 - [Architecture Decision Records](adr/README.md)
 
 ## architecture

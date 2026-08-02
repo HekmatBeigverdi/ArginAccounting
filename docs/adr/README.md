@@ -15,5 +15,6 @@ ADRs are immutable decision records. Superseded decisions remain in the reposito
 - [ADR-0009 — Shared Platform Infrastructure Before Accounting Core](ADR-0009-platform-infrastructure-first.md)
 - [ADR-0010 — Chart of Accounts Model](ADR-0010-chart-of-accounts-model.md)
 - [ADR-0011 — Independent Accounting Dimensions](ADR-0011-independent-accounting-dimensions.md)
+- [ADR-0012 — Versioned Coding Templates](ADR-0012-versioned-coding-templates.md)
 
 Use the [ADR template](../templates/adr-template.md) for new decisions.
