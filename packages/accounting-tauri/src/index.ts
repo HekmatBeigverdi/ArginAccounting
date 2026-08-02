@@ -29,3 +29,7 @@ export {
 export {
   SqliteAccountingDimensionAssignmentValidationService,
 } from "./sqlite-accounting-dimension-assignment-validation-service.ts";
+
+export {
+  SqliteAccountingDimensionSelectorService,
+} from "./sqlite-accounting-dimension-selector-service.ts";

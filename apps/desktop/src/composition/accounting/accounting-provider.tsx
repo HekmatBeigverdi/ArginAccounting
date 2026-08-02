@@ -10,10 +10,12 @@ import {
 import {
   AccountingDimensionsService,
   ChartOfAccountsService,
+  type AccountingDimensionSelectorService,
   type AccountUsageReader,
   type ChartOfAccountsAuthorizer,
 } from "@argin/accounting";
 import {
+  SqliteAccountingDimensionSelectorService,
   SqliteAccountingDimensionUsageReader,
   SqliteAccountingUnitOfWork,
 } from "@argin/accounting-tauri";
@@ -25,6 +27,7 @@ import { usePlatform } from "../../platform";
 interface AccountingServices {
   readonly chartOfAccounts: ChartOfAccountsService;
   readonly dimensions: AccountingDimensionsService;
+  readonly dimensionSelector: AccountingDimensionSelectorService;
 }
 
 const AccountingContext = createContext<AccountingServices | undefined>(
@@ -107,6 +110,9 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         authorizer,
         platform.eventBus,
         context,
+      ),
+      dimensionSelector: new SqliteAccountingDimensionSelectorService(
+        database,
       ),
     };
   }, [

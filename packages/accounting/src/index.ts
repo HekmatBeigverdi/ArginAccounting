@@ -316,6 +316,14 @@ export type {
   ValidateDimensionAssignmentsRequest,
 } from "./contracts/accounting-dimension-assignment-validation-service.ts";
 
+export type {
+  AccountingDimensionSelectorField,
+  AccountingDimensionSelectorModel,
+  AccountingDimensionSelectorOption,
+  AccountingDimensionSelectorService,
+  LoadAccountingDimensionSelectorRequest,
+} from "./contracts/accounting-dimension-selector-service.ts";
+
 export {
   normalizeAccountDimensionPolicySearchQuery,
   normalizeAccountingDimensionMemberSearchQuery,
