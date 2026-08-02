@@ -179,3 +179,165 @@ export {
 export type {
   ChartOfAccountsErrorCode,
 } from "./application/chart-of-accounts-error.ts";
+
+export { AccountingDimensionsService } from "./application/accounting-dimensions-service.ts";
+export type {
+  CreateDimensionMemberCommand,
+  CreateDimensionPolicyCommand,
+  CreateDimensionTypeCommand,
+  UpdateDimensionMemberCommand,
+  UpdateDimensionPolicyCommand,
+  UpdateDimensionTypeCommand,
+} from "./application/accounting-dimensions-service.ts";
+export { AccountingDimensionsError } from "./application/accounting-dimensions-error.ts";
+export type { AccountingDimensionsErrorCode } from "./application/accounting-dimensions-error.ts";
+export { accountingDimensionsPermissions } from "./application/accounting-dimensions-permissions.ts";
+export type { AccountingDimensionsPermission } from "./application/accounting-dimensions-permissions.ts";
+export { createAccountingDimensionsEvent } from "./application/accounting-dimensions-events.ts";
+export type {
+  AccountingDimensionsEvent,
+  AccountingDimensionsEventPayload,
+  AccountingDimensionsEventType,
+} from "./application/accounting-dimensions-events.ts";
+
+export type {
+  AccountingDimensionType,
+  AccountingDimensionTypeSource,
+  AccountingDimensionTypeStatus,
+  CreateAccountingDimensionTypeInput,
+} from "./domain/accounting-dimension-type.ts";
+
+export {
+  createAccountingDimensionType,
+  normalizeDimensionTypeCode,
+} from "./domain/create-accounting-dimension-type.ts";
+
+export {
+  AccountingDimensionTypeValidationError,
+} from "./validation/accounting-dimension-type-validation-error.ts";
+
+export type {
+  AccountingDimensionTypeField,
+  AccountingDimensionTypeValidationIssue,
+} from "./validation/accounting-dimension-type-validation-error.ts";
+
+export {
+  validateAccountingDimensionType,
+} from "./validation/validate-accounting-dimension-type.ts";
+
+export type {
+  AccountingDimensionMember,
+  AccountingDimensionMemberSource,
+  AccountingDimensionMemberStatus,
+  CreateAccountingDimensionMemberInput,
+} from "./domain/accounting-dimension-member.ts";
+
+export {
+  createAccountingDimensionMember,
+  normalizeDimensionMemberCode,
+} from "./domain/create-accounting-dimension-member.ts";
+
+export {
+  AccountingDimensionMemberValidationError,
+} from "./validation/accounting-dimension-member-validation-error.ts";
+
+export type {
+  AccountingDimensionMemberField,
+  AccountingDimensionMemberValidationIssue,
+} from "./validation/accounting-dimension-member-validation-error.ts";
+
+export {
+  validateAccountingDimensionMember,
+} from "./validation/validate-accounting-dimension-member.ts";
+
+export type {
+  AccountDimensionPolicy,
+  AccountDimensionRequirement,
+  CreateAccountDimensionPolicyInput,
+} from "./domain/account-dimension-policy.ts";
+
+export {
+  createAccountDimensionPolicy,
+} from "./domain/create-account-dimension-policy.ts";
+
+export {
+  AccountDimensionPolicyValidationError,
+} from "./validation/account-dimension-policy-validation-error.ts";
+
+export type {
+  AccountDimensionPolicyField,
+  AccountDimensionPolicyValidationIssue,
+} from "./validation/account-dimension-policy-validation-error.ts";
+
+export {
+  validateAccountDimensionPolicy,
+} from "./validation/validate-account-dimension-policy.ts";
+
+export type {
+  AccountingDimensionAssignment,
+} from "./domain/accounting-dimension-assignment.ts";
+
+export {
+  AccountingDimensionAssignmentValidationError,
+} from "./validation/accounting-dimension-assignment-validation-error.ts";
+
+export type {
+  AccountingDimensionAssignmentValidationCode,
+  AccountingDimensionAssignmentValidationIssue,
+} from "./validation/accounting-dimension-assignment-validation-error.ts";
+
+export {
+  assertValidAccountingDimensionAssignments,
+  validateAccountingDimensionAssignments,
+} from "./validation/validate-accounting-dimension-assignments.ts";
+
+export type {
+  ValidateAccountingDimensionAssignmentsInput,
+} from "./validation/validate-accounting-dimension-assignments.ts";
+
+export type {
+  AccountingDimensionTypeRepository,
+} from "./contracts/accounting-dimension-type-repository.ts";
+
+export type {
+  AccountingDimensionMemberRepository,
+} from "./contracts/accounting-dimension-member-repository.ts";
+
+export type {
+  AccountDimensionPolicyRepository,
+} from "./contracts/account-dimension-policy-repository.ts";
+
+export type {
+  AccountingDimensionUsageReader,
+} from "./contracts/accounting-dimension-usage-reader.ts";
+
+export type {
+  AccountingDimensionAssignmentValidationService,
+  ValidateDimensionAssignmentsRequest,
+} from "./contracts/accounting-dimension-assignment-validation-service.ts";
+
+export type {
+  AccountingDimensionSelectorField,
+  AccountingDimensionSelectorModel,
+  AccountingDimensionSelectorOption,
+  AccountingDimensionSelectorService,
+  LoadAccountingDimensionSelectorRequest,
+} from "./contracts/accounting-dimension-selector-service.ts";
+
+export {
+  normalizeAccountDimensionPolicySearchQuery,
+  normalizeAccountingDimensionMemberSearchQuery,
+  normalizeAccountingDimensionTypeSearchQuery,
+} from "./contracts/accounting-dimension-queries.ts";
+
+export type {
+  AccountDimensionPolicySearchQuery,
+  AccountDimensionPolicySortField,
+  AccountingDimensionMemberSearchQuery,
+  AccountingDimensionMemberSortField,
+  AccountingDimensionTypeSearchQuery,
+  AccountingDimensionTypeSortField,
+  NormalizedAccountDimensionPolicySearchQuery,
+  NormalizedAccountingDimensionMemberSearchQuery,
+  NormalizedAccountingDimensionTypeSearchQuery,
+} from "./contracts/accounting-dimension-queries.ts";

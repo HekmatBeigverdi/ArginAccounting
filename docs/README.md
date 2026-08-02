@@ -33,7 +33,6 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 - [Accounting Engine](accounting/accounting-engine.md)
 - [Posting Engine](accounting/posting-engine.md)
 - [Accounting Convention](accounting/accounting-convention.md)
-- [Development Handbook](development/README.md)
 - [Coding Convention](development/coding-convention.md)
 - [Testing Convention](development/testing-convention.md)
 - [Security Model](security/security-model.md)
@@ -44,10 +43,10 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Stable merged baseline: Phase 09 — Platform Infrastructure
-- Implemented and validated: [Phase 10 — Chart of Accounts](phases/phase-10-chart-of-accounts.md)
-- Pending delivery action: merge Phase 10 and prepare release
-- Next implementation target: Phase 11 — Accounting Dimensions
+- Stable merged baseline: Phase 10 — Chart of Accounts
+- Implemented and validated: [Phase 11 — Accounting Dimensions](phases/phase-11-accounting-dimensions.md)
+- Pending delivery action: merge Phase 11 and prepare release
+- Next implementation target: Phase 12 — Coding Templates
 
 ## Source-of-Truth Policy
 

@@ -34,6 +34,17 @@ Permission names follow `<module>.<resource>.<action>`. Seed changes are version
 
 `system.full-access` covers all Chart of Accounts operations. Mutations preserve company scope, actor identity, source, correlation ID, and causation ID in audit events.
 
+### Accounting Dimensions
+
+- `accounting.dimensions.view`
+- `accounting.dimensions.create`
+- `accounting.dimensions.update`
+- `accounting.dimensions.change-status`
+- `accounting.dimensions.delete`
+- `accounting.dimensions.manage-policies`
+
+Dimension operations are company-scoped and authorized at the Application Service boundary. Mutations use optimistic concurrency and publish complete before/after audit evidence only after the transaction commits.
+
 ## Audit and Approval
 
 Audit history is append-only. Approval transitions require valid state, permission, scope, actor, and optimistic-concurrency version. Multi-record changes commit atomically.

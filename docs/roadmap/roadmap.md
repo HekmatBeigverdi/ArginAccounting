@@ -6,9 +6,8 @@ This file remains as a stable compatibility path for earlier links. Do not maint
 
 ## Current State
 
-- Phase 01–09: completed and merged
-- Phase 10: Chart of Accounts implemented and validated; merge and release pending
-- Phase 11: Accounting Dimensions is the next implementation target after Phase 10 delivery
+- Phase 01–10: completed and merged
+- Phase 11: Accounting Dimensions implemented and validated; merge and release pending
 - Phase 12: Coding Templates will add service, trading, and manufacturing defaults
 
 ## Permanent Rule

@@ -14,12 +14,13 @@ All phase records live in this directory and follow the permanent [phase templat
 8. [Phase 08 — Audit and Approval](phase-08-audit-approval.md)
 9. [Phase 09 — Platform Infrastructure](phase-09-platform-infrastructure.md)
 10. [Phase 10 — Chart of Accounts](phase-10-chart-of-accounts.md)
+11. [Phase 11 — Accounting Dimensions](phase-11-accounting-dimensions.md)
 
-Phase 10 is implemented and validated on its phase branch. Merge and release remain delivery actions.
+Phase 11 is implemented and validated on its phase branch. Merge and release remain delivery actions.
 
 ## Next Target
 
-11. Phase 11 — Accounting Dimensions
+12. Phase 12 — Coding Templates
 
 ## Renumbering Rule
 
@@ -27,4 +28,4 @@ The insertion of Platform Infrastructure as Phase 09 shifts Chart of Accounts an
 
 ## Historical Refactor Policy
 
-Phase 01–10 documents retain their implementation history. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
+Phase 01–11 documents retain their implementation history. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
