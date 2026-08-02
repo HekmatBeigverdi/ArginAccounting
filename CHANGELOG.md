@@ -6,6 +6,54 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.11.0] - Unreleased
+
+### Added
+
+- Company-scoped accounting dimension types and members independent from the Chart of Accounts
+- Flat and hierarchical dimensions with single- or multiple-member selection
+- Effective-dated dimension members with manual, system, or module provenance
+- Required, optional, and forbidden account-dimension policies
+- Reusable assignment validation and dynamic selector contracts
+- SQLite repositories, usage reader, validation service, and selector service
+- Persian RTL dimension and policy management workspace
+- Dynamic Persian dimension selector and actionable error presentation
+
+### Database
+
+- Added `accounting_dimension_types`
+- Added `accounting_dimension_members`
+- Added `account_dimension_policies`
+- Added migration `0011_accounting_dimensions.sql`
+- Added company/type scope, hierarchy, effective-date, uniqueness, provenance, and concurrency constraints
+
+### Security and Audit
+
+- Added dimension view, create, update, status, delete, and policy-management permissions
+- Enforced company scope and authorization at the Application Service boundary
+- Added type, member, and policy lifecycle audit events with before/after state
+- Preserved actor, source, correlation, causation, and aggregate-version context
+
+### Tests and Validation
+
+- Accounting focused tests passed: 131
+- SQLite Adapter focused tests passed: 27
+- Desktop focused tests passed: 26
+- Frozen install passed for 21 workspaces
+- Monorepo lint passed without warnings
+- Monorepo typecheck passed: 19/19 tasks
+- Monorepo tests passed: 18/18 tasks
+- Monorepo build passed: 19/19 tasks
+
+### Deferred
+
+- Service, trading, and manufacturing coding templates: Phase 12
+- Persisted Journal Vouchers, Journal Lines, and dimension assignments: Phase 13
+- Production journal-backed dimension-usage detection: Phase 13 and later
+- Master-data-backed dimension adapters: their owning phases
+
+---
+
 ## [0.10.0] - Unreleased
 
 ### Added

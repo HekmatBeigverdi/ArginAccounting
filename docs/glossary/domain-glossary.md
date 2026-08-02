@@ -14,7 +14,9 @@ This glossary defines canonical English repository terms and their Persian UI me
 | Journal Line | آرتیکل سند | Debit or credit entry within a voucher. |
 | Debit | بدهکار | Debit side of a journal entry. |
 | Credit | بستانکار | Credit side of a journal entry. |
-| Dimension | بُعد حسابداری | Reusable analytical classifier such as party, project, or cost centre. |
+| Dimension Type | نوع بُعد حسابداری | Reusable analytical axis such as party, project, or cost centre. |
+| Dimension Member | عضو بُعد حسابداری / تفصیلی | Selectable value within one dimension type. |
+| Account-Dimension Policy | سیاست حساب و بُعد | Required, optional, or forbidden dimension rule for an account. |
 | Posting | ثبت حسابداری | Conversion of an approved source transaction into accounting entries. |
 | Posting Rule | قاعده ثبت | Versioned rule that maps source data to accounting entries. |
 | Approval Request | درخواست تأیید | Workflow request requiring an authorized decision. |
