@@ -90,6 +90,18 @@ export {
   validateCodingTemplateGraph,
 } from "./validation/validate-coding-template-graph.ts";
 
+export type {
+  CodingTemplateCatalog,
+} from "./catalogs/coding-template-catalog.ts";
+
+export {
+  BUILT_IN_IRANIAN_CODING_CATALOGS,
+  getBuiltInIranianCodingCatalog,
+  IRAN_MANUFACTURING_CODING_CATALOG,
+  IRAN_SERVICE_CODING_CATALOG,
+  IRAN_TRADING_CODING_CATALOG,
+} from "./catalogs/built-in-iranian-coding-catalogs.ts";
+
 export {
   DEFAULT_ACCOUNT_CODE_LENGTHS,
 } from "./domain/account-coding-settings.ts";

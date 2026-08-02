@@ -322,9 +322,9 @@ Exit criteria:
 | 1 | Baseline, Branch, and Frozen Plan | Completed | Branch `phase/12-coding-templates` created from released Phase 11 commit `999c215`; package, migration, permission, event, UI, test, account, dimension, and company baselines recorded below; frozen plan committed as `e06c904` |
 | 2 | Domain Analysis and ADR | Completed | `ADR-0012` accepts company-independent immutable template versions, deterministic preview, atomic retry-safe apply/import, non-destructive upgrades, one Excel/domain validation path, and Argin Bridge ports |
 | 3 | Company Activity Type and Compatibility Policy | Completed | Added explicit `service`, `trading`, `manufacturing`, and `custom` types; existing-company backfill policy remains `custom` for migration 0012; added validation, dedicated update permission, authorized update use case, SQLite mapping, Persian setup selector, recommendation-only policy, and focused tests |
-| 4 | Template Aggregate and Value Objects | Not started | — |
-| 5 | Template Item Model | Not started | — |
-| 6 | Built-in Iranian Coding Catalogs | Not started | — |
+| 4 | Template Aggregate and Value Objects | Completed | Added company-independent template identity, normalized code/name value objects, controlled draft/published/retired lifecycle, immutable sequential version metadata, source provenance, content fingerprint, and optimistic versioning |
+| 5 | Template Item Model | Completed | Added immutable account, report classification, dimension type/member, and account-dimension policy graph with stable logical keys and complete shared domain validation |
+| 6 | Built-in Iranian Coding Catalogs | Completed | Added immutable version-1 service, trading, and manufacturing catalogs with stable shared keys, explicit accounting/report meaning, activity-specific accounts, four dimension types, policies, integrity tests, and SHA-256 snapshots |
 | 7 | Application Contracts and Queries | Not started | — |
 | 8 | Preview and Conflict Analysis Engine | Not started | — |
 | 9 | Atomic Template Application | Not started | — |
