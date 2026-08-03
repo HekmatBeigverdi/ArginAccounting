@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   buildCodingTemplateAccountTree,
+  codingTemplateErrorDetails,
   codingTemplateIssueAction,
   codingTemplateErrorMessage,
   codingTemplateIssueMessage,
@@ -21,6 +22,18 @@ test("preview issues have actionable Persian messages", () => {
   assert.match(codingTemplateIssueMessage("hierarchy_conflict"), /والد و فرزند/);
   assert.match(codingTemplateErrorMessage(new Error("stale_preview")), /دوباره پیش‌نمایش/);
   assert.match(codingTemplateIssueAction({ code: "code_conflict", itemType: "account", logicalKey: "cash", conflictingId: "1", field: "code" }), /کدینگ حساب‌ها/);
+});
+
+test("coding template failures expose separate user and technical messages", () => {
+  const sqlite = new Error("CHECK constraint failed: coding_template_applications");
+  const database = new Error("Failed to execute SQLite statement", { cause: sqlite });
+  Object.assign(database, { code: "QUERY_FAILED" });
+
+  const details = codingTemplateErrorDetails(database);
+
+  assert.match(details.summary, /عملیات الگوی کدینگ انجام نشد/);
+  assert.match(details.technical, /QUERY_FAILED/);
+  assert.match(details.technical, /coding_template_applications/);
 });
 
 test("preview accounts are presented as an ordered hierarchy with plan status", () => {

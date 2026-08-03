@@ -109,7 +109,39 @@ export function codingTemplateIssueAction(issue: CodingTemplatePreviewIssue): st
   return actions[issue.code];
 }
 
-export function codingTemplateErrorMessage(reason: unknown): string {
+export interface CodingTemplateErrorDetails {
+  readonly summary: string;
+  readonly technical: string;
+}
+
+function errorChain(reason: unknown): readonly string[] {
+  const messages: string[] = [];
+  const visited = new Set<unknown>();
+  let current: unknown = reason;
+  while (current != null && !visited.has(current)) {
+    visited.add(current);
+    if (current instanceof Error) {
+      const coded = current as Error & { code?: unknown; cause?: unknown };
+      const prefix = typeof coded.code === "string" ? `[${coded.code}] ` : "";
+      messages.push(`${prefix}${current.name}: ${current.message}`);
+      current = coded.cause;
+      continue;
+    }
+    if (typeof current === "object" && "message" in current) {
+      const value = current as { message?: unknown; code?: unknown; cause?: unknown };
+      const prefix = typeof value.code === "string" ? `[${value.code}] ` : "";
+      messages.push(`${prefix}${String(value.message)}`);
+      current = value.cause;
+      continue;
+    }
+    messages.push(String(current));
+    break;
+  }
+  return messages;
+}
+
+export function codingTemplateErrorDetails(reason: unknown): CodingTemplateErrorDetails {
+  const chain = errorChain(reason);
   const code = reason instanceof Error ? reason.message : String(reason);
   const messages: Record<string, string> = {
     permission_denied: "برای انجام این عملیات مجوز کافی ندارید.",
@@ -119,5 +151,11 @@ export function codingTemplateErrorMessage(reason: unknown): string {
     confirmation_required: "تأیید صریح عملیات الزامی است.",
     "coding-template-version-not-found": "نسخه انتخاب‌شده پیدا نشد.",
   };
-  return messages[code] ?? "عملیات الگوی کدینگ انجام نشد. دوباره تلاش کنید.";
+  return Object.freeze({
+    summary: messages[code] ?? "عملیات الگوی کدینگ انجام نشد. دوباره تلاش کنید.",
+    technical: chain.join(" ← ") || "Unknown error",
+  });
 }
+
+export const codingTemplateErrorMessage = (reason: unknown): string =>
+  codingTemplateErrorDetails(reason).summary;

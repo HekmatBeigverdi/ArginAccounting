@@ -199,9 +199,21 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
     await previousOperation;
 
     try {
-      return await operation(
-        new LogicalTransactionSession(this),
-      );
+      await this.execute("BEGIN IMMEDIATE");
+      try {
+        const result = await operation(
+          new LogicalTransactionSession(this),
+        );
+        await this.execute("COMMIT");
+        return result;
+      } catch (error) {
+        try {
+          await this.execute("ROLLBACK");
+        } catch (rollbackError) {
+          console.error("SQLite rollback failed:", rollbackError);
+        }
+        throw error;
+      }
     } finally {
       releaseQueue();
     }

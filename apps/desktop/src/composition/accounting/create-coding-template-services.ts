@@ -31,7 +31,7 @@ export interface CodingTemplateServices {
   searchVersions(templateId: string): Promise<readonly CodingTemplateVersionRecord[]>;
   recommend(company: Company): Promise<readonly CodingTemplate[]>;
   preview(companyId: string, versionId: string): Promise<CodingTemplatePreviewPlan>;
-  apply(input: { companyId: string; templateId: string; versionId: string; baselineFingerprint: string }): Promise<void>;
+  apply(input: { companyId: string; templateId: string; versionId: string; baselineFingerprint: string; requestKey: string }): Promise<void>;
   history(companyId: string): Promise<readonly CodingTemplateApplicationHistory[]>;
   previewUpgrade(companyId: string, applicationId: string, targetVersionId: string): Promise<CodingTemplateUpgradePlan>;
   previewWorkbook(file: File): Promise<CodingTemplateWorkbookImportPreview>;
@@ -113,7 +113,7 @@ export function createCodingTemplateServices(deps: Dependencies): CodingTemplate
       await applyCodingTemplate({
         companyId: input.companyId, templateId: input.templateId,
         templateVersionId: input.versionId, baselineFingerprint: input.baselineFingerprint,
-        requestKey: crypto.randomUUID(), confirmed: true, actorId: deps.actorId,
+        requestKey: input.requestKey, confirmed: true, actorId: deps.actorId,
       }, runtime);
     },
     async history(companyId) {
