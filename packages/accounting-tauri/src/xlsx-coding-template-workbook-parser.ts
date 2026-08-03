@@ -128,36 +128,118 @@ function coerce(value: Value, type: CodingTemplateWorkbookSheet["columns"][numbe
 }
 
 function account(row: Row): CodingTemplateVersionContent["accounts"][number] {
+  const reportClassification = Object.freeze({
+    balanceSheetSection: nullableText(row, "balanceSheetSection") as never,
+    incomeStatementSection: nullableText(row, "incomeStatementSection") as never,
+    cashFlowCategory: nullableText(row, "cashFlowCategory") as never,
+    cashEquivalent: bool(row, "cashEquivalent"),
+    receivable: bool(row, "receivable"),
+    payable: bool(row, "payable"),
+    managementTags: textList(row, "managementTags"),
+  });
+
   return Object.freeze({
-    logicalKey: text(row, "logicalKey"), parentLogicalKey: nullableText(row, "parentLogicalKey"), level: text(row, "level") as "group" | "general" | "subsidiary", code: text(row, "code"), persianName: text(row, "persianName"), englishName: nullableText(row, "englishName"), nature: text(row, "nature") as never, normalBalance: text(row, "normalBalance") as "debit" | "credit", statementType: text(row, "statementType") as never,
-    reportClassification: Object.freeze({ balanceSheetSection: nullableText(row, "balanceSheetSection") as never, incomeStatementSection: nullableText(row, "incomeStatementSection") as never, cashFlowCategory: nullableText(row, "cashFlowCategory") as never, cashEquivalent: bool(row, "cashEquivalent"), receivable: bool(row, "receivable"), payable: bool(row, "payable"), managementTags: textList(row, "managementTags") }),
-    postingAllowed: bool(row, "postingAllowed"), currencyEnabled: bool(row, "currencyEnabled"), revaluationEnabled: bool(row, "revaluationEnabled"), trackingEnabled: bool(row, "trackingEnabled"), dueDateEnabled: bool(row, "dueDateEnabled"), activeByDefault: bool(row, "activeByDefault"), displayOrder: integer(row, "displayOrder"),
+    logicalKey: text(row, "logicalKey"),
+    parentLogicalKey: nullableText(row, "parentLogicalKey"),
+    level: text(row, "level") as "group" | "general" | "subsidiary",
+    code: text(row, "code"),
+    persianName: text(row, "persianName"),
+    englishName: nullableText(row, "englishName"),
+    nature: text(row, "nature") as never,
+    normalBalance: text(row, "normalBalance") as "debit" | "credit",
+    statementType: text(row, "statementType") as never,
+    reportClassification,
+    postingAllowed: bool(row, "postingAllowed"),
+    currencyEnabled: bool(row, "currencyEnabled"),
+    revaluationEnabled: bool(row, "revaluationEnabled"),
+    trackingEnabled: bool(row, "trackingEnabled"),
+    dueDateEnabled: bool(row, "dueDateEnabled"),
+    activeByDefault: bool(row, "activeByDefault"),
+    displayOrder: integer(row, "displayOrder"),
   });
 }
 
 function dimensionType(row: Row): CodingTemplateVersionContent["dimensionTypes"][number] {
-  return Object.freeze({ logicalKey: text(row, "logicalKey"), code: text(row, "code"), persianName: text(row, "persianName"), englishName: nullableText(row, "englishName"), hierarchical: bool(row, "hierarchical"), allowMultipleMembers: bool(row, "allowMultipleMembers"), activeByDefault: bool(row, "activeByDefault"), displayOrder: integer(row, "displayOrder") });
+  return Object.freeze({
+    logicalKey: text(row, "logicalKey"),
+    code: text(row, "code"),
+    persianName: text(row, "persianName"),
+    englishName: nullableText(row, "englishName"),
+    hierarchical: bool(row, "hierarchical"),
+    allowMultipleMembers: bool(row, "allowMultipleMembers"),
+    activeByDefault: bool(row, "activeByDefault"),
+    displayOrder: integer(row, "displayOrder"),
+  });
 }
 
 function dimensionMember(row: Row): CodingTemplateVersionContent["dimensionMembers"][number] {
-  return Object.freeze({ logicalKey: text(row, "logicalKey"), dimensionTypeLogicalKey: text(row, "dimensionTypeLogicalKey"), parentLogicalKey: nullableText(row, "parentLogicalKey"), code: text(row, "code"), persianName: text(row, "persianName"), englishName: nullableText(row, "englishName"), activeByDefault: bool(row, "activeByDefault"), displayOrder: integer(row, "displayOrder") });
+  return Object.freeze({
+    logicalKey: text(row, "logicalKey"),
+    dimensionTypeLogicalKey: text(row, "dimensionTypeLogicalKey"),
+    parentLogicalKey: nullableText(row, "parentLogicalKey"),
+    code: text(row, "code"),
+    persianName: text(row, "persianName"),
+    englishName: nullableText(row, "englishName"),
+    activeByDefault: bool(row, "activeByDefault"),
+    displayOrder: integer(row, "displayOrder"),
+  });
 }
 
 function policy(row: Row): CodingTemplateVersionContent["accountDimensionPolicies"][number] {
-  return Object.freeze({ accountLogicalKey: text(row, "accountLogicalKey"), dimensionTypeLogicalKey: text(row, "dimensionTypeLogicalKey"), requirement: text(row, "requirement") as "required" | "optional" | "forbidden" });
+  return Object.freeze({
+    accountLogicalKey: text(row, "accountLogicalKey"),
+    dimensionTypeLogicalKey: text(row, "dimensionTypeLogicalKey"),
+    requirement: text(row, "requirement") as "required" | "optional" | "forbidden",
+  });
 }
 
-const text = (row: Row, field: string) => String(row[field] ?? "");
-const nullableText = (row: Row, field: string) => row[field] === null || row[field] === "" ? null : String(row[field]);
-const bool = (row: Row, field: string) => row[field] === true;
-const integer = (row: Row, field: string) => Number(row[field]);
-const textList = (row: Row, field: string) => text(row, field).split("|").map((value) => value.trim()).filter(Boolean);
-const failure = (issues: readonly CodingTemplateWorkbookIssue[]): CodingTemplateWorkbookParseResult => Object.freeze({ success: false, metadata: null, content: null, issues: Object.freeze([...issues]) });
-const issue = (code: CodingTemplateWorkbookIssue["code"], message: string, cellLocation: CodingTemplateWorkbookCellLocation | null): CodingTemplateWorkbookIssue => Object.freeze({ code, message, location: cellLocation });
-const location = (sheet: CodingTemplateWorkbookCellLocation["sheet"], row: number, column: string, address: string): CodingTemplateWorkbookCellLocation => Object.freeze({ sheet, row, column, address });
+const text = (row: Row, field: string): string => String(row[field] ?? "");
+
+const nullableText = (row: Row, field: string): string | null =>
+  row[field] === null || row[field] === "" ? null : String(row[field]);
+
+const bool = (row: Row, field: string): boolean => row[field] === true;
+
+const integer = (row: Row, field: string): number => Number(row[field]);
+
+const textList = (row: Row, field: string): string[] =>
+  text(row, field)
+    .split("|")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+const failure = (
+  issues: readonly CodingTemplateWorkbookIssue[],
+): CodingTemplateWorkbookParseResult =>
+  Object.freeze({
+    success: false,
+    metadata: null,
+    content: null,
+    issues: Object.freeze([...issues]),
+  });
+
+const issue = (
+  code: CodingTemplateWorkbookIssue["code"],
+  message: string,
+  cellLocation: CodingTemplateWorkbookCellLocation | null,
+): CodingTemplateWorkbookIssue =>
+  Object.freeze({ code, message, location: cellLocation });
+
+const location = (
+  sheet: CodingTemplateWorkbookCellLocation["sheet"],
+  row: number,
+  column: string,
+  address: string,
+): CodingTemplateWorkbookCellLocation =>
+  Object.freeze({ sheet, row, column, address });
 
 function excelColumn(index: number): string {
-  let value = index; let result = "";
-  while (value > 0) { value -= 1; result = String.fromCharCode(65 + value % 26) + result; value = Math.floor(value / 26); }
+  let value = index;
+  let result = "";
+  while (value > 0) {
+    value -= 1;
+    result = String.fromCharCode(65 + value % 26) + result;
+    value = Math.floor(value / 26);
+  }
   return result;
 }
