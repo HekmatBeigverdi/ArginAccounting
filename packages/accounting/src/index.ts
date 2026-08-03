@@ -196,6 +196,31 @@ export type {
 export { createCodingTemplateUpgradePlan } from "./application/coding-template-upgrade.ts";
 
 export type {
+  CodingTemplateWorkbookCell,
+  CodingTemplateWorkbookCellLocation,
+  CodingTemplateWorkbookColumn,
+  CodingTemplateWorkbookColumnType,
+  CodingTemplateWorkbookIssue,
+  CodingTemplateWorkbookIssueCode,
+  CodingTemplateWorkbookMetadata,
+  CodingTemplateWorkbookParseFailure,
+  CodingTemplateWorkbookParser,
+  CodingTemplateWorkbookParseResult,
+  CodingTemplateWorkbookParseSuccess,
+  CodingTemplateWorkbookSheet,
+  CodingTemplateWorkbookSheetName,
+  CodingTemplateWorkbookSource,
+} from "./contracts/coding-template-workbook.ts";
+
+export {
+  CODING_TEMPLATE_WORKBOOK_CONTRACT_VERSION,
+  CODING_TEMPLATE_WORKBOOK_LIMITS,
+  CODING_TEMPLATE_WORKBOOK_SHEETS,
+  normalizeCodingTemplateWorkbookCell,
+  normalizeCodingTemplateWorkbookText,
+} from "./contracts/coding-template-workbook.ts";
+
+export type {
   CodingTemplateApplicationErrorCode,
 } from "./application/coding-template-application-error.ts";
 

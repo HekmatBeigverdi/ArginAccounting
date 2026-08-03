@@ -229,6 +229,15 @@ Exit criteria:
 - The Excel contract is documented and versioned.
 - Parser output feeds the same template validator as built-in catalogs.
 
+Status: Completed
+
+Evidence:
+
+- Published the versioned Excel workbook contract with five fixed sheets, exact columns, types, required fields, enumerations, examples, and explicit workbook/row limits.
+- Added an infrastructure-neutral parser port accepting bytes and returning normalized `CodingTemplateVersionContent` or cell-addressed issues without browser, filesystem, Tauri, or spreadsheet-library types.
+- Added deterministic Persian/Arabic digit and whitespace normalization plus formula rejection even when a cached formula value exists.
+- Proved through focused tests that successful parser output is accepted by the same graph validator used by built-in catalogs.
+
 ### Step 12 — Excel Preview and Atomic Import
 
 - Parse a workbook into a draft template version.
