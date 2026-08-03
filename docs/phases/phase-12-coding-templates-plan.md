@@ -328,7 +328,7 @@ Exit criteria:
 | 7 | Application Contracts and Queries | Completed | Added infrastructure-neutral repositories for templates, immutable versions, application/import histories; catalog, clock, identifier, authorization, and event ports; normalized paged searches and company activity recommendation query; extended Accounting Unit of Work for Phase 12 adapters |
 | 8 | Preview and Conflict Analysis Engine | Completed | Pure deterministic preview, baseline fingerprint, ordered actions, and stable conflict issues |
 | 9 | Atomic Template Application | Completed | Confirmed application command revalidates the current baseline inside one Unit of Work, creates operational accounts/dimensions/policies with provenance, persists history and mappings, rejects stale/conflicting previews, returns idempotent retries, and publishes only after commit |
-| 10 | Template Upgrade and Drift Policy | Not started | — |
+| 10 | Template Upgrade and Drift Policy | Completed | Added a pure deterministic three-way upgrade planner across the applied version, operational company baseline, and target version; classifies unchanged, locally modified, newly available, conflicting, and retired items; preserves all local/retired data, requires explicit additive acceptance, records accepted/skipped decisions, and validates scope, lineage mappings, template identity, and version order |
 | 11 | Excel Workbook Contract and Parser Boundary | Not started | — |
 | 12 | Excel Preview and Atomic Import | Not started | — |
 | 13 | SQLite Migration | Not started | — |

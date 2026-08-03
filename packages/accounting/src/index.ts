@@ -182,6 +182,20 @@ export {
 } from "./application/apply-coding-template.ts";
 
 export type {
+  CodingTemplateUpgradeAction,
+  CodingTemplateUpgradeDecision,
+  CodingTemplateUpgradeIssue,
+  CodingTemplateUpgradeIssueCode,
+  CodingTemplateUpgradeItem,
+  CodingTemplateUpgradePlan,
+  CodingTemplateUpgradeStatus,
+  CodingTemplateUpgradeSummary,
+  CreateCodingTemplateUpgradePlanInput,
+} from "./application/coding-template-upgrade.ts";
+
+export { createCodingTemplateUpgradePlan } from "./application/coding-template-upgrade.ts";
+
+export type {
   CodingTemplateApplicationErrorCode,
 } from "./application/coding-template-application-error.ts";
 
