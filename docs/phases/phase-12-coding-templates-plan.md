@@ -352,7 +352,7 @@ Exit criteria:
 | 11 | Excel Workbook Contract and Parser Boundary | Completed | Versioned five-sheet contract, infrastructure-neutral parser port, Persian/Arabic normalization, formula rejection, cell-addressed errors, and shared graph validation tests |
 | 12 | Excel Preview and Atomic Import | Completed | Read-only file/graph preview, dry-run counts, sheet-row-field issue mapping, confirmed fingerprint-bound atomic import, durable provenance, retry-safe batch identity, and rollback tests |
 | 13 | SQLite Migration | Completed | Added migration `0012_coding_templates.sql` with durable company activity, normalized immutable template content, application/mapping/import provenance, domain-aligned constraints, and catalog/synchronization indexes; verified fresh and Phase 11 upgrade paths |
-| 14 | SQLite Repositories and Transactional Adapters | Not started | — |
+| 14 | SQLite Repositories and Transactional Adapters | Completed | Added SQLite repositories for templates, immutable normalized versions, application history/mappings, company baselines, and workbook import history; extended the Accounting Unit of Work for atomic apply/import; added escaped stable paging, optimistic template updates, idempotency/provenance persistence, and rollback-focused contract tests |
 | 15 | Permissions, Audit, and Integration Events | Not started | — |
 | 16 | Desktop Composition and Persian RTL UI | Not started | — |
 | 17 | Focused and Integration Test Completion | Not started | — |

@@ -38,3 +38,16 @@ export {
   WebCryptoCodingTemplateWorkbookFingerprintProvider,
   XlsxCodingTemplateWorkbookParser,
 } from "./xlsx-coding-template-workbook-parser.ts";
+
+export {
+  SqliteCodingTemplateApplicationHistoryRepository,
+  SqliteCodingTemplateApplicationItemMappingRepository,
+  SqliteCodingTemplateCompanyBaselineRepository,
+  SqliteCodingTemplateImportHistoryRepository,
+  SqliteCodingTemplateRepository,
+  SqliteCodingTemplateVersionRepository,
+} from "./repositories/sqlite-coding-template-repositories.ts";
+
+export {
+  BuiltInCodingTemplateCatalogProvider,
+} from "./built-in-coding-template-catalog-provider.ts";
