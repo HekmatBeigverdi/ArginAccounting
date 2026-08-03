@@ -351,7 +351,7 @@ Exit criteria:
 | 10 | Template Upgrade and Drift Policy | Completed | Added a pure deterministic three-way upgrade planner across the applied version, operational company baseline, and target version; classifies unchanged, locally modified, newly available, conflicting, and retired items; preserves all local/retired data, requires explicit additive acceptance, records accepted/skipped decisions, and validates scope, lineage mappings, template identity, and version order |
 | 11 | Excel Workbook Contract and Parser Boundary | Completed | Versioned five-sheet contract, infrastructure-neutral parser port, Persian/Arabic normalization, formula rejection, cell-addressed errors, and shared graph validation tests |
 | 12 | Excel Preview and Atomic Import | Completed | Read-only file/graph preview, dry-run counts, sheet-row-field issue mapping, confirmed fingerprint-bound atomic import, durable provenance, retry-safe batch identity, and rollback tests |
-| 13 | SQLite Migration | Not started | — |
+| 13 | SQLite Migration | Completed | Added migration `0012_coding_templates.sql` with durable company activity, normalized immutable template content, application/mapping/import provenance, domain-aligned constraints, and catalog/synchronization indexes; verified fresh and Phase 11 upgrade paths |
 | 14 | SQLite Repositories and Transactional Adapters | Not started | — |
 | 15 | Permissions, Audit, and Integration Events | Not started | — |
 | 16 | Desktop Composition and Persian RTL UI | Not started | — |
