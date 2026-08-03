@@ -225,6 +225,34 @@ test("application and mapping repositories preserve idempotency keys and provena
   assert.match(db.executions[1]!.sql, /coding_template_application_items/);
 });
 
+test("application repository adapts preview fingerprints to migration 0012", async () => {
+  const db = new FakeDatabase();
+  const repo = new SqliteCodingTemplateApplicationHistoryRepository(db);
+  const previewFingerprint = "fnv1a32:12ab34cd";
+
+  await repo.create({ ...app, baselineFingerprint: previewFingerprint });
+
+  const stored = db.executions[0]!.parameters[6];
+  assert.equal(typeof stored, "string");
+  assert.match(String(stored), /^[0-9a-f]{64}$/);
+  assert.equal(String(stored).slice(-8), "12ab34cd");
+
+  db.queryOneRows = [{
+    id: app.id,
+    company_id: app.companyId,
+    template_id: app.templateId,
+    template_version_id: app.templateVersionId,
+    request_key: app.requestKey,
+    status: app.status,
+    baseline_fingerprint: stored,
+    applied_at: app.appliedAt,
+    actor_id: app.actorId,
+    created_at: app.createdAt,
+  }];
+
+  assert.equal((await repo.findById(app.id))?.baselineFingerprint, previewFingerprint);
+});
+
 test("import repository persists complete file provenance", async () => {
   const db = new FakeDatabase();
   await new SqliteCodingTemplateImportHistoryRepository(db).create(imported);

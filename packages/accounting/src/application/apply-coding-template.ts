@@ -314,8 +314,10 @@ export async function applyCodingTemplate(
       actorId,
       createdAt: now,
     });
-    await r.mappings.createMany(Object.freeze(mappings));
     await r.applications.create(application);
+    // The application is the parent of every mapping in SQLite. Persist it
+    // first so foreign-key enforcement cannot reject an otherwise valid apply.
+    await r.mappings.createMany(Object.freeze(mappings));
     event = createApplicationEvent(dependencies, command, application, mappings);
     return {
       application,

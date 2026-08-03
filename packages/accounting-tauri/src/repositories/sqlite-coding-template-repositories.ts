@@ -36,6 +36,30 @@ const templateCodeToStorage = (code: string): string =>
 const templateCodeFromStorage = (code: string): CodingTemplate["code"] =>
   normalizeCodingTemplateCode(code.replaceAll("_", "-")) as CodingTemplate["code"];
 
+// Migration 0012 requires a 64-character lowercase hexadecimal value, while
+// previews intentionally use the lightweight `fnv1a32:<hex>` fingerprint.
+// Preserve the public/domain representation and adapt it only at the SQLite
+// boundary. The leading marker also makes the conversion reversible.
+const FNV_STORAGE_PREFIX = "f".repeat(56);
+const baselineFingerprintToStorage = (value: string): string => {
+  const match = /^fnv1a32:([0-9a-f]{8})$/.exec(value);
+  return match ? `${FNV_STORAGE_PREFIX}${match[1]}` : value;
+};
+
+const baselineFingerprintFromStorage = (value: string): string =>
+  value.startsWith(FNV_STORAGE_PREFIX) && value.length === 64
+    ? `fnv1a32:${value.slice(56)}`
+    : value;
+
+// Template-created operational records keep provenance as
+// `<templateVersionId>:<logicalKey>`. Preview comparisons operate on the
+// logical key itself, so strip only the generated version prefix here.
+const logicalKeyFromSourceReference = (value: string | null): string | null => {
+  if (!value) return null;
+  const separator = value.indexOf(":");
+  return separator < 0 ? value : value.slice(separator + 1);
+};
+
 const template = (r: TemplateRow): CodingTemplate =>
   Object.freeze({
     id: r.id as CodingTemplate["id"],
@@ -59,7 +83,7 @@ const application = (r: ApplicationRow): CodingTemplateApplicationHistory =>
     templateVersionId: r.template_version_id,
     requestKey: r.request_key,
     status: r.status,
-    baselineFingerprint: r.baseline_fingerprint,
+    baselineFingerprint: baselineFingerprintFromStorage(r.baseline_fingerprint),
     appliedAt: r.applied_at,
     actorId: r.actor_id,
     createdAt: r.created_at,
@@ -249,7 +273,7 @@ export class SqliteCodingTemplateApplicationHistoryRepository
         v.templateVersionId,
         v.requestKey,
         v.status,
-        v.baselineFingerprint,
+        baselineFingerprintToStorage(v.baselineFingerprint),
         v.appliedAt,
         v.actorId,
         v.createdAt,
@@ -313,7 +337,7 @@ export class SqliteCodingTemplateApplicationHistoryRepository
       `UPDATE coding_template_applications
        SET status = ?, baseline_fingerprint = ?, applied_at = ?, actor_id = ?
        WHERE id = ? AND company_id = ?`,
-      [v.status, v.baselineFingerprint, v.appliedAt, v.actorId, v.id, v.companyId],
+      [v.status, baselineFingerprintToStorage(v.baselineFingerprint), v.appliedAt, v.actorId, v.id, v.companyId],
     );
     if (result.rowsAffected !== 1) {
       throw new Error(`Coding template application not found: ${v.id}`);
@@ -574,9 +598,9 @@ export class SqliteCodingTemplateCompanyBaselineRepository
     return Object.freeze({
       id: x.id,
       companyId: x.company_id,
-      logicalKey: x.source_reference_id,
+      logicalKey: logicalKeyFromSourceReference(x.source_reference_id),
       code: x.code,
-      parentLogicalKey: x.parent_logical_key,
+      parentLogicalKey: logicalKeyFromSourceReference(x.parent_logical_key),
       level: x.level,
       persianName: x.name,
       englishName: x.english_name,
@@ -606,7 +630,7 @@ export class SqliteCodingTemplateCompanyBaselineRepository
     return Object.freeze({
       id: x.id,
       companyId: x.company_id,
-      logicalKey: x.source_reference_id,
+      logicalKey: logicalKeyFromSourceReference(x.source_reference_id),
       code: x.code,
       persianName: x.name,
       englishName: x.english_name,
@@ -621,10 +645,10 @@ export class SqliteCodingTemplateCompanyBaselineRepository
     return Object.freeze({
       id: x.id,
       companyId: x.company_id,
-      logicalKey: x.source_reference_id,
+      logicalKey: logicalKeyFromSourceReference(x.source_reference_id),
       code: x.code,
-      dimensionTypeLogicalKey: x.dimension_type_logical_key,
-      parentLogicalKey: x.parent_logical_key,
+      dimensionTypeLogicalKey: logicalKeyFromSourceReference(x.dimension_type_logical_key),
+      parentLogicalKey: logicalKeyFromSourceReference(x.parent_logical_key),
       persianName: x.name,
       englishName: x.english_name,
       active: x.status === "active",
@@ -636,8 +660,8 @@ export class SqliteCodingTemplateCompanyBaselineRepository
     return Object.freeze({
       id: x.id,
       companyId: x.company_id,
-      accountLogicalKey: x.account_logical_key,
-      dimensionTypeLogicalKey: x.dimension_type_logical_key,
+      accountLogicalKey: logicalKeyFromSourceReference(x.account_logical_key),
+      dimensionTypeLogicalKey: logicalKeyFromSourceReference(x.dimension_type_logical_key),
       requirement: x.requirement,
     });
   }
