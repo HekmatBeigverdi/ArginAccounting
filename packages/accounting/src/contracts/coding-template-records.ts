@@ -21,6 +21,22 @@ export interface CodingTemplateApplicationHistory {
   readonly createdAt: string;
 }
 
+export type CodingTemplateApplicationItemType =
+  | "account"
+  | "dimension_type"
+  | "dimension_member"
+  | "account_dimension_policy";
+
+export interface CodingTemplateApplicationItemMapping {
+  readonly applicationId: string;
+  readonly companyId: string;
+  readonly templateVersionId: string;
+  readonly itemType: CodingTemplateApplicationItemType;
+  readonly logicalKey: string;
+  readonly operationalId: string;
+  readonly action: "created" | "matched";
+}
+
 export type CodingTemplateImportStatus = "received" | "validated" | "rejected" | "published";
 
 export interface CodingTemplateImportHistory {

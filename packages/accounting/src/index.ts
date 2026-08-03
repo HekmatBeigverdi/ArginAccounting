@@ -104,6 +104,8 @@ export {
 
 export type {
   CodingTemplateApplicationHistory,
+  CodingTemplateApplicationItemMapping,
+  CodingTemplateApplicationItemType,
   CodingTemplateApplicationStatus,
   CodingTemplateImportHistory,
   CodingTemplateImportStatus,
@@ -112,6 +114,8 @@ export type {
 
 export type {
   CodingTemplateApplicationHistoryRepository,
+  CodingTemplateApplicationItemMappingRepository,
+  CodingTemplateCompanyBaselineRepository,
   CodingTemplateImportHistoryRepository,
   CodingTemplateRepository,
   CodingTemplateVersionRepository,
@@ -165,6 +169,25 @@ export type {
 } from "./application/coding-template-preview.ts";
 
 export { createCodingTemplatePreview } from "./application/coding-template-preview.ts";
+
+export type {
+  ApplyCodingTemplateCommand,
+  ApplyCodingTemplateDependencies,
+  ApplyCodingTemplateResult,
+} from "./application/apply-coding-template.ts";
+
+export {
+  APPLY_CODING_TEMPLATE_PERMISSION,
+  applyCodingTemplate,
+} from "./application/apply-coding-template.ts";
+
+export type {
+  CodingTemplateApplicationErrorCode,
+} from "./application/coding-template-application-error.ts";
+
+export {
+  CodingTemplateApplicationError,
+} from "./application/coding-template-application-error.ts";
 
 export {
   DEFAULT_ACCOUNT_CODE_LENGTHS,

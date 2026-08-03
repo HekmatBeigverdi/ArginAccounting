@@ -5,6 +5,8 @@ import type { AccountingDimensionMemberRepository } from "./accounting-dimension
 import type { AccountingDimensionTypeRepository } from "./accounting-dimension-type-repository.ts";
 import type {
   CodingTemplateApplicationHistoryRepository,
+  CodingTemplateApplicationItemMappingRepository,
+  CodingTemplateCompanyBaselineRepository,
   CodingTemplateImportHistoryRepository,
   CodingTemplateRepository,
   CodingTemplateVersionRepository,
@@ -23,6 +25,8 @@ export interface AccountingUnitOfWorkRepositories {
   readonly codingTemplates?: CodingTemplateRepository;
   readonly codingTemplateVersions?: CodingTemplateVersionRepository;
   readonly codingTemplateApplications?: CodingTemplateApplicationHistoryRepository;
+  readonly codingTemplateApplicationMappings?: CodingTemplateApplicationItemMappingRepository;
+  readonly codingTemplateBaselines?: CodingTemplateCompanyBaselineRepository;
   readonly codingTemplateImports?: CodingTemplateImportHistoryRepository;
 }
 

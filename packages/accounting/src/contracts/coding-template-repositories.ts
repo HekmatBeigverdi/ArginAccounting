@@ -2,6 +2,7 @@ import type { PagedResult } from "@argin/platform";
 import type { CodingTemplate } from "../domain/coding-template.ts";
 import type {
   CodingTemplateApplicationHistory,
+  CodingTemplateApplicationItemMapping,
   CodingTemplateImportHistory,
   CodingTemplateVersionRecord,
 } from "./coding-template-records.ts";
@@ -11,6 +12,7 @@ import type {
   CodingTemplateSearchQuery,
   CodingTemplateVersionSearchQuery,
 } from "./coding-template-queries.ts";
+import type { CodingTemplateCompanyBaseline } from "../application/coding-template-preview.ts";
 
 export interface CodingTemplateRepository {
   create(template: Readonly<CodingTemplate>): Promise<void>;
@@ -43,6 +45,15 @@ export interface CodingTemplateApplicationHistoryRepository {
     query: CodingTemplateApplicationHistoryQuery,
   ): Promise<PagedResult<CodingTemplateApplicationHistory>>;
   update(history: CodingTemplateApplicationHistory): Promise<void>;
+}
+
+export interface CodingTemplateApplicationItemMappingRepository {
+  createMany(mappings: readonly CodingTemplateApplicationItemMapping[]): Promise<void>;
+  findByApplicationId(applicationId: string): Promise<readonly CodingTemplateApplicationItemMapping[]>;
+}
+
+export interface CodingTemplateCompanyBaselineRepository {
+  read(companyId: string): Promise<Readonly<CodingTemplateCompanyBaseline>>;
 }
 
 export interface CodingTemplateImportHistoryRepository {

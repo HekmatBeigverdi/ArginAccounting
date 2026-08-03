@@ -327,7 +327,7 @@ Exit criteria:
 | 6 | Built-in Iranian Coding Catalogs | Completed | Added immutable version-1 service, trading, and manufacturing catalogs with stable shared keys, explicit accounting/report meaning, activity-specific accounts, four dimension types, policies, integrity tests, and SHA-256 snapshots |
 | 7 | Application Contracts and Queries | Completed | Added infrastructure-neutral repositories for templates, immutable versions, application/import histories; catalog, clock, identifier, authorization, and event ports; normalized paged searches and company activity recommendation query; extended Accounting Unit of Work for Phase 12 adapters |
 | 8 | Preview and Conflict Analysis Engine | Completed | Pure deterministic preview, baseline fingerprint, ordered actions, and stable conflict issues |
-| 9 | Atomic Template Application | Not started | — |
+| 9 | Atomic Template Application | Completed | Confirmed application command revalidates the current baseline inside one Unit of Work, creates operational accounts/dimensions/policies with provenance, persists history and mappings, rejects stale/conflicting previews, returns idempotent retries, and publishes only after commit |
 | 10 | Template Upgrade and Drift Policy | Not started | — |
 | 11 | Excel Workbook Contract and Parser Boundary | Not started | — |
 | 12 | Excel Preview and Atomic Import | Not started | — |
