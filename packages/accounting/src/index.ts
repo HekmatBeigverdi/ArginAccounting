@@ -148,6 +148,24 @@ export {
   normalizeCodingTemplateVersionSearchQuery,
 } from "./contracts/coding-template-queries.ts";
 
+export type {
+  CodingTemplateCompanyBaseline,
+  CodingTemplatePreviewAccount,
+  CodingTemplatePreviewAction,
+  CodingTemplatePreviewDimensionMember,
+  CodingTemplatePreviewDimensionType,
+  CodingTemplatePreviewIssue,
+  CodingTemplatePreviewIssueCode,
+  CodingTemplatePreviewItem,
+  CodingTemplatePreviewItemType,
+  CodingTemplatePreviewPlan,
+  CodingTemplatePreviewPolicy,
+  CodingTemplatePreviewSummary,
+  CreateCodingTemplatePreviewInput,
+} from "./application/coding-template-preview.ts";
+
+export { createCodingTemplatePreview } from "./application/coding-template-preview.ts";
+
 export {
   DEFAULT_ACCOUNT_CODE_LENGTHS,
 } from "./domain/account-coding-settings.ts";
