@@ -102,6 +102,52 @@ export {
   IRAN_TRADING_CODING_CATALOG,
 } from "./catalogs/built-in-iranian-coding-catalogs.ts";
 
+export type {
+  CodingTemplateApplicationHistory,
+  CodingTemplateApplicationStatus,
+  CodingTemplateImportHistory,
+  CodingTemplateImportStatus,
+  CodingTemplateVersionRecord,
+} from "./contracts/coding-template-records.ts";
+
+export type {
+  CodingTemplateApplicationHistoryRepository,
+  CodingTemplateImportHistoryRepository,
+  CodingTemplateRepository,
+  CodingTemplateVersionRepository,
+} from "./contracts/coding-template-repositories.ts";
+
+export type {
+  CodingTemplateAuthorizer,
+  CodingTemplateCatalogProvider,
+  CodingTemplateClock,
+  CodingTemplateEventPublisher,
+  CodingTemplateIdentifierGenerator,
+} from "./contracts/coding-template-runtime.ts";
+
+export type {
+  CodingTemplateApplicationHistoryQuery,
+  CodingTemplateHistorySortField,
+  CodingTemplateImportHistoryQuery,
+  CodingTemplateRecommendationQuery,
+  CodingTemplateSearchQuery,
+  CodingTemplateSortField,
+  CodingTemplateVersionSearchQuery,
+  CodingTemplateVersionSortField,
+  NormalizedCodingTemplateApplicationHistoryQuery,
+  NormalizedCodingTemplateImportHistoryQuery,
+  NormalizedCodingTemplateSearchQuery,
+  NormalizedCodingTemplateVersionSearchQuery,
+} from "./contracts/coding-template-queries.ts";
+
+export {
+  normalizeCodingTemplateApplicationHistoryQuery,
+  normalizeCodingTemplateImportHistoryQuery,
+  normalizeCodingTemplateRecommendationQuery,
+  normalizeCodingTemplateSearchQuery,
+  normalizeCodingTemplateVersionSearchQuery,
+} from "./contracts/coding-template-queries.ts";
+
 export {
   DEFAULT_ACCOUNT_CODE_LENGTHS,
 } from "./domain/account-coding-settings.ts";

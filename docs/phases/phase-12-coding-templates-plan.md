@@ -325,7 +325,7 @@ Exit criteria:
 | 4 | Template Aggregate and Value Objects | Completed | Added company-independent template identity, normalized code/name value objects, controlled draft/published/retired lifecycle, immutable sequential version metadata, source provenance, content fingerprint, and optimistic versioning |
 | 5 | Template Item Model | Completed | Added immutable account, report classification, dimension type/member, and account-dimension policy graph with stable logical keys and complete shared domain validation |
 | 6 | Built-in Iranian Coding Catalogs | Completed | Added immutable version-1 service, trading, and manufacturing catalogs with stable shared keys, explicit accounting/report meaning, activity-specific accounts, four dimension types, policies, integrity tests, and SHA-256 snapshots |
-| 7 | Application Contracts and Queries | Not started | — |
+| 7 | Application Contracts and Queries | Completed | Added infrastructure-neutral repositories for templates, immutable versions, application/import histories; catalog, clock, identifier, authorization, and event ports; normalized paged searches and company activity recommendation query; extended Accounting Unit of Work for Phase 12 adapters |
 | 8 | Preview and Conflict Analysis Engine | Not started | — |
 | 9 | Atomic Template Application | Not started | — |
 | 10 | Template Upgrade and Drift Policy | Not started | — |

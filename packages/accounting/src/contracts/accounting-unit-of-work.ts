@@ -3,6 +3,12 @@ import type { AccountDimensionPolicyRepository } from "./account-dimension-polic
 import type { AccountRepository } from "./account-repository.ts";
 import type { AccountingDimensionMemberRepository } from "./accounting-dimension-member-repository.ts";
 import type { AccountingDimensionTypeRepository } from "./accounting-dimension-type-repository.ts";
+import type {
+  CodingTemplateApplicationHistoryRepository,
+  CodingTemplateImportHistoryRepository,
+  CodingTemplateRepository,
+  CodingTemplateVersionRepository,
+} from "./coding-template-repositories.ts";
 
 export interface AccountingUnitOfWorkRepositories {
   readonly accounts: AccountRepository;
@@ -13,6 +19,11 @@ export interface AccountingUnitOfWorkRepositories {
   readonly dimensionMembers?: AccountingDimensionMemberRepository;
   /** Implemented by the Phase 11 SQLite adapter in step 11.9. */
   readonly dimensionPolicies?: AccountDimensionPolicyRepository;
+  /** Implemented by the Phase 12 persistence adapters in step 14. */
+  readonly codingTemplates?: CodingTemplateRepository;
+  readonly codingTemplateVersions?: CodingTemplateVersionRepository;
+  readonly codingTemplateApplications?: CodingTemplateApplicationHistoryRepository;
+  readonly codingTemplateImports?: CodingTemplateImportHistoryRepository;
 }
 
 export interface AccountingUnitOfWork {
