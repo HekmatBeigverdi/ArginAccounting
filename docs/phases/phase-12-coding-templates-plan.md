@@ -310,6 +310,15 @@ Exit criteria:
 - UI cannot bypass preview, authorization, or explicit confirmation.
 - Existing Chart of Accounts and Dimensions workspaces remain functional.
 
+Status: Completed
+
+Evidence:
+
+- Added a desktop coding-template composition boundary backed by the SQLite Unit of Work, authorization, clock, identifiers, post-commit event bus, and idempotent built-in catalog bootstrap through the official lifecycle.
+- Added a Persian RTL workspace for catalog search, activity-based recommendation, version detail, deterministic preview, explicit confirmed apply, additive upgrade comparison, Excel validation/import, lifecycle retirement, and application history.
+- Added Solar Hijri date presentation while retaining ISO Gregorian persistence and explicitly surfaced Iranian Rial company context.
+- Kept preview and authorization inside application services so the UI cannot bypass transaction, conflict, permission, or confirmation rules.
+
 ### Step 17 — Focused and Integration Test Completion
 
 - Complete Domain, Application, catalog snapshot, migration, repository, transaction, permission, audit, presenter, UI, and Excel tests.
