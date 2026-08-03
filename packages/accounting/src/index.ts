@@ -21,6 +21,7 @@ export {
   createCodingTemplate,
   publishCodingTemplate,
   retireCodingTemplate,
+  updateCodingTemplateDraft,
 } from "./domain/coding-template.ts";
 
 export type { CodingTemplateCode } from "./domain/coding-template-code.ts";
@@ -128,6 +129,24 @@ export type {
   CodingTemplateEventPublisher,
   CodingTemplateIdentifierGenerator,
 } from "./contracts/coding-template-runtime.ts";
+
+export { codingTemplatePermissions } from "./application/coding-template-permissions.ts";
+export type { CodingTemplatePermission } from "./application/coding-template-permissions.ts";
+export {
+  CodingTemplateLifecycleError,
+  createCodingTemplateDraft,
+  publishCodingTemplateCommand,
+  retireCodingTemplateCommand,
+  updateCodingTemplateDraftCommand,
+} from "./application/coding-template-lifecycle.ts";
+export type {
+  CodingTemplateLifecycleDependencies,
+  CodingTemplateLifecycleErrorCode,
+  CreateCodingTemplateCommand,
+  PublishCodingTemplateCommand,
+  RetireCodingTemplateCommand,
+  UpdateCodingTemplateDraftCommand,
+} from "./application/coding-template-lifecycle.ts";
 
 export type {
   CodingTemplateApplicationHistoryQuery,

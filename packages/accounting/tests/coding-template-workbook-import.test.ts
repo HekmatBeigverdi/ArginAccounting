@@ -19,6 +19,7 @@ function fixture(options: { invalid?: boolean; failVersion?: boolean; permission
   const imports: CodingTemplateImportHistory[] = [];
   const templates: unknown[] = [];
   const versions: unknown[] = [];
+  const events: unknown[] = [];
   let sequence = 0;
   const parser = {
     async parse(): Promise<CodingTemplateWorkbookParseResult> {
@@ -53,9 +54,10 @@ function fixture(options: { invalid?: boolean; failVersion?: boolean; permission
     authorizer: { hasPermission: async () => options.permission ?? true },
     clock: { now: () => new Date("2026-08-03T14:00:00.000Z") },
     idGenerator: { generate: () => `id-${++sequence}` },
+    eventPublisher: { publish: async (event: unknown) => { events.push(event); }, publishMany: async () => undefined },
   };
   const command = { source, importKey: "batch-1", expectedFileFingerprint: hash, confirmed: true, actorId: "admin" } as const;
-  return { imports, templates, versions, parser, dependencies, command, state };
+  return { imports, templates, versions, events, parser, dependencies, command, state };
 }
 
 test("previews a valid workbook without writing and returns a complete dry-run summary", async () => {
@@ -98,6 +100,8 @@ test("imports template, version, provenance, and batch history in one transactio
   assert.equal(f.imports[0]?.contractVersion, "1.0");
   assert.equal(f.imports[0]?.actorId, "admin");
   assert.equal(f.imports[0]?.status, "published");
+  assert.equal(f.events.length, 1);
+  assert.equal((f.events[0] as { eventType: string }).eventType, "accounting.coding-template.imported");
 });
 
 test("returns the prior batch on a retry and prevents duplicates", async () => {
@@ -108,6 +112,7 @@ test("returns the prior batch on a retry and prevents duplicates", async () => {
   assert.equal(replay.idempotentReplay, true);
   assert.equal(replay.importHistory.id, first.importHistory.id);
   assert.deepEqual(f.state(), state);
+  assert.equal(f.events.length, 1);
 });
 
 test("rejects unconfirmed, stale, unauthorized, and reused import identities before writes", async () => {
@@ -125,4 +130,5 @@ test("rolls back all records when any import write fails", async () => {
   const f = fixture({ failVersion: true });
   await assert.rejects(() => importCodingTemplateWorkbook(f.command, f.dependencies), /version write failed/);
   assert.deepEqual(f.state(), [0, 0, 0]);
+  assert.equal(f.events.length, 0);
 });

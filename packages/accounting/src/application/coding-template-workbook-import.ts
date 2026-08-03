@@ -1,6 +1,7 @@
+import { createDomainEvent, type CorrelationContext, type DomainEvent } from "@argin/platform";
 import type { AccountingUnitOfWork, AccountingUnitOfWorkRepositories } from "../contracts/accounting-unit-of-work.ts";
 import type { CodingTemplateImportHistory } from "../contracts/coding-template-records.ts";
-import type { CodingTemplateAuthorizer, CodingTemplateClock, CodingTemplateIdentifierGenerator } from "../contracts/coding-template-runtime.ts";
+import type { CodingTemplateAuthorizer, CodingTemplateClock, CodingTemplateEventPublisher, CodingTemplateIdentifierGenerator } from "../contracts/coding-template-runtime.ts";
 import type {
   CodingTemplateWorkbookCellLocation,
   CodingTemplateWorkbookIssue,
@@ -13,8 +14,9 @@ import { createCodingTemplate, publishCodingTemplate } from "../domain/coding-te
 import type { CodingTemplateVersionContent } from "../domain/coding-template-items.ts";
 import type { CodingTemplateGraphValidationIssue } from "../validation/coding-template-graph-validation-error.ts";
 import { validateCodingTemplateGraph } from "../validation/validate-coding-template-graph.ts";
+import { codingTemplatePermissions } from "./coding-template-permissions.ts";
 
-export const IMPORT_CODING_TEMPLATE_WORKBOOK_PERMISSION = "accounting.coding-template.import";
+export const IMPORT_CODING_TEMPLATE_WORKBOOK_PERMISSION = codingTemplatePermissions.import;
 
 export type CodingTemplateWorkbookPreviewIssue =
   | { readonly source: "workbook"; readonly issue: Readonly<CodingTemplateWorkbookIssue> }
@@ -54,6 +56,7 @@ export interface ImportCodingTemplateWorkbookCommand {
   readonly expectedFileFingerprint: string;
   readonly confirmed: boolean;
   readonly actorId: string;
+  readonly correlation?: CorrelationContext;
 }
 
 export interface ImportCodingTemplateWorkbookResult {
@@ -68,6 +71,7 @@ export interface ImportCodingTemplateWorkbookDependencies extends PreviewCodingT
   readonly authorizer: CodingTemplateAuthorizer;
   readonly clock: CodingTemplateClock;
   readonly idGenerator: CodingTemplateIdentifierGenerator;
+  readonly eventPublisher: CodingTemplateEventPublisher;
 }
 
 export type CodingTemplateWorkbookImportErrorCode =
@@ -124,7 +128,8 @@ export async function importCodingTemplateWorkbook(
   const metadata = preview.metadata;
   const content = preview.content;
 
-  return dependencies.unitOfWork.run(async (all) => {
+  let event: DomainEvent | null = null;
+  const imported = await dependencies.unitOfWork.run(async (all) => {
     const repositories = importRepositories(all);
     const previous = await repositories.imports.findByImportKey(importKey);
     if (previous) {
@@ -169,8 +174,14 @@ export async function importCodingTemplateWorkbook(
     await repositories.templates.create(published.template);
     await repositories.versions.create({ version: published.version, content });
     await repositories.imports.create(history);
+    event = createDomainEvent(
+      { clock: { now: () => dependencies.clock.now(), nowIso: () => dependencies.clock.now().toISOString() }, idGenerator: dependencies.idGenerator },
+      { eventType: "accounting.coding-template.imported", aggregateId: String(published.template.id), aggregateType: "coding-template", aggregateVersion: published.template.optimisticVersion, ...(command.correlation ? { correlationContext: command.correlation } : {}), payload: Object.freeze({ actorId, importId: history.id, importKey, fileName: history.fileName, fileFingerprint: history.fileFingerprint, contractVersion: history.contractVersion, templateId: history.templateId, templateVersionId: history.templateVersionId, source: "excel", before: null, after: Object.freeze({ lifecycle: published.template.lifecycle, versionNumber: published.version.versionNumber, itemCount: content.accounts.length + content.dimensionTypes.length + content.dimensionMembers.length + content.accountDimensionPolicies.length }) }), metadata: Object.freeze({ module: "accounting", audit: true }) },
+    );
     return { importHistory: history, templateId: history.templateId!, templateVersionId: history.templateVersionId!, idempotentReplay: false };
   });
+  if (event) await dependencies.eventPublisher.publish(event);
+  return imported;
 }
 
 function result(fileName: string, fileFingerprint: string, metadata: CodingTemplateWorkbookMetadata | null, content: CodingTemplateVersionContent | null, issues: readonly CodingTemplateWorkbookPreviewIssue[]): CodingTemplateWorkbookImportPreview {

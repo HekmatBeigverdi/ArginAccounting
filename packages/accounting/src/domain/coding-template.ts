@@ -72,6 +72,43 @@ export interface PublishCodingTemplateResult {
   readonly version: Readonly<CodingTemplateVersion>;
 }
 
+export interface UpdateCodingTemplateDraftInput {
+  readonly persianName: string;
+  readonly englishName?: string | null;
+  readonly activityType: CodingTemplateActivityType;
+  readonly updatedAt: string;
+}
+
+export function updateCodingTemplateDraft(
+  template: Readonly<CodingTemplate>,
+  input: UpdateCodingTemplateDraftInput,
+): Readonly<CodingTemplate> {
+  if (template.lifecycle !== "draft") {
+    throw new CodingTemplateValidationError(
+      "invalid_lifecycle_transition",
+      "lifecycle",
+      "فقط الگوی پیش‌نویس قابل ویرایش است.",
+    );
+  }
+  if (!activityTypes.includes(input.activityType)) {
+    throw new CodingTemplateValidationError(
+      "activity_type_invalid",
+      "activityType",
+      "نوع فعالیت الگوی کدینگ معتبر نیست.",
+    );
+  }
+  return Object.freeze({
+    ...template,
+    persianName: createCodingTemplateName(input.persianName, "fa"),
+    englishName: input.englishName
+      ? createCodingTemplateName(input.englishName, "en")
+      : null,
+    activityType: input.activityType,
+    updatedAt: input.updatedAt,
+    optimisticVersion: template.optimisticVersion + 1,
+  });
+}
+
 export function createCodingTemplate(
   input: CreateCodingTemplateInput,
 ): Readonly<CodingTemplate> {

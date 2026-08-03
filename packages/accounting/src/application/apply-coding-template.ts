@@ -8,8 +8,9 @@ import { createAccountingDimensionMember } from "../domain/create-accounting-dim
 import { createAccountingDimensionType } from "../domain/create-accounting-dimension-type.ts";
 import { createCodingTemplatePreview } from "./coding-template-preview.ts";
 import { CodingTemplateApplicationError } from "./coding-template-application-error.ts";
+import { codingTemplatePermissions } from "./coding-template-permissions.ts";
 
-export const APPLY_CODING_TEMPLATE_PERMISSION = "accounting.coding-template.apply";
+export const APPLY_CODING_TEMPLATE_PERMISSION = codingTemplatePermissions.apply;
 
 export interface ApplyCodingTemplateCommand {
   readonly companyId: string;
@@ -137,5 +138,5 @@ export async function applyCodingTemplate(command: ApplyCodingTemplateCommand, d
 }
 
 function createApplicationEvent(dependencies: Pick<ApplyCodingTemplateDependencies, "clock" | "idGenerator">, command: ApplyCodingTemplateCommand, application: CodingTemplateApplicationHistory, mappings: readonly CodingTemplateApplicationItemMapping[]): DomainEvent {
-  return createDomainEvent({ clock: { now: () => dependencies.clock.now(), nowIso: () => dependencies.clock.now().toISOString() }, idGenerator: dependencies.idGenerator }, { eventType: "accounting.coding-template.applied", aggregateId: application.id, aggregateType: "coding-template-application", aggregateVersion: 1, ...(command.correlation ? { correlationContext: command.correlation } : {}), payload: Object.freeze({ companyId: application.companyId, actorId: application.actorId, requestKey: application.requestKey, templateId: application.templateId, templateVersionId: application.templateVersionId, applicationId: application.id, baselineFingerprint: application.baselineFingerprint, mappingCount: mappings.length }), metadata: Object.freeze({ module: "accounting", audit: true }) });
+  return createDomainEvent({ clock: { now: () => dependencies.clock.now(), nowIso: () => dependencies.clock.now().toISOString() }, idGenerator: dependencies.idGenerator }, { eventType: "accounting.coding-template.applied", aggregateId: application.id, aggregateType: "coding-template-application", aggregateVersion: 1, ...(command.correlation ? { correlationContext: command.correlation } : {}), payload: Object.freeze({ companyId: application.companyId, actorId: application.actorId, requestKey: application.requestKey, templateId: application.templateId, templateVersionId: application.templateVersionId, applicationId: application.id, source: "coding-template", before: Object.freeze({ baselineFingerprint: application.baselineFingerprint }), after: Object.freeze({ status: application.status, mappingCount: mappings.length }) }), metadata: Object.freeze({ module: "accounting", audit: true }) });
 }
