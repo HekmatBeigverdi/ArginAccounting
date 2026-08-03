@@ -221,6 +221,25 @@ export {
 } from "./contracts/coding-template-workbook.ts";
 
 export type {
+  CodingTemplateWorkbookFingerprintProvider,
+  CodingTemplateWorkbookImportErrorCode,
+  CodingTemplateWorkbookImportPreview,
+  CodingTemplateWorkbookPreviewIssue,
+  CodingTemplateWorkbookPreviewSummary,
+  ImportCodingTemplateWorkbookCommand,
+  ImportCodingTemplateWorkbookDependencies,
+  ImportCodingTemplateWorkbookResult,
+  PreviewCodingTemplateWorkbookImportDependencies,
+} from "./application/coding-template-workbook-import.ts";
+
+export {
+  CodingTemplateWorkbookImportError,
+  IMPORT_CODING_TEMPLATE_WORKBOOK_PERMISSION,
+  importCodingTemplateWorkbook,
+  previewCodingTemplateWorkbookImport,
+} from "./application/coding-template-workbook-import.ts";
+
+export type {
   CodingTemplateApplicationErrorCode,
 } from "./application/coding-template-application-error.ts";
 

@@ -33,3 +33,8 @@ export {
 export {
   SqliteAccountingDimensionSelectorService,
 } from "./sqlite-accounting-dimension-selector-service.ts";
+
+export {
+  WebCryptoCodingTemplateWorkbookFingerprintProvider,
+  XlsxCodingTemplateWorkbookParser,
+} from "./xlsx-coding-template-workbook-parser.ts";

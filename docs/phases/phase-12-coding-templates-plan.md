@@ -251,6 +251,17 @@ Exit criteria:
 - Invalid workbooks write nothing.
 - Re-importing the same confirmed batch cannot duplicate data.
 
+Status: Completed
+
+Evidence:
+
+- Added a read-only workbook import preview that fingerprints the file, invokes the versioned parser contract, runs the shared graph validator, and returns complete item counts plus workbook and cross-sheet issues.
+- Added a concrete `.xlsx` parser and Web Crypto SHA-256 fingerprint adapter for Tauri, including strict sheet/header/row/cell/type/enum/formula validation against contract `1.0`.
+- Mapped graph issues back to their originating sheet, row, and field so the desktop UI can present actionable Excel errors before confirmation.
+- Added a confirmed atomic import use case that persists a custom template, its first immutable Excel-sourced version, and import-batch provenance in one Accounting Unit of Work.
+- Enforced preview fingerprint freshness, explicit confirmation, import permission, unique template code, and retry-safe `importKey` replay without duplicate records.
+- Verified that invalid input writes nothing and that any repository failure rolls back the template, version, and import history together.
+
 ### Step 13 — SQLite Migration
 
 - Add migration `0012_coding_templates.sql`.
@@ -338,8 +349,8 @@ Exit criteria:
 | 8 | Preview and Conflict Analysis Engine | Completed | Pure deterministic preview, baseline fingerprint, ordered actions, and stable conflict issues |
 | 9 | Atomic Template Application | Completed | Confirmed application command revalidates the current baseline inside one Unit of Work, creates operational accounts/dimensions/policies with provenance, persists history and mappings, rejects stale/conflicting previews, returns idempotent retries, and publishes only after commit |
 | 10 | Template Upgrade and Drift Policy | Completed | Added a pure deterministic three-way upgrade planner across the applied version, operational company baseline, and target version; classifies unchanged, locally modified, newly available, conflicting, and retired items; preserves all local/retired data, requires explicit additive acceptance, records accepted/skipped decisions, and validates scope, lineage mappings, template identity, and version order |
-| 11 | Excel Workbook Contract and Parser Boundary | Not started | — |
-| 12 | Excel Preview and Atomic Import | Not started | — |
+| 11 | Excel Workbook Contract and Parser Boundary | Completed | Versioned five-sheet contract, infrastructure-neutral parser port, Persian/Arabic normalization, formula rejection, cell-addressed errors, and shared graph validation tests |
+| 12 | Excel Preview and Atomic Import | Completed | Read-only file/graph preview, dry-run counts, sheet-row-field issue mapping, confirmed fingerprint-bound atomic import, durable provenance, retry-safe batch identity, and rollback tests |
 | 13 | SQLite Migration | Not started | — |
 | 14 | SQLite Repositories and Transactional Adapters | Not started | — |
 | 15 | Permissions, Audit, and Integration Events | Not started | — |
