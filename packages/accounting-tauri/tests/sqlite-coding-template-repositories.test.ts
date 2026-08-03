@@ -64,7 +64,7 @@ const now = "2026-08-03T10:00:00.000Z";
 const draft = () =>
   createCodingTemplate({
     id: "template-1",
-    code: "SERVICE",
+    code: "iran-service-default",
     persianName: "خدماتی",
     activityType: "service",
     ownership: "custom",
@@ -117,11 +117,12 @@ test("template repository persists and maps optimistic aggregates", async () => 
 
   await repo.create(draft());
   assert.match(db.executions[0]!.sql, /INSERT INTO coding_templates/);
+  assert.equal(db.executions[0]!.parameters[1], "IRAN_SERVICE_DEFAULT");
 
   db.queryOneRows = [
     {
       id: "template-1",
-      code: "SERVICE",
+      code: "IRAN_SERVICE_DEFAULT",
       persian_name: "خدماتی",
       english_name: null,
       activity_type: "service",
@@ -133,7 +134,10 @@ test("template repository persists and maps optimistic aggregates", async () => 
       version: 1,
     },
   ];
-  assert.equal((await repo.findByCode("service"))?.optimisticVersion, 1);
+  const restored = await repo.findByCode("iran-service-default");
+  assert.equal(db.queries.at(-1)!.parameters[0], "IRAN_SERVICE_DEFAULT");
+  assert.equal(restored?.code, "iran-service-default");
+  assert.equal(restored?.optimisticVersion, 1);
 
   db.rowsAffected = 0;
   await assert.rejects(repo.update({ ...draft(), optimisticVersion: 2 }), {
@@ -184,6 +188,7 @@ test("version repository writes normalized content in dependency order", async (
   });
 
   assert.match(db.executions[0]!.sql, /coding_template_versions/);
+  assert.equal(db.executions[0]!.parameters[2], "IRAN_SERVICE_DEFAULT");
   assert.match(db.executions[1]!.sql, /coding_template_accounts/);
   assert.equal(
     db.executions[1]!.parameters[10],

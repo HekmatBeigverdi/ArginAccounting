@@ -1,5 +1,6 @@
 import {
   createCodingTemplateVersion,
+  normalizeCodingTemplateCode,
   normalizeCodingTemplateApplicationHistoryQuery,
   normalizeCodingTemplateImportHistoryQuery,
   normalizeCodingTemplateSearchQuery,
@@ -26,10 +27,19 @@ type ApplicationRow = { id: string; company_id: string; template_id: string; tem
 type MappingRow = { application_id: string; company_id: string; template_version_id: string; item_type: CodingTemplateApplicationItemMapping["itemType"]; logical_key: string; operational_id: string; action: CodingTemplateApplicationItemMapping["action"] };
 type ImportRow = { id: string; import_key: string; file_name: string; file_fingerprint: string; contract_version: string; status: CodingTemplateImportHistory["status"]; template_id: string | null; template_version_id: string | null; actor_id: string | null; created_at: string; completed_at: string | null };
 
+// Migration 0012 predates the domain's stable-code convention and accepts only
+// upper-snake-case values. Keep that storage detail at the SQLite boundary so
+// callers consistently use the canonical lower-kebab-case code.
+const templateCodeToStorage = (code: string): string =>
+  code.replaceAll("-", "_").toUpperCase();
+
+const templateCodeFromStorage = (code: string): CodingTemplate["code"] =>
+  normalizeCodingTemplateCode(code.replaceAll("_", "-")) as CodingTemplate["code"];
+
 const template = (r: TemplateRow): CodingTemplate =>
   Object.freeze({
     id: r.id as CodingTemplate["id"],
-    code: r.code as CodingTemplate["code"],
+    code: templateCodeFromStorage(r.code),
     persianName: r.persian_name as CodingTemplate["persianName"],
     englishName: r.english_name as CodingTemplate["englishName"],
     activityType: r.activity_type,
@@ -92,7 +102,7 @@ export class SqliteCodingTemplateRepository implements CodingTemplateRepository 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         v.id,
-        v.code,
+        templateCodeToStorage(v.code),
         v.persianName,
         v.englishName,
         v.activityType,
@@ -117,7 +127,7 @@ export class SqliteCodingTemplateRepository implements CodingTemplateRepository 
   async findByCode(code: string): Promise<CodingTemplate | null> {
     const r = await this.db.queryOne<TemplateRow>(
       `SELECT * FROM coding_templates WHERE code = ? COLLATE NOCASE`,
-      [code],
+      [templateCodeToStorage(code)],
     );
     return r ? template(r) : null;
   }
@@ -171,7 +181,7 @@ export class SqliteCodingTemplateRepository implements CodingTemplateRepository 
            updated_at = ?, version = ?
        WHERE id = ? AND version = ?`,
       [
-        v.code,
+        templateCodeToStorage(v.code),
         v.persianName,
         v.englishName,
         v.activityType,
@@ -195,7 +205,7 @@ export class SqliteCodingTemplateRepository implements CodingTemplateRepository 
 export class SqliteCodingTemplateVersionRepository implements CodingTemplateVersionRepository {
   constructor(private readonly db: DatabaseSession) {}
   async create(r: CodingTemplateVersionRecord): Promise<void> {
-    const v = r.version; await this.db.execute(`INSERT INTO coding_template_versions (id, template_id, template_code, version_number, persian_name, english_name, activity_type, ownership, source_type, source_reference, contract_version, content_fingerprint, published_at, published_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [v.id, v.templateId, v.templateCode, v.versionNumber, v.persianName, v.englishName, v.activityType, v.ownership, v.source.type, v.source.reference, v.source.contractVersion, v.source.contentFingerprint, v.publishedAt, v.publishedBy]);
+    const v = r.version; await this.db.execute(`INSERT INTO coding_template_versions (id, template_id, template_code, version_number, persian_name, english_name, activity_type, ownership, source_type, source_reference, contract_version, content_fingerprint, published_at, published_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [v.id, v.templateId, templateCodeToStorage(v.templateCode), v.versionNumber, v.persianName, v.englishName, v.activityType, v.ownership, v.source.type, v.source.reference, v.source.contractVersion, v.source.contentFingerprint, v.publishedAt, v.publishedBy]);
     for (const x of r.content.accounts) await this.db.execute(`INSERT INTO coding_template_accounts VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [v.id, x.logicalKey, x.parentLogicalKey, x.level, x.code, x.persianName, x.englishName, x.nature, x.normalBalance, x.statementType, JSON.stringify(x.reportClassification), +x.postingAllowed, +x.currencyEnabled, +x.revaluationEnabled, +x.trackingEnabled, +x.dueDateEnabled, +x.activeByDefault, x.displayOrder]);
     for (const x of r.content.dimensionTypes) await this.db.execute(`INSERT INTO coding_template_dimension_types VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [v.id, x.logicalKey, x.code, x.persianName, x.englishName, +x.hierarchical, +x.allowMultipleMembers, +x.activeByDefault, x.displayOrder]);
     for (const x of r.content.dimensionMembers) await this.db.execute(`INSERT INTO coding_template_dimension_members VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [v.id, x.logicalKey, x.dimensionTypeLogicalKey, x.parentLogicalKey, x.code, x.persianName, x.englishName, +x.activeByDefault, x.displayOrder]);
