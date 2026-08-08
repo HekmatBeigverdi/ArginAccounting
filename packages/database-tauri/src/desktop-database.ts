@@ -3,22 +3,39 @@ import type { DatabaseExecutor } from "@argin/database";
 import { TauriSqliteExecutor } from "./tauri-sqlite-executor";
 
 let databaseInstance: DatabaseExecutor | null = null;
+let databaseConnectionPromise: Promise<DatabaseExecutor> | null = null;
 
 export async function getDesktopDatabase(): Promise<DatabaseExecutor> {
   if (databaseInstance !== null) {
     return databaseInstance;
   }
 
-  databaseInstance = await TauriSqliteExecutor.connect();
+  if (databaseConnectionPromise === null) {
+    databaseConnectionPromise = TauriSqliteExecutor.connect()
+      .then((database) => {
+        databaseInstance = database;
+        return database;
+      })
+      .catch((error: unknown) => {
+        databaseConnectionPromise = null;
+        throw error;
+      });
+  }
 
-  return databaseInstance;
+  return databaseConnectionPromise;
 }
 
 export async function closeDesktopDatabase(): Promise<void> {
-  if (databaseInstance === null) {
+  const database = databaseInstance ??
+    (databaseConnectionPromise === null
+      ? null
+      : await databaseConnectionPromise);
+
+  if (database === null) {
     return;
   }
 
-  await databaseInstance.close();
+  await database.close();
   databaseInstance = null;
+  databaseConnectionPromise = null;
 }

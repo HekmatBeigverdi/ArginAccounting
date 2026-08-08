@@ -1,8 +1,19 @@
 export type {
   Company,
+  CompanyActivityType,
   CompanyStatus,
   CreateCompanyInput
 } from "./domain/company";
+
+export {
+  companyActivityTypeLabels,
+  isCompanyActivityType,
+  recommendCodingTemplate
+} from "./domain/company-activity-type";
+
+export type {
+  CodingTemplateRecommendation
+} from "./domain/company-activity-type";
 
 export type {
   Branch,
@@ -28,6 +39,10 @@ export type {
 } from "./contracts/company-repository";
 
 export type {
+  CompanyProfileAuthorizer
+} from "./contracts/company-profile-authorizer";
+
+export type {
   BranchRepository
 } from "./contracts/branch-repository";
 
@@ -51,6 +66,23 @@ export type {
 export {
   setupCompany
 } from "./application/setup-company";
+
+export {
+  companyProfilePermissions
+} from "./application/company-profile-permissions";
+
+export type {
+  CompanyProfilePermission
+} from "./application/company-profile-permissions";
+
+export {
+  updateCompanyActivityType
+} from "./application/update-company-activity-type";
+
+export type {
+  UpdateCompanyActivityTypeCommand,
+  UpdateCompanyActivityTypeResult
+} from "./application/update-company-activity-type";
 
 export type {
   CompanySetupResult

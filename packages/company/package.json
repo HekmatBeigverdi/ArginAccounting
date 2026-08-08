@@ -10,13 +10,14 @@
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "lint": "echo \"Company lint is not configured yet\"",
-    "test": "echo \"Company tests are not configured yet\"",
+    "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {
     "@argin/core": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^20",
     "rimraf": "^6.0.0",
     "typescript": "^5.9.0"
   }

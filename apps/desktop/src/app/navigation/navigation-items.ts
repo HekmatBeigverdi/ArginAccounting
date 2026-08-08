@@ -41,6 +41,11 @@ export const navigationItems: NavigationItem[] = [
     group: "حسابداری",
   },
   {
+    label: "الگوهای کدینگ",
+    path: "/accounting/coding-templates",
+    group: "حسابداری",
+  },
+  {
     label: "وضعیت سیستم",
     path: "/system/diagnostics",
     group: "سیستم",

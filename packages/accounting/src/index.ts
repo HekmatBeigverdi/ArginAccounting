@@ -7,6 +7,265 @@ export type {
   CreateAccountCodingSettingsInput,
 } from "./domain/account-coding-settings.ts";
 
+export type {
+  CodingTemplate,
+  CodingTemplateActivityType,
+  CodingTemplateLifecycle,
+  CodingTemplateOwnership,
+  CreateCodingTemplateInput,
+  PublishCodingTemplateInput,
+  PublishCodingTemplateResult,
+} from "./domain/coding-template.ts";
+
+export {
+  createCodingTemplate,
+  publishCodingTemplate,
+  retireCodingTemplate,
+  updateCodingTemplateDraft,
+} from "./domain/coding-template.ts";
+
+export type { CodingTemplateCode } from "./domain/coding-template-code.ts";
+export {
+  createCodingTemplateCode,
+  normalizeCodingTemplateCode,
+} from "./domain/coding-template-code.ts";
+
+export type {
+  CodingTemplateId,
+  CodingTemplateVersionId,
+} from "./domain/coding-template-identity.ts";
+export {
+  createCodingTemplateId,
+  createCodingTemplateVersionId,
+} from "./domain/coding-template-identity.ts";
+
+export type { CodingTemplateName } from "./domain/coding-template-name.ts";
+export {
+  createCodingTemplateName,
+  normalizeCodingTemplateName,
+} from "./domain/coding-template-name.ts";
+
+export type {
+  CodingTemplateVersion,
+  CodingTemplateVersionNumber,
+  CodingTemplateVersionSource,
+  CodingTemplateSourceType,
+  CreateCodingTemplateVersionInput,
+} from "./domain/coding-template-version.ts";
+export {
+  createCodingTemplateVersion,
+  createCodingTemplateVersionNumber,
+} from "./domain/coding-template-version.ts";
+
+export type {
+  CodingTemplateValidationCode,
+} from "./domain/coding-template-validation-error.ts";
+export {
+  CodingTemplateValidationError,
+} from "./domain/coding-template-validation-error.ts";
+
+export type {
+  CodingTemplateAccountDimensionPolicyItem,
+  CodingTemplateAccountItem,
+  CodingTemplateAccountReportClassification,
+  CodingTemplateDimensionMemberItem,
+  CodingTemplateDimensionTypeItem,
+  CodingTemplateVersionContent,
+} from "./domain/coding-template-items.ts";
+
+export {
+  createCodingTemplateVersionContent,
+} from "./domain/create-coding-template-version-content.ts";
+
+export type {
+  CodingTemplateGraphItemType,
+  CodingTemplateGraphValidationCode,
+  CodingTemplateGraphValidationIssue,
+} from "./validation/coding-template-graph-validation-error.ts";
+
+export {
+  CodingTemplateGraphValidationError,
+} from "./validation/coding-template-graph-validation-error.ts";
+
+export {
+  validateCodingTemplateGraph,
+} from "./validation/validate-coding-template-graph.ts";
+
+export type {
+  CodingTemplateCatalog,
+} from "./catalogs/coding-template-catalog.ts";
+
+export {
+  BUILT_IN_IRANIAN_CODING_CATALOGS,
+  getBuiltInIranianCodingCatalog,
+  IRAN_MANUFACTURING_CODING_CATALOG,
+  IRAN_SERVICE_CODING_CATALOG,
+  IRAN_TRADING_CODING_CATALOG,
+} from "./catalogs/built-in-iranian-coding-catalogs.ts";
+
+export type {
+  CodingTemplateApplicationHistory,
+  CodingTemplateApplicationItemMapping,
+  CodingTemplateApplicationItemType,
+  CodingTemplateApplicationStatus,
+  CodingTemplateImportHistory,
+  CodingTemplateImportStatus,
+  CodingTemplateVersionRecord,
+} from "./contracts/coding-template-records.ts";
+
+export type {
+  CodingTemplateApplicationHistoryRepository,
+  CodingTemplateApplicationItemMappingRepository,
+  CodingTemplateCompanyBaselineRepository,
+  CodingTemplateImportHistoryRepository,
+  CodingTemplateRepository,
+  CodingTemplateVersionRepository,
+} from "./contracts/coding-template-repositories.ts";
+
+export type {
+  CodingTemplateAuthorizer,
+  CodingTemplateCatalogProvider,
+  CodingTemplateClock,
+  CodingTemplateEventPublisher,
+  CodingTemplateIdentifierGenerator,
+} from "./contracts/coding-template-runtime.ts";
+
+export { codingTemplatePermissions } from "./application/coding-template-permissions.ts";
+export type { CodingTemplatePermission } from "./application/coding-template-permissions.ts";
+export {
+  CodingTemplateLifecycleError,
+  createCodingTemplateDraft,
+  publishCodingTemplateCommand,
+  retireCodingTemplateCommand,
+  updateCodingTemplateDraftCommand,
+} from "./application/coding-template-lifecycle.ts";
+export type {
+  CodingTemplateLifecycleDependencies,
+  CodingTemplateLifecycleErrorCode,
+  CreateCodingTemplateCommand,
+  PublishCodingTemplateCommand,
+  RetireCodingTemplateCommand,
+  UpdateCodingTemplateDraftCommand,
+} from "./application/coding-template-lifecycle.ts";
+
+export type {
+  CodingTemplateApplicationHistoryQuery,
+  CodingTemplateHistorySortField,
+  CodingTemplateImportHistoryQuery,
+  CodingTemplateRecommendationQuery,
+  CodingTemplateSearchQuery,
+  CodingTemplateSortField,
+  CodingTemplateVersionSearchQuery,
+  CodingTemplateVersionSortField,
+  NormalizedCodingTemplateApplicationHistoryQuery,
+  NormalizedCodingTemplateImportHistoryQuery,
+  NormalizedCodingTemplateSearchQuery,
+  NormalizedCodingTemplateVersionSearchQuery,
+} from "./contracts/coding-template-queries.ts";
+
+export {
+  normalizeCodingTemplateApplicationHistoryQuery,
+  normalizeCodingTemplateImportHistoryQuery,
+  normalizeCodingTemplateRecommendationQuery,
+  normalizeCodingTemplateSearchQuery,
+  normalizeCodingTemplateVersionSearchQuery,
+} from "./contracts/coding-template-queries.ts";
+
+export type {
+  CodingTemplateCompanyBaseline,
+  CodingTemplatePreviewAccount,
+  CodingTemplatePreviewAction,
+  CodingTemplatePreviewDimensionMember,
+  CodingTemplatePreviewDimensionType,
+  CodingTemplatePreviewIssue,
+  CodingTemplatePreviewIssueCode,
+  CodingTemplatePreviewItem,
+  CodingTemplatePreviewItemType,
+  CodingTemplatePreviewPlan,
+  CodingTemplatePreviewPolicy,
+  CodingTemplatePreviewSummary,
+  CreateCodingTemplatePreviewInput,
+} from "./application/coding-template-preview.ts";
+
+export { createCodingTemplatePreview } from "./application/coding-template-preview.ts";
+
+export type {
+  ApplyCodingTemplateCommand,
+  ApplyCodingTemplateDependencies,
+  ApplyCodingTemplateResult,
+} from "./application/apply-coding-template.ts";
+
+export {
+  APPLY_CODING_TEMPLATE_PERMISSION,
+  applyCodingTemplate,
+} from "./application/apply-coding-template.ts";
+
+export type {
+  CodingTemplateUpgradeAction,
+  CodingTemplateUpgradeDecision,
+  CodingTemplateUpgradeIssue,
+  CodingTemplateUpgradeIssueCode,
+  CodingTemplateUpgradeItem,
+  CodingTemplateUpgradePlan,
+  CodingTemplateUpgradeStatus,
+  CodingTemplateUpgradeSummary,
+  CreateCodingTemplateUpgradePlanInput,
+} from "./application/coding-template-upgrade.ts";
+
+export { createCodingTemplateUpgradePlan } from "./application/coding-template-upgrade.ts";
+
+export type {
+  CodingTemplateWorkbookCell,
+  CodingTemplateWorkbookCellLocation,
+  CodingTemplateWorkbookColumn,
+  CodingTemplateWorkbookColumnType,
+  CodingTemplateWorkbookIssue,
+  CodingTemplateWorkbookIssueCode,
+  CodingTemplateWorkbookMetadata,
+  CodingTemplateWorkbookParseFailure,
+  CodingTemplateWorkbookParser,
+  CodingTemplateWorkbookParseResult,
+  CodingTemplateWorkbookParseSuccess,
+  CodingTemplateWorkbookSheet,
+  CodingTemplateWorkbookSheetName,
+  CodingTemplateWorkbookSource,
+} from "./contracts/coding-template-workbook.ts";
+
+export {
+  CODING_TEMPLATE_WORKBOOK_CONTRACT_VERSION,
+  CODING_TEMPLATE_WORKBOOK_LIMITS,
+  CODING_TEMPLATE_WORKBOOK_SHEETS,
+  normalizeCodingTemplateWorkbookCell,
+  normalizeCodingTemplateWorkbookText,
+} from "./contracts/coding-template-workbook.ts";
+
+export type {
+  CodingTemplateWorkbookFingerprintProvider,
+  CodingTemplateWorkbookImportErrorCode,
+  CodingTemplateWorkbookImportPreview,
+  CodingTemplateWorkbookPreviewIssue,
+  CodingTemplateWorkbookPreviewSummary,
+  ImportCodingTemplateWorkbookCommand,
+  ImportCodingTemplateWorkbookDependencies,
+  ImportCodingTemplateWorkbookResult,
+  PreviewCodingTemplateWorkbookImportDependencies,
+} from "./application/coding-template-workbook-import.ts";
+
+export {
+  CodingTemplateWorkbookImportError,
+  IMPORT_CODING_TEMPLATE_WORKBOOK_PERMISSION,
+  importCodingTemplateWorkbook,
+  previewCodingTemplateWorkbookImport,
+} from "./application/coding-template-workbook-import.ts";
+
+export type {
+  CodingTemplateApplicationErrorCode,
+} from "./application/coding-template-application-error.ts";
+
+export {
+  CodingTemplateApplicationError,
+} from "./application/coding-template-application-error.ts";
+
 export {
   DEFAULT_ACCOUNT_CODE_LENGTHS,
 } from "./domain/account-coding-settings.ts";

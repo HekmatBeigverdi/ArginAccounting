@@ -1,6 +1,6 @@
 # Contributing to ArginAccounting
 
-All contributions must follow the permanent [Documentation Governance](docs/development/documentation-governance.md), [Coding Standards](docs/development/coding-standards.md), [Module Guidelines](docs/development/module-guidelines.md), and [Testing Strategy](docs/development/testing-strategy.md).
+All contributions must follow the permanent [Documentation Governance](docs/development/documentation-governance.md), [Coding Standards](docs/development/coding-standards.md), [Module Guidelines](docs/development/module-guidelines.md), [Testing Strategy](docs/development/testing-strategy.md), and [GitHub Publishing Workflow](docs/development/github-publishing-workflow.md).
 
 ## Language
 
