@@ -142,13 +142,25 @@ function errorChain(reason: unknown): readonly string[] {
 
 export function codingTemplateErrorDetails(reason: unknown): CodingTemplateErrorDetails {
   const chain = errorChain(reason);
-  const code = reason instanceof Error ? reason.message : String(reason);
+  const errorCode = reason instanceof Error && "code" in reason
+    ? (reason as Error & { code?: unknown }).code
+    : undefined;
+  const code = typeof errorCode === "string"
+    ? errorCode
+    : reason instanceof Error
+      ? reason.message
+      : String(reason);
   const messages: Record<string, string> = {
     permission_denied: "برای انجام این عملیات مجوز کافی ندارید.",
     built_in_permission_required: "تغییر الگوی سیستمی به مجوز مدیر سیستم نیاز دارد.",
     stale_preview: "اطلاعات شرکت پس از پیش‌نمایش تغییر کرده است؛ دوباره پیش‌نمایش بگیرید.",
     preview_not_applicable: "تا زمان رفع تعارض‌ها امکان اعمال الگو وجود ندارد.",
     confirmation_required: "تأیید صریح عملیات الزامی است.",
+    template_not_found: "الگوی انتخاب‌شده پیدا نشد؛ فهرست الگوها را تازه‌سازی کنید.",
+    template_not_published: "الگوی انتخاب‌شده منتشرشده نیست و امکان اعمال آن وجود ندارد.",
+    version_not_found: "نسخه انتخاب‌شده به این الگو تعلق ندارد یا دیگر در دسترس نیست.",
+    request_key_reused: "درخواست اعمال قبلاً برای عملیات دیگری استفاده شده است؛ دوباره پیش‌نمایش بگیرید.",
+    repository_unavailable: "مخزن الگوهای کدینگ در دسترس نیست.",
     "coding-template-version-not-found": "نسخه انتخاب‌شده پیدا نشد.",
   };
   return Object.freeze({

@@ -89,7 +89,9 @@ export function createCodingTemplateServices(deps: Dependencies): CodingTemplate
     async searchTemplates(text) {
       await ensureBuiltIns();
       return unitOfWork.run(async (r) => (await required(r.codingTemplates).search({
-        ...(text?.trim() ? { text } : {}), pagination: { page: 1, pageSize: 200 },
+        ...(text?.trim() ? { text } : {}),
+        lifecycle: "published",
+        pagination: { page: 1, pageSize: 200 },
       })).items);
     },
     async searchVersions(templateId) {

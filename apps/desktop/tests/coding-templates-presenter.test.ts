@@ -36,6 +36,18 @@ test("coding template failures expose separate user and technical messages", () 
   assert.match(details.technical, /coding_template_applications/);
 });
 
+test("maps application error codes instead of exposing the generic failure", () => {
+  const error = Object.assign(
+    new Error("accounting.coding-template-application.template_not_published"),
+    { code: "template_not_published" },
+  );
+
+  const details = codingTemplateErrorDetails(error);
+
+  assert.match(details.summary, /منتشرشده نیست/);
+  assert.match(details.technical, /template_not_published/);
+});
+
 test("preview accounts are presented as an ordered hierarchy with plan status", () => {
   const content = IRAN_SERVICE_CODING_CATALOG.content;
   const preview = createCodingTemplatePreview({

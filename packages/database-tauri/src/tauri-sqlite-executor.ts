@@ -199,21 +199,15 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
     await previousOperation;
 
     try {
-      await this.execute("BEGIN IMMEDIATE");
-      try {
-        const result = await operation(
-          new LogicalTransactionSession(this),
-        );
-        await this.execute("COMMIT");
-        return result;
-      } catch (error) {
-        try {
-          await this.execute("ROLLBACK");
-        } catch (rollbackError) {
-          console.error("SQLite rollback failed:", rollbackError);
-        }
-        throw error;
-      }
+      // The Tauri SQL plugin executes every command through a connection
+      // pool and does not pin consecutive commands to one connection.
+      // Issuing BEGIN here can therefore lock the connection that receives
+      // it while the operation is sent to another connection in the pool.
+      // Keep unit-of-work operations serialized until the plugin exposes a
+      // transaction API that guarantees connection affinity.
+      return await operation(
+        new LogicalTransactionSession(this),
+      );
     } finally {
       releaseQueue();
     }
