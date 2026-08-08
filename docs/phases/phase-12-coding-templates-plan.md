@@ -363,7 +363,7 @@ Exit criteria:
 | 13 | SQLite Migration | Completed | Added migration `0012_coding_templates.sql` with durable company activity, normalized immutable template content, application/mapping/import provenance, domain-aligned constraints, and catalog/synchronization indexes; verified fresh and Phase 11 upgrade paths |
 | 14 | SQLite Repositories and Transactional Adapters | Completed | Added SQLite repositories for templates, immutable normalized versions, application history/mappings, company baselines, and workbook import history; extended the Accounting Unit of Work for atomic apply/import; added escaped stable paging, optimistic template updates, idempotency/provenance persistence, and rollback-focused contract tests |
 | 15 | Permissions, Audit, and Integration Events | Completed | Added the complete permission vocabulary, privileged built-in mutation policy, authorized lifecycle commands with optimistic concurrency, after-commit lifecycle/apply/import events, correlation and causation propagation, immutable before/after audit snapshots, and rollback/idempotency event suppression |
-| 16 | Desktop Composition and Persian RTL UI | Not started | — |
+| 16 | Desktop Composition and Persian RTL UI | Completed | Added the SQLite-backed desktop composition and Persian RTL workspace for catalog, recommendation, tree preview, actionable conflicts, confirmed apply, upgrade, Excel import, lifecycle/history, Solar Hijri presentation, and two-level copyable apply errors; verified Desktop tests `36/36`, Accounting tests `192/192`, Accounting adapter tests `39/39`, typecheck, lint, and production build |
 | 17 | Focused and Integration Test Completion | Not started | — |
 | 18 | Documentation, Full Validation, Merge, and Release | Not started | — |
 
