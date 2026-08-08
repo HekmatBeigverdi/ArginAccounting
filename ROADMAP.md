@@ -37,8 +37,8 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 10. ✅ Chart of Accounts
 11. ✅ Accounting Dimensions
-12. 🚧 Coding Templates — implemented; final validation and delivery in progress
-13. ⏳ Journal Voucher Engine
+12. ✅ Coding Templates
+13. 🚧 Journal Voucher Engine
 14. ⏳ Journal Lifecycle
 15. ⏳ Accounting Reports
 

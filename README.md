@@ -20,9 +20,9 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 
 ## Current Status
 
-- Phase 01–11: completed and merged into `develop` and `main`
-- Current target: Phase 12 — Coding Templates delivery
-- Next accounting milestone: Phase 13 — Journal Voucher Engine
+- Phase 01–12: completed and merged into `develop` and `main`
+- Current target: Phase 13 — Journal Voucher Engine
+- Latest release: Phase 12 — Coding Templates (`v0.12.0`)
 
 Phase 12 introduces versioned service, trading, and manufacturing coding templates with deterministic preview, atomic application, safe upgrades, and validated Excel import.
 
