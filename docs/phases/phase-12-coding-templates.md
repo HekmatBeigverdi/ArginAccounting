@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented. Full validation and delivery evidence are recorded in the fixed Phase 12 plan; merge and release require explicit approval.
+Completed, merged into `develop` and `main`, and released as `v0.12.0` on 2026-08-08. Full validation and delivery evidence are recorded in the fixed Phase 12 plan.
 
 ## Overview
 

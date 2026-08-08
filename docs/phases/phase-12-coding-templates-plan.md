@@ -387,7 +387,7 @@ Evidence:
 | 15 | Permissions, Audit, and Integration Events | Completed | Added the complete permission vocabulary, privileged built-in mutation policy, authorized lifecycle commands with optimistic concurrency, after-commit lifecycle/apply/import events, correlation and causation propagation, immutable before/after audit snapshots, and rollback/idempotency event suppression |
 | 16 | Desktop Composition and Persian RTL UI | Completed | Added the SQLite-backed desktop composition and Persian RTL workspace for catalog, recommendation, tree preview, actionable conflicts, confirmed apply, upgrade, Excel import, lifecycle/history, Solar Hijri presentation, and two-level copyable apply errors; verified Desktop tests `36/36`, Accounting tests `192/192`, Accounting adapter tests `39/39`, typecheck, lint, and production build |
 | 17 | Focused and Integration Test Completion | Completed | Accounting `192/192`, Accounting adapter `39/39`, Database Tauri transaction harness `4/4`, and Desktop/Phase 10–11 regression `36/36`; critical retry, rollback, conflict, upgrade drift, workbook, migration, presenter, and UI paths covered |
-| 18 | Documentation, Full Validation, Merge, and Release | Awaiting delivery approval | Documentation synchronized; frozen install 21 workspaces; lint 18/18, typecheck 19/19, tests 18/18, build 19/19, and `git diff --check` passed; merge/release/tag require explicit approval |
+| 18 | Documentation, Full Validation, Merge, and Release | Completed | Documentation synchronized; frozen install 21 workspaces; lint 18/18, typecheck 19/19, tests 18/18, build 19/19, and `git diff --check` passed; merged through PRs #5 and #6 and released as `v0.12.0` |
 
 ## Baseline Findings
 

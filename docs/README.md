@@ -43,9 +43,9 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Stable merged baseline: [Phase 11 — Accounting Dimensions](phases/phase-11-accounting-dimensions.md)
-- Current delivery target: [Phase 12 — Coding Templates](phases/phase-12-coding-templates.md)
-- Next implementation target: Phase 13 — Journal Voucher Engine
+- Stable merged baseline: [Phase 12 — Coding Templates](phases/phase-12-coding-templates.md)
+- Current delivery target: Phase 13 — Journal Voucher Engine
+- Latest release: `v0.12.0`
 
 ## Source-of-Truth Policy
 
