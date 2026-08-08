@@ -9,8 +9,8 @@
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "lint": "echo \"Tauri database lint is not configured yet\"",
-    "test": "echo \"Tauri database tests are not configured yet\"",
+    "lint": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "rimraf": "^6.0.0",
+    "tsx": "^4.20.0",
     "typescript": "^5.9.0"
   }
 }

@@ -331,6 +331,15 @@ Exit criteria:
 - Focused suites pass with recorded counts.
 - Critical failure-path coverage is present.
 
+Status: Completed
+
+Evidence:
+
+- Verified the Accounting Domain and Application suite (`192/192`), including independent service, trading, and manufacturing catalog integrity and snapshot flows, compatible existing companies, conflicts, idempotent retries, rollback, upgrades, drift, and malformed workbook handling.
+- Verified the SQLite Accounting adapter suite (`39/39`), including Phase 12 repositories, migration-aligned fingerprint persistence, shared transactional sessions, failure propagation, catalog recommendation, and real XLSX parsing.
+- Added a real test harness for `@argin/database-tauri` and verified `BEGIN IMMEDIATE`, `COMMIT`, `ROLLBACK`, Boolean parameter normalization, concurrent transaction serialization, and queue recovery after failure (`4/4`).
+- Verified the Desktop presenter, migration, Persian RTL UI, technical-error, and Phase 10/11 regression suite (`36/36`).
+
 ### Step 18 — Documentation, Full Validation, Merge, and Release
 
 - Add the final Phase 12 record and update ADR, roadmap, changelog, registries, database dictionary, security model, glossary, and accounting engine documentation.
@@ -364,7 +373,7 @@ Exit criteria:
 | 14 | SQLite Repositories and Transactional Adapters | Completed | Added SQLite repositories for templates, immutable normalized versions, application history/mappings, company baselines, and workbook import history; extended the Accounting Unit of Work for atomic apply/import; added escaped stable paging, optimistic template updates, idempotency/provenance persistence, and rollback-focused contract tests |
 | 15 | Permissions, Audit, and Integration Events | Completed | Added the complete permission vocabulary, privileged built-in mutation policy, authorized lifecycle commands with optimistic concurrency, after-commit lifecycle/apply/import events, correlation and causation propagation, immutable before/after audit snapshots, and rollback/idempotency event suppression |
 | 16 | Desktop Composition and Persian RTL UI | Completed | Added the SQLite-backed desktop composition and Persian RTL workspace for catalog, recommendation, tree preview, actionable conflicts, confirmed apply, upgrade, Excel import, lifecycle/history, Solar Hijri presentation, and two-level copyable apply errors; verified Desktop tests `36/36`, Accounting tests `192/192`, Accounting adapter tests `39/39`, typecheck, lint, and production build |
-| 17 | Focused and Integration Test Completion | Not started | — |
+| 17 | Focused and Integration Test Completion | Completed | Accounting `192/192`, Accounting adapter `39/39`, Database Tauri transaction harness `4/4`, and Desktop/Phase 10–11 regression `36/36`; critical retry, rollback, conflict, upgrade drift, workbook, migration, presenter, and UI paths covered |
 | 18 | Documentation, Full Validation, Merge, and Release | Not started | — |
 
 ## Baseline Findings
