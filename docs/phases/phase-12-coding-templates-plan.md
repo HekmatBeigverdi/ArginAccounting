@@ -353,6 +353,19 @@ Exit criteria:
 - Documentation matches implementation.
 - Phase 12 is merged and released through the approved workflow.
 
+Status: Validation completed; delivery approval pending
+
+Evidence:
+
+- Added the final Phase 12 record and updated ADR-0012, root and compatibility roadmaps, changelog, documentation/phase indexes, module registry, database dictionary, security model, domain dictionary, and accounting engine documentation.
+- Regenerated the documentation index with `70` entries.
+- Completed frozen installation across `21` workspaces with Node `22.23.1`.
+- Completed Monorepo lint (`18/18` tasks), typecheck (`19/19` tasks), tests (`18/18` tasks), and production build (`19/19` tasks).
+- Preserved focused evidence: Accounting `192/192`, Accounting Adapter `39/39`, Database Tauri `4/4`, and Desktop/Phase 10–11 regression `36/36`.
+- Replaced the remaining `tsx` CLI test invocations with the existing `node --import tsx` pattern so full tests do not require an IPC socket in sandboxed CI environments.
+- Completed whitespace validation with `git diff --check` and reviewed the delivered scope against all 18 fixed steps and their exit criteria.
+- Merge to `develop`, release to `main`, tag `v0.12.0`, and final release publication remain gated by explicit user approval as required by this plan.
+
 ## Step Status
 
 | Step | Title | Status | Evidence |
@@ -374,7 +387,7 @@ Exit criteria:
 | 15 | Permissions, Audit, and Integration Events | Completed | Added the complete permission vocabulary, privileged built-in mutation policy, authorized lifecycle commands with optimistic concurrency, after-commit lifecycle/apply/import events, correlation and causation propagation, immutable before/after audit snapshots, and rollback/idempotency event suppression |
 | 16 | Desktop Composition and Persian RTL UI | Completed | Added the SQLite-backed desktop composition and Persian RTL workspace for catalog, recommendation, tree preview, actionable conflicts, confirmed apply, upgrade, Excel import, lifecycle/history, Solar Hijri presentation, and two-level copyable apply errors; verified Desktop tests `36/36`, Accounting tests `192/192`, Accounting adapter tests `39/39`, typecheck, lint, and production build |
 | 17 | Focused and Integration Test Completion | Completed | Accounting `192/192`, Accounting adapter `39/39`, Database Tauri transaction harness `4/4`, and Desktop/Phase 10–11 regression `36/36`; critical retry, rollback, conflict, upgrade drift, workbook, migration, presenter, and UI paths covered |
-| 18 | Documentation, Full Validation, Merge, and Release | Not started | — |
+| 18 | Documentation, Full Validation, Merge, and Release | Awaiting delivery approval | Documentation synchronized; frozen install 21 workspaces; lint 18/18, typecheck 19/19, tests 18/18, build 19/19, and `git diff --check` passed; merge/release/tag require explicit approval |
 
 ## Baseline Findings
 

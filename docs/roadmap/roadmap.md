@@ -6,9 +6,9 @@ This file remains as a stable compatibility path for earlier links. Do not maint
 
 ## Current State
 
-- Phase 01–10: completed and merged
-- Phase 11: Accounting Dimensions implemented and validated; merge and release pending
-- Phase 12: Coding Templates will add service, trading, and manufacturing defaults
+- Phase 01–11: completed and merged
+- Phase 12: Coding Templates implemented; final validation and delivery in progress
+- Phase 13: Journal Voucher Engine is the next implementation target
 
 ## Permanent Rule
 

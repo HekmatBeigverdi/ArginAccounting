@@ -113,6 +113,7 @@ Coding templates are versioned, company-independent definitions. Applying a temp
 
 ## Related Documents
 
+- [Phase 12 — Coding Templates](../phases/phase-12-coding-templates.md)
 - [Phase 12 — Fixed Implementation Plan](../phases/phase-12-coding-templates-plan.md)
 - [ADR-0010 — Chart of Accounts Model](ADR-0010-chart-of-accounts-model.md)
 - [ADR-0011 — Independent Accounting Dimensions](ADR-0011-independent-accounting-dimensions.md)

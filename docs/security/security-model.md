@@ -45,6 +45,21 @@ Permission names follow `<module>.<resource>.<action>`. Seed changes are version
 
 Dimension operations are company-scoped and authorized at the Application Service boundary. Mutations use optimistic concurrency and publish complete before/after audit evidence only after the transaction commits.
 
+### Coding Templates
+
+- `accounting.coding-templates.view`
+- `accounting.coding-templates.create`
+- `accounting.coding-templates.update-draft`
+- `accounting.coding-templates.publish`
+- `accounting.coding-templates.retire`
+- `accounting.coding-templates.preview`
+- `accounting.coding-templates.apply`
+- `accounting.coding-templates.upgrade`
+- `accounting.coding-templates.import`
+- `accounting.coding-templates.view-history`
+
+Template lifecycle and company application/import commands are authorized at the Application Service boundary. Built-in mutation is restricted to privileged system administration. Atomic failure and rollback publish no success event; committed events preserve actor, company, source, correlation, causation, version, fingerprint, and request identity.
+
 ## Audit and Approval
 
 Audit history is append-only. Approval transitions require valid state, permission, scope, actor, and optimistic-concurrency version. Multi-record changes commit atomically.

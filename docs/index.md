@@ -30,6 +30,10 @@
 - [Architecture Principles](architecture/principles.md)
 - [Architecture Documentation](architecture/README.md)
 
+## contracts
+
+- [Coding Template Excel Workbook Contract v1.0](contracts/coding-template-workbook-v1.md)
+
 ## database
 
 - [Database Design](database/database-design.md)
@@ -49,6 +53,7 @@
 - [Coding Standards](development/coding-standards.md)
 - [Documentation Architecture v2](development/documentation-architecture-v2.md)
 - [Documentation Governance](development/documentation-governance.md)
+- [GitHub Publishing Workflow](development/github-publishing-workflow.md)
 - [Module Guidelines](development/module-guidelines.md)
 - [Phase Definition of Done](development/phase-definition-of-done.md)
 - [ArginAccounting Testing Convention](development/testing-convention.md)
@@ -81,6 +86,8 @@
 - [Phase 09 — Platform Infrastructure](phases/phase-09-platform-infrastructure.md)
 - [Phase 10 — Chart of Accounts](phases/phase-10-chart-of-accounts.md)
 - [Phase 11 — Accounting Dimensions](phases/phase-11-accounting-dimensions.md)
+- [Phase 12 — Coding Templates: Fixed Implementation Plan](phases/phase-12-coding-templates-plan.md)
+- [Phase 12 — Coding Templates](phases/phase-12-coding-templates.md)
 - [Phase Documentation](phases/README.md)
 
 ## registries

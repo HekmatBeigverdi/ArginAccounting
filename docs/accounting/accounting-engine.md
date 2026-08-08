@@ -23,7 +23,7 @@ It does not own invoice calculation, inventory valuation, payroll calculation, c
 
 ## Implemented Foundations
 
-Phase 09 supplies shared Money, Event Bus, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs. Phase 10 supplies the three-level Chart of Accounts. Phase 11 supplies independent dimension types, members, account requirement policies, assignment validation, and dynamic selector contracts. Persisted vouchers, lines, and journal-backed usage detection begin in Phase 13.
+Phase 09 supplies shared Money, Event Bus, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs. Phase 10 supplies the three-level Chart of Accounts. Phase 11 supplies independent dimension types, members, account requirement policies, assignment validation, and dynamic selector contracts. Phase 12 composes those foundations through immutable coding-template versions, deterministic preview, atomic retry-safe application, non-destructive upgrades, and validated Excel import. Persisted vouchers, lines, and journal-backed usage detection begin in Phase 13.
 
 ## Auditability
 

@@ -43,10 +43,9 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Stable merged baseline: Phase 10 — Chart of Accounts
-- Implemented and validated: [Phase 11 — Accounting Dimensions](phases/phase-11-accounting-dimensions.md)
-- Pending delivery action: merge Phase 11 and prepare release
-- Next implementation target: Phase 12 — Coding Templates
+- Stable merged baseline: [Phase 11 — Accounting Dimensions](phases/phase-11-accounting-dimensions.md)
+- Current delivery target: [Phase 12 — Coding Templates](phases/phase-12-coding-templates.md)
+- Next implementation target: Phase 13 — Journal Voucher Engine
 
 ## Source-of-Truth Policy
 

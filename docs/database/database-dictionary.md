@@ -28,6 +28,7 @@ For every table record:
 | Platform Infrastructure | `background_jobs`, `notifications` | Phase 09 |
 | Chart of Accounts | `account_coding_settings`, `accounts`, `account_management_tags` | Phase 10 |
 | Accounting Dimensions | `accounting_dimension_types`, `accounting_dimension_members`, `account_dimension_policies` | Phase 11 |
+| Coding Templates | `coding_templates`, normalized version-item tables, application mappings/history, import batches | Phase 12 |
 
 ## Phase 10 — Chart of Accounts
 
@@ -68,3 +69,11 @@ Versioned relationship between a company-scoped account and dimension type. One 
 ### Migration
 
 - `apps/desktop/src-tauri/migrations/0011_accounting_dimensions.sql`
+
+## Phase 12 — Coding Templates
+
+Migration `0012_coding_templates.sql` adds the explicit company `activity_type` compatibility value and persists template lifecycle, immutable versions, normalized account/dimension/member/policy items, application history and operational mappings, and Excel import-batch provenance. Constraints preserve template/version identity, item references, company scope, request-key idempotency, fingerprints, and optimistic concurrency. Indexes support catalog paging, version lookup, application history, synchronization evidence, and retry recovery.
+
+### Migration
+
+- `apps/desktop/src-tauri/migrations/0012_coding_templates.sql`
