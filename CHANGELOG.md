@@ -6,6 +6,47 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.12.0] - Unreleased
+
+### Added
+
+- Versioned service, trading, and manufacturing coding-template catalogs
+- Deterministic preview, conflict analysis, atomic application, and application history
+- Retry-safe request identities, item mappings, fingerprints, and post-commit integration events
+- Non-destructive additive upgrade comparison with local-drift protection
+- Versioned Excel workbook contract, cell-level validation, preview, and atomic import
+- Persian RTL coding-template workspace with recommendation, tree preview, history, upgrade, and import experiences
+
+### Database
+
+- Added migration `0012_coding_templates.sql`
+- Added company activity-type compatibility with existing companies backfilled to `custom`
+- Added normalized template/version content, application mapping/history, and import-batch persistence
+- Added durable uniqueness, lifecycle, provenance, idempotency, referential, and synchronization-oriented constraints and indexes
+
+### Security and Audit
+
+- Added coding-template view, lifecycle, preview, apply, upgrade, import, and history permissions
+- Restricted built-in catalog mutation to privileged system administration
+- Preserved actor, company, source, correlation, causation, version, fingerprint, and request context
+- Suppressed success events on transaction failure, rollback, and idempotent replay
+
+### Tests and Validation
+
+- Accounting focused tests passed: 192
+- SQLite Accounting Adapter focused tests passed: 39
+- Tauri SQLite transaction lifecycle tests passed: 4
+- Desktop and Phase 10/11 regression tests passed: 36
+- Full Step 18 validation evidence is recorded in the Phase 12 fixed implementation plan
+
+### Deferred
+
+- Persisted Journal Vouchers and Journal Lines: Phase 13
+- PostgreSQL/API and synchronization adapters: future Argin Bridge delivery
+- Destructive account replacement or automatic local override: intentionally excluded
+
+---
+
 ## [0.11.0] - Unreleased
 
 ### Added

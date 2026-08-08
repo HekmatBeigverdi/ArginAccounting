@@ -20,13 +20,13 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 
 ## Current Status
 
-- Phase 01–10: completed and merged into `develop` and `main`
-- Current target: Phase 11 — Accounting Dimensions closure
-- Next accounting milestone: Phase 12 — Coding Templates
+- Phase 01–11: completed and merged into `develop` and `main`
+- Current target: Phase 12 — Coding Templates delivery
+- Next accounting milestone: Phase 13 — Journal Voucher Engine
 
-Phase 11 introduces reusable company-scoped analytical dimensions independently from the three-level Chart of Accounts.
+Phase 12 introduces versioned service, trading, and manufacturing coding templates with deterministic preview, atomic application, safe upgrades, and validated Excel import.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), and [ADR-0011](docs/adr/ADR-0011-independent-accounting-dimensions.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), and [ADR-0012](docs/adr/ADR-0012-versioned-coding-templates.md).
 
 ## Main Modules
 

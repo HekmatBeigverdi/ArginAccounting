@@ -1,6 +1,9 @@
 import type {
   CreateCompanyInput
 } from "../domain/company";
+import {
+  isCompanyActivityType
+} from "../domain/company-activity-type";
 
 import type {
   CompanyValidationIssue
@@ -13,6 +16,13 @@ export function validateCompanyInput(
 
   const code = input.code.trim();
   const legalName = input.legalName.trim();
+
+  if (!isCompanyActivityType(input.activityType)) {
+    issues.push({
+      field: "activityType",
+      message: "نوع فعالیت شرکت معتبر نیست."
+    });
+  }
 
   if (code.length === 0) {
     issues.push({

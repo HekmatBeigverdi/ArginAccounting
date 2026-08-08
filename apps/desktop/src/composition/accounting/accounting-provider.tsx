@@ -23,11 +23,13 @@ import { getDesktopDatabase } from "@argin/database-tauri";
 
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { usePlatform } from "../../platform";
+import { createCodingTemplateServices, type CodingTemplateServices } from "./create-coding-template-services";
 
 interface AccountingServices {
   readonly chartOfAccounts: ChartOfAccountsService;
   readonly dimensions: AccountingDimensionsService;
   readonly dimensionSelector: AccountingDimensionSelectorService;
+  readonly codingTemplates: CodingTemplateServices;
 }
 
 const AccountingContext = createContext<AccountingServices | undefined>(
@@ -71,7 +73,7 @@ export function AccountingProvider({ children }: PropsWithChildren) {
     const permissions = new Set(session?.user.permissions ?? []);
     const authorizer: ChartOfAccountsAuthorizer = {
       async hasPermission(permission: string): Promise<boolean> {
-        return permissions.has(permission);
+        return permissions.has("system.full-access") || permissions.has(permission);
       },
     };
 
@@ -114,6 +116,14 @@ export function AccountingProvider({ children }: PropsWithChildren) {
       dimensionSelector: new SqliteAccountingDimensionSelectorService(
         database,
       ),
+      codingTemplates: createCodingTemplateServices({
+        database,
+        clock: platform.clock,
+        idGenerator: platform.idGenerator,
+        eventBus: platform.eventBus,
+        authorizer,
+        actorId: session?.user.id ?? "desktop-local-user",
+      }),
     };
   }, [
     database,

@@ -13,5 +13,6 @@
 | ADR-0009 | Platform infrastructure before accounting core | Accepted | Phase 09 planning |
 | ADR-0010 | Company-scoped three-level Chart of Accounts | Accepted | Phase 10 |
 | ADR-0011 | Independent company-scoped accounting dimensions | Accepted | Phase 11 |
+| ADR-0012 | Versioned, previewable, and atomic coding templates | Accepted | Phase 12 |
 
 The detailed records live under `docs/adr/`. This registry must be updated in the same commit as any ADR addition, supersession, or deprecation.

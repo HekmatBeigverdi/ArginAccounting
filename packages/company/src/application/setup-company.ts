@@ -71,7 +71,8 @@ export async function setupCompany(
       tradeName: input.company.tradeName?.trim() || null,
       nationalId: input.company.nationalId?.trim() || null,
       registrationNumber:
-        input.company.registrationNumber?.trim() || null
+        input.company.registrationNumber?.trim() || null,
+      activityType: input.company.activityType
     });
     console.log("شرکت ایجاد شد:", company.id);
 

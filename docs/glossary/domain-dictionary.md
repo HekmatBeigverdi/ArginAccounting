@@ -36,7 +36,11 @@ Each term must include:
 | Accounting Dimension Member | عضو بُعد حسابداری / تفصیلی | Versioned classification value belonging to one dimension type, optionally hierarchical and effective-dated. | Accounting |
 | Account-Dimension Policy | سیاست حساب و بُعد | Unique rule declaring a dimension required, optional, or forbidden for a Subsidiary account. | Accounting |
 | Dimension Assignment | تخصیص بُعد | Dimension type and selected member identifiers validated for an accounting line and document date. | Accounting |
-| Coding Template | الگوی کدینگ | Versioned service, trading, or manufacturing account template planned for Phase 12. | Accounting |
+| Coding Template | الگوی کدینگ | Company-independent, versioned graph of accounts, dimensions, members, and policies for service, trading, manufacturing, or custom sources. | Accounting |
+| Coding Template Version | نسخه الگوی کدینگ | Immutable published template content identified by a sequential version and content fingerprint. | Accounting |
+| Template Application | اعمال الگوی کدینگ | Confirmed, atomic, retry-safe provisioning of validated template items into one company with durable history and mappings. | Accounting |
+| Template Upgrade | ارتقای الگوی کدینگ | Explicit non-destructive comparison and application of selected additive changes while preserving local modifications. | Accounting |
+| Workbook Import Batch | نوبت ورود اکسل | Fingerprinted, contract-versioned, idempotent import attempt that creates a custom template version only after successful validation and confirmation. | Accounting |
 | Journal Voucher | سند حسابداری | Balanced accounting document composed of debit and credit lines. | Accounting |
 | Posting Rule | قاعده صدور سند | Deterministic mapping from source document effects to journal lines. | Posting |
 

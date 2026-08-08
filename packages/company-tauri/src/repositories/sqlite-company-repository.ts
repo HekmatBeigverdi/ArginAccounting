@@ -15,6 +15,7 @@ interface CompanyRow {
   trade_name: string | null;
   national_id: string | null;
   registration_number: string | null;
+  activity_type?: Company["activityType"] | null;
   base_currency: "IRR";
   locale: "fa-IR";
   calendar: "jalali";
@@ -31,6 +32,7 @@ function mapCompany(row: CompanyRow): Company {
     tradeName: row.trade_name,
     nationalId: row.national_id,
     registrationNumber: row.registration_number,
+    activityType: row.activity_type ?? "custom",
     baseCurrency: row.base_currency,
     locale: row.locale,
     calendar: row.calendar,
@@ -59,6 +61,7 @@ export class SqliteCompanyRepository
       nationalId: input.nationalId ?? null,
       registrationNumber:
         input.registrationNumber ?? null,
+      activityType: input.activityType,
       baseCurrency: "IRR",
       locale: "fa-IR",
       calendar: "jalali",
@@ -67,8 +70,9 @@ export class SqliteCompanyRepository
       updatedAt: now
     };
 
-    await this.database.execute(
-      `
+    if (await this.supportsActivityType()) {
+      await this.database.execute(
+        `
         INSERT INTO companies (
           id,
           code,
@@ -76,6 +80,7 @@ export class SqliteCompanyRepository
           trade_name,
           national_id,
           registration_number,
+          activity_type,
           base_currency,
           locale,
           calendar,
@@ -83,23 +88,50 @@ export class SqliteCompanyRepository
           created_at,
           updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        company.id,
-        company.code,
-        company.legalName,
-        company.tradeName,
-        company.nationalId,
-        company.registrationNumber,
-        company.baseCurrency,
-        company.locale,
-        company.calendar,
-        company.status,
-        company.createdAt,
-        company.updatedAt
-      ]
-    );
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          company.id,
+          company.code,
+          company.legalName,
+          company.tradeName,
+          company.nationalId,
+          company.registrationNumber,
+          company.activityType,
+          company.baseCurrency,
+          company.locale,
+          company.calendar,
+          company.status,
+          company.createdAt,
+          company.updatedAt
+        ]
+      );
+    } else {
+      await this.database.execute(
+        `
+          INSERT INTO companies (
+            id, code, legal_name, trade_name, national_id,
+            registration_number, base_currency, locale, calendar,
+            status, created_at, updated_at
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          company.id,
+          company.code,
+          company.legalName,
+          company.tradeName,
+          company.nationalId,
+          company.registrationNumber,
+          company.baseCurrency,
+          company.locale,
+          company.calendar,
+          company.status,
+          company.createdAt,
+          company.updatedAt
+        ]
+      );
+    }
 
     return company;
   }
@@ -137,6 +169,27 @@ export class SqliteCompanyRepository
   }
 
   async update(company: Company): Promise<void> {
+    if (!await this.supportsActivityType()) {
+      await this.database.execute(
+        `
+          UPDATE companies
+          SET legal_name = ?, trade_name = ?, national_id = ?,
+              registration_number = ?, status = ?, updated_at = ?
+          WHERE id = ?
+        `,
+        [
+          company.legalName,
+          company.tradeName,
+          company.nationalId,
+          company.registrationNumber,
+          company.status,
+          company.updatedAt,
+          company.id
+        ]
+      );
+      return;
+    }
+
     await this.database.execute(
       `
         UPDATE companies
@@ -145,6 +198,7 @@ export class SqliteCompanyRepository
           trade_name = ?,
           national_id = ?,
           registration_number = ?,
+          activity_type = ?,
           status = ?,
           updated_at = ?
         WHERE id = ?
@@ -154,10 +208,18 @@ export class SqliteCompanyRepository
         company.tradeName,
         company.nationalId,
         company.registrationNumber,
+        company.activityType,
         company.status,
         company.updatedAt,
         company.id
       ]
     );
+  }
+
+  private async supportsActivityType(): Promise<boolean> {
+    const columns = await this.database.query<{ name: string }>(
+      "PRAGMA table_info(companies)"
+    );
+    return columns.some((column) => column.name === "activity_type");
   }
 }
