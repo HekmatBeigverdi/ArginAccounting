@@ -110,7 +110,17 @@ Exit criteria:
 - Aggregate ownership and invariants are unambiguous.
 - Phase 13/14 boundary is explicit and prevents lifecycle leakage.
 
-Status: In progress
+Status: Completed
+
+Evidence:
+
+- Added `ADR-0013 — Journal Voucher Engine Architecture` and reconciled the journal design with the existing Accounting Engine, Phase 09 Number Series/transaction/concurrency/event contracts, Phase 10 account eligibility model, Phase 11 reusable dimension assignment validator, Phase 12 provenance patterns, and existing company/branch/fiscal contracts.
+- Fixed `JournalVoucher` as the aggregate root owning ordered `JournalLine` entities and normalized line-dimension assignments.
+- Fixed Phase 13 lifecycle scope to editable `draft` vouchers only; posting, approval, locking, reversal, replacement, voiding, and controlled amendment remain Phase 14 responsibilities.
+- Fixed structural invariants: at least two effective lines, exactly one positive debit/credit side per line, no zero effective lines, deterministic unique ordering, and total debit equal to total credit.
+- Fixed Application-boundary validation for posting-enabled active subsidiary accounts, company scope, open fiscal context, Phase 11 dimension policies, Number Series reservation, optimistic concurrency, atomic Unit of Work behavior, audit, and post-commit events.
+- Fixed canonical Gregorian durable dates with Solar Hijri presentation, Iranian Rial default presentation with explicit currency context, stable opaque identifiers, source/correlation/causation metadata, and portability rules for future PostgreSQL/.NET API/offline synchronization.
+- Rejected SQLite AUTOINCREMENT business numbering, separate Journal Line aggregate ownership, duplicated dimension validation, source-module direct journal persistence, and Phase 14 lifecycle leakage.
 
 ### Step 3 — Journal Voucher Aggregate and Value Objects
 
@@ -286,7 +296,7 @@ Exit criteria:
 | Step | Title | Status |
 |---:|---|---|
 | 1 | Baseline, Branch, and Frozen Plan | Completed |
-| 2 | Domain Analysis and ADR | In progress |
+| 2 | Domain Analysis and ADR | Completed |
 | 3 | Journal Voucher Aggregate and Value Objects | Not started |
 | 4 | Account Eligibility and Fiscal Validation Policy | Not started |
 | 5 | Dimension Assignment Integration | Not started |
