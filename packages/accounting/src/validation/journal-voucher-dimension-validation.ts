@@ -10,8 +10,9 @@ import type {
 import type {
   JournalVoucher,
 } from "../domain/journal-voucher.ts";
-import type {
-  AccountingDimensionAssignmentValidationIssue,
+import {
+  AccountingDimensionAssignmentValidationError,
+  type AccountingDimensionAssignmentValidationIssue,
 } from "./accounting-dimension-assignment-validation-error.ts";
 import {
   validateAccountingDimensionAssignments,
@@ -29,6 +30,16 @@ export interface ValidateJournalVoucherDimensionsInput {
   readonly policies: readonly AccountDimensionPolicy[];
   readonly dimensionTypes: readonly AccountingDimensionType[];
   readonly members: readonly AccountingDimensionMember[];
+}
+
+export class JournalVoucherDimensionValidationError extends Error {
+  readonly issues: readonly JournalVoucherDimensionValidationIssue[];
+
+  constructor(issues: readonly JournalVoucherDimensionValidationIssue[]) {
+    super("تخصیص ابعاد حسابداری در یک یا چند سطر سند معتبر نیست.");
+    this.name = "JournalVoucherDimensionValidationError";
+    this.issues = Object.freeze([...issues]);
+  }
 }
 
 export function validateJournalVoucherDimensions(
@@ -59,3 +70,17 @@ export function validateJournalVoucherDimensions(
 
   return Object.freeze(issues);
 }
+
+export function assertValidJournalVoucherDimensions(
+  input: ValidateJournalVoucherDimensionsInput,
+): void {
+  const issues = validateJournalVoucherDimensions(input);
+
+  if (issues.length > 0) {
+    throw new JournalVoucherDimensionValidationError(issues);
+  }
+}
+
+// Keep the Phase 11 error contract usable by callers that need to identify
+// the underlying assignment-validation family without depending on UI code.
+export { AccountingDimensionAssignmentValidationError };
