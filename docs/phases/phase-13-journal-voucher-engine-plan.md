@@ -246,6 +246,19 @@ Exit criteria:
 - Account and dimension integrity checks are backed by persisted journal references.
 - Phase 10/11 regression behavior remains valid.
 
+Status: Completed
+
+Evidence:
+
+- Added `JournalBackedAccountUsageReader`, which implements the existing Phase 10 `AccountUsageReader` contract and treats any Journal Voucher line reference as financial activity while preserving an optional existing/fallback usage source.
+- Added `JournalBackedAccountingDimensionUsageReader`, which implements the existing Phase 11 `AccountingDimensionUsageReader` contract and treats Journal line-dimension references as usage while preserving Phase 11 structural checks such as child-member and policy dependencies.
+- Kept the integration query-oriented and independent from UI and persistence details; both adapters depend only on `JournalVoucherUsageReader` plus the existing Phase 10/11 usage contracts.
+- Deliberately did not add SQLite queries against journal tables before Step 9 creates those tables. The concrete SQLite `JournalVoucherUsageReader` implementation remains Step 10 work, after which these guards become backed by persisted journal references without changing Phase 10/11 application services.
+- Added regression-focused tests for account journal usage, fallback financial activity, dimension-type journal usage, dimension-member journal usage, preservation of Phase 11 structural usage, and journal-positive short-circuit behavior.
+- Exported the journal-backed integrity readers from the Accounting package for later desktop/server composition.
+- Published the integration in commits `06d800d174c357801b9ea52ebb0bb4638ecda42a`, `6dc8d3ee5d1b895739c1a828bba8e35c5c95d61f`, and `5b01ffbd7393e8f2523494d1743c3c855d2ccdf4`.
+- Local verification remains `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`; persistence-backed regression execution is reconfirmed in Steps 10, 16, and 17 after the Journal SQLite schema exists.
+
 ### Step 9 — SQLite Migration
 
 - Add the next versioned migration for journal vouchers, lines and line-dimension assignments.
@@ -365,7 +378,7 @@ Exit criteria:
 | 5 | Dimension Assignment Integration | Completed |
 | 6 | Number Series and Voucher Numbering | Completed |
 | 7 | Application Contracts, Commands, and Queries | Completed |
-| 8 | Journal Usage Detection and Integrity Guards | Not started |
+| 8 | Journal Usage Detection and Integrity Guards | Completed |
 | 9 | SQLite Migration | Not started |
 | 10 | SQLite Repositories and Unit of Work | Not started |
 | 11 | Create/Update/Delete Draft Use Cases | Not started |
