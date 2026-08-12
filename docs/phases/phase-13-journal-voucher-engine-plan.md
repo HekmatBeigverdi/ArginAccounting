@@ -132,6 +132,19 @@ Exit criteria:
 
 - Invalid debit/credit combinations, unbalanced vouchers, duplicate/invalid ordering, and structurally invalid vouchers are rejected by focused domain tests.
 
+Status: Completed
+
+Evidence:
+
+- Added branded `JournalVoucherId` and `JournalLineId` value objects with normalization and bounded identifier validation.
+- Added normalized voucher number, reference, voucher/line descriptions, canonical Gregorian voucher-date validation, explicit currency normalization, source metadata, fiscal identifiers, optimistic version, and timestamps.
+- Added the `JournalVoucher` aggregate root with immutable ordered `JournalLine` children and Phase 13-only `draft` status.
+- Reused Phase 09 `Money`/`CurrencyCode` for safe integer amounts and explicit currency context while defaulting presentation currency to IRR.
+- Enforced at least two effective lines, positive amount on exactly one debit/credit side, non-negative safe integer amounts, positive unique line ordering, deterministic sorted lines, and strict debit/credit balance.
+- Preserved stable account references and Phase 11 line-dimension assignment references without performing external account/fiscal/dimension eligibility checks inside the aggregate; those remain Steps 4 and 5.
+- Added focused Domain tests for value-object normalization, immutability, IRR/manual defaults, minimum lines, invalid debit/credit combinations, invalid amounts, duplicate/invalid ordering, unbalanced vouchers, invalid Gregorian dates, invalid versions, and invalid currency codes.
+- The implementation was published as commit `2e4eeba35a8fbede68705b76933a69f3f54469e9`. The isolated agent runtime could not execute the repository test command because outbound GitHub DNS and local `pnpm` were unavailable; local validation command is recorded for the repository owner.
+
 ### Step 4 — Account Eligibility and Fiscal Validation Policy
 
 - Validate account existence, company scope, active state, postable state, and validity for journal use.
@@ -297,7 +310,7 @@ Exit criteria:
 |---:|---|---|
 | 1 | Baseline, Branch, and Frozen Plan | Completed |
 | 2 | Domain Analysis and ADR | Completed |
-| 3 | Journal Voucher Aggregate and Value Objects | Not started |
+| 3 | Journal Voucher Aggregate and Value Objects | Completed |
 | 4 | Account Eligibility and Fiscal Validation Policy | Not started |
 | 5 | Dimension Assignment Integration | Not started |
 | 6 | Number Series and Voucher Numbering | Not started |
