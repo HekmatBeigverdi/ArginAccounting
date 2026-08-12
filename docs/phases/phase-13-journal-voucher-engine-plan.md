@@ -27,7 +27,7 @@ Deliver the persisted double-entry Journal Voucher Engine that becomes the accou
 
 - Preserve strict double-entry balance: total debit equals total credit.
 - Represent direction through mutually exclusive debit/credit amounts; never allow both on one line.
-- Require at least two effective journal lines and reject zero-value effective lines.
+- Require at least two effective lines and reject zero-value effective lines.
 - Validate active/postable accounts, company/branch scope, voucher date, fiscal year/period eligibility, and account-dimension requirements.
 - Keep durable dates/timestamps Gregorian ISO; present dates as Solar Hijri in Persian UI.
 - Use Iranian Rial as the default presentation currency while keeping currency/exchange-rate contracts explicit for future multi-currency work.
@@ -197,6 +197,20 @@ Exit criteria:
 
 - Concurrent/retried creation cannot produce duplicate committed voucher numbers.
 
+Status: Completed
+
+Evidence:
+
+- Added the stable entity type `accounting.journal-voucher` and a default Journal Voucher Number Series definition with sequence starting at 1, increment 1, six-digit zero-padded display, and no persistence-engine-specific identity dependency.
+- Added `reserveJournalVoucherNumber` at the Accounting application boundary and reused the Phase 09 `NumberSeries` port instead of generating document numbers from SQLite row IDs, timestamps, or UI state.
+- Fixed Journal Voucher numbering scope to company + optional branch + fiscal year. Branchless vouchers intentionally use the platform wildcard branch scope while branch-specific vouchers retain independent counters.
+- Kept the external/manual voucher reference distinct from the system-generated voucher number; the numbering integration only supplies the system number consumed by the aggregate/use case.
+- Added scope normalization/validation so blank or overlong company/branch/fiscal identifiers cannot silently create ambiguous counters.
+- Added focused tests for deterministic formatting, company/branch/fiscal-year isolation, branchless scoping, concurrent same-scope reservations, retry allocation, and scope validation.
+- Concurrent calls against the platform Number Series receive distinct reservations; a retry advances to a new reservation rather than duplicating a previous one. Atomic coupling between the reserved number and persisted voucher remains the Unit of Work responsibility implemented in Steps 10–11, where database uniqueness will protect committed voucher numbers.
+- Published the numbering integration in commit `b4c5487f093a50f43b3dee21c13576b80a84eb7f` and focused tests in commit `72f71ce8eac96e99311c6c6391542ddec6b42e74`.
+- Local verification commands are `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`; full repository execution evidence is reconfirmed in Steps 15–17.
+
 ### Step 7 — Application Contracts, Commands, and Queries
 
 - Define voucher repository, usage query, Unit of Work, authorization, clock, identifier and event boundaries.
@@ -335,7 +349,7 @@ Exit criteria:
 | 3 | Journal Voucher Aggregate and Value Objects | Completed |
 | 4 | Account Eligibility and Fiscal Validation Policy | Completed |
 | 5 | Dimension Assignment Integration | Completed |
-| 6 | Number Series and Voucher Numbering | Not started |
+| 6 | Number Series and Voucher Numbering | Completed |
 | 7 | Application Contracts, Commands, and Queries | Not started |
 | 8 | Journal Usage Detection and Integrity Guards | Not started |
 | 9 | SQLite Migration | Not started |
