@@ -221,6 +221,20 @@ Exit criteria:
 
 - Application contracts are persistence-neutral and support SQLite now plus PostgreSQL/API adapters later.
 
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral `JournalVoucherRepository` and `JournalVoucherUsageReader` contracts, including expected-version update/delete semantics and paged search contracts without exposing SQLite row IDs or SQL details.
+- Added runtime ports for authorization, clock, identifier generation, event publication, Number Series, account lookup, fiscal-context resolution, dimension lookup, and a Journal-specific Unit of Work repository boundary.
+- Added Phase 13 command contracts for create, update draft, and delete draft plus get/list/search query contracts and DTOs for voucher detail, lines, totals, source metadata, and paged list output.
+- Added a stable `JournalVoucherApplicationError` family with machine-readable error codes and Persian presentation-ready messages/details for authorization, not-found, validation, dimension, numbering, duplicate number, optimistic concurrency, invalid query, and persistence failures.
+- Added deterministic search-query normalization for company scope, branch semantics, trimming, pagination, canonical Gregorian date filters, date-range ordering, and bounded page size using the shared platform query limits.
+- Added focused contract tests covering normalization defaults, explicit branchless scope, trimming, pagination offsets, invalid pagination, invalid/reversed dates, and stable error-code/detail behavior.
+- Implementation was published through commits `2584a730177547d9305f3644855fe7411298cec0`, `137d66de39bb8029f3085a32127ce0eff4e03c9a`, `b7564805251a7d4a3864f44ec46f5643f58000c4`, `83a640da72693e44d5836531d8fe98c5aecf4cb3`, and `51baacff40bc781818f9a280a32e7e61f2e2aefb`; focused tests were added in `11c6b9497f2e1531cfd76a70c8ee09cabc2466a8`.
+- Actual create/update/delete orchestration remains intentionally deferred to Step 11; Step 7 fixes only the portable contracts and deterministic boundary semantics required by that implementation.
+- Local verification remains `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`, with full execution evidence reconfirmed in Steps 15–17.
+
 ### Step 8 — Journal Usage Detection and Integrity Guards
 
 - Replace placeholder account/dimension usage assumptions with journal-backed usage queries.
@@ -350,7 +364,7 @@ Exit criteria:
 | 4 | Account Eligibility and Fiscal Validation Policy | Completed |
 | 5 | Dimension Assignment Integration | Completed |
 | 6 | Number Series and Voucher Numbering | Completed |
-| 7 | Application Contracts, Commands, and Queries | Not started |
+| 7 | Application Contracts, Commands, and Queries | Completed |
 | 8 | Journal Usage Detection and Integrity Guards | Not started |
 | 9 | SQLite Migration | Not started |
 | 10 | SQLite Repositories and Unit of Work | Not started |
