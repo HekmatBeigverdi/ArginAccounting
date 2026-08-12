@@ -270,6 +270,19 @@ Exit criteria:
 - Migration succeeds from a fresh database and an upgraded Phase 12 database.
 - Durable constraints align with domain invariants without embedding application-only policy in SQLite.
 
+Status: Completed
+
+Evidence:
+
+- Added migration `0013_journal_vouchers.sql` with normalized `journal_vouchers`, `journal_lines`, and `journal_line_dimension_assignments` tables and registered migration version 13 in the desktop Tauri SQL runner.
+- Added durable foreign keys to company, optional branch, fiscal year/period, same-company accounts, dimension types and dimension members, plus cascade ownership from voucher to lines and line assignments.
+- Added database checks for canonical Gregorian voucher dates, Phase 13 `draft` status, currency codes, supported source types, positive optimistic versions, one-sided positive line amounts, positive unique line ordering, and persisted voucher total balance.
+- Added scoped voucher-number uniqueness and a normalized expression unique index using `COALESCE(branch_id, '')` so branchless vouchers cannot exploit SQLite NULL uniqueness semantics to duplicate committed numbers.
+- Added indexes supporting company/branch/date listing, fiscal filtering, external reference, source/request/correlation lookup, account usage detection, dimension-type/member usage detection, aggregate loading, future reporting, and synchronization-oriented provenance queries.
+- Added `journal-vouchers-migration.test.ts` covering migration registration, upgrade from a Phase 12 schema while preserving existing records, valid aggregate/line/dimension persistence, duplicate scoped numbers, unbalanced totals, invalid debit/credit sides, missing account references, and invalid dimension-member references.
+- Migration implementation and registration were published in commits `6bd63bdc25b3b9ae5b0280b590394ccfff125bf8` and `e1647dada2c26fdf515008634a5d8fa17fe37b12`; focused migration coverage was added in `0747997ca044c945291787c1a154d7f4b68e642b`, and branchless uniqueness was hardened in `e4dececb4997c26a4eb50c4d3466469fa84aa45c`.
+- Local validation is `pnpm --filter @argin/desktop test` together with the later full monorepo validation in Steps 16–17; this connector environment cannot execute the repository's Node/SQLite test runner directly.
+
 ### Step 10 — SQLite Repositories and Unit of Work
 
 - Implement voucher aggregate persistence, line and dimension mapping persistence, paged queries, and usage detection adapters.
@@ -379,7 +392,7 @@ Exit criteria:
 | 6 | Number Series and Voucher Numbering | Completed |
 | 7 | Application Contracts, Commands, and Queries | Completed |
 | 8 | Journal Usage Detection and Integrity Guards | Completed |
-| 9 | SQLite Migration | Not started |
+| 9 | SQLite Migration | Completed |
 | 10 | SQLite Repositories and Unit of Work | Not started |
 | 11 | Create/Update/Delete Draft Use Cases | Not started |
 | 12 | Read Models, Search, and Voucher Detail | Not started |
