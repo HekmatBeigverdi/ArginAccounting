@@ -105,7 +105,12 @@ test("rejects vouchers with fewer than two effective lines", () => {
 });
 
 test("rejects zero-zero and debit-credit lines", () => {
-  for (const [debit, credit] of [[0, 0], [100, 100]]) {
+  const invalidAmounts: readonly (readonly [number, number])[] = [
+    [0, 0],
+    [100, 100],
+  ];
+
+  for (const [debit, credit] of invalidAmounts) {
     assert.throws(
       () => createJournalVoucher(validVoucher({
         lines: [
