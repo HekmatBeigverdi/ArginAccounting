@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAccount } from "../src/index.ts";
+import {
+  createAccount,
+  type CreateAccountInput,
+} from "../src/index.ts";
 import {
   JournalVoucherEligibilityError,
   assertJournalVoucherEligibility,
@@ -9,7 +12,9 @@ import {
   type JournalFiscalContext,
 } from "../src/validation/journal-voucher-eligibility.ts";
 
-function createPostingAccount(overrides: Record<string, unknown> = {}) {
+function createPostingAccount(
+  overrides: Partial<CreateAccountInput> = {},
+) {
   return createAccount({
     id: "account-1",
     companyId: "company-1",
