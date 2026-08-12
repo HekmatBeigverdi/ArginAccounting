@@ -155,6 +155,16 @@ Exit criteria:
 
 - Account/fiscal eligibility is deterministic and testable outside UI/persistence.
 
+Status: Completed
+
+Evidence:
+
+- Added a persistence-neutral Journal Voucher eligibility policy covering account company scope, active status, Subsidiary level, and posting eligibility.
+- Added fiscal-context validation covering fiscal-year company scope, open fiscal-year status, matching fiscal-period ownership, open fiscal-period status, and voucher-date containment within both fiscal-year and fiscal-period ranges.
+- Kept Phase 14 lifecycle behavior out of the policy; locked/closed fiscal context is rejected for Phase 13 draft mutations rather than introducing posting or reopening transitions.
+- Added focused tests for eligible accounts/open periods and cross-company, inactive, non-postable, non-subsidiary, closed/locked period, invalid fiscal ownership, and out-of-range voucher-date cases.
+- Published implementation and focused tests through commits `06a57cbde3aac9a9f0a23184f670395b946e618a`, `d09beac25af0d14bb9fb7fbf60fbd87ed39f7f8b`, and fixture-hardening commit `2404b73122fa907e467fad99087efba7f34044ca`.
+
 ### Step 5 — Dimension Assignment Integration
 
 - Integrate Phase 11 assignment validator and dynamic dimension requirements for each journal line.
@@ -164,6 +174,13 @@ Exit criteria:
 Exit criteria:
 
 - Every journal line can be validated against account-dimension policy with focused success/failure coverage.
+
+Status: In progress
+
+Evidence:
+
+- Step started by revalidating the Phase 11 `validateAccountingDimensionAssignments`/`assertValidAccountingDimensionAssignments` contract as the authoritative journal-line dimension rules engine.
+- The existing validator already covers required/optional/forbidden policies, duplicate policies/assignments/members, active type/member state, company/type compatibility, effective dates, multiplicity, and undefined policies; Step 5 will integrate it per Journal Line rather than duplicate these rules.
 
 ### Step 6 — Number Series and Voucher Numbering
 
@@ -311,8 +328,8 @@ Exit criteria:
 | 1 | Baseline, Branch, and Frozen Plan | Completed |
 | 2 | Domain Analysis and ADR | Completed |
 | 3 | Journal Voucher Aggregate and Value Objects | Completed |
-| 4 | Account Eligibility and Fiscal Validation Policy | Not started |
-| 5 | Dimension Assignment Integration | Not started |
+| 4 | Account Eligibility and Fiscal Validation Policy | Completed |
+| 5 | Dimension Assignment Integration | In progress |
 | 6 | Number Series and Voucher Numbering | Not started |
 | 7 | Application Contracts, Commands, and Queries | Not started |
 | 8 | Journal Usage Detection and Integrity Guards | Not started |
