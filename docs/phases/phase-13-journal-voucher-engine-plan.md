@@ -175,12 +175,17 @@ Exit criteria:
 
 - Every journal line can be validated against account-dimension policy with focused success/failure coverage.
 
-Status: In progress
+Status: Completed
 
 Evidence:
 
-- Step started by revalidating the Phase 11 `validateAccountingDimensionAssignments`/`assertValidAccountingDimensionAssignments` contract as the authoritative journal-line dimension rules engine.
-- The existing validator already covers required/optional/forbidden policies, duplicate policies/assignments/members, active type/member state, company/type compatibility, effective dates, multiplicity, and undefined policies; Step 5 will integrate it per Journal Line rather than duplicate these rules.
+- Reused the Phase 11 `validateAccountingDimensionAssignments` contract as the single authoritative dimension-rules engine and integrated it deterministically for every `JournalLine` using voucher company, account, voucher date, policies, dimension types, members, and persisted stable assignment identifiers.
+- Added journal-scoped validation issues that retain `lineId`, line order, and `accountId`, allowing Application/UI layers to identify the exact failing journal row without duplicating Phase 11 rules.
+- Added `assertValidJournalVoucherDimensions` and `JournalVoucherDimensionValidationError` so mutation orchestration can reject the whole voucher before persistence while retaining all line-scoped underlying issues.
+- Preserved Phase 11 coverage for required, optional, and forbidden policies; inactive types/members; company/type mismatches; validity windows; multiplicity; duplicates; missing members/types; and undefined policies.
+- Added focused Journal integration tests covering valid required assignments, missing required dimensions, forbidden assignments, omitted optional dimensions, inactive/expired members, inactive types, company/type mismatch, multiplicity restrictions, and aggregated line-scoped error reporting.
+- Initial integration was published in commit `b37d8d668878cb7c9cc15cf07a011844a570aa71`; completion and focused coverage were published in commits `b9a69f092a8899a6564d4f2404a541ab0cd42c0d` and `71583b00bd03968bf30cf93fb8d6592e2c7619cc`.
+- The isolated agent runtime does not provide a runnable local checkout with `pnpm`; local validation remains `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`, with full execution evidence to be reconfirmed in Steps 15–17.
 
 ### Step 6 — Number Series and Voucher Numbering
 
@@ -329,7 +334,7 @@ Exit criteria:
 | 2 | Domain Analysis and ADR | Completed |
 | 3 | Journal Voucher Aggregate and Value Objects | Completed |
 | 4 | Account Eligibility and Fiscal Validation Policy | Completed |
-| 5 | Dimension Assignment Integration | In progress |
+| 5 | Dimension Assignment Integration | Completed |
 | 6 | Number Series and Voucher Numbering | Not started |
 | 7 | Application Contracts, Commands, and Queries | Not started |
 | 8 | Journal Usage Detection and Integrity Guards | Not started |
