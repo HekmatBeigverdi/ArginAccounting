@@ -103,6 +103,14 @@ CREATE TABLE journal_vouchers (
         CHECK (version >= 1)
 );
 
+CREATE UNIQUE INDEX uq_journal_vouchers_number_scope_normalized
+ON journal_vouchers(
+    company_id,
+    fiscal_year_id,
+    COALESCE(branch_id, ''),
+    voucher_number
+);
+
 CREATE TABLE journal_lines (
     id TEXT PRIMARY KEY NOT NULL,
     voucher_id TEXT NOT NULL,
