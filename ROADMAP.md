@@ -117,8 +117,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 11 — Accounting Dimensions closure: documentation, merge, and release.
+Phase 13 — Journal Voucher Engine closure: documentation, final validation, review, merge, and release.
 
 ## Next Accounting Milestone
 
-Phase 12 — Coding Templates.
+Phase 14 — Journal Lifecycle. It starts only after Phase 13 Step 18 is explicitly approved, merged, and released.

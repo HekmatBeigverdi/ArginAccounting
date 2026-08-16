@@ -31,6 +31,11 @@ export const navigationItems: NavigationItem[] = [
     group: "مدیریت مالی",
   },
   {
+    label: "اسناد حسابداری",
+    path: "/accounting/journal-vouchers",
+    group: "حسابداری",
+  },
+  {
     label: "کدینگ حساب‌ها",
     path: "/accounting/chart-of-accounts",
     group: "حسابداری",

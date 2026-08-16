@@ -1,6 +1,6 @@
 import type {
   EntityVersion,
-} from "./entity-version";
+} from "./entity-version.ts";
 
 export class ConcurrencyConflictError
   extends Error {

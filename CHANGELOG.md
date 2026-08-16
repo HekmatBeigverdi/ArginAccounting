@@ -6,6 +6,49 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.13.0] - Unreleased
+
+### Added
+
+- Persisted Draft Journal Voucher aggregate and ordered Journal Lines with strict double-entry invariants
+- Account/fiscal eligibility and reusable Phase 11 accounting-dimension assignment validation
+- Company + fiscal year + optional branch Journal Number Series integration
+- Request-id idempotency, retry replay, optimistic concurrency, and post-commit integration events
+- Read/search/detail Application models and journal-backed account/dimension usage detection
+- Persian RTL Journal Voucher workspace with Solar Hijri dates, Iranian Rial amounts, real line table, and dynamic accounting-dimension columns
+
+### Database
+
+- Added migration `0013_journal_vouchers.sql`
+- Added `journal_vouchers`, `journal_lines`, and `journal_line_dimension_assignments`
+- Added branch-aware and branchless voucher-number uniqueness, request-id uniqueness, account/dimension referential constraints, and query/usage indexes
+- Added cascade behavior for voucher child rows
+- Added repository-level persisted header-total drift detection during aggregate rehydration
+
+### Security and Audit
+
+- Added Journal Voucher view, create, update-draft, delete-draft, and history permissions
+- Enforced authorization at the Application boundary
+- Added authorization-denied security audit evidence
+- Published create/update/delete success events only after Journal commit
+- Suppressed duplicate success events during idempotent replay and all success events on validation/rollback/stale-version failure
+
+### Tests and Validation
+
+- Added Domain/Application edge coverage for malformed/unbalanced vouchers, locked fiscal periods, inactive/non-postable accounts, missing required dimensions, cross-company mutation, retry, rollback, and stale versions
+- Added SQLite repository and migration regression coverage for round-trip persistence, optimistic concurrency, branchless uniqueness, request-id uniqueness, cascade behavior, usage detection, and persisted-total drift
+- Added Desktop presenter/composition and Journal UI regression-contract coverage
+- Focused validation was executed locally after the final Desktop test correction and confirmed passing by the repository owner
+- Full monorepo validation is recorded in the Phase 13 fixed implementation plan before Step 18 release review
+
+### Deferred
+
+- Posting, approval, locking, reversal, replacement, voiding, and controlled amendment: Phase 14
+- Trial balance, general ledger, subsidiary ledger, and financial reporting: Phase 15
+- PostgreSQL/API and synchronization adapters: future Argin Bridge delivery
+
+---
+
 ## [0.12.0] - 2026-08-08
 
 ### Added

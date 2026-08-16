@@ -135,6 +135,31 @@ export const defaultPermissions: PermissionDefinition[] = [
     title: "مدیریت سیاست‌های حساب و بُعد",
   },
   {
+    code: "accounting.journal-vouchers.view",
+    module: "accounting",
+    title: "مشاهده اسناد حسابداری",
+  },
+  {
+    code: "accounting.journal-vouchers.create",
+    module: "accounting",
+    title: "ایجاد سند حسابداری",
+  },
+  {
+    code: "accounting.journal-vouchers.update-draft",
+    module: "accounting",
+    title: "ویرایش سند حسابداری پیش‌نویس",
+  },
+  {
+    code: "accounting.journal-vouchers.delete-draft",
+    module: "accounting",
+    title: "حذف سند حسابداری پیش‌نویس",
+  },
+  {
+    code: "accounting.journal-vouchers.view-history",
+    module: "accounting",
+    title: "مشاهده تاریخچه سند حسابداری",
+  },
+  {
     code: "audit.entries.view",
     module: "audit",
     title: "مشاهده رویدادهای ممیزی",

@@ -1,9 +1,9 @@
 import type {
   DatabaseExecuteResult,
-} from "./database-execute-result";
+} from "./database-execute-result.ts";
 import type {
   DatabaseValue,
-} from "./database-value";
+} from "./database-value.ts";
 
 export interface DatabaseSession {
   execute(

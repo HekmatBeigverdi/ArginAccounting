@@ -8,7 +8,8 @@ This file remains as a stable compatibility path for earlier links. Do not maint
 
 - Phase 01–12: completed and merged
 - Phase 12: Coding Templates released as `v0.12.0`
-- Phase 13: Journal Voucher Engine is the current implementation target
+- Phase 13: Journal Voucher Engine implementation and focused validation complete on the phase branch; final review, merge, and release remain
+- Phase 14: Journal Lifecycle remains planned and must not start before Phase 13 release
 
 ## Permanent Rule
 

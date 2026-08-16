@@ -1,6 +1,6 @@
 import type {
   DatabaseSession,
-} from "../contracts/database-executor";
+} from "../contracts/database-executor.ts";
 
 export interface UnitOfWork {
   run<T>(

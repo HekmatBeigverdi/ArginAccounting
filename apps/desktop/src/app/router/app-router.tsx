@@ -31,6 +31,7 @@ import { AuditEntryDetailsPage } from "../../pages/audit/audit-entry-details-pag
 import { ChartOfAccountsPage } from "../../pages/accounting/chart-of-accounts-page";
 import { AccountingDimensionsPage } from "../../pages/accounting/accounting-dimensions-page";
 import { CodingTemplatesPage } from "../../pages/accounting/coding-templates-page";
+import { JournalVouchersPage } from "../../pages/accounting/journal-vouchers-page";
 
 export function AppRouter() {
   return (
@@ -57,6 +58,10 @@ export function AppRouter() {
           <Route
             path="/audit/entries/:id"
             element={<AuditEntryDetailsPage />}
+          />
+          <Route
+            path="/accounting/journal-vouchers"
+            element={<JournalVouchersPage />}
           />
           <Route
             path="/accounting/chart-of-accounts"

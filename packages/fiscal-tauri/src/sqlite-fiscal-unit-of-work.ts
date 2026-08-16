@@ -10,19 +10,19 @@ import type {
 
 import {
   SqliteFiscalPeriodRepository
-} from "./repositories/sqlite-fiscal-period-repository";
+} from "./repositories/sqlite-fiscal-period-repository.ts";
 
 import {
   SqliteFiscalYearRepository
-} from "./repositories/sqlite-fiscal-year-repository";
+} from "./repositories/sqlite-fiscal-year-repository.ts";
 
 import {
   SqliteHistoricalLockRepository
-} from "./repositories/sqlite-historical-lock-repository";
+} from "./repositories/sqlite-historical-lock-repository.ts";
 
 import {
   SqliteNumberSeriesRepository
-} from "./repositories/sqlite-number-series-repository";
+} from "./repositories/sqlite-number-series-repository.ts";
 
 function createRepositories(
   database: DatabaseSession

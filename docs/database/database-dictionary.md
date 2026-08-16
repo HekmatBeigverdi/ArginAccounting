@@ -29,6 +29,7 @@ For every table record:
 | Chart of Accounts | `account_coding_settings`, `accounts`, `account_management_tags` | Phase 10 |
 | Accounting Dimensions | `accounting_dimension_types`, `accounting_dimension_members`, `account_dimension_policies` | Phase 11 |
 | Coding Templates | `coding_templates`, normalized version-item tables, application mappings/history, import batches | Phase 12 |
+| Journal Voucher Engine | `journal_vouchers`, `journal_lines`, `journal_line_dimension_assignments` | Phase 13 |
 
 ## Phase 10 — Chart of Accounts
 
@@ -40,8 +41,6 @@ One versioned settings row per company. Stores Group, General, and Subsidiary co
 
 Company-scoped operational account hierarchy with stable text identifiers, same-company parent enforcement, unique `(company_id, code)`, accounting classifications, behavior flags, status, source provenance, timestamps, and optimistic-concurrency `version`.
 
-Groups have no parent, General accounts belong to Groups, and Subsidiary accounts belong to General accounts. SQLite constraints reject invalid enumerations, posting on non-Subsidiary levels, revaluation without currency support, negative display order, and conflicting financial flags.
-
 ### `account_management_tags`
 
 Ordered management-report tags keyed by account and case-insensitive tag value. The account foreign key uses `ON DELETE CASCADE`.
@@ -50,21 +49,19 @@ Ordered management-report tags keyed by account and case-insensitive tag value. 
 
 - `apps/desktop/src-tauri/migrations/0010_chart_of_accounts.sql`
 
-The detailed column-level catalog must be expanded whenever a migration adds or changes a database object.
-
 ## Phase 11 — Accounting Dimensions
 
 ### `accounting_dimension_types`
 
-Company-scoped analytical-axis definitions with unique case-insensitive code, names, hierarchy and multiple-member flags, lifecycle status, display order, source provenance, timestamps, and optimistic-concurrency version. Company deletion is restricted.
+Company-scoped analytical-axis definitions with unique case-insensitive code, names, hierarchy and multiple-member flags, lifecycle status, display order, source provenance, timestamps, and optimistic-concurrency version.
 
 ### `accounting_dimension_members`
 
-Members scoped to a company and dimension type. Codes are unique within that scope. Optional parents must belong to the same company and type; self-parenting is rejected. Effective dates are nullable Gregorian `YYYY-MM-DD` values with ordered range validation. Type, parent, and company deletion is restricted.
+Members scoped to a company and dimension type. Codes are unique within that scope. Optional parents must belong to the same company and type. Effective dates are nullable canonical Gregorian values.
 
 ### `account_dimension_policies`
 
-Versioned relationship between a company-scoped account and dimension type. One row per account/type pair declares `required`, `optional`, or `forbidden`. Account and dimension-type deletion is restricted.
+Versioned relationship between a company-scoped account and dimension type. One row per account/type pair declares `required`, `optional`, or `forbidden`.
 
 ### Migration
 
@@ -72,8 +69,47 @@ Versioned relationship between a company-scoped account and dimension type. One 
 
 ## Phase 12 — Coding Templates
 
-Migration `0012_coding_templates.sql` adds the explicit company `activity_type` compatibility value and persists template lifecycle, immutable versions, normalized account/dimension/member/policy items, application history and operational mappings, and Excel import-batch provenance. Constraints preserve template/version identity, item references, company scope, request-key idempotency, fingerprints, and optimistic concurrency. Indexes support catalog paging, version lookup, application history, synchronization evidence, and retry recovery.
+Migration `0012_coding_templates.sql` adds the explicit company `activity_type` compatibility value and persists template lifecycle, immutable versions, normalized account/dimension/member/policy items, application history and operational mappings, and Excel import-batch provenance. Constraints preserve template/version identity, item references, company scope, request-key idempotency, fingerprints, and optimistic concurrency.
 
 ### Migration
 
 - `apps/desktop/src-tauri/migrations/0012_coding_templates.sql`
+
+## Phase 13 — Journal Voucher Engine
+
+### `journal_vouchers`
+
+Company-scoped Journal Voucher header with stable text identity, optional branch scope, business voucher number, optional external reference, canonical Gregorian voucher date, explicit fiscal year/period references, Draft-only status, currency code, source metadata, request/correlation/causation identifiers, stored debit/credit totals, creation/update timestamps, and optimistic-concurrency `version`.
+
+Important integrity rules:
+
+- `total_debit = total_credit` at durable header level;
+- committed voucher number is unique per company + fiscal year + branch scope;
+- branchless uniqueness is protected with an expression index that normalizes `NULL` branch scope;
+- non-null `(company_id, request_id)` is unique for durable create idempotency;
+- fiscal/company/branch references are explicit and relational;
+- indexes support company/date, branch/date, fiscal, reference, source, request, correlation, and causation queries.
+
+### `journal_lines`
+
+Ordered child rows of one Journal Voucher. Each line stores company scope, account reference, description, debit amount, credit amount, and currency context.
+
+Important integrity rules:
+
+- line order is positive and unique inside its voucher;
+- exactly one of debit/credit must be positive;
+- line account references are company-consistent;
+- voucher deletion cascades to lines;
+- indexes support account-usage and voucher retrieval queries.
+
+Cross-row minimum-line and exact line-sum-to-header rules remain Domain/Application responsibilities because SQLite row constraints cannot safely express them. Repository rehydration independently rejects persisted header totals that disagree with totals reconstructed through Domain invariants.
+
+### `journal_line_dimension_assignments`
+
+Normalized many-to-many references from a journal line to Phase 11 dimension type/member identities. Rows preserve voucher, line, company, dimension type, and member references and support journal-backed dimension usage checks.
+
+Voucher/line deletion cascades to assignments. Company/type/member consistency is protected by the schema and Application dimension validator.
+
+### Migration
+
+- `apps/desktop/src-tauri/migrations/0013_journal_vouchers.sql`

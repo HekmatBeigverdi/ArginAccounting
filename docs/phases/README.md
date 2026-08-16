@@ -16,10 +16,15 @@ All phase records live in this directory and follow the permanent [phase templat
 10. [Phase 10 — Chart of Accounts](phase-10-chart-of-accounts.md)
 11. [Phase 11 — Accounting Dimensions](phase-11-accounting-dimensions.md)
 12. [Phase 12 — Coding Templates](phase-12-coding-templates.md)
+13. [Phase 13 — Journal Voucher Engine](phase-13-journal-voucher-engine.md) — implementation complete on the phase branch; release pending
+
+## Active Closure Record
+
+- [Phase 13 — Fixed Implementation Plan](phase-13-journal-voucher-engine-plan.md)
 
 ## Next Target
 
-13. Phase 13 — Journal Voucher Engine
+14. Phase 14 — Journal Lifecycle, only after Phase 13 final review, merge, and release.
 
 ## Renumbering Rule
 
@@ -27,4 +32,4 @@ The insertion of Platform Infrastructure as Phase 09 shifts Chart of Accounts an
 
 ## Historical Refactor Policy
 
-Phase 01–12 documents retain their implementation history. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
+Phase 01–13 documents retain their implementation history. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
