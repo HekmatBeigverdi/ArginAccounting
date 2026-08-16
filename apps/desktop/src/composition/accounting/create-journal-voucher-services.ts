@@ -230,11 +230,10 @@ class DesktopJournalNumberSeries implements NumberSeries {
       const repository = new SqliteNumberSeriesRepository(session);
       const branchId = request.scope.branchId ?? null;
       const fiscalYearId = request.scope.fiscalYearId ?? null;
-      let series = await repository.findApplicable(
+      const code = journalSeriesCode(branchId, fiscalYearId);
+      let series = await repository.findByCode(
         request.scope.companyId,
-        branchId,
-        fiscalYearId,
-        request.seriesType,
+        code,
       );
 
       if (!series) {
@@ -243,11 +242,19 @@ class DesktopJournalNumberSeries implements NumberSeries {
           branchId,
           fiscalYearId,
           entityType: request.seriesType,
-          code: journalSeriesCode(branchId, fiscalYearId),
+          code,
           startNumber: 1,
           paddingLength: 6,
           resetPolicy: "fiscal-year",
         });
+      }
+
+      if (
+        series.entityType !== request.seriesType ||
+        series.branchId !== branchId ||
+        series.fiscalYearId !== fiscalYearId
+      ) {
+        throw new Error("Journal voucher Number Series scope does not match its stored definition.");
       }
 
       const reserved = await repository.reserveNext(series.id);
