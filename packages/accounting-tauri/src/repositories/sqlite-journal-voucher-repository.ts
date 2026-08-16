@@ -9,7 +9,6 @@ import {
   type DatabaseSession,
   type DatabaseValue,
 } from "@argin/database";
-import { createPagedResult, type PagedResult } from "@argin/platform";
 
 interface JournalVoucherRow {
   id: string;
@@ -57,6 +56,19 @@ function escapeLike(value: string): string {
   return value.replace(/[\\%_]/gu, (match) => `\\${match}`);
 }
 
+function createPage<T>(items: readonly T[], totalItems: number, page: number, pageSize: number) {
+  const totalPages = totalItems === 0 ? 0 : Math.ceil(totalItems / pageSize);
+  return Object.freeze({
+    items: Object.freeze([...items]),
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    hasPreviousPage: page > 1 && totalPages > 0,
+    hasNextPage: page < totalPages,
+  });
+}
+
 export class SqliteJournalVoucherRepository implements JournalVoucherRepository {
   constructor(private readonly database: DatabaseSession) {}
 
@@ -89,9 +101,7 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
     return row ? this.rehydrate(row) : null;
   }
 
-  async search(
-    query: NormalizedJournalVoucherSearchQuery,
-  ): Promise<PagedResult<JournalVoucher>> {
+  async search(query: NormalizedJournalVoucherSearchQuery) {
     const { where, parameters } = this.searchWhere(query);
     const countRow = await this.database.queryOne<CountRow>(
       `SELECT COUNT(*) AS count FROM journal_vouchers v ${where}`,
@@ -105,11 +115,7 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
     );
     const items: JournalVoucher[] = [];
     for (const row of rows) items.push(await this.rehydrate(row));
-    return createPagedResult(items, countRow?.count ?? 0, {
-      page: query.page,
-      pageSize: query.pageSize,
-      offset: query.offset,
-    });
+    return createPage(items, countRow?.count ?? 0, query.page, query.pageSize);
   }
 
   async update(voucher: JournalVoucher, expectedVersion: number): Promise<void> {
@@ -144,11 +150,7 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
     await this.insertLines(voucher);
   }
 
-  async deleteDraft(
-    id: string,
-    companyId: string,
-    expectedVersion: number,
-  ): Promise<void> {
+  async deleteDraft(id: string, companyId: string, expectedVersion: number): Promise<void> {
     const result = await this.database.execute(
       `DELETE FROM journal_vouchers
        WHERE id = ? AND company_id = ? AND status = 'draft' AND version = ?`,
@@ -200,10 +202,7 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
             `INSERT INTO journal_line_dimension_assignments (
               voucher_id, line_id, company_id, dimension_type_id, member_id
             ) VALUES (?, ?, ?, ?, ?)`,
-            [
-              voucher.id, line.id, voucher.companyId,
-              assignment.dimensionTypeId, memberId,
-            ],
+            [voucher.id, line.id, voucher.companyId, assignment.dimensionTypeId, memberId],
           );
         }
       }
