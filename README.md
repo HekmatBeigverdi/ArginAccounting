@@ -20,12 +20,11 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 
 ## Current Status
 
-- Phase 01–12: completed and merged into `develop` and `main`
-- Current target: Phase 13 — Journal Voucher Engine final documentation, validation, review, merge, and release
-- Latest release: Phase 12 — Coding Templates (`v0.12.0`)
-- Next planned milestone: Phase 14 — Journal Lifecycle, after Phase 13 is released
+- Phase 01–13: completed and merged into `develop` and `main`
+- Latest release: Phase 13 — Journal Voucher Engine (`v0.13.0`)
+- Current target: Phase 14 — Journal Lifecycle
 
-Phase 13 introduces the persisted Draft Journal Voucher Engine: strict double-entry vouchers and lines, account/fiscal/dimension validation, scoped Number Series, retry-safe Application use cases, SQLite persistence, journal-backed integrity guards, permissions/audit/events, and a Persian RTL Journal workspace.
+Phase 13 delivers the persisted Draft Journal Voucher Engine: strict double-entry vouchers and lines, account/fiscal/dimension validation, scoped Number Series, retry-safe Application use cases, SQLite persistence, journal-backed integrity guards, permissions/audit/events, and a Persian RTL Journal workspace.
 
 See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 13 implementation record](docs/phases/phase-13-journal-voucher-engine.md), and [ADR-0013](docs/adr/ADR-0013-journal-voucher-engine.md).
 
