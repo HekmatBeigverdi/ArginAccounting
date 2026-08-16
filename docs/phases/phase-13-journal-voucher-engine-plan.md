@@ -320,7 +320,22 @@ Exit criteria:
 
 - Core mutation flows are atomic, deterministic, authorized, and fully tested.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `createJournalVoucherDraft`, `updateJournalVoucherDraft`, and `deleteJournalVoucherDraft` application use cases using the frozen Step 7 command/runtime contracts and Step 10 Journal Unit of Work.
+- Enforced authorization before mutation work, while intentionally leaving the final permission catalog, audit recording, and post-commit integration-event publication to Step 13.
+- Create resolves the open fiscal context, validates every referenced posting account through the Step 4 eligibility policy, builds the aggregate through Domain invariants, validates Phase 11 dimension assignments, reserves the system voucher number through the Phase 09 Number Series adapter, and persists the complete aggregate through one Journal Unit of Work.
+- Update re-reads the current aggregate inside the write transaction, preserves voucher identity/number/source/created timestamp, recalculates fiscal context and line/dimension validity, increments the optimistic version, and delegates the final compare-and-write to the repository's expected-version guard.
+- Delete is restricted to the persisted Phase 13 `draft` aggregate contract, verifies company ownership and expected version inside the Unit of Work, and relies on database cascades to remove child lines/assignments atomically.
+- Added request-key replay semantics for create: a committed voucher can be retrieved by `(companyId, requestId)` before a new Number Series reservation, so a retry after a lost response returns the original voucher without consuming another number.
+- Hardened durable create idempotency with `JournalVoucherRepository.findByRequestId`, SQLite lookup support, request-id normalization constraints, and a partial unique index on `(company_id, request_id)` when the request id is non-null; concurrent/retried attempts therefore cannot commit two vouchers for the same company request key.
+- Preserved the Number Series reservation rule from Step 6: if a transaction fails after a reservation, the reserved business number remains consumed, but the Journal Unit of Work exposes no partial voucher/line/dimension state and a subsequent retry receives a fresh number unless an earlier commit with the same request key already exists.
+- Added focused Application tests for successful authorized create, same-request replay without a second number reservation, unauthorized rejection before numbering, missing-account rejection, transaction rollback with no committed aggregate, update identity/number preservation with version increment, stale-version rejection, and version-safe draft deletion.
+- Extended the migration regression test to prove non-null request identifiers are unique per company while multiple null request identifiers remain allowed.
+- Published Step 11 work through commits `84564d4ee1609c07a105726015c6b507ad0d736d`, `f3d747fa92e748a1b3d30a8c065e16402aca16cd`, `1d48372d99ac0871a19e22dfdc53f5fd25fd112d`, `3cfb05c24a7580c88a92b48b83dab279a437b7b4`, `b7bb6ebeedd648c3bf685412784e96629ff758fb`, `a2982f7a99436ba73b8f95c395149c8ef0c654d4`, `657d026af7a24d3f7cfb049d183151d7f793d2be`, `497ecc1a23cfe3d1fbaef01280271c2adb6c18e3`, and `7da06997dbf887cc5a216a589cb57d08e6356e35`.
+- Local verification remains `pnpm --filter @argin/accounting typecheck`, `pnpm --filter @argin/accounting test`, `pnpm --filter @argin/accounting-tauri typecheck`, `pnpm --filter @argin/accounting-tauri test`, and `pnpm --filter @argin/desktop test`; broader authorization/idempotency/regression execution evidence is reconfirmed in Steps 15–17.
 
 ### Step 12 — Read Models, Search, and Voucher Detail
 
@@ -426,7 +441,7 @@ Status: Not started
 | 8 | Journal Usage Detection and Integrity Guards | Completed |
 | 9 | SQLite Migration | Completed |
 | 10 | SQLite Repositories and Unit of Work | Completed |
-| 11 | Create/Update/Delete Draft Use Cases | Not started |
+| 11 | Create/Update/Delete Draft Use Cases | Completed |
 | 12 | Read Models, Search, and Voucher Detail | Not started |
 | 13 | Permissions, Audit, and Integration Events | Not started |
 | 14 | Desktop Composition and Persian RTL UI | Not started |
