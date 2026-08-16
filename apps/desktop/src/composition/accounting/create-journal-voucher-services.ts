@@ -177,13 +177,18 @@ export function createJournalVoucherServices(
     unitOfWork: new SqliteJournalVoucherUnitOfWork(input.database),
   };
 
-  return Object.freeze({
+  const services: JournalVoucherDesktopServices = {
     authorizer: input.authorizer,
-    list: (query) => listJournalVouchers(query, repository, input.authorizer),
-    search: (query) => searchJournalVouchers(query, repository, input.authorizer),
-    get: (query) => getJournalVoucher(query, repository, input.authorizer),
-    create: (command) => createJournalVoucherDraft(command, runtime),
-    update: (command) => updateJournalVoucherDraft(command, runtime),
+    list: (query) =>
+      listJournalVouchers(query, repository, input.authorizer),
+    search: (query) =>
+      searchJournalVouchers(query, repository, input.authorizer),
+    get: (query) =>
+      getJournalVoucher(query, repository, input.authorizer),
+    create: (command) =>
+      createJournalVoucherDraft(command, runtime),
+    update: (command) =>
+      updateJournalVoucherDraft(command, runtime),
     async delete(command) {
       await deleteJournalVoucherDraft(command, runtime);
     },
@@ -219,7 +224,9 @@ export function createJournalVoucherServices(
       return Object.freeze(rows.map((row) => Object.freeze({ ...row })));
     },
     loadDimensionSelector: (request) => dimensionSelector.load(request),
-  });
+  };
+
+  return Object.freeze(services);
 }
 
 class DesktopJournalNumberSeries implements NumberSeries {

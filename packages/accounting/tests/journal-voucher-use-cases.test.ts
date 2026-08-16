@@ -94,7 +94,11 @@ class MemoryUnitOfWork implements JournalVoucherUnitOfWork {
     this.running = true;
     try {
       const result = await operation({ journals: repository });
-      if (this.failAfterOperation) {
+      const mutated = transactionRecords.size !== this.records.size ||
+        [...transactionRecords].some(
+          ([id, voucher]) => this.records.get(id) !== voucher,
+        );
+      if (this.failAfterOperation && mutated) {
         this.failAfterOperation = false;
         throw new Error("forced transaction rollback");
       }

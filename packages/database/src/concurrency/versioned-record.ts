@@ -1,6 +1,6 @@
 import type {
   EntityVersion,
-} from "./entity-version";
+} from "./entity-version.ts";
 
 export interface VersionedRecord {
   readonly version: EntityVersion;
