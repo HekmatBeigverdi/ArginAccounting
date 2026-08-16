@@ -375,7 +375,22 @@ Exit criteria:
 - Sensitive operations cannot bypass authorization.
 - Rollback/failure emits no success event.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added the frozen Journal permission catalog `journalVoucherPermissions` with `view`, `create`, `updateDraft`, `deleteDraft`, and `viewHistory` permission identifiers under the `accounting.journal-vouchers.*` namespace.
+- Replaced the Step 11 private permission strings with the public Journal permission catalog and kept create/update/delete authorization at the Application mutation boundary.
+- Added `view` authorization to `getJournalVoucher`, `listJournalVouchers`, and `searchJournalVouchers`, so desktop or future API callers cannot bypass Journal read authorization by directly invoking Application read use cases. The `viewHistory` permission is defined for the future history surface without introducing Phase 14 lifecycle/history behavior into Phase 13.
+- Added Journal success event contracts for `accounting.journal-voucher.created`, `accounting.journal-voucher.draft-updated`, and `accounting.journal-voucher.draft-deleted` with actor, company, branch, voucher number/date, fiscal context, aggregate version, correlation, and causation context.
+- Marked successful mutation events with `metadata.audit = true` and `metadata.integration = true`, matching the existing Accounting event/audit convention instead of introducing a parallel audit persistence abstraction.
+- Added the security audit event `accounting.journal-voucher.authorization-denied` with actor/company/branch/permission/voucher context and `audit = true`, `security = true`, `integration = false`; rejected sensitive mutations therefore leave audit evidence but never masquerade as successful integration events.
+- Success events are constructed and published only after the Journal Unit of Work has returned successfully. Create replay by the same idempotency `requestId` returns the already committed aggregate without emitting a duplicate `created` event.
+- Rollback, validation failure, missing-account failure, and stale-version failure emit no success event. Focused tests explicitly capture whether publication occurs while the Unit of Work is active and require every success event to be outside the transaction boundary.
+- Added tests for read permission rejection, authorization-denied security audit metadata, create post-commit event metadata/correlation/causation, retry event deduplication, rollback with zero success events, update versioned post-commit event, stale update with no update event, and delete post-commit event.
+- Exported Journal permissions, audit/integration event contracts and factories through `@argin/accounting/journal` for Step 14 desktop composition and future server adapters.
+- Published Step 13 implementation through commits `0bcd7e51b01a273f95db7c9eb4ee93eda9517885`, `273d30a9148a42e13eab791f7f5a192a9d3a48c9`, `8519aeffd133efdcba5705f2d7fca453ecd37403`, `06cb04c8556301b0d0d705b9e0b31477f1a43d42`, `0fc51cfb4daca68ef65284851e5e2ef3db56ebbc`, `794ebf24ca2818c0739e0f6576e05d5ff9e1d8ad`, and `04e69a853199b7f7a477c64a915ca9b27bab8d2f`.
+- Local verification remains `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`; persistence/Desktop permission wiring and full regression evidence are reconfirmed in Steps 14–17.
 
 ### Step 14 — Desktop Composition and Persian RTL UI
 
@@ -457,7 +472,7 @@ Status: Not started
 | 10 | SQLite Repositories and Unit of Work | Completed |
 | 11 | Create/Update/Delete Draft Use Cases | Completed |
 | 12 | Read Models, Search, and Voucher Detail | Completed |
-| 13 | Permissions, Audit, and Integration Events | Not started |
+| 13 | Permissions, Audit, and Integration Events | Completed |
 | 14 | Desktop Composition and Persian RTL UI | Not started |
 | 15 | Domain and Application Test Completion | Not started |
 | 16 | Persistence, Migration, Desktop, and Regression Tests | Not started |
