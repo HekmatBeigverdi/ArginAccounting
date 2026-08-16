@@ -41,6 +41,7 @@ test("journal table owns horizontal overflow instead of expanding the desktop sh
 });
 
 test("journal form controls are width-contained to prevent intrinsic overflow", () => {
-  assert.match(styles, /\.journal-page input[^\{]*\{[^}]*width:\s*100%/su);
-  assert.match(styles, /\.journal-page select[^\{]*\{[^}]*min-width:\s*0/su);
+  assert.match(styles, /\.journal-searchbar input,[\s\S]*?\.journal-entry-table select\s*\{[^}]*width:\s*100%/u);
+  assert.match(styles, /\.journal-searchbar input,[\s\S]*?\.journal-entry-table select\s*\{[^}]*min-width:\s*0/u);
+  assert.match(styles, /\.journal-layout > \*,[\s\S]*?\.journal-lines-card\s*\{[^}]*min-width:\s*0/u);
 });
