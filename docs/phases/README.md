@@ -16,15 +16,15 @@ All phase records live in this directory and follow the permanent [phase templat
 10. [Phase 10 — Chart of Accounts](phase-10-chart-of-accounts.md)
 11. [Phase 11 — Accounting Dimensions](phase-11-accounting-dimensions.md)
 12. [Phase 12 — Coding Templates](phase-12-coding-templates.md)
-13. [Phase 13 — Journal Voucher Engine](phase-13-journal-voucher-engine.md) — implementation complete on the phase branch; release pending
+13. [Phase 13 — Journal Voucher Engine](phase-13-journal-voucher-engine.md) — completed, merged, and released as `v0.13.0`
 
-## Active Closure Record
+## Completed Execution Record
 
 - [Phase 13 — Fixed Implementation Plan](phase-13-journal-voucher-engine-plan.md)
 
-## Next Target
+## Current Target
 
-14. Phase 14 — Journal Lifecycle, only after Phase 13 final review, merge, and release.
+14. Phase 14 — Journal Lifecycle.
 
 ## Renumbering Rule
 
