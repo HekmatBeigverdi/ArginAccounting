@@ -7,7 +7,6 @@ import { rehydrateJournalVoucher } from "../domain/rehydrate-journal-voucher.ts"
 import { JournalVoucherValidationError } from "../domain/journal-voucher-validation-error.ts";
 import type {
   JournalVoucherRuntimeDependencies,
-  JournalVoucherUnitOfWorkRepositories,
 } from "../contracts/journal-voucher-runtime.ts";
 import {
   assertJournalVoucherEligibility,
@@ -81,9 +80,9 @@ export async function createJournalVoucherDraft(
         dependencies.numberSeries,
         {
           companyId: command.context.companyId,
-          ...(command.context.branchId === undefined
-            ? {}
-            : { branchId: command.context.branchId ?? undefined }),
+          ...(command.context.branchId
+            ? { branchId: command.context.branchId }
+            : {}),
           fiscalYearId: fiscal.fiscalYearId,
         },
       );
@@ -93,12 +92,12 @@ export async function createJournalVoucherDraft(
         companyId: command.context.companyId,
         branchId: command.context.branchId ?? null,
         number: reserved.voucherNumber,
-        reference: command.reference,
+        reference: command.reference ?? null,
         voucherDate: command.voucherDate,
         fiscalYearId: fiscal.fiscalYearId,
         fiscalPeriodId: fiscal.fiscalPeriodId,
-        description: command.description,
-        currency: command.currency,
+        description: command.description ?? null,
+        ...(command.currency ? { currency: command.currency } : {}),
         source: {
           type: command.sourceType ?? "manual",
           sourceId: command.sourceId ?? null,
@@ -155,11 +154,11 @@ export async function updateJournalVoucherDraft(
         companyId: current.companyId,
         branchId: current.branchId,
         number: current.number,
-        reference: command.reference,
+        reference: command.reference ?? null,
         voucherDate: command.voucherDate,
         fiscalYearId: fiscal.fiscalYearId,
         fiscalPeriodId: fiscal.fiscalPeriodId,
-        description: command.description,
+        description: command.description ?? null,
         currency: current.currency,
         source: current.source,
         lines: materializeLines(command.lines, dependencies),
@@ -312,10 +311,10 @@ function materializeLines(
     id: normalizeOptionalIdentifier(line.id) ?? dependencies.identifiers.generate(),
     order: line.order,
     accountId: line.accountId,
-    description: line.description,
+    description: line.description ?? null,
     debit: line.debit,
     credit: line.credit,
-    dimensionAssignments: line.dimensionAssignments,
+    dimensionAssignments: line.dimensionAssignments ?? [],
   }));
 }
 
