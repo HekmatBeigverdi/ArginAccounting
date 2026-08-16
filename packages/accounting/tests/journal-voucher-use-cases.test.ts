@@ -11,6 +11,7 @@ import type {
 import type {
   JournalVoucherRuntimeDependencies,
   JournalVoucherUnitOfWork,
+  JournalVoucherUnitOfWorkRepositories,
 } from "../src/contracts/journal-voucher-runtime.ts";
 import {
   JournalVoucherApplicationError,
@@ -84,7 +85,9 @@ class MemoryUnitOfWork implements JournalVoucherUnitOfWork {
   records = new Map<string, JournalVoucher>();
   failAfterOperation = false;
 
-  async run<T>(operation: Parameters<JournalVoucherUnitOfWork["run"]>[0]): Promise<T> {
+  async run<T>(
+    operation: (repositories: JournalVoucherUnitOfWorkRepositories) => Promise<T>,
+  ): Promise<T> {
     const transactionRecords = new Map(this.records);
     const repository = new MemoryJournalRepository(transactionRecords);
     const result = await operation({ journals: repository });
