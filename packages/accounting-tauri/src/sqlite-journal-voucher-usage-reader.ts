@@ -1,4 +1,4 @@
-import type { JournalVoucherUsageReader } from "@argin/accounting";
+import type { JournalVoucherUsageReader } from "@argin/accounting/journal";
 import type { DatabaseSession } from "@argin/database";
 
 interface ExistsRow { readonly found: number }
