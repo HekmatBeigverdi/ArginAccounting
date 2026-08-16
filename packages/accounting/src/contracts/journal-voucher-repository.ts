@@ -37,6 +37,10 @@ export interface NormalizedJournalVoucherSearchQuery {
 export interface JournalVoucherRepository {
   create(voucher: JournalVoucher): Promise<void>;
   findById(id: string): Promise<JournalVoucher | null>;
+  findByRequestId(
+    companyId: string,
+    requestId: string,
+  ): Promise<JournalVoucher | null>;
   findByNumber(
     companyId: string,
     fiscalYearId: string,
