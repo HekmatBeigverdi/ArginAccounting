@@ -56,6 +56,13 @@ export async function createJournalVoucherDraft(
   );
 
   const requestId = normalizeOptionalIdentifier(command.context.requestId);
+  if (requestId) {
+    const replay = await dependencies.unitOfWork.run(({ journals }) =>
+      journals.findByRequestId(command.context.companyId, requestId),
+    );
+    if (replay) return Object.freeze({ voucher: replay, replayed: true });
+  }
+
   const fiscal = await resolveFiscalContext(
     dependencies,
     command.context.companyId,
@@ -70,6 +77,39 @@ export async function createJournalVoucherDraft(
   );
 
   try {
+    const reserved = await reserveJournalVoucherNumber(
+      dependencies.numberSeries,
+      {
+        companyId: command.context.companyId,
+        branchId: command.context.branchId ?? null,
+        fiscalYearId: fiscal.fiscalYearId,
+      },
+    );
+    const now = dependencies.clock.now().toISOString();
+    const voucher = createJournalVoucher({
+      id: dependencies.identifiers.generate(),
+      companyId: command.context.companyId,
+      branchId: command.context.branchId ?? null,
+      number: reserved.formattedValue,
+      reference: command.reference ?? null,
+      voucherDate: command.voucherDate,
+      fiscalYearId: fiscal.fiscalYearId,
+      fiscalPeriodId: fiscal.fiscalPeriodId,
+      description: command.description ?? null,
+      ...(command.currency ? { currency: command.currency } : {}),
+      source: {
+        type: command.sourceType ?? "manual",
+        sourceId: command.sourceId ?? null,
+        requestId,
+        correlationId: normalizeOptionalIdentifier(command.context.correlationId),
+        causationId: normalizeOptionalIdentifier(command.context.causationId),
+      },
+      lines: materializeLines(command.lines, dependencies),
+      createdAt: now,
+    });
+
+    await validateDimensions(dependencies, voucher, accounts);
+
     const result = await dependencies.unitOfWork.run(async ({ journals }) => {
       if (requestId) {
         const replay = await journals.findByRequestId(
@@ -79,38 +119,6 @@ export async function createJournalVoucherDraft(
         if (replay) return Object.freeze({ voucher: replay, replayed: true });
       }
 
-      const reserved = await reserveJournalVoucherNumber(
-        dependencies.numberSeries,
-        {
-          companyId: command.context.companyId,
-          branchId: command.context.branchId ?? null,
-          fiscalYearId: fiscal.fiscalYearId,
-        },
-      );
-      const now = dependencies.clock.now().toISOString();
-      const voucher = createJournalVoucher({
-        id: dependencies.identifiers.generate(),
-        companyId: command.context.companyId,
-        branchId: command.context.branchId ?? null,
-        number: reserved.formattedValue,
-        reference: command.reference ?? null,
-        voucherDate: command.voucherDate,
-        fiscalYearId: fiscal.fiscalYearId,
-        fiscalPeriodId: fiscal.fiscalPeriodId,
-        description: command.description ?? null,
-        ...(command.currency ? { currency: command.currency } : {}),
-        source: {
-          type: command.sourceType ?? "manual",
-          sourceId: command.sourceId ?? null,
-          requestId,
-          correlationId: normalizeOptionalIdentifier(command.context.correlationId),
-          causationId: normalizeOptionalIdentifier(command.context.causationId),
-        },
-        lines: materializeLines(command.lines, dependencies),
-        createdAt: now,
-      });
-
-      await validateDimensions(dependencies, voucher, accounts);
       await journals.create(voucher);
       return Object.freeze({ voucher, replayed: false });
     });
