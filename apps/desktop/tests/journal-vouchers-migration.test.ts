@@ -78,14 +78,19 @@ function seedBaseline(db: DatabaseSync): void {
   ).run(now, now);
 }
 
-function insertVoucher(db: DatabaseSync, id = "voucher-1", number = "000001"): void {
+function insertVoucher(
+  db: DatabaseSync,
+  id = "voucher-1",
+  number = "000001",
+  requestId: string | null = null,
+): void {
   db.prepare(`INSERT INTO journal_vouchers (
       id, company_id, branch_id, voucher_number, voucher_date,
       fiscal_year_id, fiscal_period_id, status, currency_code, source_type,
-      total_debit, total_credit, created_at, updated_at, version
+      request_id, total_debit, total_credit, created_at, updated_at, version
     ) VALUES (?, 'company-1', 'branch-1', ?, '2026-04-01',
-      'fy-1', 'period-1', 'draft', 'IRR', 'manual', 1000, 1000, ?, ?, 1)`
-  ).run(id, number, now, now);
+      'fy-1', 'period-1', 'draft', 'IRR', 'manual', ?, 1000, 1000, ?, ?, 1)`
+  ).run(id, number, requestId, now, now);
 }
 
 describe("journal vouchers migration", () => {
@@ -135,6 +140,15 @@ describe("journal vouchers migration", () => {
     seedBaseline(db);
     insertVoucher(db, "voucher-1", "000001");
     assert.throws(() => insertVoucher(db, "voucher-2", "000001"));
+  });
+
+  it("enforces one committed journal per non-null company request id", () => {
+    const db = database();
+    seedBaseline(db);
+    insertVoucher(db, "voucher-1", "000001", "request-1");
+    assert.throws(() => insertVoucher(db, "voucher-2", "000002", "request-1"));
+    insertVoucher(db, "voucher-3", "000003", null);
+    insertVoucher(db, "voucher-4", "000004", null);
   });
 
   it("rejects unbalanced voucher totals and invalid journal line sides", () => {
