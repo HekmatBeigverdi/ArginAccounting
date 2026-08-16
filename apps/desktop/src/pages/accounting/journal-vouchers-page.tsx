@@ -641,11 +641,11 @@ export function JournalVouchersPage() {
 
                 <div className="journal-summary-grid">
                   <section className="journal-summary-panel">
-                    <span>بدهکار</span>
+                    <span>جمع بدهکار</span>
                     <strong>{totals.invalid ? "نامعتبر" : formatJournalRials(totals.debit)}</strong>
                   </section>
                   <section className="journal-summary-panel">
-                    <span>بستانکار</span>
+                    <span>جمع بستانکار</span>
                     <strong>{totals.invalid ? "نامعتبر" : formatJournalRials(totals.credit)}</strong>
                   </section>
                   <section className="journal-summary-panel">
@@ -653,7 +653,7 @@ export function JournalVouchersPage() {
                     <strong>{totals.invalid ? "نامعتبر" : formatJournalRials(Math.abs(totals.balance))}</strong>
                   </section>
                   <section className={`journal-balance-state ${totals.balanced ? "journal-balance-state--ok" : "journal-balance-state--warning"}`}>
-                    {totals.balanced ? "✓ جمع بدهکار و بستانکار برابر است." : "سند هنوز تراز نیست."}
+                    {totals.balanced ? "✓ سند تراز است." : "سند تراز نیست."}
                   </section>
                 </div>
               </section>
