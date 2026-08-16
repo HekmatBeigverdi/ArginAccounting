@@ -85,6 +85,18 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
     return row ? this.rehydrate(row) : null;
   }
 
+  async findByRequestId(
+    companyId: string,
+    requestId: string,
+  ): Promise<JournalVoucher | null> {
+    const row = await this.database.queryOne<JournalVoucherRow>(
+      `SELECT * FROM journal_vouchers
+       WHERE company_id = ? AND request_id = ?`,
+      [companyId, requestId],
+    );
+    return row ? this.rehydrate(row) : null;
+  }
+
   async findByNumber(
     companyId: string,
     fiscalYearId: string,
