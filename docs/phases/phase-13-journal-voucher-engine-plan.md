@@ -347,7 +347,21 @@ Exit criteria:
 
 - Query behavior is deterministic, escaped, paged, and covered by focused tests.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral Journal read-model projection functions for voucher detail, list summaries, line money values, totals, and normalized line-dimension assignments; DTOs contain no React, Tauri, SQLite, or SQL types.
+- Added `getJournalVoucher`, `listJournalVouchers`, and `searchJournalVouchers` Application query use cases over the portable `JournalVoucherRepository` contract.
+- Detail queries normalize required company/voucher identifiers, enforce company scope by returning the stable `journal.not-found` contract for missing or cross-company aggregates, and project full line/detail data including dimension assignments.
+- List/search queries reuse the frozen Step 7 `normalizeJournalVoucherSearchQuery` contract before persistence, covering company, explicit branchless/branch scope, fiscal year/period, account, source type, reference, voucher number, Gregorian date range, free text, page, page size, and offset semantics.
+- Preserved the deterministic SQLite ordering and escaped `LIKE ... ESCAPE '\\'` behavior already implemented and tested in Step 10; Step 12 adds the Application read boundary without duplicating persistence escaping logic.
+- List projections intentionally omit line collections and return compact voucher summaries with number, date, reference, description, totals, branch, and optimistic version while preserving repository page metadata.
+- Exported query normalization, read-model projectors, and get/list/search use cases through the `@argin/accounting/journal` public subpath for future desktop and PostgreSQL/API composition.
+- Added focused Application tests for full voucher detail projection, dimension assignment projection, cross-company not-found behavior, invalid required query identifiers, all supported search filters and trimming, branchless scope, pagination metadata, compact list projection, and invalid/reversed date-range rejection before repository execution.
+- The existing Step 10 SQLite repository test continues to verify wildcard escaping for `%`, `_`, and backslash plus paged search semantics, completing the escaped-query portion of this step's exit criteria without leaking SQL into Application tests.
+- Published Step 12 implementation through commits `44d3f772693b35ba8dec799f8d3e97c76b5d2872`, `388e4cf671188668384172f2afb4a025b9ceb771`, `5e420da75d8088baf8a934e2545deda9cf8b23fe`, and `cd877d1c18f381c24c57979d23c96348ef25238f`.
+- Local verification remains `pnpm --filter @argin/accounting typecheck`, `pnpm --filter @argin/accounting test`, `pnpm --filter @argin/accounting-tauri typecheck`, and `pnpm --filter @argin/accounting-tauri test`; full read/persistence regression execution evidence is reconfirmed in Steps 15–17.
 
 ### Step 13 — Permissions, Audit, and Integration Events
 
@@ -442,7 +456,7 @@ Status: Not started
 | 9 | SQLite Migration | Completed |
 | 10 | SQLite Repositories and Unit of Work | Completed |
 | 11 | Create/Update/Delete Draft Use Cases | Completed |
-| 12 | Read Models, Search, and Voucher Detail | Not started |
+| 12 | Read Models, Search, and Voucher Detail | Completed |
 | 13 | Permissions, Audit, and Integration Events | Not started |
 | 14 | Desktop Composition and Persian RTL UI | Not started |
 | 15 | Domain and Application Test Completion | Not started |
