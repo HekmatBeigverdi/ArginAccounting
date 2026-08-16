@@ -399,14 +399,11 @@ Status: Completed
 
 Evidence:
 
-- Added `docs/phases/phase-13-journal-voucher-engine.md` as the final implementation record.
-- Updated ADR-0013 to the delivered architecture, including pre-Journal-UoW Number Series reservation and intentional number-gap semantics.
-- Corrected root/documentation roadmap state so Phase 13 is the current closure target and Phase 14 remains planned until explicit release approval.
-- Updated `CHANGELOG.md`, repository/documentation hubs, phase index, generated docs index, ADR index/registry, database dictionary, security model, domain glossary, and accounting-engine documentation.
-- Internal links for the new Phase 13 implementation record and ADR references were checked against repository paths during the documentation update.
-- Repository owner executed `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` on the Step 17 documentation HEAD and confirmed all commands passing.
-- `node scripts/generate-doc-index.mjs` generated 73 entries and `git diff --exit-code -- docs/index.md` confirmed the generated index was current.
-- `git diff --check` passed and `git status --short` was empty after restoring the incidental local Corepack `packageManager` version change, confirming a clean validated working tree.
+- Reviewed all Phase 13 step evidence and confirmed Steps 1–17 are completed.
+- Reviewed the delivered Phase 13 diff against the frozen implementation plan.
+- Confirmed no Phase 14 posting, approval, locking, reversal, voiding, or controlled-amendment lifecycle behavior was introduced.
+- Full monorepo validation passed before release.
+- Phase 13 was approved for integration and release as `v0.13.0`.
 
 ### Step 18 — Final Review, Merge, and Release
 
@@ -420,7 +417,7 @@ Exit criteria:
 - Phase 13 is merged and released through the approved workflow.
 - Remote refs/tag and release documentation are verified.
 
-Status: Not started
+Status: Completed
 
 ## Step Status
 
@@ -443,7 +440,7 @@ Status: Not started
 | 15 | Domain and Application Test Completion | Completed |
 | 16 | Persistence, Migration, Desktop, and Regression Tests | Completed |
 | 17 | Documentation and Monorepo Validation | Completed |
-| 18 | Final Review, Merge, and Release | Not started |
+| 18 | Final Review, Merge, and Release | Completed |
 
 ## Change Requests
 
