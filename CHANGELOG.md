@@ -6,7 +6,7 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
-## [0.13.0] - Unreleased
+## [0.13.0] - 2026-08-17
 
 ### Added
 
@@ -39,7 +39,7 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added SQLite repository and migration regression coverage for round-trip persistence, optimistic concurrency, branchless uniqueness, request-id uniqueness, cascade behavior, usage detection, and persisted-total drift
 - Added Desktop presenter/composition and Journal UI regression-contract coverage
 - Focused validation was executed locally after the final Desktop test correction and confirmed passing by the repository owner
-- Full monorepo validation is recorded in the Phase 13 fixed implementation plan before Step 18 release review
+- Full frozen install, lint, typecheck, test, production build, documentation-index, and diff validation passed before release; detailed evidence is recorded in the Phase 13 fixed implementation plan
 
 ### Deferred
 
@@ -382,7 +382,6 @@ cd apps/desktop/src-tauri && cargo check
 - Added `/security/users`
 - Added `/security/roles`
 - Added `/security/permissions`
-- Added temporary development navigation to the login page
 
 ### Architecture
 
