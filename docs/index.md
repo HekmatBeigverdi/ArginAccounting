@@ -22,6 +22,7 @@
 - [ADR-0010 — Chart of Accounts Model](adr/ADR-0010-chart-of-accounts-model.md)
 - [ADR-0011 — Independent Accounting Dimensions](adr/ADR-0011-independent-accounting-dimensions.md)
 - [ADR-0012 — Versioned Coding Templates](adr/ADR-0012-versioned-coding-templates.md)
+- [ADR-0013 — Journal Voucher Engine Architecture](adr/ADR-0013-journal-voucher-engine.md)
 - [Architecture Decision Records](adr/README.md)
 
 ## architecture
@@ -88,6 +89,8 @@
 - [Phase 11 — Accounting Dimensions](phases/phase-11-accounting-dimensions.md)
 - [Phase 12 — Coding Templates: Fixed Implementation Plan](phases/phase-12-coding-templates-plan.md)
 - [Phase 12 — Coding Templates](phases/phase-12-coding-templates.md)
+- [Phase 13 — Journal Voucher Engine: Fixed Implementation Plan](phases/phase-13-journal-voucher-engine-plan.md)
+- [Phase 13 — Journal Voucher Engine](phases/phase-13-journal-voucher-engine.md)
 - [Phase Documentation](phases/README.md)
 
 ## registries
