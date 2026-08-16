@@ -64,6 +64,15 @@ CREATE TABLE journal_vouchers (
             )
         ),
 
+    CONSTRAINT ck_journal_vouchers_request_id
+        CHECK (
+            request_id IS NULL
+            OR (
+                length(trim(request_id)) BETWEEN 1 AND 128
+                AND request_id = trim(request_id)
+            )
+        ),
+
     CONSTRAINT ck_journal_vouchers_date
         CHECK (
             voucher_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
@@ -110,6 +119,10 @@ ON journal_vouchers(
     COALESCE(branch_id, ''),
     voucher_number
 );
+
+CREATE UNIQUE INDEX uq_journal_vouchers_company_request
+ON journal_vouchers(company_id, request_id)
+WHERE request_id IS NOT NULL;
 
 CREATE TABLE journal_lines (
     id TEXT PRIMARY KEY NOT NULL,
