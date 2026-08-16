@@ -405,7 +405,24 @@ Exit criteria:
 - UI cannot bypass domain/application validation, authorization, numbering, or Unit of Work.
 - Existing Chart of Accounts, Dimensions, and Coding Templates workspaces remain functional.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `createJournalVoucherServices` as the Desktop composition boundary over the portable Phase 13 Application use cases and the SQLite Journal repository/Unit of Work, Account, Fiscal, Dimension and Number Series adapters.
+- Replaced the prior pending Journal usage placeholder in `AccountingProvider` with `SqliteJournalVoucherUsageReader` and wired `JournalBackedAccountUsageReader` plus `JournalBackedAccountingDimensionUsageReader`; existing Chart of Accounts and Accounting Dimensions destructive operations therefore honor persisted Journal references while preserving the Phase 11 structural fallback reader.
+- Added an exact-scope Desktop Number Series adapter for `accounting.journal-voucher`, keyed by company + fiscal year + optional branch. The adapter uses the existing fiscal SQLite Number Series repository, six-digit display and fiscal-year reset semantics without falling back to a broader branch/year counter.
+- Corrected create orchestration so the business-number reservation occurs before the Journal write Unit of Work, matching the already documented retry/rollback rule that a reserved number remains consumed if the subsequent voucher transaction fails and avoiding nested Tauri database transactions. The second `(companyId, requestId)` check remains inside the Journal transaction to prevent duplicate committed vouchers.
+- Added a Persian RTL `/accounting/journal-vouchers` workspace and navigation item with paged/searchable voucher list, full detail view, create/edit draft form, add/remove line editor, active postable Subsidiary account selector, branch selector, reference/description fields, and version-safe edit/delete actions.
+- Added live debit/credit totals and balance feedback in Iranian Rial while still delegating authoritative structural/balance validation to the Journal aggregate and Application use cases; UI controls do not write Journal tables directly.
+- Integrated the Phase 11 `SqliteAccountingDimensionSelectorService` per Journal line and voucher date so required/optional/forbidden dimension policies, single/multiple member selection and validity-window filtering are driven by the existing dynamic selector rather than duplicated UI rules.
+- Added Persian presentation helpers for Solar Hijri date rendering, explicit Rial amount formatting, source/status labels and Persian/Arabic-digit Rial input parsing. Durable voucher dates continue to be submitted as canonical Gregorian `YYYY-MM-DD` values.
+- Separated presentation-ready `JournalVoucherApplicationError` messages from unexpected technical diagnostics; business errors are shown directly while unexpected failures expose a separate expandable technical-details section.
+- Added the five Journal Voucher permissions to the Security default-permission seed so non-full-access roles can actually be granted the Step 13 view/create/update-draft/delete-draft/view-history permissions through the existing security UI.
+- Added focused Desktop presenter tests for Solar Hijri/Rial presentation, localized amount parsing and business-vs-technical error separation, plus composition tests proving read authorization is enforced before database access and lookup adapters request only active postable Subsidiary accounts and active branches.
+- Added responsive RTL styling while preserving the existing Chart of Accounts, Dimensions and Coding Templates routes/workspaces and sharing the same `AccountingProvider` instead of introducing a competing composition root.
+- Published Step 14 implementation through commits `c66d58859bdd05f979b003ea2227f6befa3c6d11`, `6e1cc9e153c085b11ef6c23d030a0b533f7061d0`, `69afe04cdca12f00d23670da870445c2d2ef55d7`, `97c9f1c8f6a0c8a66640eb2d4a18fa2ba05d8fe0`, `100f90179b5f7486aa92b52bb7362338fa79162a`, `0ba7c77912c8d4de7171c81ec3e371ffe1d4597d`, `4e5907574e078d237a15d6822cbc6009e3f37162`, `6dc0d26b98bdf707c16da3627488238248abe8a4`, `c98867b29b59733510cd11638bf20d262f224672`, `681238eedf455ade82b5e9f2d6ceb1ec91cfb410`, `803f6081bd14b0ecf14ce401c49891541be69a54`, `0b791fd0b6606473fc22cf223663e827d3f074b9`, and `9fcb7956f448a77113d99c2972faf87767431fe6`.
+- Local validation remains `pnpm --filter @argin/accounting typecheck`, `pnpm --filter @argin/accounting test`, `pnpm --filter @argin/accounting-tauri typecheck`, `pnpm --filter @argin/accounting-tauri test`, `pnpm --filter @argin/security typecheck`, `pnpm --filter @argin/desktop typecheck`, `pnpm --filter @argin/desktop test`, and `pnpm --filter @argin/desktop build`; comprehensive Desktop/UI and affected regression execution evidence is reconfirmed in Steps 15–17.
 
 ### Step 15 — Domain and Application Test Completion
 
@@ -473,7 +490,7 @@ Status: Not started
 | 11 | Create/Update/Delete Draft Use Cases | Completed |
 | 12 | Read Models, Search, and Voucher Detail | Completed |
 | 13 | Permissions, Audit, and Integration Events | Completed |
-| 14 | Desktop Composition and Persian RTL UI | Not started |
+| 14 | Desktop Composition and Persian RTL UI | Completed |
 | 15 | Domain and Application Test Completion | Not started |
 | 16 | Persistence, Migration, Desktop, and Regression Tests | Not started |
 | 17 | Documentation and Monorepo Validation | Not started |
