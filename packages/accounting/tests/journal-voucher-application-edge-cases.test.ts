@@ -17,6 +17,7 @@ import type {
   JournalVoucherUnitOfWork,
   JournalVoucherUnitOfWorkRepositories,
 } from "../src/contracts/journal-voucher-runtime.ts";
+import type { JournalFiscalContext } from "../src/validation/journal-voucher-eligibility.ts";
 import { JournalVoucherApplicationError } from "../src/application/journal-voucher-application-error.ts";
 import {
   createJournalVoucherDraft,
@@ -104,16 +105,16 @@ class CountingSeries implements NumberSeries {
   }
 }
 
-const openFiscal = Object.freeze({
+const openFiscal: JournalFiscalContext = Object.freeze({
   companyId: "company-1",
   fiscalYearId: "fy-1405",
   fiscalYearStartDate: "2026-03-21",
   fiscalYearEndDate: "2027-03-20",
-  fiscalYearStatus: "open" as const,
+  fiscalYearStatus: "open",
   fiscalPeriodId: "period-01",
   fiscalPeriodStartDate: "2026-03-21",
   fiscalPeriodEndDate: "2026-04-20",
-  fiscalPeriodStatus: "open" as const,
+  fiscalPeriodStatus: "open",
 });
 
 function postingAccount(id: string, nature: "debit" | "credit", overrides: Partial<Account> = {}): Account {
@@ -163,7 +164,7 @@ function runtime() {
     [creditAccount.id, creditAccount],
   ]);
   const published: DomainEvent[] = [];
-  let fiscal = openFiscal;
+  let fiscal: JournalFiscalContext = openFiscal;
   let policies: readonly AccountDimensionPolicy[] = [];
   let dimensionTypes: readonly AccountingDimensionType[] = [];
   let members: readonly AccountingDimensionMember[] = [];
@@ -194,7 +195,7 @@ function runtime() {
     numberSeries,
     accounts,
     published,
-    setFiscal(value: typeof openFiscal) { fiscal = value; },
+    setFiscal(value: JournalFiscalContext) { fiscal = value; },
     setDimensions(input: {
       policies?: readonly AccountDimensionPolicy[];
       types?: readonly AccountingDimensionType[];
