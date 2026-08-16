@@ -26,13 +26,19 @@ import {
 import type {
   CreateJournalVoucherCommand,
   DeleteJournalVoucherDraftCommand,
+  JournalVoucherCommandContext,
   JournalVoucherLineInput,
   UpdateJournalVoucherDraftCommand,
 } from "./journal-voucher-contracts.ts";
-
-const CREATE_PERMISSION = "accounting.journal-vouchers.create";
-const UPDATE_DRAFT_PERMISSION = "accounting.journal-vouchers.update-draft";
-const DELETE_DRAFT_PERMISSION = "accounting.journal-vouchers.delete-draft";
+import {
+  createJournalVoucherAuthorizationDeniedEvent,
+  createJournalVoucherSuccessEvent,
+  type JournalVoucherSuccessEventType,
+} from "./journal-voucher-events.ts";
+import {
+  journalVoucherPermissions,
+  type JournalVoucherPermission,
+} from "./journal-voucher-permissions.ts";
 
 export interface JournalVoucherMutationResult {
   readonly voucher: JournalVoucher;
@@ -43,7 +49,11 @@ export async function createJournalVoucherDraft(
   command: CreateJournalVoucherCommand,
   dependencies: JournalVoucherRuntimeDependencies,
 ): Promise<JournalVoucherMutationResult> {
-  await assertAuthorized(dependencies, CREATE_PERMISSION);
+  await assertAuthorized(
+    dependencies,
+    command.context,
+    journalVoucherPermissions.create,
+  );
 
   const requestId = normalizeOptionalIdentifier(command.context.requestId);
   if (requestId) {
@@ -67,7 +77,7 @@ export async function createJournalVoucherDraft(
   );
 
   try {
-    return await dependencies.unitOfWork.run(async ({ journals }) => {
+    const result = await dependencies.unitOfWork.run(async ({ journals }) => {
       if (requestId) {
         const replay = await journals.findByRequestId(
           command.context.companyId,
@@ -113,6 +123,16 @@ export async function createJournalVoucherDraft(
       await journals.create(voucher);
       return Object.freeze({ voucher, replayed: false });
     });
+
+    if (!result.replayed) {
+      await publishSuccess(
+        dependencies,
+        command.context,
+        result.voucher,
+        "accounting.journal-voucher.created",
+      );
+    }
+    return result;
   } catch (error) {
     throw mapMutationError(error);
   }
@@ -122,7 +142,12 @@ export async function updateJournalVoucherDraft(
   command: UpdateJournalVoucherDraftCommand,
   dependencies: JournalVoucherRuntimeDependencies,
 ): Promise<JournalVoucherMutationResult> {
-  await assertAuthorized(dependencies, UPDATE_DRAFT_PERMISSION);
+  await assertAuthorized(
+    dependencies,
+    command.context,
+    journalVoucherPermissions.updateDraft,
+    command.voucherId,
+  );
 
   const existing = await dependencies.unitOfWork.run(({ journals }) =>
     journals.findById(command.voucherId),
@@ -144,7 +169,7 @@ export async function updateJournalVoucherDraft(
   );
 
   try {
-    return await dependencies.unitOfWork.run(async ({ journals }) => {
+    const result = await dependencies.unitOfWork.run(async ({ journals }) => {
       const current = await journals.findById(command.voucherId);
       assertOwnedVoucher(current, command.context.companyId, command.voucherId);
       assertExpectedVersion(current, command.expectedVersion);
@@ -171,6 +196,14 @@ export async function updateJournalVoucherDraft(
       await journals.update(updated, command.expectedVersion);
       return Object.freeze({ voucher: updated, replayed: false });
     });
+
+    await publishSuccess(
+      dependencies,
+      command.context,
+      result.voucher,
+      "accounting.journal-voucher.draft-updated",
+    );
+    return result;
   } catch (error) {
     throw mapMutationError(error);
   }
@@ -180,10 +213,15 @@ export async function deleteJournalVoucherDraft(
   command: DeleteJournalVoucherDraftCommand,
   dependencies: JournalVoucherRuntimeDependencies,
 ): Promise<JournalVoucher> {
-  await assertAuthorized(dependencies, DELETE_DRAFT_PERMISSION);
+  await assertAuthorized(
+    dependencies,
+    command.context,
+    journalVoucherPermissions.deleteDraft,
+    command.voucherId,
+  );
 
   try {
-    return await dependencies.unitOfWork.run(async ({ journals }) => {
+    const deleted = await dependencies.unitOfWork.run(async ({ journals }) => {
       const current = await journals.findById(command.voucherId);
       assertOwnedVoucher(current, command.context.companyId, command.voucherId);
       assertExpectedVersion(current, command.expectedVersion);
@@ -194,6 +232,14 @@ export async function deleteJournalVoucherDraft(
       );
       return current;
     });
+
+    await publishSuccess(
+      dependencies,
+      command.context,
+      deleted,
+      "accounting.journal-voucher.draft-deleted",
+    );
+    return deleted;
   } catch (error) {
     throw mapMutationError(error);
   }
@@ -201,15 +247,48 @@ export async function deleteJournalVoucherDraft(
 
 async function assertAuthorized(
   dependencies: JournalVoucherRuntimeDependencies,
-  permission: string,
+  context: JournalVoucherCommandContext,
+  permission: JournalVoucherPermission,
+  voucherId: string | null = null,
 ): Promise<void> {
-  if (!(await dependencies.authorizer.hasPermission(permission))) {
-    throw new JournalVoucherApplicationError(
-      "journal.unauthorized",
-      "شما مجوز انجام این عملیات روی سند حسابداری را ندارید.",
-      { permission },
-    );
-  }
+  if (await dependencies.authorizer.hasPermission(permission)) return;
+
+  await dependencies.events.publish(
+    createJournalVoucherAuthorizationDeniedEvent(
+      eventDependencies(dependencies),
+      context,
+      permission,
+      voucherId,
+    ),
+  );
+  throw new JournalVoucherApplicationError(
+    "journal.unauthorized",
+    "شما مجوز انجام این عملیات روی سند حسابداری را ندارید.",
+    { permission },
+  );
+}
+
+async function publishSuccess(
+  dependencies: JournalVoucherRuntimeDependencies,
+  context: JournalVoucherCommandContext,
+  voucher: JournalVoucher,
+  eventType: JournalVoucherSuccessEventType,
+): Promise<void> {
+  await dependencies.events.publish(
+    createJournalVoucherSuccessEvent(
+      eventDependencies(dependencies),
+      context,
+      voucher,
+      eventType,
+    ),
+  );
+}
+
+function eventDependencies(dependencies: JournalVoucherRuntimeDependencies) {
+  return {
+    now: () => dependencies.clock.now(),
+    generateId: () => dependencies.identifiers.generate(),
+  };
 }
 
 async function resolveFiscalContext(
