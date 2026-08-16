@@ -1,4 +1,7 @@
 import type {
+  JournalVoucherAuthorizer,
+} from "../contracts/journal-voucher-runtime.ts";
+import type {
   JournalVoucherRepository,
   JournalVoucherSearchQuery,
 } from "../contracts/journal-voucher-repository.ts";
@@ -13,6 +16,9 @@ import type {
   ListJournalVouchersQuery,
 } from "./journal-voucher-contracts.ts";
 import {
+  journalVoucherPermissions,
+} from "./journal-voucher-permissions.ts";
+import {
   projectJournalVoucherDetail,
   projectJournalVoucherPage,
 } from "./journal-voucher-read-model.ts";
@@ -20,7 +26,9 @@ import {
 export async function getJournalVoucher(
   query: GetJournalVoucherQuery,
   repository: JournalVoucherRepository,
+  authorizer: JournalVoucherAuthorizer,
 ): Promise<JournalVoucherDto> {
+  await requireViewPermission(authorizer);
   const companyId = requireQueryIdentifier(query.companyId, "companyId");
   const voucherId = requireQueryIdentifier(query.voucherId, "voucherId");
   const voucher = await repository.findById(voucherId);
@@ -39,17 +47,33 @@ export async function getJournalVoucher(
 export async function listJournalVouchers(
   query: ListJournalVouchersQuery,
   repository: JournalVoucherRepository,
+  authorizer: JournalVoucherAuthorizer,
 ): Promise<JournalVoucherPageDto> {
-  return searchJournalVouchers(query, repository);
+  return searchJournalVouchers(query, repository, authorizer);
 }
 
 export async function searchJournalVouchers(
   query: JournalVoucherSearchQuery,
   repository: JournalVoucherRepository,
+  authorizer: JournalVoucherAuthorizer,
 ): Promise<JournalVoucherPageDto> {
+  await requireViewPermission(authorizer);
   const normalized = normalizeJournalVoucherSearchQuery(query);
   const page = await repository.search(normalized);
   return projectJournalVoucherPage(page);
+}
+
+async function requireViewPermission(
+  authorizer: JournalVoucherAuthorizer,
+): Promise<void> {
+  const permission = journalVoucherPermissions.view;
+  if (await authorizer.hasPermission(permission)) return;
+
+  throw new JournalVoucherApplicationError(
+    "journal.unauthorized",
+    "شما مجوز مشاهده اسناد حسابداری را ندارید.",
+    { permission },
+  );
 }
 
 function requireQueryIdentifier(value: string, field: string): string {
