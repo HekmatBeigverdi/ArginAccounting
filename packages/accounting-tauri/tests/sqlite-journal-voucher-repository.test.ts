@@ -101,6 +101,13 @@ function persistedVoucherRow(version = 1) {
   };
 }
 
+function balancedLineRows(amount = 1000) {
+  return [
+    { id: "line-1", voucher_id: "voucher-1", line_order: 1, account_id: "account-1", description: null, debit_amount: amount, credit_amount: 0 },
+    { id: "line-2", voucher_id: "voucher-1", line_order: 2, account_id: "account-2", description: null, debit_amount: 0, credit_amount: amount },
+  ];
+}
+
 test("journal repository persists aggregate, lines, and dimensions", async () => {
   const db = new FakeDatabase();
   await new SqliteJournalVoucherRepository(db).create(voucher());
@@ -112,15 +119,23 @@ test("journal repository persists aggregate, lines, and dimensions", async () =>
 test("journal repository rehydrates through domain invariants and preserves metadata", async () => {
   const db = new FakeDatabase();
   db.voucherRow = persistedVoucherRow();
-  db.lineRows = [
-    { id: "line-1", voucher_id: "voucher-1", line_order: 1, account_id: "account-1", description: null, debit_amount: 1000, credit_amount: 0 },
-    { id: "line-2", voucher_id: "voucher-1", line_order: 2, account_id: "account-2", description: null, debit_amount: 0, credit_amount: 1000 },
-  ];
+  db.lineRows = balancedLineRows();
   db.dimensionRows = [{ line_id: "line-1", dimension_type_id: "type-1", member_id: "member-1" }];
   const result = await new SqliteJournalVoucherRepository(db).findById("voucher-1");
   assert.equal(result?.totalDebit.amount, 1000);
   assert.equal(result?.lines[0]?.dimensionAssignments[0]?.memberIds[0], "member-1");
   assert.equal(result?.updatedAt, "2026-08-16T05:30:00.000Z");
+});
+
+test("journal repository rejects persisted header totals that drift from balanced lines", async () => {
+  const db = new FakeDatabase();
+  db.voucherRow = persistedVoucherRow();
+  db.lineRows = balancedLineRows(900);
+
+  await assert.rejects(
+    () => new SqliteJournalVoucherRepository(db).findById("voucher-1"),
+    /Persisted JournalVoucher totals do not match its lines/u,
+  );
 });
 
 test("journal repository rejects a stale optimistic update", async () => {
