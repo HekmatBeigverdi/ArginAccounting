@@ -1,9 +1,9 @@
 import {
-  createJournalVoucher,
+  rehydrateJournalVoucher,
   type JournalVoucher,
   type JournalVoucherRepository,
   type NormalizedJournalVoucherSearchQuery,
-} from "@argin/accounting";
+} from "@argin/accounting/journal";
 import {
   assertVersionedUpdate,
   type DatabaseSession,
@@ -234,7 +234,7 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
       byType.set(dimension.dimension_type_id, members);
       byLine.set(dimension.line_id, byType);
     }
-    return createJournalVoucher({
+    return rehydrateJournalVoucher({
       id: row.id,
       companyId: row.company_id,
       branchId: row.branch_id,
