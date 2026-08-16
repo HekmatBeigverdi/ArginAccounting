@@ -245,7 +245,7 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
       byType.set(dimension.dimension_type_id, members);
       byLine.set(dimension.line_id, byType);
     }
-    return rehydrateJournalVoucher({
+    const voucher = rehydrateJournalVoucher({
       id: row.id,
       companyId: row.company_id,
       branchId: row.branch_id,
@@ -281,6 +281,15 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
       updatedAt: row.updated_at,
       version: row.version,
     });
+    if (
+      voucher.totalDebit.amount !== row.total_debit ||
+      voucher.totalCredit.amount !== row.total_credit
+    ) {
+      throw new Error(
+        `Persisted JournalVoucher totals do not match its lines: ${row.id}`,
+      );
+    }
+    return voucher;
   }
 
   private searchWhere(query: NormalizedJournalVoucherSearchQuery): {
