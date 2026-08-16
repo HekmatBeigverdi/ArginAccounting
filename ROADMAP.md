@@ -38,8 +38,8 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 10. ✅ Chart of Accounts
 11. ✅ Accounting Dimensions
 12. ✅ Coding Templates
-13. 🚧 Journal Voucher Engine
-14. ⏳ Journal Lifecycle
+13. ✅ Journal Voucher Engine
+14. 🚧 Journal Lifecycle
 15. ⏳ Accounting Reports
 
 ## Master Data
@@ -117,8 +117,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 13 — Journal Voucher Engine closure: documentation, final validation, review, merge, and release.
+Phase 14 — Journal Lifecycle.
 
-## Next Accounting Milestone
+## Latest Completed Accounting Milestone
 
-Phase 14 — Journal Lifecycle. It starts only after Phase 13 Step 18 is explicitly approved, merged, and released.
+Phase 13 — Journal Voucher Engine, merged and released as `v0.13.0`.
