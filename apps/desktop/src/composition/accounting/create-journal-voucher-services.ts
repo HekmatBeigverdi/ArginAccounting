@@ -62,6 +62,15 @@ export interface JournalBranchOption {
   readonly name: string;
 }
 
+export interface JournalFiscalInfo {
+  readonly fiscalYearId: string;
+  readonly fiscalYearCode: string;
+  readonly fiscalYearTitle: string;
+  readonly fiscalPeriodId: string;
+  readonly fiscalPeriodCode: string;
+  readonly fiscalPeriodTitle: string;
+}
+
 export interface JournalVoucherDesktopServices {
   readonly authorizer: JournalVoucherAuthorizer;
   list(query: ListJournalVouchersQuery): Promise<JournalVoucherPageDto>;
@@ -72,6 +81,7 @@ export interface JournalVoucherDesktopServices {
   delete(command: DeleteJournalVoucherDraftCommand): Promise<void>;
   listPostingAccounts(companyId: string): Promise<readonly JournalAccountOption[]>;
   listBranches(companyId: string): Promise<readonly JournalBranchOption[]>;
+  resolveFiscalInfo(companyId: string, voucherDate: string): Promise<JournalFiscalInfo | null>;
   loadDimensionSelector(input: {
     readonly companyId: string;
     readonly accountId: string;
@@ -135,9 +145,7 @@ export function createJournalVoucherServices(
     async findPoliciesForAccounts(companyId, accountIds) {
       const values: AccountDimensionPolicy[] = [];
       for (const accountId of [...new Set(accountIds)]) {
-        values.push(
-          ...(await dimensionPolicies.findByAccountId(companyId, accountId)),
-        );
+        values.push(...(await dimensionPolicies.findByAccountId(companyId, accountId)));
       }
       return Object.freeze(values);
     },
@@ -179,25 +187,16 @@ export function createJournalVoucherServices(
 
   const services: JournalVoucherDesktopServices = {
     authorizer: input.authorizer,
-    list: (query) =>
-      listJournalVouchers(query, repository, input.authorizer),
-    search: (query) =>
-      searchJournalVouchers(query, repository, input.authorizer),
-    get: (query) =>
-      getJournalVoucher(query, repository, input.authorizer),
-    create: (command) =>
-      createJournalVoucherDraft(command, runtime),
-    update: (command) =>
-      updateJournalVoucherDraft(command, runtime),
+    list: (query) => listJournalVouchers(query, repository, input.authorizer),
+    search: (query) => searchJournalVouchers(query, repository, input.authorizer),
+    get: (query) => getJournalVoucher(query, repository, input.authorizer),
+    create: (command) => createJournalVoucherDraft(command, runtime),
+    update: (command) => updateJournalVoucherDraft(command, runtime),
     async delete(command) {
       await deleteJournalVoucherDraft(command, runtime);
     },
     async listPostingAccounts(companyId) {
-      const rows = await input.database.query<{
-        id: string;
-        code: string;
-        name: string;
-      }>(
+      const rows = await input.database.query<{ id: string; code: string; name: string }>(
         `SELECT id, code, name
          FROM accounts
          WHERE company_id = ?
@@ -210,11 +209,7 @@ export function createJournalVoucherServices(
       return Object.freeze(rows.map((row) => Object.freeze({ ...row })));
     },
     async listBranches(companyId) {
-      const rows = await input.database.query<{
-        id: string;
-        code: string;
-        name: string;
-      }>(
+      const rows = await input.database.query<{ id: string; code: string; name: string }>(
         `SELECT id, code, name
          FROM branches
          WHERE company_id = ? AND status = 'active'
@@ -222,6 +217,23 @@ export function createJournalVoucherServices(
         [companyId],
       );
       return Object.freeze(rows.map((row) => Object.freeze({ ...row })));
+    },
+    async resolveFiscalInfo(companyId, voucherDate) {
+      const resolved = await fiscalContext.resolve(companyId, voucherDate);
+      if (!resolved) return null;
+      const [year, period] = await Promise.all([
+        fiscalYears.findById(resolved.fiscalYearId),
+        fiscalPeriods.findById(resolved.fiscalPeriodId),
+      ]);
+      if (!year || !period) return null;
+      return Object.freeze({
+        fiscalYearId: year.id,
+        fiscalYearCode: year.code,
+        fiscalYearTitle: year.title,
+        fiscalPeriodId: period.id,
+        fiscalPeriodCode: period.code,
+        fiscalPeriodTitle: period.title,
+      });
     },
     loadDimensionSelector: (request) => dimensionSelector.load(request),
   };
@@ -238,10 +250,7 @@ class DesktopJournalNumberSeries implements NumberSeries {
       const branchId = request.scope.branchId ?? null;
       const fiscalYearId = request.scope.fiscalYearId ?? null;
       const code = journalSeriesCode(branchId, fiscalYearId);
-      let series = await repository.findByCode(
-        request.scope.companyId,
-        code,
-      );
+      let series = await repository.findByCode(request.scope.companyId, code);
 
       if (!series) {
         series = await repository.create({
