@@ -16,6 +16,7 @@ export type {
   JournalVoucherUsageReader,
   NormalizedJournalVoucherSearchQuery,
 } from "./contracts/journal-voucher-repository.ts";
+export { normalizeJournalVoucherSearchQuery } from "./contracts/normalize-journal-voucher-query.ts";
 export type {
   JournalVoucherAccountReader,
   JournalVoucherAuthorizer,
@@ -55,3 +56,13 @@ export {
   deleteJournalVoucherDraft,
   updateJournalVoucherDraft,
 } from "./application/journal-voucher-use-cases.ts";
+export {
+  projectJournalVoucherDetail,
+  projectJournalVoucherListItem,
+  projectJournalVoucherPage,
+} from "./application/journal-voucher-read-model.ts";
+export {
+  getJournalVoucher,
+  listJournalVouchers,
+  searchJournalVouchers,
+} from "./application/journal-voucher-queries.ts";
