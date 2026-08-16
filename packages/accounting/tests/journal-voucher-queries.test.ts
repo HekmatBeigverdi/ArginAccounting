@@ -6,6 +6,9 @@ import type {
   JournalVoucherRepository,
   NormalizedJournalVoucherSearchQuery,
 } from "../src/contracts/journal-voucher-repository.ts";
+import type {
+  JournalVoucherAuthorizer,
+} from "../src/contracts/journal-voucher-runtime.ts";
 import { createJournalVoucher } from "../src/domain/journal-voucher.ts";
 import type { JournalVoucher } from "../src/domain/journal-voucher.ts";
 import {
@@ -100,11 +103,16 @@ class QueryRepository implements JournalVoucherRepository {
   }
 }
 
+function authorizer(allowed = true): JournalVoucherAuthorizer {
+  return { hasPermission: async () => allowed };
+}
+
 test("get projects voucher detail including lines, money and dimension assignments", async () => {
   const repository = new QueryRepository();
   const result = await getJournalVoucher(
     { companyId: " company-1 ", voucherId: " voucher-1 " },
     repository,
+    authorizer(),
   );
 
   assert.equal(result.id, "voucher-1");
@@ -118,6 +126,22 @@ test("get projects voucher detail including lines, money and dimension assignmen
   ]);
 });
 
+test("read queries require the journal view permission before persistence access", async () => {
+  const repository = new QueryRepository();
+
+  await assert.rejects(
+    () => getJournalVoucher(
+      { companyId: "company-1", voucherId: "voucher-1" },
+      repository,
+      authorizer(false),
+    ),
+    (error: unknown) =>
+      error instanceof JournalVoucherApplicationError &&
+      error.code === "journal.unauthorized" &&
+      error.details.permission === "accounting.journal-vouchers.view",
+  );
+});
+
 test("get hides cross-company vouchers behind the stable not-found contract", async () => {
   const repository = new QueryRepository(voucher("voucher-1", "company-2"));
 
@@ -125,6 +149,7 @@ test("get hides cross-company vouchers behind the stable not-found contract", as
     () => getJournalVoucher(
       { companyId: "company-1", voucherId: "voucher-1" },
       repository,
+      authorizer(),
     ),
     (error: unknown) =>
       error instanceof JournalVoucherApplicationError &&
@@ -139,6 +164,7 @@ test("get rejects blank required identifiers before repository lookup", async ()
     () => getJournalVoucher(
       { companyId: " ", voucherId: "voucher-1" },
       repository,
+      authorizer(),
     ),
     (error: unknown) =>
       error instanceof JournalVoucherApplicationError &&
@@ -163,7 +189,7 @@ test("search normalizes all supported filters before calling persistence", async
     text: " آزمایشی ",
     page: 2,
     pageSize: 25,
-  }, repository);
+  }, repository, authorizer());
 
   assert.deepEqual(repository.lastSearch, {
     companyId: "company-1",
@@ -192,6 +218,7 @@ test("list uses the same deterministic normalized paged query path", async () =>
   const result = await listJournalVouchers(
     { companyId: "company-1", page: 1, pageSize: 10 },
     repository,
+    authorizer(),
   );
 
   assert.equal(repository.lastSearch?.offset, 0);
@@ -211,7 +238,7 @@ test("search rejects reversed date ranges through the shared query contract", as
       companyId: "company-1",
       dateFrom: "2026-05-01",
       dateTo: "2026-04-01",
-    }, repository),
+    }, repository, authorizer()),
     (error: unknown) =>
       error instanceof JournalVoucherApplicationError &&
       error.code === "journal.invalid-query" &&
