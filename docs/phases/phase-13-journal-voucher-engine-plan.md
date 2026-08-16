@@ -27,7 +27,7 @@ Deliver the persisted double-entry Journal Voucher Engine that becomes the accou
 
 - Preserve strict double-entry balance: total debit equals total credit.
 - Represent direction through mutually exclusive debit/credit amounts; never allow both on one line.
-- Require at least two effective lines and reject zero-value effective lines.
+- Require at least two effective journal lines and reject zero-value effective lines.
 - Validate active/postable accounts, company/branch scope, voucher date, fiscal year/period eligibility, and account-dimension requirements.
 - Keep durable dates/timestamps Gregorian ISO; present dates as Solar Hijri in Persian UI.
 - Use Iranian Rial as the default presentation currency while keeping currency/exchange-rate contracts explicit for future multi-currency work.
@@ -274,14 +274,14 @@ Status: Completed
 
 Evidence:
 
-- Added migration `0013_journal_vouchers.sql` with normalized `journal_vouchers`, `journal_lines`, and `journal_line_dimension_assignments` tables and registered migration version 13 in the desktop Tauri SQL runner.
-- Added durable foreign keys to company, optional branch, fiscal year/period, same-company accounts, dimension types and dimension members, plus cascade ownership from voucher to lines and line assignments.
-- Added database checks for canonical Gregorian voucher dates, Phase 13 `draft` status, currency codes, supported source types, positive optimistic versions, one-sided positive line amounts, positive unique line ordering, and persisted voucher total balance.
-- Added scoped voucher-number uniqueness and a normalized expression unique index using `COALESCE(branch_id, '')` so branchless vouchers cannot exploit SQLite NULL uniqueness semantics to duplicate committed numbers.
-- Added indexes supporting company/branch/date listing, fiscal filtering, external reference, source/request/correlation lookup, account usage detection, dimension-type/member usage detection, aggregate loading, future reporting, and synchronization-oriented provenance queries.
-- Added `journal-vouchers-migration.test.ts` covering migration registration, upgrade from a Phase 12 schema while preserving existing records, valid aggregate/line/dimension persistence, duplicate scoped numbers, unbalanced totals, invalid debit/credit sides, missing account references, and invalid dimension-member references.
-- Migration implementation and registration were published in commits `6bd63bdc25b3b9ae5b0280b590394ccfff125bf8` and `e1647dada2c26fdf515008634a5d8fa17fe37b12`; focused migration coverage was added in `0747997ca044c945291787c1a154d7f4b68e642b`, and branchless uniqueness was hardened in `e4dececb4997c26a4eb50c4d3466469fa84aa45c`.
-- Local validation is `pnpm --filter @argin/desktop test` together with the later full monorepo validation in Steps 16–17; this connector environment cannot execute the repository's Node/SQLite test runner directly.
+- Added `0013_journal_vouchers.sql` with `journal_vouchers`, `journal_lines`, and normalized `journal_line_dimension_assignments` tables linked to company, branch, fiscal year/period, account, dimension type, and dimension member data.
+- Added durable constraints for draft-only Phase 13 status, canonical voucher dates, positive optimistic versions, line ordering, mutually exclusive debit/credit sides, balanced voucher totals, and same-company account/dimension references.
+- Added deterministic uniqueness for voucher number scope and corrected SQLite `NULL` semantics for branchless vouchers through a unique expression index using `COALESCE(branch_id, '')`.
+- Added indexes for company/date, branch/date, fiscal context, reference, source/request, correlation/causation, account usage, and dimension usage queries.
+- Registered migration version 13 in the Tauri migration runner after Phase 12 migration 12.
+- Added migration tests covering registration, Phase 12 upgrade/fresh execution, existing-data preservation, valid journal persistence, duplicate-number rejection, invalid balance/line-side rejection, and account/dimension referential integrity.
+- Published migration/schema work through commits `6bd63bdc25b3b9ae5b0280b590394ccfff125bf8`, `e1647dada2c26fdf515008634a5d8fa17fe37b12`, `0747997ca044c945291787c1a154d7f4b68e642b`, and branchless uniqueness correction `e4dececb4997c26a4eb50c4d3466469fa84aa45c`.
+- Local migration validation remains `pnpm --filter @argin/desktop test`; full fresh/upgrade execution evidence is reconfirmed in Steps 16–17.
 
 ### Step 10 — SQLite Repositories and Unit of Work
 
@@ -292,6 +292,22 @@ Evidence:
 Exit criteria:
 
 - Repository contract, transaction rollback, stale-version, query escaping, and aggregate round-trip tests pass.
+
+Status: Completed
+
+Evidence:
+
+- Added `SqliteJournalVoucherRepository` implementing create, find-by-id, scoped find-by-number, paged search, optimistic update, and draft delete against the Step 9 schema.
+- Persisted the aggregate across voucher, line, and normalized line-dimension tables while keeping all multi-table writes inside the caller-provided database session.
+- Added invariant-safe persisted aggregate reconstruction through `rehydrateJournalVoucher`, which first rebuilds through `createJournalVoucher` and then restores persisted update metadata instead of directly manufacturing an invalid aggregate.
+- Added escaped `LIKE ... ESCAPE '\\'` search handling for `%`, `_`, and backslash, deterministic ordering, account-filter `EXISTS` queries, branchless filtering, date/source/reference/number filters, and structural paged results.
+- Added `SqliteJournalVoucherUsageReader`, making Step 8 account/dimension integrity guards backed by the persisted journal tables.
+- Added `SqliteJournalVoucherUnitOfWork`, which creates the Journal repository from one transaction-scoped `DatabaseSession`, ensuring voucher/line/dimension writes roll back together when the operation fails.
+- Enforced stale-version detection through the shared `assertVersionedUpdate` concurrency contract before child-line replacement; stale updates and deletes cannot silently overwrite a newer voucher.
+- Added the `@argin/accounting/journal` public subpath so persistence adapters consume only explicit Journal domain/contracts rather than internal source paths, and exported Journal SQLite adapters from `@argin/accounting-tauri`.
+- Added focused repository tests for aggregate/line/dimension writes, invariant-safe round-trip including `updatedAt`, stale optimistic update rejection, escaped query input/pagination, persisted usage lookup, and Unit of Work transaction/failure propagation.
+- Published Step 10 implementation through commits `4046a22e9515124db950257d0f3a6105703fa79d`, `d0c61af87bb4e163f0a01ac8429fecbabd15445d`, `b7edb6f1cd4f5bc617df8f7e85fd98ababec3026`, `3b7f5afc55747c9cf60631afba44a5ce96ee46ba`, `e8fef8c18521b0027fd62689d2aa38389826b2de`, `a7c4b8aba415097bead65ba4b6f3a6a1aafd2b21`, `9b028d26781237f5de995b6ea59d545092f490e6`, `103cea09306d964bf3559992a863a8f9d02f4666`, `174acf4ed80d379f937ae8cade4b7245e4d0da1a`, `c3b0863096ca791578f54aeda44087dc82c51555`, `772749d3e80d36ce8ed738935ad524d342b17625`, and dependency-neutral repository refinement `e6c33acac761a1af4c45a090fb54f1a7bd5cb5fe`.
+- The isolated runtime could not clone GitHub because DNS resolution for `github.com` is unavailable; local verification is required with `pnpm --filter @argin/accounting typecheck`, `pnpm --filter @argin/accounting-tauri typecheck`, and `pnpm --filter @argin/accounting-tauri test`. Full execution evidence is reconfirmed in Steps 16–17.
 
 ### Step 11 — Create/Update/Delete Draft Use Cases
 
@@ -304,6 +320,8 @@ Exit criteria:
 
 - Core mutation flows are atomic, deterministic, authorized, and fully tested.
 
+Status: Not started
+
 ### Step 12 — Read Models, Search, and Voucher Detail
 
 - Implement paged list/search/filter queries by number, date range, account, branch, fiscal context and source/reference where supported.
@@ -313,6 +331,8 @@ Exit criteria:
 Exit criteria:
 
 - Query behavior is deterministic, escaped, paged, and covered by focused tests.
+
+Status: Not started
 
 ### Step 13 — Permissions, Audit, and Integration Events
 
@@ -325,6 +345,8 @@ Exit criteria:
 
 - Sensitive operations cannot bypass authorization.
 - Rollback/failure emits no success event.
+
+Status: Not started
 
 ### Step 14 — Desktop Composition and Persian RTL UI
 
@@ -339,6 +361,8 @@ Exit criteria:
 - UI cannot bypass domain/application validation, authorization, numbering, or Unit of Work.
 - Existing Chart of Accounts, Dimensions, and Coding Templates workspaces remain functional.
 
+Status: Not started
+
 ### Step 15 — Domain and Application Test Completion
 
 - Complete aggregate, balance, account/fiscal, dimensions, numbering, authorization, idempotency/retry and application orchestration tests.
@@ -348,6 +372,8 @@ Exit criteria:
 
 - Critical Domain/Application success and failure paths have recorded passing evidence.
 
+Status: Not started
+
 ### Step 16 — Persistence, Migration, Desktop, and Regression Tests
 
 - Complete migration upgrade/fresh tests, repository contracts, transaction rollback, concurrency, usage detection, presenter/UI and desktop composition tests.
@@ -356,6 +382,8 @@ Exit criteria:
 Exit criteria:
 
 - Persistence/Desktop suites and affected prior-phase regressions pass with recorded counts.
+
+Status: Not started
 
 ### Step 17 — Documentation and Monorepo Validation
 
@@ -368,6 +396,8 @@ Exit criteria:
 - Documentation matches implementation.
 - Full validation passes and evidence is recorded.
 
+Status: Not started
+
 ### Step 18 — Final Review, Merge, and Release
 
 - Review all step evidence and unresolved Change Requests.
@@ -379,6 +409,8 @@ Exit criteria:
 
 - Phase 13 is merged and released through the approved workflow.
 - Remote refs/tag and release documentation are verified.
+
+Status: Not started
 
 ## Step Status
 
@@ -393,7 +425,7 @@ Exit criteria:
 | 7 | Application Contracts, Commands, and Queries | Completed |
 | 8 | Journal Usage Detection and Integrity Guards | Completed |
 | 9 | SQLite Migration | Completed |
-| 10 | SQLite Repositories and Unit of Work | Not started |
+| 10 | SQLite Repositories and Unit of Work | Completed |
 | 11 | Create/Update/Delete Draft Use Cases | Not started |
 | 12 | Read Models, Search, and Voucher Detail | Not started |
 | 13 | Permissions, Audit, and Integration Events | Not started |
