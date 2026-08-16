@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation complete on `phase/13-journal-voucher-engine`; final merge and release remain Step 18 work. The canonical step-by-step evidence is recorded in the fixed Phase 13 implementation plan.
+Completed, merged into `develop` and `main`, and released as `v0.13.0`. The canonical step-by-step evidence is recorded in the fixed Phase 13 implementation plan.
 
 ## Overview
 
@@ -70,7 +70,7 @@ Step 15 adds and consolidates Domain/Application coverage for malformed and unba
 
 Step 16 adds and consolidates persistence/migration/Desktop regression coverage for aggregate round-trips, transaction rollback, optimistic concurrency, branchless numbering uniqueness, request-id uniqueness, cascade behavior, journal-backed usage detection, presenter/composition behavior, persisted-total drift, and the rebuilt Journal UI contract.
 
-The repository owner executed the focused validation commands locally after resolving the final Desktop test issue and confirmed them passing. Step 17 performs final documentation and monorepo validation before release review.
+Step 17 completed frozen dependency installation, lint, typecheck, the full test suite, production build, documentation-index validation, and diff validation. Step 18 completed final review, merge, tag, and GitHub Release publication.
 
 ## Portability
 
@@ -87,4 +87,4 @@ Domain and Application contracts remain independent from React, Tauri, SQLite, P
 
 ## Next Phase
 
-Phase 14 — Journal Lifecycle, after explicit Step 18 merge/release approval.
+Phase 14 — Journal Lifecycle.
