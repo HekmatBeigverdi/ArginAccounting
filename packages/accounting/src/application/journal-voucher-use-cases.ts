@@ -56,13 +56,6 @@ export async function createJournalVoucherDraft(
   );
 
   const requestId = normalizeOptionalIdentifier(command.context.requestId);
-  if (requestId) {
-    const replay = await dependencies.unitOfWork.run(({ journals }) =>
-      journals.findByRequestId(command.context.companyId, requestId),
-    );
-    if (replay) return Object.freeze({ voucher: replay, replayed: true });
-  }
-
   const fiscal = await resolveFiscalContext(
     dependencies,
     command.context.companyId,
@@ -90,9 +83,7 @@ export async function createJournalVoucherDraft(
         dependencies.numberSeries,
         {
           companyId: command.context.companyId,
-          ...(command.context.branchId
-            ? { branchId: command.context.branchId }
-            : {}),
+          branchId: command.context.branchId ?? null,
           fiscalYearId: fiscal.fiscalYearId,
         },
       );
@@ -101,7 +92,7 @@ export async function createJournalVoucherDraft(
         id: dependencies.identifiers.generate(),
         companyId: command.context.companyId,
         branchId: command.context.branchId ?? null,
-        number: reserved.voucherNumber,
+        number: reserved.formattedValue,
         reference: command.reference ?? null,
         voucherDate: command.voucherDate,
         fiscalYearId: fiscal.fiscalYearId,

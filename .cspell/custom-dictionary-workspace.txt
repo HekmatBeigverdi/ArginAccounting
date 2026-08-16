@@ -5,6 +5,7 @@ behaviour
 Beigverdi
 blankrows
 Clippy
+concurr
 defval
 irreproducible
 NOCASE
