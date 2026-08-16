@@ -49,6 +49,24 @@ export {
   JournalVoucherApplicationError,
 } from "./application/journal-voucher-application-error.ts";
 export type {
+  JournalVoucherPermission,
+} from "./application/journal-voucher-permissions.ts";
+export {
+  journalVoucherPermissions,
+} from "./application/journal-voucher-permissions.ts";
+export type {
+  JournalVoucherAuditEventType,
+  JournalVoucherAuthorizationDeniedEvent,
+  JournalVoucherAuthorizationDeniedPayload,
+  JournalVoucherSuccessEvent,
+  JournalVoucherSuccessEventPayload,
+  JournalVoucherSuccessEventType,
+} from "./application/journal-voucher-events.ts";
+export {
+  createJournalVoucherAuthorizationDeniedEvent,
+  createJournalVoucherSuccessEvent,
+} from "./application/journal-voucher-events.ts";
+export type {
   JournalVoucherMutationResult,
 } from "./application/journal-voucher-use-cases.ts";
 export {
