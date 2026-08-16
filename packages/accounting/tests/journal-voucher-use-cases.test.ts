@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { NumberSeries } from "@argin/platform";
+import type { DomainEvent, NumberSeries } from "@argin/platform";
 
 import { createAccount } from "../src/domain/create-account.ts";
 import type { JournalVoucher } from "../src/domain/journal-voucher.ts";
@@ -84,19 +84,25 @@ class MemoryJournalRepository implements JournalVoucherRepository {
 class MemoryUnitOfWork implements JournalVoucherUnitOfWork {
   records = new Map<string, JournalVoucher>();
   failAfterOperation = false;
+  running = false;
 
   async run<T>(
     operation: (repositories: JournalVoucherUnitOfWorkRepositories) => Promise<T>,
   ): Promise<T> {
     const transactionRecords = new Map(this.records);
     const repository = new MemoryJournalRepository(transactionRecords);
-    const result = await operation({ journals: repository });
-    if (this.failAfterOperation) {
-      this.failAfterOperation = false;
-      throw new Error("forced transaction rollback");
+    this.running = true;
+    try {
+      const result = await operation({ journals: repository });
+      if (this.failAfterOperation) {
+        this.failAfterOperation = false;
+        throw new Error("forced transaction rollback");
+      }
+      this.records = transactionRecords;
+      return result;
+    } finally {
+      this.running = false;
     }
-    this.records = transactionRecords;
-    return result;
   }
 }
 
@@ -162,6 +168,7 @@ function command(requestId = "request-1") {
       branchId: null,
       requestId,
       correlationId: "correlation-1",
+      causationId: "causation-1",
     },
     voucherDate: "2026-04-01",
     reference: "REF-1",
@@ -176,6 +183,7 @@ function command(requestId = "request-1") {
 function dependencies(authorized = true) {
   const unitOfWork = new MemoryUnitOfWork();
   const numberSeries = new CountingNumberSeries();
+  const published: Array<{ event: DomainEvent; insideTransaction: boolean }> = [];
   let nextId = 0;
   const accounts = new Map([
     [debitAccount.id, debitAccount],
@@ -186,8 +194,14 @@ function dependencies(authorized = true) {
     clock: { now: () => new Date("2026-04-01T08:00:00.000Z") },
     identifiers: { generate: () => `generated-${++nextId}` },
     events: {
-      publish: async () => {},
-      publishMany: async () => {},
+      publish: async (event) => {
+        published.push({ event, insideTransaction: unitOfWork.running });
+      },
+      publishMany: async (events) => {
+        for (const event of events) {
+          published.push({ event, insideTransaction: unitOfWork.running });
+        }
+      },
     },
     numberSeries,
     accounts: { findById: async (id) => accounts.get(id) ?? null },
@@ -199,10 +213,10 @@ function dependencies(authorized = true) {
     },
     unitOfWork,
   };
-  return { value, unitOfWork, numberSeries, accounts };
+  return { value, unitOfWork, numberSeries, accounts, published };
 }
 
-test("create draft authorizes, reserves a number, validates and commits one aggregate", async () => {
+test("create draft commits before publishing its audit/integration event", async () => {
   const runtime = dependencies();
   const result = await createJournalVoucherDraft(command(), runtime.value);
 
@@ -213,9 +227,16 @@ test("create draft authorizes, reserves a number, validates and commits one aggr
   assert.equal(result.voucher.lines.length, 2);
   assert.equal(runtime.numberSeries.calls, 1);
   assert.equal(runtime.unitOfWork.records.size, 1);
+  assert.equal(runtime.published.length, 1);
+  assert.equal(runtime.published[0]?.insideTransaction, false);
+  assert.equal(runtime.published[0]?.event.eventType, "accounting.journal-voucher.created");
+  assert.equal(runtime.published[0]?.event.correlationId, "correlation-1");
+  assert.equal(runtime.published[0]?.event.causationId, "causation-1");
+  assert.equal(runtime.published[0]?.event.metadata.audit, true);
+  assert.equal(runtime.published[0]?.event.metadata.integration, true);
 });
 
-test("retry with the same request id replays the committed voucher without consuming another number", async () => {
+test("retry with the same request id replays the committed voucher without another number or success event", async () => {
   const runtime = dependencies();
   const first = await createJournalVoucherDraft(command(), runtime.value);
   const retry = await createJournalVoucherDraft(command(), runtime.value);
@@ -225,9 +246,10 @@ test("retry with the same request id replays the committed voucher without consu
   assert.equal(retry.voucher.number, first.voucher.number);
   assert.equal(runtime.numberSeries.calls, 1);
   assert.equal(runtime.unitOfWork.records.size, 1);
+  assert.equal(runtime.published.length, 1);
 });
 
-test("unauthorized create fails before numbering or persistence", async () => {
+test("unauthorized create records security audit evidence before rejecting", async () => {
   const runtime = dependencies(false);
   await assert.rejects(
     () => createJournalVoucherDraft(command(), runtime.value),
@@ -237,6 +259,14 @@ test("unauthorized create fails before numbering or persistence", async () => {
   );
   assert.equal(runtime.numberSeries.calls, 0);
   assert.equal(runtime.unitOfWork.records.size, 0);
+  assert.equal(runtime.published.length, 1);
+  assert.equal(
+    runtime.published[0]?.event.eventType,
+    "accounting.journal-voucher.authorization-denied",
+  );
+  assert.equal(runtime.published[0]?.event.metadata.audit, true);
+  assert.equal(runtime.published[0]?.event.metadata.security, true);
+  assert.equal(runtime.published[0]?.event.metadata.integration, false);
 });
 
 test("ineligible or missing accounts fail before the journal transaction commits", async () => {
@@ -250,9 +280,10 @@ test("ineligible or missing accounts fail before the journal transaction commits
   );
   assert.equal(runtime.numberSeries.calls, 0);
   assert.equal(runtime.unitOfWork.records.size, 0);
+  assert.equal(runtime.published.length, 0);
 });
 
-test("transaction failure leaves no partial voucher, lines, or assignments visible", async () => {
+test("transaction failure leaves no partial voucher and emits no success event", async () => {
   const runtime = dependencies();
   runtime.unitOfWork.failAfterOperation = true;
   await assert.rejects(
@@ -261,9 +292,10 @@ test("transaction failure leaves no partial voucher, lines, or assignments visib
   );
   assert.equal(runtime.unitOfWork.records.size, 0);
   assert.equal(runtime.numberSeries.calls, 1);
+  assert.equal(runtime.published.length, 0);
 });
 
-test("update preserves identity and number while incrementing version", async () => {
+test("update preserves identity and number, increments version, and publishes after commit", async () => {
   const runtime = dependencies();
   const created = await createJournalVoucherDraft(command(), runtime.value);
   const result = await updateJournalVoucherDraft({
@@ -284,9 +316,15 @@ test("update preserves identity and number while incrementing version", async ()
   assert.equal(result.voucher.createdAt, created.voucher.createdAt);
   assert.equal(result.voucher.version, 2);
   assert.equal(result.voucher.reference, "REF-2");
+  assert.equal(runtime.published.at(-1)?.insideTransaction, false);
+  assert.equal(
+    runtime.published.at(-1)?.event.eventType,
+    "accounting.journal-voucher.draft-updated",
+  );
+  assert.equal(runtime.published.at(-1)?.event.aggregateVersion, 2);
 });
 
-test("stale update returns the stable application version-conflict error", async () => {
+test("stale update returns the stable application version-conflict error without update event", async () => {
   const runtime = dependencies();
   const created = await createJournalVoucherDraft(command(), runtime.value);
   await assert.rejects(
@@ -301,9 +339,13 @@ test("stale update returns the stable application version-conflict error", async
       error instanceof JournalVoucherApplicationError &&
       error.code === "journal.version-conflict",
   );
+  assert.deepEqual(
+    runtime.published.map(({ event }) => event.eventType),
+    ["accounting.journal-voucher.created"],
+  );
 });
 
-test("delete draft enforces version and removes the whole aggregate through the unit of work", async () => {
+test("delete draft removes the aggregate and publishes only after commit", async () => {
   const runtime = dependencies();
   const created = await createJournalVoucherDraft(command(), runtime.value);
   const deleted = await deleteJournalVoucherDraft({
@@ -314,4 +356,9 @@ test("delete draft enforces version and removes the whole aggregate through the 
 
   assert.equal(deleted.id, created.voucher.id);
   assert.equal(runtime.unitOfWork.records.size, 0);
+  assert.equal(runtime.published.at(-1)?.insideTransaction, false);
+  assert.equal(
+    runtime.published.at(-1)?.event.eventType,
+    "accounting.journal-voucher.draft-deleted",
+  );
 });
