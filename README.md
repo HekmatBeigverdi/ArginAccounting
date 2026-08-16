@@ -21,12 +21,13 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 ## Current Status
 
 - Phase 01–12: completed and merged into `develop` and `main`
-- Current target: Phase 13 — Journal Voucher Engine
+- Current target: Phase 13 — Journal Voucher Engine final documentation, validation, review, merge, and release
 - Latest release: Phase 12 — Coding Templates (`v0.12.0`)
+- Next planned milestone: Phase 14 — Journal Lifecycle, after Phase 13 is released
 
-Phase 12 introduces versioned service, trading, and manufacturing coding templates with deterministic preview, atomic application, safe upgrades, and validated Excel import.
+Phase 13 introduces the persisted Draft Journal Voucher Engine: strict double-entry vouchers and lines, account/fiscal/dimension validation, scoped Number Series, retry-safe Application use cases, SQLite persistence, journal-backed integrity guards, permissions/audit/events, and a Persian RTL Journal workspace.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), and [ADR-0012](docs/adr/ADR-0012-versioned-coding-templates.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 13 implementation record](docs/phases/phase-13-journal-voucher-engine.md), and [ADR-0013](docs/adr/ADR-0013-journal-voucher-engine.md).
 
 ## Main Modules
 
@@ -51,6 +52,8 @@ packages/
   security-tauri/      Security SQLite/Tauri infrastructure
   audit/               Audit and approval domain/application
   audit-tauri/         Audit and approval SQLite infrastructure
+  accounting/          Accounting domain/application, including Journal contracts
+  accounting-tauri/    SQLite accounting infrastructure
 
 docs/
   adr/                  Architecture decisions
@@ -82,9 +85,13 @@ pnpm dev:desktop
 ## Validation
 
 ```bash
+pnpm install --frozen-lockfile
+pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
+node scripts/generate-doc-index.mjs
+git diff --check
 cd apps/desktop/src-tauri
 cargo check
 ```
@@ -119,8 +126,8 @@ Validation commands are requirements, not proof of success. Phase and release do
 - [Product Vision](docs/vision/product-vision.md)
 - [Architecture](ARCHITECTURE.md)
 - [Roadmap](ROADMAP.md)
-- [Phase 08 — Audit and Approval](docs/phases/phase-08-audit-approval.md)
-- [Phase 09 — Platform Infrastructure](docs/phases/phase-09-platform-infrastructure.md)
+- [Phase 13 — Journal Voucher Engine](docs/phases/phase-13-journal-voucher-engine.md)
+- [Phase 13 Fixed Implementation Plan](docs/phases/phase-13-journal-voucher-engine-plan.md)
 - [ADR Registry](docs/adr/README.md)
 - [Database Design](docs/database/database-design.md)
 - [Accounting Engine](docs/accounting/accounting-engine.md)

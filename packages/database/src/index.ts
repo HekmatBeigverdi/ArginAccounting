@@ -1,31 +1,31 @@
 export type {
   DatabaseValue,
-} from "./contracts/database-value";
+} from "./contracts/database-value.ts";
 
 export type {
   DatabaseExecuteResult,
-} from "./contracts/database-execute-result";
+} from "./contracts/database-execute-result.ts";
 
 export type {
   DatabaseExecutor,
   DatabaseSession,
-} from "./contracts/database-executor";
+} from "./contracts/database-executor.ts";
 
 export type {
   DatabaseHealth,
-} from "./contracts/database-health";
+} from "./contracts/database-health.ts";
 
 export {
   DatabaseError,
-} from "./errors/database-error";
+} from "./errors/database-error.ts";
 
 export type {
   DatabaseErrorCode,
-} from "./errors/database-error";
+} from "./errors/database-error.ts";
 
 export {
   NestedTransactionError,
-} from "./errors/nested-transaction-error";
+} from "./errors/nested-transaction-error.ts";
 
-export * from "./concurrency/index";
-export * from "./unit-of-work/index";
+export * from "./concurrency/index.ts";
+export * from "./unit-of-work/index.ts";

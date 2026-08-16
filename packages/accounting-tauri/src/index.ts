@@ -51,3 +51,15 @@ export {
 export {
   BuiltInCodingTemplateCatalogProvider,
 } from "./built-in-coding-template-catalog-provider.ts";
+
+export {
+  SqliteJournalVoucherRepository,
+} from "./repositories/sqlite-journal-voucher-repository.ts";
+
+export {
+  SqliteJournalVoucherUsageReader,
+} from "./sqlite-journal-voucher-usage-reader.ts";
+
+export {
+  SqliteJournalVoucherUnitOfWork,
+} from "./sqlite-journal-voucher-unit-of-work.ts";

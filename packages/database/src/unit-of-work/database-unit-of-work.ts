@@ -1,10 +1,10 @@
 import type {
   DatabaseExecutor,
   DatabaseSession,
-} from "../contracts/database-executor";
+} from "../contracts/database-executor.ts";
 import type {
   UnitOfWork,
-} from "./unit-of-work";
+} from "./unit-of-work.ts";
 
 export class DatabaseUnitOfWork
   implements UnitOfWork {

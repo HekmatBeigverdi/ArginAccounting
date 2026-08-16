@@ -600,3 +600,8 @@ export type {
   NormalizedAccountingDimensionMemberSearchQuery,
   NormalizedAccountingDimensionTypeSearchQuery,
 } from "./contracts/accounting-dimension-queries.ts";
+
+export {
+  JournalBackedAccountUsageReader,
+  JournalBackedAccountingDimensionUsageReader,
+} from "./application/journal-backed-usage-readers.ts";

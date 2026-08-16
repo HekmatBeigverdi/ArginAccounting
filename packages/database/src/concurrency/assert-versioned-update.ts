@@ -1,13 +1,13 @@
 import type {
   DatabaseExecuteResult,
-} from "../contracts/database-execute-result";
+} from "../contracts/database-execute-result.ts";
 import {
   ConcurrencyConflictError,
-} from "./concurrency-conflict-error";
+} from "./concurrency-conflict-error.ts";
 import {
   assertEntityVersion,
   type EntityVersion,
-} from "./entity-version";
+} from "./entity-version.ts";
 
 export interface VersionedUpdateTarget {
   readonly entityType: string;

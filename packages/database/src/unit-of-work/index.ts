@@ -1,7 +1,7 @@
 export {
   DatabaseUnitOfWork,
-} from "./database-unit-of-work";
+} from "./database-unit-of-work.ts";
 
 export type {
   UnitOfWork,
-} from "./unit-of-work";
+} from "./unit-of-work.ts";

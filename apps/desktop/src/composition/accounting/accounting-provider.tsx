@@ -10,37 +10,38 @@ import {
 import {
   AccountingDimensionsService,
   ChartOfAccountsService,
+  JournalBackedAccountingDimensionUsageReader,
+  JournalBackedAccountUsageReader,
   type AccountingDimensionSelectorService,
-  type AccountUsageReader,
   type ChartOfAccountsAuthorizer,
 } from "@argin/accounting";
 import {
   SqliteAccountingDimensionSelectorService,
   SqliteAccountingDimensionUsageReader,
   SqliteAccountingUnitOfWork,
+  SqliteJournalVoucherUsageReader,
 } from "@argin/accounting-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { usePlatform } from "../../platform";
 import { createCodingTemplateServices, type CodingTemplateServices } from "./create-coding-template-services";
+import {
+  createJournalVoucherServices,
+  type JournalVoucherDesktopServices,
+} from "./create-journal-voucher-services";
 
 interface AccountingServices {
   readonly chartOfAccounts: ChartOfAccountsService;
   readonly dimensions: AccountingDimensionsService;
   readonly dimensionSelector: AccountingDimensionSelectorService;
   readonly codingTemplates: CodingTemplateServices;
+  readonly journals: JournalVoucherDesktopServices;
 }
 
 const AccountingContext = createContext<AccountingServices | undefined>(
   undefined,
 );
-
-const pendingJournalUsageReader: AccountUsageReader = {
-  async hasFinancialActivity(): Promise<boolean> {
-    return false;
-  },
-};
 
 export function AccountingProvider({ children }: PropsWithChildren) {
   const platform = usePlatform();
@@ -78,6 +79,12 @@ export function AccountingProvider({ children }: PropsWithChildren) {
     };
 
     const unitOfWork = new SqliteAccountingUnitOfWork(database);
+    const journalUsage = new SqliteJournalVoucherUsageReader(database);
+    const accountUsage = new JournalBackedAccountUsageReader(journalUsage);
+    const dimensionUsage = new JournalBackedAccountingDimensionUsageReader(
+      journalUsage,
+      new SqliteAccountingDimensionUsageReader(database),
+    );
     const context = {
       actor:
         session === null
@@ -99,7 +106,7 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         unitOfWork,
         platform.clock,
         platform.idGenerator,
-        pendingJournalUsageReader,
+        accountUsage,
         authorizer,
         platform.eventBus,
         context,
@@ -108,7 +115,7 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         unitOfWork,
         platform.clock,
         platform.idGenerator,
-        new SqliteAccountingDimensionUsageReader(database),
+        dimensionUsage,
         authorizer,
         platform.eventBus,
         context,
@@ -124,6 +131,13 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         authorizer,
         actorId: session?.user.id ?? "desktop-local-user",
       }),
+      journals: createJournalVoucherServices({
+        database,
+        clock: platform.clock,
+        idGenerator: platform.idGenerator,
+        eventBus: platform.eventBus,
+        authorizer,
+      }),
     };
   }, [
     database,
@@ -137,8 +151,8 @@ export function AccountingProvider({ children }: PropsWithChildren) {
     return (
       <main className="application-bootstrap" dir="rtl">
         <section className="application-bootstrap__card" role="alert">
-          <h1>خطای راه‌اندازی کدینگ حساب‌ها</h1>
-          <p>اتصال رابط کدینگ به پایگاه داده محلی برقرار نشد.</p>
+          <h1>خطای راه‌اندازی حسابداری</h1>
+          <p>اتصال سرویس‌های حسابداری به پایگاه داده محلی برقرار نشد.</p>
           <button type="button" onClick={() => window.location.reload()}>
             تلاش مجدد
           </button>
@@ -152,7 +166,7 @@ export function AccountingProvider({ children }: PropsWithChildren) {
       <main className="application-bootstrap" dir="rtl">
         <section className="application-bootstrap__card">
           <h1>نرم‌افزار حسابداری شرکتی آرگین</h1>
-          <p>در حال آماده‌سازی کدینگ حساب‌ها…</p>
+          <p>در حال آماده‌سازی سرویس‌های حسابداری…</p>
         </section>
       </main>
     );

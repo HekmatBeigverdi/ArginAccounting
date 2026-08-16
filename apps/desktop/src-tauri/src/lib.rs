@@ -84,6 +84,12 @@ fn database_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0012_coding_templates.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 13,
+            description: "journal_vouchers",
+            sql: include_str!("../migrations/0013_journal_vouchers.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

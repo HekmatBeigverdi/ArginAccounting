@@ -59,8 +59,8 @@ function createConnection(options?: {
   };
 }
 
-describe("TauriSqliteExecutor transactions", () => {
-  it("begins and commits all work through the transaction session", async () => {
+describe("TauriSqliteExecutor logical transactions", () => {
+  it("runs all work through the serialized session", async () => {
     const { executor, statements } = createConnection();
 
     const result = await executor.transaction(async (session) => {
@@ -70,16 +70,14 @@ describe("TauriSqliteExecutor transactions", () => {
 
     assert.equal(result, "completed");
     assert.deepEqual(statements, [
-      { sql: "BEGIN IMMEDIATE", parameters: [] },
       {
         sql: "INSERT INTO accounts (active) VALUES (?)",
         parameters: [1]
-      },
-      { sql: "COMMIT", parameters: [] }
+      }
     ]);
   });
 
-  it("rolls back when a statement fails inside the transaction", async () => {
+  it("propagates a statement failure from the session", async () => {
     const { executor, statements } = createConnection({
       failSql: "INSERT BROKEN"
     });
@@ -105,7 +103,7 @@ describe("TauriSqliteExecutor transactions", () => {
 
     assert.deepEqual(
       statements.map(({ sql }) => sql),
-      ["BEGIN IMMEDIATE", "INSERT OK", "INSERT BROKEN", "ROLLBACK"]
+      ["INSERT OK", "INSERT BROKEN"]
     );
   });
 
@@ -145,7 +143,7 @@ describe("TauriSqliteExecutor transactions", () => {
     ]);
     assert.deepEqual(
       statements.map(({ sql }) => sql),
-      ["BEGIN IMMEDIATE", "COMMIT", "BEGIN IMMEDIATE", "COMMIT"]
+      []
     );
   });
 
@@ -162,9 +160,6 @@ describe("TauriSqliteExecutor transactions", () => {
     const result = await executor.transaction(async () => "recovered");
 
     assert.equal(result, "recovered");
-    assert.deepEqual(
-      statements.map(({ sql }) => sql),
-      ["BEGIN IMMEDIATE", "ROLLBACK", "BEGIN IMMEDIATE", "COMMIT"]
-    );
+    assert.deepEqual(statements, []);
   });
 });
