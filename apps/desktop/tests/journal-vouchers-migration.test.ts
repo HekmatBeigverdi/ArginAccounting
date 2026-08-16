@@ -83,14 +83,25 @@ function insertVoucher(
   id = "voucher-1",
   number = "000001",
   requestId: string | null = null,
+  branchId: string | null = "branch-1",
 ): void {
   db.prepare(`INSERT INTO journal_vouchers (
       id, company_id, branch_id, voucher_number, voucher_date,
       fiscal_year_id, fiscal_period_id, status, currency_code, source_type,
       request_id, total_debit, total_credit, created_at, updated_at, version
-    ) VALUES (?, 'company-1', 'branch-1', ?, '2026-04-01',
+    ) VALUES (?, 'company-1', ?, ?, '2026-04-01',
       'fy-1', 'period-1', 'draft', 'IRR', 'manual', ?, 1000, 1000, ?, ?, 1)`
-  ).run(id, number, requestId, now, now);
+  ).run(id, branchId, number, requestId, now, now);
+}
+
+function insertBalancedLines(db: DatabaseSync, voucherId = "voucher-1"): void {
+  db.prepare(`INSERT INTO journal_lines (
+      id, voucher_id, company_id, line_order, account_id,
+      debit_amount, credit_amount, currency_code
+    ) VALUES
+      (?, ?, 'company-1', 1, 'account-1', 1000, 0, 'IRR'),
+      (?, ?, 'company-1', 2, 'account-2', 0, 1000, 'IRR')`
+  ).run(`${voucherId}-line-1`, voucherId, `${voucherId}-line-2`, voucherId);
 }
 
 describe("journal vouchers migration", () => {
@@ -117,18 +128,11 @@ describe("journal vouchers migration", () => {
     const db = database();
     seedBaseline(db);
     insertVoucher(db);
-
-    db.prepare(`INSERT INTO journal_lines (
-      id, voucher_id, company_id, line_order, account_id,
-      debit_amount, credit_amount, currency_code
-    ) VALUES
-      ('line-1', 'voucher-1', 'company-1', 1, 'account-1', 1000, 0, 'IRR'),
-      ('line-2', 'voucher-1', 'company-1', 2, 'account-2', 0, 1000, 'IRR')`
-    ).run();
+    insertBalancedLines(db);
 
     db.prepare(`INSERT INTO journal_line_dimension_assignments (
       voucher_id, line_id, company_id, dimension_type_id, member_id
-    ) VALUES ('voucher-1', 'line-1', 'company-1', 'dim-1', 'member-1')`
+    ) VALUES ('voucher-1', 'voucher-1-line-1', 'company-1', 'dim-1', 'member-1')`
     ).run();
 
     const count = db.prepare("SELECT count(*) AS count FROM journal_lines").get() as { count: number };
@@ -140,6 +144,13 @@ describe("journal vouchers migration", () => {
     seedBaseline(db);
     insertVoucher(db, "voucher-1", "000001");
     assert.throws(() => insertVoucher(db, "voucher-2", "000001"));
+  });
+
+  it("enforces voucher number uniqueness for branchless vouchers despite SQLite NULL semantics", () => {
+    const db = database();
+    seedBaseline(db);
+    insertVoucher(db, "voucher-1", "000001", null, null);
+    assert.throws(() => insertVoucher(db, "voucher-2", "000001", null, null));
   });
 
   it("enforces one committed journal per non-null company request id", () => {
@@ -198,6 +209,28 @@ describe("journal vouchers migration", () => {
         voucher_id, line_id, company_id, dimension_type_id, member_id
       ) VALUES ('voucher-1', 'line-1', 'company-1', 'dim-1', 'missing-member')`
       ).run(),
+    );
+  });
+
+  it("cascades voucher deletion through lines and line dimensions", () => {
+    const db = database();
+    seedBaseline(db);
+    insertVoucher(db);
+    insertBalancedLines(db);
+    db.prepare(`INSERT INTO journal_line_dimension_assignments (
+      voucher_id, line_id, company_id, dimension_type_id, member_id
+    ) VALUES ('voucher-1', 'voucher-1-line-1', 'company-1', 'dim-1', 'member-1')`
+    ).run();
+
+    db.prepare("DELETE FROM journal_vouchers WHERE id = 'voucher-1'").run();
+
+    assert.equal(
+      (db.prepare("SELECT count(*) AS count FROM journal_lines").get() as { count: number }).count,
+      0,
+    );
+    assert.equal(
+      (db.prepare("SELECT count(*) AS count FROM journal_line_dimension_assignments").get() as { count: number }).count,
+      0,
     );
   });
 });
