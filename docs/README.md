@@ -43,11 +43,10 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Stable merged baseline: [Phase 12 — Coding Templates](phases/phase-12-coding-templates.md)
-- Current delivery target: [Phase 13 — Journal Voucher Engine](phases/phase-13-journal-voucher-engine.md), in final documentation/validation/release closure
-- Canonical execution record: [Phase 13 Fixed Implementation Plan](phases/phase-13-journal-voucher-engine-plan.md)
-- Latest released version: `v0.12.0`
-- Next planned milestone: Phase 14 — Journal Lifecycle, only after Phase 13 release
+- Stable merged baseline: [Phase 13 — Journal Voucher Engine](phases/phase-13-journal-voucher-engine.md)
+- Latest released version: `v0.13.0`
+- Canonical Phase 13 execution record: [Phase 13 Fixed Implementation Plan](phases/phase-13-journal-voucher-engine-plan.md)
+- Current delivery target: Phase 14 — Journal Lifecycle
 
 ## Source-of-Truth Policy
 
