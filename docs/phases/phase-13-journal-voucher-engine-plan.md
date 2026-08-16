@@ -395,7 +395,7 @@ Exit criteria:
 - Documentation matches implementation.
 - Full validation passes and evidence is recorded.
 
-Status: In progress
+Status: Completed
 
 Evidence:
 
@@ -404,7 +404,9 @@ Evidence:
 - Corrected root/documentation roadmap state so Phase 13 is the current closure target and Phase 14 remains planned until explicit release approval.
 - Updated `CHANGELOG.md`, repository/documentation hubs, phase index, generated docs index, ADR index/registry, database dictionary, security model, domain glossary, and accounting-engine documentation.
 - Internal links for the new Phase 13 implementation record and ADR references were checked against repository paths during the documentation update.
-- Full root-level frozen install/lint/typecheck/test/build/docs-index/diff validation remains required on the documentation HEAD before this step can be marked Completed.
+- Repository owner executed `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` on the Step 17 documentation HEAD and confirmed all commands passing.
+- `node scripts/generate-doc-index.mjs` generated 73 entries and `git diff --exit-code -- docs/index.md` confirmed the generated index was current.
+- `git diff --check` passed and `git status --short` was empty after restoring the incidental local Corepack `packageManager` version change, confirming a clean validated working tree.
 
 ### Step 18 — Final Review, Merge, and Release
 
@@ -440,7 +442,7 @@ Status: Not started
 | 14 | Desktop Composition and Persian RTL UI | Completed |
 | 15 | Domain and Application Test Completion | Completed |
 | 16 | Persistence, Migration, Desktop, and Regression Tests | Completed |
-| 17 | Documentation and Monorepo Validation | In progress |
+| 17 | Documentation and Monorepo Validation | Completed |
 | 18 | Final Review, Merge, and Release | Not started |
 
 ## Change Requests
