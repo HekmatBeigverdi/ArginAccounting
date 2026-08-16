@@ -212,7 +212,7 @@ export function createJournalVoucherServices(
       }>(
         `SELECT id, code, name
          FROM branches
-         WHERE company_id = ? AND is_active = 1
+         WHERE company_id = ? AND status = 'active'
          ORDER BY code, id`,
         [companyId],
       );
