@@ -45,8 +45,9 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 - Stable merged baseline: [Phase 13 — Journal Voucher Engine](phases/phase-13-journal-voucher-engine.md)
 - Latest released version: `v0.13.0`
-- Canonical Phase 13 execution record: [Phase 13 Fixed Implementation Plan](phases/phase-13-journal-voucher-engine-plan.md)
-- Current delivery target: Phase 14 — Journal Lifecycle
+- Current delivery target: [Phase 14 — UI Foundation Consolidation](phases/phase-14-ui-foundation-consolidation.md)
+- Canonical Phase 14 execution record: [Phase 14 Fixed Implementation Plan](phases/phase-14-ui-foundation-consolidation-plan.md)
+- Journal Lifecycle is now Phase 15 and begins only after Phase 14 closure.
 
 ## Source-of-Truth Policy
 
