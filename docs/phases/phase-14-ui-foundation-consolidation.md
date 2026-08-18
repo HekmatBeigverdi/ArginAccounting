@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress.
+In progress. Steps 1–2 completed.
 
 ## Objective
 
@@ -45,6 +45,19 @@ See [Phase 14 — UI Foundation Consolidation — Fixed Implementation Plan](pha
 
 The insertion of UI Foundation Consolidation as Phase 14 shifts every previously planned phase after Phase 13 by one. Journal Lifecycle therefore becomes Phase 15 and Deployment and Production Hardening becomes Phase 47. `ROADMAP.md` remains the canonical numbering source.
 
+## Step 2 — UI Architecture Baseline
+
+Step 2 established the presentation architecture contract before implementation begins:
+
+- recorded the UI architecture audit in [`../ui/phase-14-ui-architecture-audit.md`](../ui/phase-14-ui-architecture-audit.md);
+- replaced the old future-UI placeholder wording in [`../ui/UI_ARCHITECTURE.md`](../ui/UI_ARCHITECTURE.md) with the canonical Phase 14 layering and dependency contract;
+- classified Foundation-era `temporary-*` shell/page/dashboard presentation as migration targets while preserving route and feature boundaries;
+- classified Accounting Core workspaces as reusable interaction patterns that must converge on shared primitives without moving feature semantics into the design system;
+- defined token, primitive, composite/layout, feature-UI, and route-page ownership;
+- prohibited shared UI dependencies on Tauri/SQLite persistence implementations and repository implementations;
+- preserved Phase 13 Journal Voucher as the interaction-quality reference for dense accounting workflows;
+- confirmed Step 2 is documentation/architecture-only and introduces no production UI implementation or Phase 15 Journal Lifecycle behavior.
+
 ## Validation Evidence
 
-Validation evidence will be recorded step-by-step in the fixed plan and summarized here before release.
+Step-by-step evidence is maintained in the fixed plan. Step 2 changed documentation and architecture contracts only; production source, persistence, domain, and Application behavior were not modified. Full monorepo validation remains required at Step 13 after the implementation steps are complete.
