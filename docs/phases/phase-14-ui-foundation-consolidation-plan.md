@@ -39,7 +39,7 @@ Out of scope:
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
-| 2 | UI Architecture Audit and Design-System Contract | Not started |
+| 2 | UI Architecture Audit and Design-System Contract | Completed |
 | 3 | Design Tokens and Shared UI Primitives | Not started |
 | 4 | Final App Shell, Navigation, and Active Context | Not started |
 | 5 | Dashboard Modernization | Not started |
@@ -91,7 +91,18 @@ Exit criteria:
 - Design-system ownership and dependency boundaries are explicit.
 - Phase 13 reference patterns and legacy `temporary-*` migration targets are identified.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `docs/ui/phase-14-ui-architecture-audit.md` with an inventory of Foundation and Accounting presentation generations across Phases 05–13.
+- Classified current patterns as reusable, replaceable, reusable-with-harmonization, or feature-specific and recorded explicit migration targets for `TemporaryAppShell`, `temporary-*` page/shell/dashboard classes, stale development copy, starter Vite/Tauri visual rules, and duplicated feature control/status styling.
+- Updated `docs/ui/UI_ARCHITECTURE.md` from a future-phase placeholder into the canonical Phase 14 desktop presentation contract.
+- Defined five presentation layers: design tokens, shared primitives, shared composites/workspace layouts, feature UI, and route pages, with dependencies pointing downward only.
+- Explicitly prohibited shared presentation dependencies on `*-tauri`, SQLite, repository implementations, and feature business types used only for generic rendering.
+- Designated Phase 13 Journal Voucher as the interaction-quality reference for dense accounting workflows while keeping Journal-specific semantics feature-owned.
+- Confirmed Company/Fiscal/Security route pages already keep feature behavior outside the temporary shell, allowing Phase 14 presentation replacement without moving Domain/Application rules into React.
+- No production UI implementation, design tokens, primitives, Journal Lifecycle behavior, persistence changes, or domain-rule changes were introduced in Step 2.
 
 ### Step 3 — Design Tokens and Shared UI Primitives
 
