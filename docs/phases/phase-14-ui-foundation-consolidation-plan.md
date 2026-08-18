@@ -38,7 +38,7 @@ Out of scope:
 
 | Step | Title | Status |
 | --- | --- | --- |
-| 1 | Baseline, Branch, and Plan Freeze | In progress |
+| 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | UI Architecture Audit and Design-System Contract | Not started |
 | 3 | Design Tokens and Shared UI Primitives | Not started |
 | 4 | Final App Shell, Navigation, and Active Context | Not started |
@@ -68,7 +68,15 @@ Exit criteria:
 - Canonical roadmap identifies Phase 14 as the current target.
 - Fixed plan is committed and remotely verifiable.
 
-Status: In progress
+Status: Completed
+
+Evidence:
+
+- Created remote branch `phase/14-ui-foundation-consolidation` from synchronized `develop` baseline `03f6053bf177538a4974ebec1f19c47770795b8c`.
+- Registered Phase 14 — UI Foundation Consolidation as the current target and shifted all previously planned phases after Phase 13 by one; Journal Lifecycle is now Phase 15 and Deployment and Production Hardening is Phase 47.
+- Created the fixed implementation plan and Phase 14 implementation record with explicit UI-only scope boundaries and Phase 15 Journal Lifecycle exclusions.
+- Reconciled root README, documentation hub, phase index, roadmap reference, and Phase 13 forward references to the new Phase 14/15 numbering.
+- Confirmed Phase 13 remains completed and released as `v0.13.0` and no Journal Lifecycle behavior was introduced during Step 1.
 
 ### Step 2 — UI Architecture Audit and Design-System Contract
 
