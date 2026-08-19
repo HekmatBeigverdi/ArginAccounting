@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–4 completed.
+In progress. Steps 1–5 completed.
 
 ## Objective
 
@@ -83,6 +83,18 @@ Step 4 replaced the global temporary shell and connected the desktop workspace t
 - retained only page/dashboard-era `temporary-*` presentation as transitional debt explicitly owned by subsequent Phase 14 steps;
 - added focused shell regression-contract coverage for final routing, navigation behavior, persisted context sources, placeholder removal, responsive containment, and focus states.
 
+## Step 5 — Dashboard Modernization
+
+Step 5 replaced the prototype dashboard with a context-aware home workspace built only on already-delivered application contracts:
+
+- removed the temporary dashboard classes, stale phase-development wording, and prototype status copy from the Dashboard page;
+- adopted the Phase 14 shared `Page`, `Panel`, `Card`, `Badge`, and `Feedback` primitives plus a dedicated token-based responsive dashboard stylesheet;
+- added real active Company, Branch, and Fiscal Year summary cards driven by `ActiveContextProvider`, including persisted status and Solar Hijri fiscal-date presentation;
+- added coherent no-company, no-fiscal-year, no-journal, loading, and read-error states with links to the already implemented management surfaces;
+- added shortcuts only to implemented modules such as Journal Vouchers, Chart of Accounts, Company setup, Fiscal Years, Accounting Dimensions, and System Diagnostics;
+- used the existing permission-aware Journal read service to show up to five recent Draft vouchers for the active company/fiscal year/branch without adding reporting, posting, approval, finalization, reversal, or other Phase 15 behavior;
+- added `apps/desktop/tests/dashboard-ui-contract.test.ts` to lock removal of temporary/stale dashboard content, active-context usage, existing Journal read-contract usage, empty states, implemented-module shortcuts, and responsive token-based styling.
+
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Steps 3–4 add focused desktop source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
+Step-by-step evidence is maintained in the fixed plan. Steps 3–5 add focused desktop source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
