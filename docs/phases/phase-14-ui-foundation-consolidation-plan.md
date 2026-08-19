@@ -41,7 +41,7 @@ Out of scope:
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | UI Architecture Audit and Design-System Contract | Completed |
 | 3 | Design Tokens and Shared UI Primitives | Completed |
-| 4 | Final App Shell, Navigation, and Active Context | Not started |
+| 4 | Final App Shell, Navigation, and Active Context | Completed |
 | 5 | Dashboard Modernization | Not started |
 | 6 | Company and Branch Workspace Consolidation | Not started |
 | 7 | Fiscal Workspace Consolidation | Not started |
@@ -144,7 +144,18 @@ Exit criteria:
 - Legacy temporary shell classes are removed or isolated to approved transitional cases.
 - Active context presentation is no longer hard-coded placeholder text.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `ActiveContextProvider` to load companies, company branches, and fiscal years from the existing SQLite repository adapters and to select the persisted current fiscal year when available, otherwise falling back deterministically to an open/first year.
+- Added the final `AppShell` with Persian RTL brand area, grouped/collapsible navigation, authenticated user surface, breadcrumb/page-title surface, active Company/Branch/Fiscal Year selectors, contained workspace, and offline/SQLite status bar.
+- Added navigation permission metadata and filtering for Accounting routes where existing permission contracts are explicit, while preserving application-boundary authorization as the security source of truth.
+- Routed all primary authenticated pages through `AppShell` and removed `TemporaryAppShell` from the router and source tree.
+- Removed hard-coded shell context values such as `انتخاب نشده` and the fixed `مرکزی` branch; context options now come from persisted Company/Fiscal repositories.
+- Kept remaining `temporary-page` and temporary dashboard presentation as explicitly transitional debt owned by Steps 5–9; those classes are no longer part of the global shell implementation.
+- Added `apps/desktop/tests/app-shell-ui-contract.test.ts` to lock final-shell routing, grouped/collapsible permission-aware navigation, persisted context loading, removal of former hard-coded context placeholders, responsive containment, and token-based focus states.
+- No Journal Lifecycle, accounting-domain, fiscal-domain, company-domain, migration, or persistence-semantic changes were introduced.
 
 ### Step 5 — Dashboard Modernization
 
