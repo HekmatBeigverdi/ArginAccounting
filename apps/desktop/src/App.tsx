@@ -1,4 +1,8 @@
 import {
+  ActiveContextProvider
+} from "./app/providers/active-context-provider";
+
+import {
   AuthSessionProvider
 } from "./app/providers/auth-session-provider";
 
@@ -33,7 +37,9 @@ function App() {
         <AuthSessionProvider>
           <AuditProvider>
             <AccountingProvider>
-              <AppRouter />
+              <ActiveContextProvider>
+                <AppRouter />
+              </ActiveContextProvider>
             </AccountingProvider>
           </AuditProvider>
         </AuthSessionProvider>
