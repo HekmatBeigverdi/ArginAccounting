@@ -44,7 +44,7 @@ Out of scope:
 | 4 | Final App Shell, Navigation, and Active Context | Completed |
 | 5 | Dashboard Modernization | Completed |
 | 6 | Company and Branch Workspace Consolidation | Completed |
-| 7 | Fiscal Workspace Consolidation | Not started |
+| 7 | Fiscal Workspace Consolidation | Completed |
 | 8 | Security Workspace Consolidation | Not started |
 | 9 | Audit and Approval Workspace Harmonization | Not started |
 | 10 | Accounting Workspace Harmonization | Not started |
@@ -200,13 +200,14 @@ Status: Completed
 
 Evidence:
 
-- Replaced the create-only `CompanySetupPage` temporary presentation with a unified Company/Branch management workspace that lists persisted companies, changes the shared active Company selection, presents Company identity/status summaries, and shows the persisted branches for the selected company.
-- Preserved company creation through the existing transactional `setupCompany` Application use case and added an `onCreated` result callback so a newly created company refreshes `ActiveContextProvider`, becomes the active company, and immediately participates in the final shell/dashboard context.
-- Limited Company editing to the already-delivered `updateCompanyActivityType` Application use case, including its existing `company.profile.update-activity-type` authorization contract and coding-template recommendation semantics; unsupported generic profile/branch editing behavior was not invented.
-- Migrated the Company setup form to shared `Field`, `Input`, `Select`, `Textarea`, `Button`, and `Feedback` primitives while retaining the existing legal, head-office, optional address, tax-profile, and Company validation behavior.
-- Added token-based `company-workspace.css` for list/detail, summary, branch, activity-update, creation, responsive, and focus-visible presentation; the Company route no longer uses `temporary-page` classes.
-- Renamed the existing navigation label from `تعریف شرکت` to `شرکت‌ها و شعب` while retaining the established `/company/setup` route to avoid unnecessary routing churn.
-- Removed development-only `console.log`/`console.error` tracing from the normal Desktop Company form flow and from the `setupCompany` Application transaction without changing transaction or validation semantics.
+- Replaced the create-only `CompanySetupPage` presentation with a persisted Company/Branch management workspace backed by the shared `ActiveContextProvider`.
+- Added Company list/selection, active Company identity/status summary, and branch-oriented presentation using existing persisted Company and Branch repository data without introducing new mutation contracts.
+- Preserved company creation through the existing transactional `setupCompany` Application use case and added an `onCreated` callback so the shared context refreshes and selects the newly created Company after success.
+- Exposed the already-supported `updateCompanyActivityType` Application use case as the only Company edit operation in this step, preserving its existing permission contract and coding-template recommendation/preview semantics.
+- Migrated the Company setup form to shared `Field`, `Input`, `Select`, `Textarea`, `Button`, and `Feedback` primitives while retaining existing validation, tax-profile, address, and head-office inputs.
+- Added `company-workspace.css` with token-based RTL layout, selected-row/focus states, branch cards, responsive two-column workspace behavior, and contained creation form presentation.
+- Renamed the navigation label from create-only `تعریف شرکت` to `شرکت‌ها و شعب` while preserving the stable `/company/setup` route.
+- Removed development-only `console.log`/`console.error` output from the normal Company form flow and from the `setupCompany` transaction without changing transaction or validation behavior.
 - Added `apps/desktop/tests/company-workspace-ui-contract.test.ts` to lock the management workspace, persisted Company/Branch context, supported activity-type edit use case, shared primitives, absence of development console output, responsive styling, and removal of temporary Company page presentation.
 - No new Company/Branch domain capability, migration, persistence semantic, Journal Lifecycle behavior, or future ERP functionality was introduced.
 
@@ -223,7 +224,19 @@ Exit criteria:
 - Supported fiscal state is visible and usable through a coherent workspace.
 - Existing fiscal behavior remains regression-safe.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Replaced the `FiscalYearsPage` alias to `NewFiscalYearPage` with a persisted management workspace driven by the shared active Company/Fiscal context.
+- Added Fiscal Year list/selection, current/status badges, Solar Hijri start/end presentation, and selected-year summary without changing durable Gregorian ISO date storage.
+- Added persisted Fiscal Period presentation through the existing `SqliteFiscalPeriodRepository.findByFiscalYearId` read contract, including open/locked/closed state and Solar Hijri date ranges.
+- Preserved fiscal-year creation through the existing transactional `createFiscalYear` Application use case and existing single-period behavior; successful creation refreshes and selects the new Fiscal Year in shared context.
+- Migrated `FiscalYearForm` to shared `Field`, `Input`, `Select`, `Button`, and `Feedback` primitives and removed development-only console output from the user flow.
+- Replaced temporary presentation on the standalone `/fiscal/years/new` route with the shared Phase 14 Page/Panel workspace language while retaining route compatibility.
+- Added `fiscal-workspace.css` with token-based RTL, selected-year focus states, responsive year/detail layout, period rows, and responsive form grids.
+- Added `apps/desktop/tests/fiscal-workspace-ui-contract.test.ts` to lock management-workspace behavior, existing fiscal creation/read contracts, year/period states, Solar Hijri presentation, shared primitives, responsive/focus styling, and absence of future fiscal/Journal Lifecycle actions.
+- No fiscal closing/reopening lifecycle, Journal Lifecycle behavior, domain rule, migration, or persistence semantic was added.
 
 ### Step 8 — Security Workspace Consolidation
 
