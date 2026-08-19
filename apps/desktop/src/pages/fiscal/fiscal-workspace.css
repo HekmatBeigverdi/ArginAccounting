@@ -1,0 +1,225 @@
+.fiscal-workspace {
+  display: grid;
+  gap: var(--ui-space-5);
+}
+
+.fiscal-workspace__header,
+.fiscal-workspace__summary-title,
+.fiscal-workspace__section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-4);
+}
+
+.fiscal-workspace__header h2,
+.fiscal-workspace__summary-title h3,
+.fiscal-workspace__section-heading h3 {
+  margin: 0;
+}
+
+.fiscal-workspace__header p,
+.fiscal-workspace__summary-title p,
+.fiscal-workspace__section-heading p,
+.fiscal-workspace__empty p,
+.fiscal-form__header p,
+.fiscal-workspace__muted {
+  margin: var(--ui-space-1) 0 0;
+  color: var(--ui-text-muted);
+  line-height: 1.8;
+}
+
+.fiscal-workspace__eyebrow {
+  color: var(--ui-primary) !important;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.fiscal-workspace__layout {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.75fr) minmax(0, 1.6fr);
+  gap: var(--ui-space-4);
+  align-items: start;
+}
+
+.fiscal-workspace__years,
+.fiscal-workspace__details,
+.fiscal-workspace__periods,
+.fiscal-form {
+  display: grid;
+  gap: var(--ui-space-3);
+}
+
+.fiscal-workspace__year-list {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+
+.fiscal-workspace__year {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  width: 100%;
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+
+.fiscal-workspace__year:hover,
+.fiscal-workspace__year--active {
+  border-color: var(--ui-focus);
+  background: var(--ui-primary-soft);
+}
+
+.fiscal-workspace__year:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.fiscal-workspace__year > span:first-child {
+  display: grid;
+  gap: var(--ui-space-1);
+}
+
+.fiscal-workspace__year small {
+  color: var(--ui-text-muted);
+}
+
+.fiscal-workspace__year-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-1);
+}
+
+.fiscal-workspace__summary .ui-card__body {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+.fiscal-workspace__facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+  margin: 0;
+}
+
+.fiscal-workspace__facts div {
+  display: grid;
+  gap: var(--ui-space-1);
+  padding: var(--ui-space-3);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-muted);
+}
+
+.fiscal-workspace__facts dt {
+  color: var(--ui-text-muted);
+  font-size: 0.78rem;
+}
+
+.fiscal-workspace__facts dd {
+  margin: 0;
+  font-weight: 750;
+}
+
+.fiscal-workspace__period-list {
+  display: grid;
+}
+
+.fiscal-workspace__period {
+  display: grid;
+  grid-template-columns: minmax(9rem, 1fr) minmax(13rem, 1.3fr) auto;
+  gap: var(--ui-space-3);
+  align-items: center;
+  padding: var(--ui-space-3) 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.fiscal-workspace__period:last-child {
+  border-bottom: 0;
+}
+
+.fiscal-workspace__period > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-2);
+}
+
+.fiscal-workspace__period > div:first-child span,
+.fiscal-workspace__period-range {
+  color: var(--ui-text-muted);
+  font-size: 0.84rem;
+}
+
+.fiscal-workspace__empty {
+  display: grid;
+  gap: var(--ui-space-2);
+  justify-items: start;
+}
+
+.fiscal-workspace__create-panel {
+  max-width: 62rem;
+}
+
+.fiscal-form__header h2 {
+  margin: 0;
+}
+
+.fiscal-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+
+.fiscal-form__check {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  font-weight: 650;
+}
+
+.fiscal-form__check .ui-input {
+  width: auto;
+  min-height: auto;
+}
+
+.fiscal-form__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+@media (max-width: 980px) {
+  .fiscal-workspace__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fiscal-workspace__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .fiscal-workspace__header,
+  .fiscal-workspace__summary-title,
+  .fiscal-workspace__section-heading {
+    flex-direction: column;
+  }
+
+  .fiscal-form__grid,
+  .fiscal-workspace__facts {
+    grid-template-columns: 1fr;
+  }
+
+  .fiscal-workspace__period {
+    grid-template-columns: 1fr auto;
+  }
+
+  .fiscal-workspace__period-range {
+    grid-column: 1 / -1;
+  }
+}
