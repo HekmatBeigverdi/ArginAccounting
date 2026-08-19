@@ -22,6 +22,8 @@ import {
   PlatformProvider
 } from "./platform";
 
+import "./styles/design-tokens.css";
+import "./components/ui.css";
 import "./App.css";
 
 function App() {
