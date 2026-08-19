@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–6 completed.
+In progress. Steps 1–7 completed.
 
 ## Objective
 
@@ -108,6 +108,19 @@ Step 6 converted the Foundation-era create-only Company screen into a management
 - renamed the navigation surface to `شرکت‌ها و شعب` without changing the stable `/company/setup` route;
 - added `apps/desktop/tests/company-workspace-ui-contract.test.ts` to lock management-workspace behavior, shared primitives, supported editing, persisted branch presentation, responsive/focus styling, and removal of temporary Company presentation.
 
+## Step 7 — Fiscal Workspace
+
+Step 7 converted the Fiscal surface from a create-only alias into a coherent management workspace while preserving existing Fiscal application semantics:
+
+- added persisted Fiscal Year list/selection for the active Company, including current/status badges and selected-year summary;
+- added Fiscal Period read presentation using the existing repository contract, including open/locked/closed states;
+- standardized Fiscal Year and Period start/end presentation through the existing Solar Hijri formatter while durable values remain Gregorian ISO dates;
+- retained creation through `createFiscalYear` and its existing single-period command behavior, then refreshes/selects the newly created year in the shared active context;
+- migrated the fiscal creation form to Phase 14 shared form and feedback primitives and removed development-only console output;
+- migrated the standalone New Fiscal Year route away from `temporary-page` while keeping the route available;
+- added token-based responsive workspace styling and focused fiscal UI contract tests;
+- introduced no fiscal close/reopen workflow and no Phase 15 Journal Lifecycle behavior.
+
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Steps 3–6 add focused desktop source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
+Step-by-step evidence is maintained in the fixed plan. Steps 3–7 add focused desktop source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
