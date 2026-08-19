@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–5 completed.
+In progress. Steps 1–6 completed.
 
 ## Objective
 
@@ -95,6 +95,19 @@ Step 5 replaced the prototype dashboard with a context-aware home workspace buil
 - used the existing permission-aware Journal read service to show up to five recent Draft vouchers for the active company/fiscal year/branch without adding reporting, posting, approval, finalization, reversal, or other Phase 15 behavior;
 - added `apps/desktop/tests/dashboard-ui-contract.test.ts` to lock removal of temporary/stale dashboard content, active-context usage, existing Journal read-contract usage, empty states, implemented-module shortcuts, and responsive token-based styling.
 
+## Step 6 — Company and Branch Workspace
+
+Step 6 converted the Foundation-era create-only Company screen into a management workspace while keeping business behavior within already-delivered Company contracts:
+
+- added persisted Company list/selection backed by `ActiveContextProvider`; selecting a Company now also selects the shared application context used by the Shell and Dashboard;
+- added Company identity/status summaries and a branch-oriented view using the existing persisted Branch collection for the active Company;
+- retained creation through `setupCompany` and wired its existing `CompanySetupResult` into context refresh/selection after successful creation;
+- exposed only the supported Company edit operation, `updateCompanyActivityType`, with its existing permission contract and coding-template recommendation semantics rather than inventing unsupported profile/branch mutation behavior;
+- migrated the full Company setup form to shared Phase 14 form/feedback primitives and dedicated responsive workspace styling;
+- removed development-only console logging from the normal Company form and `setupCompany` Application transaction;
+- renamed the navigation surface to `شرکت‌ها و شعب` without changing the stable `/company/setup` route;
+- added `apps/desktop/tests/company-workspace-ui-contract.test.ts` to lock management-workspace behavior, shared primitives, supported editing, persisted branch presentation, responsive/focus styling, and removal of temporary Company presentation.
+
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Steps 3–5 add focused desktop source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
+Step-by-step evidence is maintained in the fixed plan. Steps 3–6 add focused desktop source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
