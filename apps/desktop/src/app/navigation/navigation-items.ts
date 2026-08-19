@@ -22,7 +22,7 @@ export const navigationItems: NavigationItem[] = [
     group: "اصلی",
   },
   {
-    label: "تعریف شرکت",
+    label: "شرکت‌ها و شعب",
     path: "/company/setup",
     group: "اطلاعات پایه",
   },
