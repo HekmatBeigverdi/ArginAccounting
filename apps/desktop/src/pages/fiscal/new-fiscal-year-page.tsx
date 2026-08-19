@@ -1,26 +1,24 @@
-import {
-  FiscalYearForm
-} from "../../features/fiscal/fiscal-year-form";
+import { Link } from "react-router";
+
+import { Page, Panel } from "../../components/layout";
+import { FiscalYearForm } from "../../features/fiscal/fiscal-year-form";
+
+import "./fiscal-workspace.css";
 
 export function NewFiscalYearPage() {
   return (
-    <section className="temporary-page">
-      <header className="temporary-page__header">
+    <Page className="fiscal-workspace">
+      <header className="fiscal-workspace__header">
         <div>
-          <p className="temporary-page__eyebrow">
-            مدیریت مالی
-          </p>
-
-          <h1>ایجاد سال مالی</h1>
-
-          <p>
-            بازه سال مالی و دوره‌های عملیاتی شرکت را
-            تعریف کنید.
-          </p>
+          <p className="fiscal-workspace__eyebrow">مدیریت مالی</p>
+          <h2>ایجاد سال مالی</h2>
+          <p>سال مالی و دوره اصلی آن را برای یکی از شرکت‌های ثبت‌شده تعریف کنید.</p>
         </div>
+        <Link to="/fiscal/years">بازگشت به سال‌های مالی</Link>
       </header>
-
-      <FiscalYearForm />
-    </section>
+      <Panel className="fiscal-workspace__create-panel">
+        <FiscalYearForm />
+      </Panel>
+    </Page>
   );
 }
