@@ -1,0 +1,203 @@
+.company-workspace {
+  display: grid;
+  gap: var(--ui-space-5);
+}
+
+.company-workspace__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-4);
+}
+
+.company-workspace__header h2,
+.company-workspace__panel-title h3,
+.company-workspace__details h3 {
+  margin: 0;
+}
+
+.company-workspace__header p,
+.company-workspace__panel-title p,
+.company-workspace__details p,
+.company-setup-form__note {
+  margin: var(--ui-space-1) 0 0;
+  color: var(--ui-text-muted);
+  line-height: 1.8;
+}
+
+.company-workspace__grid {
+  display: grid;
+  grid-template-columns: minmax(17rem, 0.8fr) minmax(0, 1.7fr);
+  gap: var(--ui-space-4);
+  align-items: start;
+}
+
+.company-workspace__list {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+
+.company-workspace__company-button {
+  display: grid;
+  gap: var(--ui-space-1);
+  width: 100%;
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  text-align: right;
+  cursor: pointer;
+}
+
+.company-workspace__company-button:hover {
+  border-color: var(--ui-focus);
+}
+
+.company-workspace__company-button:focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+.company-workspace__company-button--active {
+  border-color: var(--ui-primary);
+  background: var(--ui-primary-soft);
+}
+
+.company-workspace__company-button strong {
+  font-size: 0.92rem;
+}
+
+.company-workspace__company-button span {
+  color: var(--ui-text-muted);
+  font-size: 0.78rem;
+}
+
+.company-workspace__details {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+.company-workspace__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+
+.company-workspace__summary-item {
+  display: grid;
+  gap: var(--ui-space-1);
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-subtle);
+}
+
+.company-workspace__summary-item span {
+  color: var(--ui-text-muted);
+  font-size: 0.75rem;
+}
+
+.company-workspace__summary-item strong {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.company-workspace__branches {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+
+.company-workspace__branch-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3) 0;
+  border-bottom: 1px solid var(--ui-border);
+}
+
+.company-workspace__branch-row:last-child {
+  border-bottom: 0;
+}
+
+.company-workspace__branch-name {
+  display: grid;
+  gap: var(--ui-space-1);
+}
+
+.company-workspace__branch-name small {
+  color: var(--ui-text-muted);
+}
+
+.company-workspace__activity-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ui-space-3);
+  align-items: end;
+}
+
+.company-workspace__create-panel {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+.company-setup-form {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+.company-setup-form__section {
+  min-width: 0;
+  margin: 0;
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+}
+
+.company-setup-form__section legend {
+  padding: 0 var(--ui-space-2);
+  font-weight: 800;
+}
+
+.company-setup-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+
+.company-setup-form__wide {
+  grid-column: 1 / -1;
+}
+
+.company-setup-form__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+@media (max-width: 1050px) {
+  .company-workspace__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .company-workspace__header,
+  .company-workspace__activity-form {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .company-workspace__summary-grid,
+  .company-setup-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .company-setup-form__wide {
+    grid-column: auto;
+  }
+
+  .company-workspace__branch-row {
+    grid-template-columns: 1fr auto;
+  }
+}
