@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–2 completed.
+In progress. Steps 1–3 completed.
 
 ## Objective
 
@@ -58,6 +58,19 @@ Step 2 established the presentation architecture contract before implementation 
 - preserved Phase 13 Journal Voucher as the interaction-quality reference for dense accounting workflows;
 - confirmed Step 2 is documentation/architecture-only and introduces no production UI implementation or Phase 15 Journal Lifecycle behavior.
 
+## Step 3 — Shared Design Foundation
+
+Step 3 introduced the first production design-system layer without migrating feature pages yet:
+
+- added Persian-first design tokens for typography, spacing, shape, elevation, borders, semantic states, focus, density, control sizing, page width, and accounting-table density;
+- added reusable native-element form primitives: `Button`, `Input`, `Select`, `Textarea`, and `Field`;
+- added shared `Page`, `Stack`, `Panel`, `Card`, and `Toolbar` layout primitives;
+- added `Badge` and horizontally contained `DataTable` primitives;
+- added semantic `Feedback` and an accessible base `Dialog` contract;
+- standardized focus-visible, disabled, invalid, destructive, and read-only visual states in the shared layer;
+- loaded the new token and primitive CSS before legacy `App.css`, allowing controlled migration in Steps 4–10 without changing existing feature behavior in Step 3;
+- added focused source-contract tests that also guard against generic UI dependencies on Argin business packages, SQLite, or Tauri persistence.
+
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Step 2 changed documentation and architecture contracts only; production source, persistence, domain, and Application behavior were not modified. Full monorepo validation remains required at Step 13 after the implementation steps are complete.
+Step-by-step evidence is maintained in the fixed plan. Step 3 adds focused desktop regression-contract coverage; full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
