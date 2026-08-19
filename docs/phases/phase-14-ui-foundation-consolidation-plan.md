@@ -42,7 +42,7 @@ Out of scope:
 | 2 | UI Architecture Audit and Design-System Contract | Completed |
 | 3 | Design Tokens and Shared UI Primitives | Completed |
 | 4 | Final App Shell, Navigation, and Active Context | Completed |
-| 5 | Dashboard Modernization | Not started |
+| 5 | Dashboard Modernization | Completed |
 | 6 | Company and Branch Workspace Consolidation | Not started |
 | 7 | Fiscal Workspace Consolidation | Not started |
 | 8 | Security Workspace Consolidation | Not started |
@@ -170,7 +170,18 @@ Exit criteria:
 - No stale phase-status text remains in the user-facing dashboard.
 - Dashboard follows the shared shell and design system.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Replaced the prototype Dashboard markup and `temporary-*` dashboard classes with the shared Phase 14 `Page`, `Panel`, `Card`, `Badge`, and `Feedback` primitives plus dedicated token-based responsive styling.
+- Removed stale user-facing development copy, including the temporary-dashboard message, old phase-number references, and "in development" Security wording.
+- Added real active Company, Branch, and Fiscal Year summaries sourced from `ActiveContextProvider`; fiscal dates use the existing Solar Hijri presentation formatter.
+- Added coherent states for missing Company, missing Fiscal Year, empty Journal results, active-context loading, and Journal read failure, with navigation to already implemented setup/workspace routes.
+- Added shortcuts only to already implemented Desktop routes and capabilities; no future reporting or ERP module behavior was invented.
+- Reused the existing permission-aware `journals.list` application read contract to display up to five recent Draft vouchers scoped to the active company, fiscal year, and branch.
+- Added `apps/desktop/tests/dashboard-ui-contract.test.ts` to lock design-system adoption, stale-copy removal, persisted active-context presentation, existing Journal read-contract usage, empty states, implemented-module shortcuts, responsive layout, and the absence of Phase 15 Journal Lifecycle behavior.
+- No accounting-domain, Journal Lifecycle, migration, repository, or persistence-semantic changes were introduced.
 
 ### Step 6 — Company and Branch Workspace Consolidation
 
