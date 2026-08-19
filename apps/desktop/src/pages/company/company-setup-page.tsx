@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   companyActivityTypeLabels,
@@ -40,6 +40,14 @@ export function CompanySetupPage() {
     hasFullAccess || permissions.has(companyProfilePermissions.updateActivityType);
 
   const activeCompany = context.activeCompany;
+
+  useEffect(() => {
+    if (activeCompany) setActivityType(activeCompany.activityType);
+  }, [activeCompany]);
+
+  useEffect(() => {
+    if (context.companies.length === 0) setShowCreate(true);
+  }, [context.companies.length]);
 
   function selectCompany(companyId: string, nextActivityType: CompanyActivityType): void {
     setMessage("");
