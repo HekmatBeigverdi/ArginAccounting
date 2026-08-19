@@ -43,7 +43,7 @@ Out of scope:
 | 3 | Design Tokens and Shared UI Primitives | Completed |
 | 4 | Final App Shell, Navigation, and Active Context | Completed |
 | 5 | Dashboard Modernization | Completed |
-| 6 | Company and Branch Workspace Consolidation | Not started |
+| 6 | Company and Branch Workspace Consolidation | Completed |
 | 7 | Fiscal Workspace Consolidation | Not started |
 | 8 | Security Workspace Consolidation | Not started |
 | 9 | Audit and Approval Workspace Harmonization | Not started |
@@ -196,7 +196,19 @@ Exit criteria:
 - Existing company creation behavior remains regression-safe.
 - Persian RTL validation and feedback are consistent with the shared design system.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Replaced the create-only `CompanySetupPage` temporary presentation with a unified Company/Branch management workspace that lists persisted companies, changes the shared active Company selection, presents Company identity/status summaries, and shows the persisted branches for the selected company.
+- Preserved company creation through the existing transactional `setupCompany` Application use case and added an `onCreated` result callback so a newly created company refreshes `ActiveContextProvider`, becomes the active company, and immediately participates in the final shell/dashboard context.
+- Limited Company editing to the already-delivered `updateCompanyActivityType` Application use case, including its existing `company.profile.update-activity-type` authorization contract and coding-template recommendation semantics; unsupported generic profile/branch editing behavior was not invented.
+- Migrated the Company setup form to shared `Field`, `Input`, `Select`, `Textarea`, `Button`, and `Feedback` primitives while retaining the existing legal, head-office, optional address, tax-profile, and Company validation behavior.
+- Added token-based `company-workspace.css` for list/detail, summary, branch, activity-update, creation, responsive, and focus-visible presentation; the Company route no longer uses `temporary-page` classes.
+- Renamed the existing navigation label from `تعریف شرکت` to `شرکت‌ها و شعب` while retaining the established `/company/setup` route to avoid unnecessary routing churn.
+- Removed development-only `console.log`/`console.error` tracing from the normal Desktop Company form flow and from the `setupCompany` Application transaction without changing transaction or validation semantics.
+- Added `apps/desktop/tests/company-workspace-ui-contract.test.ts` to lock the management workspace, persisted Company/Branch context, supported activity-type edit use case, shared primitives, absence of development console output, responsive styling, and removal of temporary Company page presentation.
+- No new Company/Branch domain capability, migration, persistence semantic, Journal Lifecycle behavior, or future ERP functionality was introduced.
 
 ### Step 7 — Fiscal Workspace Consolidation
 
