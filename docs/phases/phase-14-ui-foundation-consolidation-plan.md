@@ -40,7 +40,7 @@ Out of scope:
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | UI Architecture Audit and Design-System Contract | Completed |
-| 3 | Design Tokens and Shared UI Primitives | Not started |
+| 3 | Design Tokens and Shared UI Primitives | Completed |
 | 4 | Final App Shell, Navigation, and Active Context | Not started |
 | 5 | Dashboard Modernization | Not started |
 | 6 | Company and Branch Workspace Consolidation | Not started |
@@ -117,7 +117,18 @@ Exit criteria:
 - Visual states are covered by focused component tests where practical.
 - No feature-specific persistence dependency exists in the shared UI layer.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `apps/desktop/src/styles/design-tokens.css` with Persian-first typography, spacing, radius, border, surface, semantic state, focus, elevation, control-height, page-width, and accounting-table density tokens.
+- Added shared primitive styling in `apps/desktop/src/components/ui.css`, including focus-visible, disabled, invalid, read-only, destructive, semantic feedback, contained table overflow, dialog, panel, card, toolbar, badge, and page/stack states.
+- Added reusable React form primitives `Button`, `Input`, `Select`, `Textarea`, and `Field` under `components/forms` using native element props and refs.
+- Added shared layout primitives `Page`, `Stack`, `Panel`, `Card`, and `Toolbar`; data-display primitives `Badge` and `DataTable`; and feedback primitives `Feedback` and accessible `Dialog`.
+- Loaded design tokens and shared primitive CSS before legacy `App.css` so existing screens remain behaviorally unchanged until their owning migration steps while new feature code can consume the shared layer immediately.
+- Added `apps/desktop/tests/design-system-primitives.test.ts` to lock token coverage, primitive exports, accessibility markers, visual-state contracts, and the absence of `@argin/*`, SQLite, or Tauri dependencies in the generic form layer.
+- Step 3 does not migrate Shell, Dashboard, Company, Fiscal, Security, Audit/Approval, or Accounting pages; those remain assigned to Steps 4–10.
+- No domain, application, repository, SQLite, Tauri persistence, or Phase 15 Journal Lifecycle behavior was introduced.
 
 ### Step 4 — Final App Shell, Navigation, and Active Context
 
