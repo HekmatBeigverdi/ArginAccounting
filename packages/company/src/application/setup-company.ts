@@ -46,14 +46,10 @@ export async function setupCompany(
   }
 
   return unitOfWork.run(async (repositories) => {
-    console.log("شروع تراکنش...");
-
     const existingCompany =
       await repositories.companies.findByCode(
         input.company.code.trim()
       );
-
-    console.log("نتیجه جستجوی شرکت موجود:", existingCompany);
 
     if (existingCompany !== null) {
       throw new CompanyValidationError([
@@ -64,7 +60,6 @@ export async function setupCompany(
       ]);
     }
 
-    console.log("در حال ایجاد شرکت...");
     const company = await repositories.companies.create({
       code: input.company.code.trim(),
       legalName: input.company.legalName.trim(),
@@ -74,19 +69,15 @@ export async function setupCompany(
         input.company.registrationNumber?.trim() || null,
       activityType: input.company.activityType
     });
-    console.log("شرکت ایجاد شد:", company.id);
 
-    console.log("در حال ایجاد شعبه...");
     const headOffice = await repositories.branches.create({
       companyId: company.id,
       code: input.headOffice.code.trim(),
       name: input.headOffice.name.trim(),
       isHeadOffice: true
     });
-    console.log("شعبه ایجاد شد:", headOffice.id);
 
     if (input.address) {
-      console.log("در حال ایجاد آدرس...");
       await repositories.addresses.create({
         ownerType: "branch",
         ownerId: headOffice.id,
@@ -98,11 +89,9 @@ export async function setupCompany(
         phone: input.address.phone?.trim() || null,
         isPrimary: true
       });
-      console.log("آدرس ایجاد شد");
     }
 
     if (input.taxProfile) {
-      console.log("در حال ایجاد پروفایل مالیاتی...");
       await repositories.taxProfiles.create({
         companyId: company.id,
         economicCode:
@@ -114,10 +103,8 @@ export async function setupCompany(
         taxpayerType: input.taxProfile.taxpayerType,
         isEnabled: input.taxProfile.isEnabled
       });
-      console.log("پروفایل مالیاتی ایجاد شد");
     }
 
-    console.log("تراکنش با موفقیت به پایان رسید");
     return {
       companyId: company.id,
       headOfficeId: headOffice.id
