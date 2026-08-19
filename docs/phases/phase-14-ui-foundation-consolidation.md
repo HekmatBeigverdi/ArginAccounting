@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–3 completed.
+In progress. Steps 1–4 completed.
 
 ## Objective
 
@@ -71,6 +71,18 @@ Step 3 introduced the first production design-system layer without migrating fea
 - loaded the new token and primitive CSS before legacy `App.css`, allowing controlled migration in Steps 4–10 without changing existing feature behavior in Step 3;
 - added focused source-contract tests that also guard against generic UI dependencies on Argin business packages, SQLite, or Tauri persistence.
 
+## Step 4 — Final App Shell and Active Context
+
+Step 4 replaced the global temporary shell and connected the desktop workspace to persisted organizational/fiscal context:
+
+- introduced `ActiveContextProvider`, loading companies, branches, fiscal years, and the persisted current fiscal year through the existing SQLite repository adapters;
+- introduced the final Persian RTL `AppShell` with grouped/collapsible navigation, authenticated-user identity, breadcrumb/page-title surface, active-context selectors, contained workspace, and status bar;
+- made Accounting navigation visibility permission-aware for routes with explicit existing permission contracts while preserving application-boundary authorization as mandatory enforcement;
+- replaced `TemporaryAppShell` in the router and removed the temporary shell source file;
+- removed the old hard-coded company/fiscal placeholders from the global shell; Company, Branch, and Fiscal Year selections now come from persisted records;
+- retained only page/dashboard-era `temporary-*` presentation as transitional debt explicitly owned by subsequent Phase 14 steps;
+- added focused shell regression-contract coverage for final routing, navigation behavior, persisted context sources, placeholder removal, responsive containment, and focus states.
+
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Step 3 adds focused desktop regression-contract coverage; full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
+Step-by-step evidence is maintained in the fixed plan. Steps 3–4 add focused desktop source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
