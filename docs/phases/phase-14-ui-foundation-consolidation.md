@@ -1,196 +1,83 @@
 # Phase 14 — UI Foundation Consolidation
 
-## Status
-
-In progress. Steps 1–9 completed.
-
 ## Objective
 
-Consolidate the ArginAccounting desktop experience into one reusable Persian RTL design system before additional accounting and ERP workflows expand the application surface area.
+Consolidate the ArginAccounting desktop UI into one reusable Persian RTL design language before additional accounting and ERP workflows expand the product surface.
 
-Phase 14 modernizes the final application shell, dashboard, and first-generation Foundation-phase workspaces; harmonizes the Accounting Core UI delivered in Phases 10–13; and establishes reusable accessibility, responsive, keyboard, and feedback standards for all subsequent phases.
+The phase preserves existing Domain/Application/Persistence semantics. Presentation changes must not introduce Phase 15 Journal Lifecycle behavior.
 
-## Scope
+## Fixed Plan
 
-- Shared design tokens and reusable UI primitives.
-- Final desktop application shell, navigation, and active company/branch/fiscal context presentation.
-- Dashboard modernization.
-- Company and Branch workspace consolidation.
-- Fiscal workspace consolidation.
-- Security workspace consolidation.
-- Audit and Approval visual/interaction harmonization.
-- Chart of Accounts, Accounting Dimensions, Coding Templates, and Journal Voucher harmonization.
-- Persian RTL, accessibility, keyboard, responsive, loading, empty, error, and success-state hardening.
-- UI-focused regression coverage and documentation.
+The canonical fixed implementation plan is `docs/phases/phase-14-ui-foundation-consolidation-plan.md`. Step names, order, scope, and exit criteria remain governed by that document.
 
-## Explicit Non-Goals
+## Delivered Through Step 10
 
-- Journal approval, posting, locking, reversal, finalization, or other Journal Lifecycle behavior. These belong to Phase 15.
-- New accounting, inventory, sales, purchase, treasury, taxpayer, or enterprise business capabilities.
-- Moving domain/application rules into React components.
-- Changing the established local-first Tauri/SQLite architecture.
+### Steps 1–4 — Foundation and shell
 
-## Fixed Execution Plan
+- froze the Phase 14 branch/plan and shifted later roadmap phases;
+- audited the existing UI generations and established the five-layer presentation architecture;
+- introduced design tokens plus shared form, layout, data-display, feedback, and dialog primitives;
+- replaced the temporary application shell with the final Persian RTL App Shell and persisted Company/Branch/Fiscal active context.
 
-See [Phase 14 — UI Foundation Consolidation — Fixed Implementation Plan](phase-14-ui-foundation-consolidation-plan.md).
+### Step 5 — Dashboard Modernization
 
-## Baseline
+- replaced prototype/stale dashboard presentation with real active-context summaries and implemented-module shortcuts;
+- retained existing application contracts and explicit loading/empty/error states.
 
-- Phase 13 — Journal Voucher Engine is the latest completed accounting milestone and was released as `v0.13.0`.
-- Phase 14 starts from synchronized `develop` at `03f6053bf177538a4974ebec1f19c47770795b8c`.
-- Implementation branch: `phase/14-ui-foundation-consolidation`.
-- The Phase 13 Journal Voucher workspace is the primary interaction-quality reference for consolidation.
+### Step 6 — Company and Branch Workspace Consolidation
 
-## Renumbering Decision
+- converted Company setup into a persisted Company/Branch workspace;
+- preserved Company creation/activity behavior and exposed Branch creation through the existing application/repository boundaries;
+- corrected active-context refresh after Branch/Fiscal mutations.
 
-The insertion of UI Foundation Consolidation as Phase 14 shifts every previously planned phase after Phase 13 by one. Journal Lifecycle therefore becomes Phase 15 and Deployment and Production Hardening becomes Phase 47. `ROADMAP.md` remains the canonical numbering source.
+### Step 7 — Fiscal Workspace Consolidation
 
-## Step 2 — UI Architecture Baseline
+- converted Fiscal Years into a management workspace;
+- standardized Solar Hijri user input through the shared `PersianDatePicker` while retaining Gregorian durable values;
+- hardened the date picker and Fiscal layout after runtime collision review;
+- established a `1366 × 768` initial Tauri window baseline.
 
-Step 2 established the presentation architecture contract before implementation begins:
+### Step 8 — Security Workspace Consolidation
 
-- recorded the UI architecture audit in [`../ui/phase-14-ui-architecture-audit.md`](../ui/phase-14-ui-architecture-audit.md);
-- replaced the old future-UI placeholder wording in [`../ui/UI_ARCHITECTURE.md`](../ui/UI_ARCHITECTURE.md) with the canonical Phase 14 layering and dependency contract;
-- classified Foundation-era `temporary-*` shell/page/dashboard presentation as migration targets while preserving route and feature boundaries;
-- classified Accounting Core workspaces as reusable interaction patterns that must converge on shared primitives without moving feature semantics into the design system;
-- defined token, primitive, composite/layout, feature-UI, and route-page ownership;
-- prohibited shared UI dependencies on Tauri/SQLite persistence implementations and repository implementations;
-- preserved Phase 13 Journal Voucher as the interaction-quality reference for dense accounting workflows;
-- confirmed Step 2 is documentation/architecture-only and introduces no production UI implementation or Phase 15 Journal Lifecycle behavior.
+- consolidated Login, Users, Roles, Permissions, Role Permission, and User Access surfaces;
+- retained authentication/authorization and assignment semantics;
+- restored Login navigation and corrected Security tab routes.
 
-## Step 3 — Shared Design Foundation
+### Step 9 — Audit and Approval Workspace Harmonization
 
-Step 3 introduced the first production design-system layer without migrating feature pages yet:
+- migrated Approval and Audit list/detail surfaces to shared primitives and one governance workspace language;
+- preserved all existing Approval commands and read-only immutable Audit semantics;
+- standardized Persian timestamps, status badges, detail hierarchy, navigation, and feedback.
 
-- added Persian-first design tokens for typography, spacing, shape, elevation, borders, semantic states, focus, density, control sizing, page width, and accounting-table density;
-- added reusable native-element form primitives: `Button`, `Input`, `Select`, `Textarea`, and `Field`;
-- added shared `Page`, `Stack`, `Panel`, `Card`, and `Toolbar` layout primitives;
-- added `Badge` and horizontally contained `DataTable` primitives;
-- added semantic `Feedback` and an accessible base `Dialog` contract;
-- standardized focus-visible, disabled, invalid, destructive, and read-only visual states in the shared layer;
-- loaded the new token and primitive CSS before legacy `App.css`, allowing controlled migration in Steps 4–10 without changing existing feature behavior in Step 3;
-- added focused source-contract tests that also guard against generic UI dependencies on Argin business packages, SQLite, or Tauri persistence.
+### Step 10 — Accounting Workspace Harmonization
 
-## Step 4 — Final App Shell and Active Context
+Step 10 aligns the Accounting Core surfaces from Phases 10–13 without changing their business contracts:
 
-Step 4 replaced the global temporary shell and connected the desktop workspace to persisted organizational/fiscal context:
+- added `pages/accounting/accounting-workspace.css` as a shared token-based presentation layer for Accounting headers, tabs, toolbars, section hierarchy, and contained dense-surface scrolling;
+- aligned Chart of Accounts, Accounting Dimensions, Coding Templates, and Journal Voucher with the Phase 14 visual language while preserving their existing Application services and permissions;
+- rebuilt Chart of Accounts presentation into a substantially clearer semantic hierarchy: expandable/collapsible branches, group/general/subsidiary level markers, connector rails, parent-preserving filtered search, active/posting metadata, summary counts, compact actions, and contained scrolling;
+- improved the Coding Template preview tree with the same hierarchy vocabulary so template preview and live Chart of Accounts no longer look like unrelated UI generations;
+- retained the Journal Voucher workspace as the interaction baseline, tokenized its one-off presentation, kept its dense entry table locally scrollable, and preserved the shared Solar Hijri date picker for list filters and voucher date;
+- tokenized Accounting Dimensions and aligned its workspace header/company context/tabs/feedback with the shared accounting language while retaining type/member/policy behavior;
+- retired the old Vite starter rules and legacy Foundation feature selectors from `App.css`; it is now intentionally limited to document-level defaults. The remaining System Diagnostics consumer was migrated to shared primitives so this cleanup does not remove required styling;
+- added `apps/desktop/tests/accounting-workspace-ui-contract.test.ts` to lock shared Accounting presentation, semantic Chart of Accounts hierarchy, template hierarchy cues, contained overflow, global legacy CSS retirement, and the Phase 15 boundary.
 
-- introduced `ActiveContextProvider`, loading companies, branches, fiscal years, and the persisted current fiscal year through the existing SQLite repository adapters;
-- introduced the final Persian RTL `AppShell` with grouped/collapsible navigation, authenticated-user identity, breadcrumb/page-title surface, active-context selectors, contained workspace, and status bar;
-- made Accounting navigation visibility permission-aware for routes with explicit existing permission contracts while preserving application-boundary authorization as mandatory enforcement;
-- replaced `TemporaryAppShell` in the router and removed the temporary shell source file;
-- removed the old hard-coded company/fiscal placeholders from the global shell; Company, Branch, and Fiscal Year selections now come from persisted records;
-- retained only page/dashboard-era `temporary-*` presentation as transitional debt explicitly owned by subsequent Phase 14 steps;
-- added focused shell regression-contract coverage for final routing, navigation behavior, persisted context sources, placeholder removal, responsive containment, and focus states.
+No Journal posting, approval, locking, reversal, or finalization behavior was added.
 
-## Step 5 — Dashboard Modernization
+## Active UI Technical Debt After Step 10
 
-Step 5 replaced the prototype dashboard with a context-aware home workspace built only on already-delivered application contracts:
+The original global `App.css` collision source has been retired rather than deferred: Vite starter selectors, global input/button presentation, `temporary-*`, legacy Company/Fiscal/Security selectors, and obsolete Foundation feature rules no longer live in the global stylesheet.
 
-- removed the temporary dashboard classes, stale phase-development wording, and prototype status copy from the Dashboard page;
-- adopted the Phase 14 shared `Page`, `Panel`, `Card`, `Badge`, and `Feedback` primitives plus a dedicated token-based responsive dashboard stylesheet;
-- added real active Company, Branch, and Fiscal Year summary cards driven by `ActiveContextProvider`, including persisted status and Solar Hijri fiscal-date presentation;
-- added coherent no-company, no-fiscal-year, no-journal, loading, and read-error states with links to the already implemented management surfaces;
-- added shortcuts only to implemented modules such as Journal Vouchers, Chart of Accounts, Company setup, Fiscal Years, Accounting Dimensions, and System Diagnostics;
-- used the existing permission-aware Journal read service to show up to five recent Draft vouchers for the active company/fiscal year/branch without adding reporting, posting, approval, finalization, reversal, or other Phase 15 behavior;
-- added `apps/desktop/tests/dashboard-ui-contract.test.ts` to lock removal of temporary/stale dashboard content, active-context usage, existing Journal read-contract usage, empty states, implemented-module shortcuts, and responsive token-based styling.
+Steps 11–13 must still perform a repository-wide presentation audit for:
 
-## Step 6 — Company and Branch Workspace
-
-Step 6 converted the Foundation-era create-only Company screen into a management workspace while keeping business behavior within Company contracts:
-
-- added persisted Company list/selection backed by `ActiveContextProvider`; selecting a Company now also selects the shared application context used by the Shell and Dashboard;
-- added Company identity/status summaries and a branch-oriented view using the persisted Branch collection for the active Company;
-- retained creation through `setupCompany` and wired its existing `CompanySetupResult` into context refresh/selection after successful creation;
-- retained `updateCompanyActivityType` with its existing permission contract and coding-template recommendation semantics;
-- migrated the full Company setup form to shared Phase 14 form/feedback primitives and dedicated responsive workspace styling;
-- removed development-only console logging from the normal Company form and `setupCompany` Application transaction;
-- renamed the navigation surface to `شرکت‌ها و شعب` without changing the stable `/company/setup` route;
-- added focused UI contract coverage for the Company/Branch workspace.
-
-### Step 6 follow-up correction before Step 8
-
-A usability review identified that the Branch repository already supported creation but the consolidated Company workspace did not expose that capability. Before starting Step 8:
-
-- added `addCompanyBranch`, a thin Application workflow over the existing Company Unit of Work and Branch repository;
-- reused existing `validateBranchInput`, verifies the selected Company, and prevents duplicate branch codes within that Company;
-- always creates the added branch as a non-head-office branch, preserving the initial head-office semantics established by `setupCompany`;
-- added an inline `+ افزودن شعبه` form to the active Company's Branch card using shared `Field`, `Input`, `Button`, and `Feedback` presentation;
-- refreshes shared Company/Branch/Fiscal context after mutation so the new Branch becomes visible without restarting or switching Company;
-- added domain/application and desktop UI contract tests for branch creation.
-
-## Step 7 — Fiscal Workspace
-
-Step 7 converted the Fiscal surface from a create-only alias into a coherent management workspace while preserving existing Fiscal application semantics:
-
-- added persisted Fiscal Year list/selection for the active Company, including current/status badges and selected-year summary;
-- added Fiscal Period read presentation using the existing repository contract, including open/locked/closed states;
-- standardized Fiscal Year and Period start/end presentation through the existing Solar Hijri formatter while durable values remain Gregorian ISO dates;
-- retained creation through `createFiscalYear` and its existing single-period command behavior, then refreshes/selects the newly created year in the shared active context;
-- migrated the fiscal creation form to Phase 14 shared form and feedback primitives and removed development-only console output;
-- migrated the standalone New Fiscal Year route away from `temporary-page` while keeping the route available;
-- added token-based responsive workspace styling and focused fiscal UI contract tests;
-- introduced no fiscal close/reopen workflow and no Phase 15 Journal Lifecycle behavior.
-
-### Step 7 follow-up corrections before Step 8
-
-Visual verification at the real desktop runtime exposed two presentation problems that source-only checks had not caught:
-
-- legacy `.fiscal-form` and generic button rules in `App.css` were still capable of overriding the new design-system presentation;
-- the first shared Solar Hijri picker implementation did not sufficiently isolate its calendar buttons/layout from legacy global CSS.
-
-The Fiscal form and shared `PersianDatePicker` were hardened with explicit containment, reset rules, fixed calendar geometry, seven-column day layout, high stacking context, RTL-aware placement, and regression checks. Solar Hijri remains the user-entry format while the component emits Gregorian ISO values to existing Application/Domain contracts.
-
-## Pre-Step 8 Desktop Baseline Corrections
-
-- The Tauri main window now starts at `1366 × 768`, establishing the minimum desktop composition baseline used by the Phase 14 workspace designs.
-- `ActiveContextProvider.refresh()` now refreshes dependent Branch and Fiscal collections even when the active Company ID is unchanged. This is required after creating a Branch or Fiscal Year.
-
-## Step 8 — Security Workspace
-
-Step 8 consolidates the Foundation-era Security screens without changing authentication, authorization, assignment, or persistence semantics:
-
-- added a shared `SecurityWorkspace` with one consistent Users/Roles/Permissions tab surface instead of per-page ad-hoc back links and `temporary-page` wrappers;
-- migrated Login to shared `Panel`, `Field`, `Input`, `Button`, and `Feedback` primitives while retaining the existing `authenticateUser` boundary and session flow;
-- migrated User and Role creation to shared form primitives and preserved existing `createUser` and `createRole` Application use cases;
-- migrated User/Role/Permission listings to shared `DataTable` and `Badge` presentation with explicit loading, empty, and read-error states;
-- migrated Role Permission and User Access assignment surfaces to shared selectors, panels, feedback, and consistent checkbox-choice presentation;
-- preserved `replaceRolePermissions`, `replaceUserRoles`, and `replaceUserBranchAccess` assignment semantics, including System Administrator protection and inactive permission/role/branch disabled states;
-- removed development-only console logging from the touched Security user flows and replaced it with user-facing Persian feedback;
-- added `security-workspace.css` with token-based RTL, responsive, focus-visible, contained list, and login presentation;
-- added `apps/desktop/tests/security-workspace-ui-contract.test.ts` to lock the shared workspace, design-system adoption, authentication/assignment boundaries, disabled-state semantics, absence of temporary UI and console logging, and responsive/focus behavior.
-
-### Step 8 follow-up corrections before Step 9
-
-- Restored the `ورود به سیستم` item in the right-side navigation so the existing `/login` route is reachable from the application UI.
-- Corrected Security workspace tab targets from the stale `/system/*` paths to the real `/security/users`, `/security/roles`, and `/security/permissions` routes and updated regression coverage.
-- Migrated Journal Voucher date-from/date-to filters and voucher-date input to the same shared `PersianDatePicker`, preserving Gregorian ISO values at the Application boundary and isolating the shared calendar from feature CSS collisions.
-
-## Step 9 — Audit and Approval Workspace Harmonization
-
-Step 9 aligns the two internal-control surfaces with the same Phase 14 presentation language while preserving their existing behavior boundaries:
-
-- migrated Approval list/filter/detail/action/history presentation to shared `Page`, `Panel`, `Card`, `Field`, `Input`, `Select`, `Textarea`, `Button`, `DataTable`, `Badge`, and `Feedback` primitives;
-- preserved the existing Approval service commands and permission checks for submit, approve, reject, return-to-draft, cancel, and comment;
-- migrated Audit list/filter/detail/snapshot presentation to the same shared workspace language while keeping Audit strictly read-only through `searchAuditEntries` and `getAuditEntry`;
-- standardized status/outcome badges, Persian calendar date-time presentation, detail hierarchy, loading/empty/error states, and list/detail navigation;
-- introduced `pages/governance/governance-workspace.css` as the shared token-based responsive presentation for Audit/Approval and removed the obsolete `approval-pages.css` and `audit-pages.css` feature styles;
-- removed development-only console logging from touched Audit/Approval flows and replaced read/action failures with Persian user feedback;
-- added `apps/desktop/tests/audit-approval-workspace-ui-contract.test.ts` to lock shared-primitives adoption, Approval workflow delegation, immutable/read-only Audit semantics, Persian timestamps, responsive/focus behavior, and removal of legacy temporary presentation;
-- introduced no Audit/Approval Domain, persistence, workflow, or Phase 15 Journal Lifecycle changes.
-
-## Active UI Technical Debt — Must Remain Visible Through Phase 14
-
-`apps/desktop/src/App.css` still contains legacy Vite starter styles and first-generation Foundation selectors. Those rules have already caused real runtime collisions with Phase 14 components. This is an active migration debt, not an accepted final state.
-
-For every remaining Phase 14 UI step:
-
-- check touched screens against legacy `App.css` selectors before closing the step;
-- do not add new feature-specific overrides merely to coexist permanently with legacy global rules;
-- migrate/remove obsolete rules as their owning Accounting workspaces are consolidated;
-- Security and Audit/Approval source code no longer consume their legacy page/panel/table/message selectors; their inert global definitions remain part of the final legacy-selector cleanup in Steps 11–13;
-- complete a final legacy-selector audit in Steps 11–13 and ensure obsolete Vite/temporary/Foundation presentation rules are removed or explicitly justified before Phase 14 release.
+- residual feature-local fixed-width or physical-direction assumptions;
+- keyboard/focus/semantic accessibility gaps;
+- remaining temporary naming or old presentation classes outside `App.css`;
+- standardized loading/empty/error/success/technical-detail patterns;
+- full focused and monorepo validation evidence.
 
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Steps 3–9 and their follow-up corrections add focused desktop/application source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
+Focused source-contract coverage now includes shell/navigation/context, Dashboard, Company/Branch, Fiscal, Security, Audit/Approval, Persian Journal dates, design-system primitives, desktop window baseline, and Accounting workspace harmonization.
+
+The GitHub connector cannot execute the local Tauri runtime or repository scripts. Full local typecheck/test/build and monorepo validation remains mandatory in Step 13; Step 10 completion records implementation and regression contracts, not a claim that those local commands have already run successfully.
