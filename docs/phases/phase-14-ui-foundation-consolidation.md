@@ -97,16 +97,27 @@ Step 5 replaced the prototype dashboard with a context-aware home workspace buil
 
 ## Step 6 — Company and Branch Workspace
 
-Step 6 converted the Foundation-era create-only Company screen into a management workspace while keeping business behavior within already-delivered Company contracts:
+Step 6 converted the Foundation-era create-only Company screen into a management workspace while keeping business behavior within Company contracts:
 
 - added persisted Company list/selection backed by `ActiveContextProvider`; selecting a Company now also selects the shared application context used by the Shell and Dashboard;
-- added Company identity/status summaries and a branch-oriented view using the existing persisted Branch collection for the active Company;
+- added Company identity/status summaries and a branch-oriented view using the persisted Branch collection for the active Company;
 - retained creation through `setupCompany` and wired its existing `CompanySetupResult` into context refresh/selection after successful creation;
-- exposed only the supported Company edit operation, `updateCompanyActivityType`, with its existing permission contract and coding-template recommendation semantics rather than inventing unsupported profile/branch mutation behavior;
+- retained `updateCompanyActivityType` with its existing permission contract and coding-template recommendation semantics;
 - migrated the full Company setup form to shared Phase 14 form/feedback primitives and dedicated responsive workspace styling;
 - removed development-only console logging from the normal Company form and `setupCompany` Application transaction;
 - renamed the navigation surface to `شرکت‌ها و شعب` without changing the stable `/company/setup` route;
-- added `apps/desktop/tests/company-workspace-ui-contract.test.ts` to lock management-workspace behavior, shared primitives, supported editing, persisted branch presentation, responsive/focus styling, and removal of temporary Company presentation.
+- added focused UI contract coverage for the Company/Branch workspace.
+
+### Step 6 follow-up correction before Step 8
+
+A usability review identified that the Branch repository already supported creation but the consolidated Company workspace did not expose that capability. Before starting Step 8:
+
+- added `addCompanyBranch`, a thin Application workflow over the existing Company Unit of Work and Branch repository;
+- reused existing `validateBranchInput`, verifies the selected Company, and prevents duplicate branch codes within that Company;
+- always creates the added branch as a non-head-office branch, preserving the initial head-office semantics established by `setupCompany`;
+- added an inline `+ افزودن شعبه` form to the active Company's Branch card using shared `Field`, `Input`, `Button`, and `Feedback` presentation;
+- refreshes shared Company/Branch/Fiscal context after mutation so the new Branch becomes visible without restarting or switching Company;
+- added domain/application and desktop UI contract tests for branch creation.
 
 ## Step 7 — Fiscal Workspace
 
@@ -121,6 +132,31 @@ Step 7 converted the Fiscal surface from a create-only alias into a coherent man
 - added token-based responsive workspace styling and focused fiscal UI contract tests;
 - introduced no fiscal close/reopen workflow and no Phase 15 Journal Lifecycle behavior.
 
+### Step 7 follow-up corrections before Step 8
+
+Visual verification at the real desktop runtime exposed two presentation problems that source-only checks had not caught:
+
+- legacy `.fiscal-form` and generic button rules in `App.css` were still capable of overriding the new design-system presentation;
+- the first shared Solar Hijri picker implementation did not sufficiently isolate its calendar buttons/layout from legacy global CSS.
+
+The Fiscal form and shared `PersianDatePicker` were hardened with explicit containment, reset rules, fixed calendar geometry, seven-column day layout, high stacking context, RTL-aware placement, and regression checks. Solar Hijri remains the user-entry format while the component emits Gregorian ISO values to existing Application/Domain contracts.
+
+## Pre-Step 8 Desktop Baseline Corrections
+
+- The Tauri main window now starts at `1366 × 768`, establishing the minimum desktop composition baseline used by the Phase 14 workspace designs.
+- `ActiveContextProvider.refresh()` now refreshes dependent Branch and Fiscal collections even when the active Company ID is unchanged. This is required after creating a Branch or Fiscal Year.
+
+## Active UI Technical Debt — Must Remain Visible Through Phase 14
+
+`apps/desktop/src/App.css` still contains legacy Vite starter styles and first-generation Foundation selectors. Those rules have already caused real runtime collisions with Phase 14 components. This is an active migration debt, not an accepted final state.
+
+For every remaining Phase 14 UI step:
+
+- check touched screens against legacy `App.css` selectors before closing the step;
+- do not add new feature-specific overrides merely to coexist permanently with legacy global rules;
+- migrate/remove obsolete rules as their owning Security, Audit/Approval, and Accounting workspaces are consolidated;
+- complete a final legacy-selector audit in Steps 11–13 and ensure obsolete Vite/temporary/Foundation presentation rules are removed or explicitly justified before Phase 14 release.
+
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Steps 3–7 add focused desktop source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
+Step-by-step evidence is maintained in the fixed plan. Steps 3–7 and their pre-Step-8 corrections add focused desktop/application source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
