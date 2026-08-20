@@ -18,6 +18,10 @@ const datePicker = readFileSync(
   new URL("../src/components/forms/persian-date-picker.tsx", import.meta.url),
   "utf8"
 );
+const sharedStyles = readFileSync(
+  new URL("../src/components/ui.css", import.meta.url),
+  "utf8"
+);
 const styles = readFileSync(
   new URL("../src/pages/fiscal/fiscal-workspace.css", import.meta.url),
   "utf8"
@@ -62,18 +66,34 @@ test("shared Persian date picker preserves Gregorian ISO boundary", () => {
   assert.doesNotMatch(datePicker, /@argin\//u);
 });
 
-test("new fiscal route uses a structured creation workspace", () => {
-  assert.match(newPage, /fiscal-workspace__create-layout/u);
-  assert.match(newPage, /fiscal-workspace__context-panel/u);
-  assert.match(newPage, /fiscal-workspace__guide-panel/u);
+test("new fiscal route uses a compact unified creation workspace", () => {
+  assert.match(newPage, /fiscal-workspace__create-shell/u);
+  assert.match(newPage, /fiscal-workspace__context-strip/u);
   assert.match(newPage, /<FiscalYearForm/u);
+  assert.doesNotMatch(newPage, /fiscal-workspace__create-aside/u);
   assert.doesNotMatch(newPage, /temporary-page/u);
+});
+
+test("fiscal form explicitly neutralizes legacy fiscal-form grid rules", () => {
+  assert.match(styles, /\.fiscal-form \{/u);
+  assert.match(styles, /grid-template-columns: minmax\(0, 1fr\) !important/u);
+  assert.match(styles, /margin: 0 !important/u);
+  assert.match(styles, /padding: 0 !important/u);
+  assert.match(styles, /\.fiscal-form button\.ui-button/u);
+});
+
+test("Persian calendar controls resist legacy global button styling", () => {
+  assert.match(sharedStyles, /\.ui-persian-date__popover button/u);
+  assert.match(sharedStyles, /min-width: 0 !important/u);
+  assert.match(sharedStyles, /padding: 0 !important/u);
+  assert.match(sharedStyles, /z-index: 1200/u);
+  assert.match(sharedStyles, /grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/u);
 });
 
 test("fiscal workspace is token based responsive and visually contained", () => {
   assert.match(styles, /var\(--ui-/u);
   assert.match(styles, /\.fiscal-workspace__year:focus-visible/u);
-  assert.match(styles, /\.fiscal-workspace__create-layout/u);
+  assert.match(styles, /\.fiscal-workspace__create-shell/u);
   assert.match(styles, /\.fiscal-form__actions \.ui-button--primary/u);
   assert.match(styles, /@media \(max-width: 980px\)/u);
   assert.match(styles, /@media \(max-width: 680px\)/u);
