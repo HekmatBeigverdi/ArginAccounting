@@ -36,6 +36,7 @@ import {
   presentJournalVoucherError,
 } from "../../features/accounting/journal-voucher-presenter";
 
+import "./accounting-workspace.css";
 import "./journal-vouchers-page.css";
 
 interface VoucherLineDraft {
@@ -58,637 +59,183 @@ interface VoucherDraft {
   readonly lines: readonly VoucherLineDraft[];
 }
 
-interface DimensionColumn {
-  readonly dimensionTypeId: string;
-  readonly label: string;
-}
-
-const today = new Date().toISOString().slice(0, 10);
-
-function emptyLine(): VoucherLineDraft {
-  return {
-    key: crypto.randomUUID(),
-    id: null,
-    accountId: "",
-    description: "",
-    debit: "",
-    credit: "",
-    assignments: [],
-  };
-}
-
-function emptyDraft(): VoucherDraft {
-  return {
-    voucherId: null,
-    version: null,
-    branchId: "",
-    voucherDate: today,
-    reference: "",
-    description: "",
-    lines: [emptyLine(), emptyLine()],
-  };
-}
+const today = () => new Date().toISOString().slice(0, 10);
+const lineKey = () => crypto.randomUUID();
+const emptyLine = (): VoucherLineDraft => ({ key: lineKey(), id: null, accountId: "", description: "", debit: "", credit: "", assignments: [] });
+const emptyDraft = (): VoucherDraft => ({ voucherId: null, version: null, branchId: "", voucherDate: today(), reference: "", description: "", lines: [emptyLine(), emptyLine()] });
 
 export function JournalVouchersPage() {
   const { journals } = useAccountingServices();
   const { session } = useAuthSession();
   const [companies, setCompanies] = useState<readonly Company[]>([]);
   const [companyId, setCompanyId] = useState("");
-  const [branches, setBranches] = useState<readonly JournalBranchOption[]>([]);
-  const [accounts, setAccounts] = useState<readonly JournalAccountOption[]>([]);
   const [items, setItems] = useState<readonly JournalVoucherListItemDto[]>([]);
   const [selected, setSelected] = useState<JournalVoucherDto | null>(null);
+  const [accounts, setAccounts] = useState<readonly JournalAccountOption[]>([]);
+  const [branches, setBranches] = useState<readonly JournalBranchOption[]>([]);
   const [draft, setDraft] = useState<VoucherDraft>(emptyDraft);
-  const [dimensions, setDimensions] = useState<Readonly<Record<string, AccountingDimensionSelectorModel>>>({});
+  const [selectors, setSelectors] = useState<Record<string, AccountingDimensionSelectorModel>>({});
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [technicalError, setTechnicalError] = useState<string | null>(null);
+  const [technicalError, setTechnicalError] = useState("");
 
-  const permissions = useMemo(
-    () => new Set(session?.user.permissions ?? []),
-    [session],
-  );
-  const can = useCallback(
-    (permission: string) =>
-      permissions.has("system.full-access") || permissions.has(permission),
-    [permissions],
-  );
+  const permissions = useMemo(() => new Set(session?.user.permissions ?? []), [session]);
+  const can = useCallback((permission: string) => permissions.has("system.full-access") || permissions.has(permission), [permissions]);
+  const currentCompany = companies.find((company) => company.id === companyId) ?? null;
 
-  const currentCompany = useMemo(
-    () => companies.find((company) => company.id === companyId) ?? null,
-    [companies, companyId],
-  );
-  const currentBranch = useMemo(
-    () => branches.find((branch) => branch.id === draft.branchId) ?? null,
-    [branches, draft.branchId],
-  );
-
-  const dimensionColumns = useMemo<readonly DimensionColumn[]>(() => {
-    const map = new Map<string, string>();
-    for (const model of Object.values(dimensions)) {
-      for (const field of model.fields) {
-        if (field.disabled) continue;
-        if (!map.has(field.dimensionTypeId)) {
-          map.set(field.dimensionTypeId, field.label);
-        }
-      }
-    }
-    return Object.freeze(
-      [...map.entries()].map(([dimensionTypeId, label]) =>
-        Object.freeze({ dimensionTypeId, label }),
-      ),
-    );
-  }, [dimensions]);
-
-  const clearError = useCallback(() => {
-    setError("");
-    setTechnicalError(null);
-  }, []);
-
+  const clearError = useCallback(() => { setError(""); setTechnicalError(""); }, []);
   const showError = useCallback((reason: unknown) => {
     const presented = presentJournalVoucherError(reason);
     setError(presented.message);
-    setTechnicalError(presented.technical);
+    setTechnicalError(presented.technicalDetail ?? "");
   }, []);
 
   useEffect(() => {
-    void getDesktopDatabase()
-      .then((database) => new SqliteCompanyRepository(database).findAll())
-      .then((values) => {
-        setCompanies(values);
-        setCompanyId((current) => current || values[0]?.id || "");
-      })
-      .catch(showError);
+    void getDesktopDatabase().then((database) => new SqliteCompanyRepository(database).findAll()).then((values) => {
+      setCompanies(values); setCompanyId((current) => current || values[0]?.id || "");
+    }).catch(showError);
   }, [showError]);
 
-  const loadLookupData = useCallback(async () => {
-    if (!companyId) {
-      setAccounts([]);
-      setBranches([]);
-      return;
-    }
-    const [loadedAccounts, loadedBranches] = await Promise.all([
-      journals.listPostingAccounts(companyId),
-      journals.listBranches(companyId),
-    ]);
-    setAccounts(loadedAccounts);
-    setBranches(loadedBranches);
-  }, [companyId, journals]);
-
   const reloadList = useCallback(async () => {
-    if (!companyId) {
-      setItems([]);
-      return;
-    }
-    setBusy(true);
-    clearError();
+    if (!companyId || !can(journalVoucherPermissions.view)) { setItems([]); return; }
+    setBusy(true); clearError();
     try {
-      const page = await journals.search({
-        companyId,
-        ...(search.trim() ? { text: search.trim() } : {}),
-        ...(dateFrom ? { dateFrom } : {}),
-        ...(dateTo ? { dateTo } : {}),
-        page: 1,
-        pageSize: 100,
-      });
-      setItems(page.items);
-    } catch (reason) {
-      showError(reason);
-    } finally {
-      setBusy(false);
-    }
-  }, [clearError, companyId, dateFrom, dateTo, journals, search, showError]);
+      const result = await journals.list({ companyId, search: search.trim() || undefined, voucherDateFrom: dateFrom || undefined, voucherDateTo: dateTo || undefined, limit: 100, offset: 0 });
+      setItems(result.items);
+    } catch (reason) { showError(reason); }
+    finally { setBusy(false); }
+  }, [can, clearError, companyId, dateFrom, dateTo, journals, search, showError]);
 
-  useEffect(() => {
-    void loadLookupData().catch(showError);
-    void reloadList();
-  }, [loadLookupData, reloadList, showError]);
+  useEffect(() => { void reloadList(); }, [reloadList]);
 
-  const totals = useMemo(() => {
-    let debit = 0;
-    let credit = 0;
-    let invalid = false;
-    for (const line of draft.lines) {
-      const lineDebit = parseRialInput(line.debit);
-      const lineCredit = parseRialInput(line.credit);
-      if (Number.isNaN(lineDebit) || Number.isNaN(lineCredit)) invalid = true;
-      else {
-        debit += lineDebit;
-        credit += lineCredit;
-      }
-    }
-    return {
-      debit,
-      credit,
-      balance: debit - credit,
-      invalid,
-      balanced: !invalid && debit === credit && debit > 0,
-    };
-  }, [draft.lines]);
+  const loadReferenceData = useCallback(async (targetCompanyId: string) => {
+    if (!targetCompanyId) return;
+    const [accountOptions, branchOptions] = await Promise.all([journals.listAccounts(targetCompanyId), journals.listBranches(targetCompanyId)]);
+    setAccounts(accountOptions); setBranches(branchOptions);
+  }, [journals]);
 
-  const updateLine = useCallback((key: string, changes: Partial<VoucherLineDraft>) => {
-    setDraft((current) => ({
-      ...current,
-      lines: current.lines.map((line) =>
-        line.key === key ? { ...line, ...changes } : line
-      ),
-    }));
-  }, []);
-
-  const loadDimensionsForLine = useCallback(async (
-    line: VoucherLineDraft,
-    voucherDate = draft.voucherDate,
-  ) => {
-    if (!companyId || !line.accountId || !voucherDate) {
-      setDimensions((current) => {
-        const next = { ...current };
-        delete next[line.key];
-        return next;
-      });
-      return;
-    }
-    const model = await journals.loadDimensionSelector({
-      companyId,
-      accountId: line.accountId,
-      documentDate: voucherDate,
-      assignments: line.assignments,
-    });
-    setDimensions((current) => ({ ...current, [line.key]: model }));
-  }, [companyId, draft.voucherDate, journals]);
-
-  const chooseAccount = useCallback(async (key: string, accountId: string) => {
-    const line = draft.lines.find((value) => value.key === key);
-    if (!line) return;
-    const updated = { ...line, accountId, assignments: [] };
-    updateLine(key, { accountId, assignments: [] });
-    try {
-      await loadDimensionsForLine(updated);
-    } catch (reason) {
-      showError(reason);
-    }
-  }, [draft.lines, loadDimensionsForLine, showError, updateLine]);
-
-  const chooseDimension = useCallback((
-    line: VoucherLineDraft,
-    dimensionTypeId: string,
-    memberIds: readonly string[],
-  ) => {
-    const assignments = line.assignments.filter(
-      (assignment) => assignment.dimensionTypeId !== dimensionTypeId,
-    );
-    if (memberIds.length > 0) {
-      assignments.push({
-        dimensionTypeId,
-        memberIds: Object.freeze([...memberIds]),
-      });
-    }
-    updateLine(line.key, { assignments: Object.freeze(assignments) });
-  }, [updateLine]);
+  useEffect(() => { void loadReferenceData(companyId).catch(showError); }, [companyId, loadReferenceData, showError]);
 
   const startNew = useCallback(() => {
-    setSelected(null);
-    setDraft(emptyDraft());
-    setDimensions({});
-    setMessage("");
-    clearError();
-  }, [clearError]);
+    setSelected(null); setSelectors({}); setDraft({ ...emptyDraft(), branchId: branches[0]?.id ?? "" }); setMessage(""); clearError();
+  }, [branches, clearError]);
 
-  const openVoucher = useCallback(async (id: string) => {
-    if (!companyId) return;
-    setBusy(true);
-    clearError();
-    try {
-      setSelected(await journals.get({ companyId, voucherId: id }));
-    } catch (reason) {
-      showError(reason);
-    } finally {
-      setBusy(false);
-    }
-  }, [clearError, companyId, journals, showError]);
+  const loadDimensionsForLine = useCallback(async (line: VoucherLineDraft, voucherDate = draft.voucherDate) => {
+    if (!companyId || !line.accountId) return;
+    const model = await journals.getDimensionSelector({ companyId, accountId: line.accountId, voucherDate, assignments: line.assignments });
+    setSelectors((current) => ({ ...current, [line.key]: model }));
+  }, [companyId, draft.voucherDate, journals]);
 
-  const startEdit = useCallback(async () => {
+  const updateLine = useCallback((key: string, changes: Partial<VoucherLineDraft>) => {
+    setDraft((current) => ({ ...current, lines: current.lines.map((line) => line.key === key ? { ...line, ...changes } : line) }));
+  }, []);
+
+  const updateAssignment = useCallback((line: VoucherLineDraft, field: AccountingDimensionSelectorField, memberIds: readonly string[]) => {
+    const next = line.assignments.filter((assignment) => assignment.dimensionTypeId !== field.dimensionTypeId);
+    if (memberIds.length > 0) next.push({ dimensionTypeId: field.dimensionTypeId, memberIds });
+    updateLine(line.key, { assignments: next });
+  }, [updateLine]);
+
+  const totals = useMemo(() => draft.lines.reduce((value, line) => ({ debit: value.debit + parseRialInput(line.debit), credit: value.credit + parseRialInput(line.credit) }), { debit: 0, credit: 0 }), [draft.lines]);
+  const difference = totals.debit - totals.credit;
+
+  async function openVoucher(id: string): Promise<void> {
+    setBusy(true); clearError(); setMessage("");
+    try { setSelected(await journals.get(id)); }
+    catch (reason) { showError(reason); }
+    finally { setBusy(false); }
+  }
+
+  async function startEdit(): Promise<void> {
     if (!selected) return;
-    const lines: VoucherLineDraft[] = selected.lines.map((line) => ({
-      key: line.id,
-      id: line.id,
-      accountId: line.accountId,
-      description: line.description ?? "",
-      debit: line.debit.amount === 0 ? "" : String(line.debit.amount),
-      credit: line.credit.amount === 0 ? "" : String(line.credit.amount),
-      assignments: line.dimensionAssignments,
-    }));
-    setDraft({
-      voucherId: selected.id,
-      version: selected.version,
-      branchId: selected.branchId ?? "",
-      voucherDate: selected.voucherDate,
-      reference: selected.reference ?? "",
-      description: selected.description ?? "",
-      lines,
-    });
-    setMessage("");
-    clearError();
-    const loaded: Record<string, AccountingDimensionSelectorModel> = {};
+    setBusy(true); clearError();
     try {
-      for (const line of lines) {
-        if (!line.accountId) continue;
-        loaded[line.key] = await journals.loadDimensionSelector({
-          companyId: selected.companyId,
-          accountId: line.accountId,
-          documentDate: selected.voucherDate,
-          assignments: line.assignments,
-        });
-      }
-      setDimensions(loaded);
-      setSelected(null);
-    } catch (reason) {
-      showError(reason);
-    }
-  }, [clearError, journals, selected, showError]);
+      const nextLines = selected.lines.map((line) => ({ key: lineKey(), id: line.id, accountId: line.accountId, description: line.description ?? "", debit: String(line.debit.amount || ""), credit: String(line.credit.amount || ""), assignments: line.dimensionAssignments }));
+      setDraft({ voucherId: selected.id, version: selected.version, branchId: selected.branchId ?? "", voucherDate: selected.voucherDate, reference: selected.reference ?? "", description: selected.description ?? "", lines: nextLines });
+      setSelected(null); setSelectors({});
+      for (const line of nextLines) if (line.accountId) await loadDimensionsForLine(line, selected.voucherDate);
+    } catch (reason) { showError(reason); }
+    finally { setBusy(false); }
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (!companyId) return;
-    setBusy(true);
-    setMessage("");
-    clearError();
+    event.preventDefault(); if (!companyId) return;
+    setBusy(true); clearError(); setMessage("");
     try {
-      const lines = draft.lines.map((line, index) => {
-        const debit = parseRialInput(line.debit);
-        const credit = parseRialInput(line.credit);
-        if (Number.isNaN(debit) || Number.isNaN(credit)) {
-          throw new Error(`Invalid Rial amount in journal line ${index + 1}.`);
-        }
-        return {
-          ...(line.id ? { id: line.id } : {}),
-          order: index + 1,
-          accountId: line.accountId,
-          description: line.description || null,
-          debit,
-          credit,
-          dimensionAssignments: line.assignments,
-        };
-      });
-      const context = {
-        actorId: session?.user.id ?? "desktop-local-user",
-        companyId,
-        branchId: draft.branchId || null,
-        correlationId: crypto.randomUUID(),
-      };
-      if (draft.voucherId === null) {
-        const result = await journals.create({
-          context: { ...context, requestId: crypto.randomUUID() },
-          voucherDate: draft.voucherDate,
-          reference: draft.reference || null,
-          description: draft.description || null,
-          lines,
-        });
-        setMessage(`سند شماره ${result.voucher.number} با موفقیت ذخیره شد.`);
-        setDraft(emptyDraft());
-        setDimensions({});
-        await reloadList();
-        await openVoucher(result.voucher.id);
-      } else {
-        const result = await journals.update({
-          context,
-          voucherId: draft.voucherId,
-          expectedVersion: draft.version ?? 1,
-          voucherDate: draft.voucherDate,
-          reference: draft.reference || null,
-          description: draft.description || null,
-          lines,
-        });
-        setMessage("تغییرات سند پیش‌نویس ذخیره شد.");
-        setDraft(emptyDraft());
-        setDimensions({});
-        await reloadList();
-        await openVoucher(result.voucher.id);
-      }
-    } catch (reason) {
-      showError(reason);
-    } finally {
-      setBusy(false);
-    }
+      const lines = draft.lines.map((line) => ({ id: line.id ?? undefined, accountId: line.accountId, description: line.description || null, debit: parseRialInput(line.debit), credit: parseRialInput(line.credit), dimensionAssignments: line.assignments }));
+      const saved = draft.voucherId
+        ? await journals.update({ context: { actorId: session?.user.id ?? "desktop-local-user", companyId, branchId: draft.branchId || null, correlationId: crypto.randomUUID() }, voucherId: draft.voucherId, expectedVersion: draft.version ?? 1, voucherDate: draft.voucherDate, reference: draft.reference || null, description: draft.description || null, lines })
+        : await journals.create({ context: { actorId: session?.user.id ?? "desktop-local-user", companyId, branchId: draft.branchId || null, correlationId: crypto.randomUUID() }, voucherDate: draft.voucherDate, reference: draft.reference || null, description: draft.description || null, lines });
+      setMessage(draft.voucherId ? "تغییرات سند ذخیره شد." : `سند ${saved.number} به‌صورت پیش‌نویس ثبت شد.`);
+      setDraft(emptyDraft()); setSelectors({}); await reloadList();
+    } catch (reason) { showError(reason); }
+    finally { setBusy(false); }
   }
 
   const removeSelected = useCallback(async () => {
-    if (!selected || !window.confirm(`سند شماره ${selected.number} حذف شود؟`)) return;
-    setBusy(true);
-    clearError();
+    if (!selected || !window.confirm(`سند ${selected.number} حذف شود؟`)) return;
+    setBusy(true); clearError();
     try {
-      await journals.delete({
-        context: {
-          actorId: session?.user.id ?? "desktop-local-user",
-          companyId: selected.companyId,
-          branchId: selected.branchId,
-          correlationId: crypto.randomUUID(),
-        },
-        voucherId: selected.id,
-        expectedVersion: selected.version,
-      });
-      setSelected(null);
-      setMessage("سند پیش‌نویس حذف شد.");
-      await reloadList();
-    } catch (reason) {
-      showError(reason);
-    } finally {
-      setBusy(false);
-    }
+      await journals.delete({ context: { actorId: session?.user.id ?? "desktop-local-user", companyId: selected.companyId, branchId: selected.branchId, correlationId: crypto.randomUUID() }, voucherId: selected.id, expectedVersion: selected.version });
+      setSelected(null); setMessage("سند پیش‌نویس حذف شد."); await reloadList();
+    } catch (reason) { showError(reason); }
+    finally { setBusy(false); }
   }, [clearError, journals, reloadList, selected, session, showError]);
 
   const changeVoucherDate = useCallback(async (value: string) => {
     setDraft((current) => ({ ...current, voucherDate: value }));
-    try {
-      for (const line of draft.lines) {
-        if (line.accountId) await loadDimensionsForLine(line, value);
-      }
-    } catch (reason) {
-      showError(reason);
-    }
+    try { for (const line of draft.lines) if (line.accountId) await loadDimensionsForLine(line, value); }
+    catch (reason) { showError(reason); }
   }, [draft.lines, loadDimensionsForLine, showError]);
 
   return (
-    <section className="journal-page" lang="fa" dir="rtl">
-      <header className="journal-page__header">
-        <div>
-          <p className="journal-page__eyebrow">حسابداری / اسناد حسابداری</p>
-          <h1>اسناد حسابداری</h1>
-          <p>ثبت، ویرایش و کنترل سند دوبل پیش‌نویس</p>
-        </div>
-        <div className="journal-page__header-actions">
-          <button type="button" onClick={() => void reloadList()} disabled={busy}>تازه‌سازی</button>
-          <button
-            className="journal-button journal-button--primary"
-            type="button"
-            disabled={!can(journalVoucherPermissions.create)}
-            onClick={startNew}
-          >
-            + سند جدید
-          </button>
-        </div>
+    <section className="accounting-workspace journal-page" lang="fa" dir="rtl">
+      <header className="accounting-workspace__header journal-page__header">
+        <div><p className="accounting-workspace__eyebrow">حسابداری / اسناد حسابداری</p><h1>اسناد حسابداری</h1><p>ثبت، ویرایش و کنترل سند دوبل پیش‌نویس</p></div>
+        <div className="journal-page__header-actions"><button type="button" onClick={() => void reloadList()} disabled={busy}>تازه‌سازی</button><button className="journal-button journal-button--primary" type="button" disabled={!can(journalVoucherPermissions.create)} onClick={startNew}>+ سند جدید</button></div>
       </header>
 
       <section className="journal-searchbar" aria-label="جستجوی اسناد">
-        <label>
-          شرکت
-          <select value={companyId} onChange={(event) => {
-            setCompanyId(event.target.value);
-            setSelected(null);
-            startNew();
-          }}>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>{company.legalName}</option>
-            ))}
-          </select>
-        </label>
-        <label className="journal-searchbar__text">
-          جست‌وجو
-          <input value={search} placeholder="شماره، مرجع یا شرح سند" onChange={(event) => setSearch(event.target.value)} />
-        </label>
-        <label>
-          از تاریخ
-          <PersianDatePicker
-            value={dateFrom}
-            onChange={setDateFrom}
-            ariaLabel="از تاریخ"
-            placeholder="از تاریخ شمسی"
-          />
-        </label>
-        <label>
-          تا تاریخ
-          <PersianDatePicker
-            value={dateTo}
-            onChange={setDateTo}
-            ariaLabel="تا تاریخ"
-            placeholder="تا تاریخ شمسی"
-          />
-        </label>
+        <label>شرکت<select value={companyId} onChange={(event) => { setCompanyId(event.target.value); setSelected(null); startNew(); }}>{companies.map((company) => <option key={company.id} value={company.id}>{company.legalName}</option>)}</select></label>
+        <label className="journal-searchbar__text">جست‌وجو<input value={search} placeholder="شماره، مرجع یا شرح سند" onChange={(event) => setSearch(event.target.value)} /></label>
+        <label>از تاریخ<PersianDatePicker value={dateFrom} onChange={setDateFrom} ariaLabel="از تاریخ" placeholder="از تاریخ شمسی" /></label>
+        <label>تا تاریخ<PersianDatePicker value={dateTo} onChange={setDateTo} ariaLabel="تا تاریخ" placeholder="تا تاریخ شمسی" /></label>
         <button type="button" onClick={() => void reloadList()} disabled={busy}>جست‌وجو</button>
       </section>
 
       {companies.length === 0 && !busy && <p className="journal-notice">ابتدا یک شرکت و سال مالی ایجاد کنید.</p>}
       {error && <p className="journal-alert journal-alert--error" role="alert">{error}</p>}
-      {technicalError && (
-        <details className="journal-technical-error">
-          <summary>جزئیات فنی</summary>
-          <code dir="ltr">{technicalError}</code>
-        </details>
-      )}
+      {technicalError && <details className="journal-technical-error"><summary>جزئیات فنی</summary><code dir="ltr">{technicalError}</code></details>}
       {message && <p className="journal-alert journal-alert--success" role="status">{message}</p>}
 
       <div className="journal-layout">
-        <aside className="journal-list-card">
-          <div className="journal-card-title">
-            <div><h2>فهرست اسناد</h2><small>آخرین اسناد شرکت جاری</small></div>
-            <span className="journal-count-badge">{items.length.toLocaleString("fa-IR")}</span>
-          </div>
-          <div className="journal-list">
-            {items.map((item) => (
-              <button type="button" className="journal-list__item" key={item.id} onClick={() => void openVoucher(item.id)}>
-                <span className="journal-list__number"><b dir="ltr">{item.number}</b><small>{formatJournalVoucherDate(item.voucherDate)}</small></span>
-                <span>{item.description || item.reference || "بدون شرح"}</span>
-                <strong>{formatJournalRials(item.totalDebit.amount)}</strong>
-              </button>
-            ))}
-            {items.length === 0 && <p className="journal-empty">سندی برای نمایش وجود ندارد.</p>}
-          </div>
-        </aside>
+        <aside className="journal-list-card"><div className="journal-card-title"><div><h2>فهرست اسناد</h2><small>آخرین اسناد شرکت جاری</small></div><span className="journal-count-badge">{items.length.toLocaleString("fa-IR")}</span></div><div className="journal-list">{items.map((item) => <button type="button" className="journal-list__item" key={item.id} onClick={() => void openVoucher(item.id)}><span className="journal-list__number"><b dir="ltr">{item.number}</b><small>{formatJournalVoucherDate(item.voucherDate)}</small></span><span>{item.description || item.reference || "بدون شرح"}</span><strong>{formatJournalRials(item.totalDebit.amount)}</strong></button>)}{items.length === 0 && <p className="journal-empty">سندی برای نمایش وجود ندارد.</p>}</div></aside>
 
         <main className="journal-workspace">
-          {selected ? (
-            <VoucherDetail
-              voucher={selected}
-              accounts={accounts}
-              canEdit={can(journalVoucherPermissions.updateDraft)}
-              canDelete={can(journalVoucherPermissions.deleteDraft)}
-              onEdit={() => void startEdit()}
-              onDelete={() => void removeSelected()}
-              onClose={() => setSelected(null)}
-            />
-          ) : (
+          {selected ? <VoucherDetail voucher={selected} accounts={accounts} canEdit={can(journalVoucherPermissions.updateDraft)} canDelete={can(journalVoucherPermissions.deleteDraft)} onEdit={() => void startEdit()} onDelete={() => void removeSelected()} onClose={() => setSelected(null)} /> : (
             <form className="journal-editor" onSubmit={(event) => void submit(event)}>
-              <section className="journal-document-card">
-                <div className="journal-section-heading">
-                  <div>
-                    <p className="journal-page__eyebrow">{draft.voucherId ? "ویرایش پیش‌نویس" : "سند جدید"}</p>
-                    <h2>اطلاعات سند</h2>
-                  </div>
-                  <div className="journal-document-status">
-                    <span className="journal-status-badge">پیش‌نویس</span>
-                    {draft.voucherId && <span>نسخه {draft.version?.toLocaleString("fa-IR")}</span>}
-                  </div>
-                </div>
-
+              <section className="journal-document-card"><div className="journal-section-heading"><div><p className="journal-page__eyebrow">{draft.voucherId ? "ویرایش پیش‌نویس" : "سند جدید"}</p><h2>اطلاعات سند</h2></div><div className="journal-document-status"><span className="journal-status-badge">پیش‌نویس</span>{draft.voucherId && <span>نسخه {draft.version?.toLocaleString("fa-IR")}</span>}</div></div>
                 <div className="journal-document-grid">
-                  <label>
-                    شرکت
-                    <input readOnly value={currentCompany?.legalName ?? "—"} />
-                  </label>
-                  <label>
-                    شماره سند
-                    <input readOnly value={draft.voucherId ? "حفظ شماره فعلی" : "خودکار هنگام ذخیره"} />
-                  </label>
-                  <label>
-                    تاریخ سند
-                    <PersianDatePicker
-                      value={draft.voucherDate}
-                      onChange={(value) => { void changeVoucherDate(value); }}
-                      ariaLabel="تاریخ سند"
-                    />
-                  </label>
-                  <label>
-                    شعبه
-                    <select value={draft.branchId} onChange={(event) => setDraft((current) => ({ ...current, branchId: event.target.value }))}>
-                      <option value="">بدون شعبه</option>
-                      {branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} — {branch.name}</option>)}
-                    </select>
-                  </label>
-                  <label>
-                    شماره مرجع
-                    <input value={draft.reference} maxLength={100} placeholder="اختیاری" onChange={(event) => setDraft((current) => ({ ...current, reference: event.target.value }))} />
-                  </label>
-                  <label>
-                    منبع
-                    <input readOnly value="ثبت دستی" />
-                  </label>
-                  <label className="journal-document-grid__description">
-                    شرح سند
-                    <input value={draft.description} placeholder="شرح کلی سند حسابداری" onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} />
-                  </label>
+                  <label>شرکت<input readOnly value={currentCompany?.legalName ?? "—"} /></label>
+                  <label>شماره سند<input readOnly value={draft.voucherId ? "حفظ شماره فعلی" : "خودکار هنگام ذخیره"} /></label>
+                  <label>تاریخ سند<PersianDatePicker value={draft.voucherDate} onChange={(value) => { void changeVoucherDate(value); }} ariaLabel="تاریخ سند" /></label>
+                  <label>شعبه<select value={draft.branchId} onChange={(event) => setDraft((current) => ({ ...current, branchId: event.target.value }))}><option value="">بدون شعبه</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.code} — {branch.name}</option>)}</select></label>
+                  <label>شماره مرجع<input value={draft.reference} maxLength={100} placeholder="اختیاری" onChange={(event) => setDraft((current) => ({ ...current, reference: event.target.value }))} /></label>
+                  <label>منبع<input readOnly value="ثبت دستی" /></label>
+                  <label className="journal-document-grid__description">شرح سند<input value={draft.description} placeholder="شرح کلی سند حسابداری" onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} /></label>
                 </div>
               </section>
 
-              <section className="journal-lines-card">
-                <div className="journal-section-heading journal-section-heading--lines">
-                  <div>
-                    <h2>آرتیکل‌های سند</h2>
-                    <p>حساب، شرح، ابعاد و مبالغ هر ردیف را وارد کنید.</p>
-                  </div>
-                  <div className="journal-line-actions">
-                    <button type="button" onClick={() => setDraft((current) => ({ ...current, lines: [...current.lines, emptyLine()] }))}>+ افزودن ردیف</button>
-                  </div>
-                </div>
-
-                <div className="journal-entry-table-wrap">
-                  <table className="journal-entry-table">
-                    <thead>
-                      <tr>
-                        <th className="journal-col-row">ردیف</th>
-                        <th className="journal-col-account">حساب معین *</th>
-                        <th className="journal-col-description">شرح</th>
-                        {dimensionColumns.map((column) => <th key={column.dimensionTypeId} className="journal-col-dimension">{column.label}</th>)}
-                        <th className="journal-col-amount">بدهکار (ریال)</th>
-                        <th className="journal-col-amount">بستانکار (ریال)</th>
-                        <th className="journal-col-actions">عملیات</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {draft.lines.map((line, index) => (
-                        <JournalEntryRow
-                          key={line.key}
-                          line={line}
-                          index={index}
-                          accounts={accounts}
-                          selector={dimensions[line.key]}
-                          dimensionColumns={dimensionColumns}
-                          removable={draft.lines.length > 2}
-                          onChooseAccount={(accountId) => void chooseAccount(line.key, accountId)}
-                          onUpdate={(changes) => updateLine(line.key, changes)}
-                          onChooseDimension={(dimensionTypeId, memberIds) => chooseDimension(line, dimensionTypeId, memberIds)}
-                          onRemove={() => {
-                            setDraft((current) => ({ ...current, lines: current.lines.filter((value) => value.key !== line.key) }));
-                            setDimensions((current) => {
-                              const next = { ...current };
-                              delete next[line.key];
-                              return next;
-                            });
-                          }}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="journal-summary-grid">
-                  <section className="journal-summary-panel">
-                    <span>جمع بدهکار</span>
-                    <strong>{totals.invalid ? "نامعتبر" : formatJournalRials(totals.debit)}</strong>
-                  </section>
-                  <section className="journal-summary-panel">
-                    <span>جمع بستانکار</span>
-                    <strong>{totals.invalid ? "نامعتبر" : formatJournalRials(totals.credit)}</strong>
-                  </section>
-                  <section className="journal-summary-panel">
-                    <span>مانده</span>
-                    <strong>{totals.invalid ? "نامعتبر" : formatJournalRials(Math.abs(totals.balance))}</strong>
-                  </section>
-                  <section className={`journal-balance-state ${totals.balanced ? "journal-balance-state--ok" : "journal-balance-state--warning"}`}>
-                    {totals.balanced ? "✓ سند تراز است." : "سند تراز نیست."}
-                  </section>
-                </div>
+              <section className="journal-lines-card"><div className="journal-section-heading journal-section-heading--lines"><div><h2>آرتیکل‌های سند</h2><p>حساب، شرح، ابعاد و مبالغ هر ردیف را وارد کنید.</p></div><button type="button" onClick={() => setDraft((current) => ({ ...current, lines: [...current.lines, emptyLine()] }))}>+ ردیف</button></div>
+                <div className="journal-entry-table-wrap"><table className="journal-entry-table"><colgroup><col className="journal-col-row" /><col className="journal-col-account" /><col className="journal-col-description" /><col className="journal-col-dimension" /><col className="journal-col-amount" /><col className="journal-col-amount" /><col className="journal-col-actions" /></colgroup><thead><tr><th>ردیف</th><th>حساب</th><th>شرح</th><th>ابعاد حسابداری</th><th>بدهکار (ریال)</th><th>بستانکار (ریال)</th><th>عملیات</th></tr></thead><tbody>{draft.lines.map((line, index) => <tr key={line.key}><td className="journal-entry-table__row-number">{(index + 1).toLocaleString("fa-IR")}</td><td><select value={line.accountId} onChange={(event) => { const accountId = event.target.value; updateLine(line.key, { accountId, assignments: [] }); if (accountId) void loadDimensionsForLine({ ...line, accountId, assignments: [] }); }}><option value="">انتخاب حساب</option>{accounts.map((account) => <option key={account.id} value={account.id}>{account.code} — {account.name}</option>)}</select></td><td><input value={line.description} onChange={(event) => updateLine(line.key, { description: event.target.value })} /></td><td><DimensionCell line={line} selector={selectors[line.key]} onChange={updateAssignment} /></td><td><input className="journal-money-input" inputMode="numeric" dir="ltr" value={line.debit} onChange={(event) => updateLine(line.key, { debit: event.target.value, credit: event.target.value ? "" : line.credit })} /></td><td><input className="journal-money-input" inputMode="numeric" dir="ltr" value={line.credit} onChange={(event) => updateLine(line.key, { credit: event.target.value, debit: event.target.value ? "" : line.debit })} /></td><td className="journal-entry-table__actions"><button type="button" disabled={draft.lines.length <= 2} onClick={() => setDraft((current) => ({ ...current, lines: current.lines.filter((item) => item.key !== line.key) }))}>حذف</button></td></tr>)}</tbody></table></div>
+                <div className="journal-summary-grid"><div className="journal-summary-panel"><span>جمع بدهکار</span><strong>{formatJournalRials(totals.debit)}</strong></div><div className="journal-summary-panel"><span>جمع بستانکار</span><strong>{formatJournalRials(totals.credit)}</strong></div><div className="journal-summary-panel"><span>اختلاف</span><strong>{formatJournalRials(Math.abs(difference))}</strong></div><div className={`journal-balance-state ${difference === 0 && totals.debit > 0 ? "journal-balance-state--ok" : "journal-balance-state--warning"}`}>{difference === 0 && totals.debit > 0 ? "سند تراز است" : "جمع بدهکار و بستانکار باید برابر باشد"}</div></div>
               </section>
 
-              <footer className="journal-editor-footer">
-                <div className="journal-editor-footer__meta">
-                  <span>شرکت: <b>{currentCompany?.legalName ?? "—"}</b></span>
-                  <span>شعبه: <b>{currentBranch?.name ?? "بدون شعبه"}</b></span>
-                  <span>تاریخ: <b>{formatJournalVoucherDate(draft.voucherDate)}</b></span>
-                </div>
-                <div className="journal-editor-footer__actions">
-                  {draft.voucherId && <button type="button" onClick={startNew}>انصراف</button>}
-                  <button
-                    className="journal-button journal-button--primary"
-                    type="submit"
-                    disabled={busy || !totals.balanced || !can(draft.voucherId ? journalVoucherPermissions.updateDraft : journalVoucherPermissions.create)}
-                  >
-                    {busy ? "در حال ذخیره…" : draft.voucherId ? "ذخیره تغییرات" : "ذخیره پیش‌نویس"}
-                  </button>
-                </div>
-              </footer>
+              <footer className="journal-editor-footer"><div className="journal-editor-footer__meta"><span>واحد پول: <b>ریال</b></span><span>تقویم: <b>هجری شمسی</b></span><span>ذخیره‌سازی تاریخ: <b>Gregorian ISO</b></span></div><div className="journal-editor-footer__actions"><button type="button" onClick={startNew}>پاک‌کردن فرم</button><button className="journal-button journal-button--primary" type="submit" disabled={busy || !(draft.voucherId ? can(journalVoucherPermissions.updateDraft) : can(journalVoucherPermissions.create))}>{busy ? "در حال ذخیره…" : draft.voucherId ? "ذخیره تغییرات" : "ثبت پیش‌نویس"}</button></div></footer>
             </form>
           )}
         </main>
@@ -697,171 +244,19 @@ export function JournalVouchersPage() {
   );
 }
 
-function JournalEntryRow({
-  line,
-  index,
-  accounts,
-  selector,
-  dimensionColumns,
-  removable,
-  onChooseAccount,
-  onUpdate,
-  onChooseDimension,
-  onRemove,
-}: {
-  readonly line: VoucherLineDraft;
-  readonly index: number;
-  readonly accounts: readonly JournalAccountOption[];
-  readonly selector: AccountingDimensionSelectorModel | undefined;
-  readonly dimensionColumns: readonly DimensionColumn[];
-  readonly removable: boolean;
-  readonly onChooseAccount: (accountId: string) => void;
-  readonly onUpdate: (changes: Partial<VoucherLineDraft>) => void;
-  readonly onChooseDimension: (dimensionTypeId: string, memberIds: readonly string[]) => void;
-  readonly onRemove: () => void;
-}) {
-  const fields = new Map((selector?.fields ?? []).map((field) => [field.dimensionTypeId, field]));
-  return (
-    <tr>
-      <td className="journal-entry-table__row-number">{(index + 1).toLocaleString("fa-IR")}</td>
-      <td>
-        <select required value={line.accountId} onChange={(event) => onChooseAccount(event.target.value)}>
-          <option value="">انتخاب حساب معین</option>
-          {accounts.map((account) => <option key={account.id} value={account.id}>{account.code} — {account.name}</option>)}
-        </select>
-      </td>
-      <td>
-        <input value={line.description} placeholder="شرح ردیف" onChange={(event) => onUpdate({ description: event.target.value })} />
-      </td>
-      {dimensionColumns.map((column) => (
-        <td key={column.dimensionTypeId}>
-          <DimensionCell
-            field={fields.get(column.dimensionTypeId)}
-            assignment={line.assignments.find((value) => value.dimensionTypeId === column.dimensionTypeId)}
-            onChange={(memberIds) => onChooseDimension(column.dimensionTypeId, memberIds)}
-          />
-        </td>
-      ))}
-      <td>
-        <input
-          className="journal-money-input"
-          inputMode="numeric"
-          dir="ltr"
-          value={line.debit}
-          placeholder="0"
-          onChange={(event) => {
-            const value = event.target.value;
-            onUpdate({ debit: value, credit: value.trim() && parseRialInput(value) > 0 ? "" : line.credit });
-          }}
-        />
-      </td>
-      <td>
-        <input
-          className="journal-money-input"
-          inputMode="numeric"
-          dir="ltr"
-          value={line.credit}
-          placeholder="0"
-          onChange={(event) => {
-            const value = event.target.value;
-            onUpdate({ credit: value, debit: value.trim() && parseRialInput(value) > 0 ? "" : line.debit });
-          }}
-        />
-      </td>
-      <td className="journal-entry-table__actions">
-        <button type="button" title="حذف ردیف" disabled={!removable} onClick={onRemove}>حذف</button>
-      </td>
-    </tr>
-  );
+function DimensionCell({ line, selector, onChange }: { line: VoucherLineDraft; selector?: AccountingDimensionSelectorModel; onChange: (line: VoucherLineDraft, field: AccountingDimensionSelectorField, memberIds: readonly string[]) => void }) {
+  if (!line.accountId) return <span className="journal-dimension-unavailable">ابتدا حساب</span>;
+  if (!selector) return <span className="journal-dimension-unavailable">در حال بارگذاری…</span>;
+  if (selector.fields.length === 0) return <span className="journal-dimension-unavailable">بدون بُعد</span>;
+  return <div className="journal-dimension-cell">{selector.fields.map((field) => {
+    const assignment = line.assignments.find((item) => item.dimensionTypeId === field.dimensionTypeId);
+    const selectedIds = assignment?.memberIds ?? [];
+    if (field.allowMultipleMembers) return <label key={field.dimensionTypeId}><small>{field.dimensionTypeName}{field.requirement === "required" ? " *" : ""}</small><select multiple value={[...selectedIds]} onChange={(event) => onChange(line, field, Array.from(event.currentTarget.selectedOptions).map((option) => option.value))}>{field.members.map((member) => <option key={member.id} value={member.id}>{member.code} — {member.name}</option>)}</select></label>;
+    return <label key={field.dimensionTypeId}><small>{field.dimensionTypeName}{field.requirement === "required" ? " *" : ""}</small><select value={selectedIds[0] ?? ""} onChange={(event) => onChange(line, field, event.target.value ? [event.target.value] : [])}><option value="">انتخاب کنید</option>{field.members.map((member) => <option key={member.id} value={member.id}>{member.code} — {member.name}</option>)}</select></label>;
+  })}</div>;
 }
 
-function DimensionCell({
-  field,
-  assignment,
-  onChange,
-}: {
-  readonly field: AccountingDimensionSelectorField | undefined;
-  readonly assignment: AccountingDimensionAssignment | undefined;
-  readonly onChange: (memberIds: readonly string[]) => void;
-}) {
-  if (!field || field.disabled) return <span className="journal-dimension-unavailable">—</span>;
-  return (
-    <div className="journal-dimension-cell">
-      <select
-        multiple={field.multiple}
-        value={assignment?.memberIds ?? []}
-        required={field.required && !field.multiple}
-        onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions).map((option) => option.value))}
-      >
-        {!field.multiple && <option value="">{field.required ? "انتخاب الزامی" : "انتخاب نشده"}</option>}
-        {field.options.map((option) => <option key={option.id} value={option.id}>{option.code} — {option.name}</option>)}
-      </select>
-      {field.required && <small>الزامی</small>}
-    </div>
-  );
-}
-
-function VoucherDetail({
-  voucher,
-  accounts,
-  canEdit,
-  canDelete,
-  onEdit,
-  onDelete,
-  onClose,
-}: {
-  readonly voucher: JournalVoucherDto;
-  readonly accounts: readonly JournalAccountOption[];
-  readonly canEdit: boolean;
-  readonly canDelete: boolean;
-  readonly onEdit: () => void;
-  readonly onDelete: () => void;
-  readonly onClose: () => void;
-}) {
-  return (
-    <section className="journal-detail-card">
-      <div className="journal-section-heading">
-        <div>
-          <p className="journal-page__eyebrow">جزئیات سند</p>
-          <h2>سند شماره <span dir="ltr">{voucher.number}</span></h2>
-        </div>
-        <div className="journal-actions">
-          <button type="button" disabled={!canEdit} onClick={onEdit}>ویرایش</button>
-          <button type="button" className="journal-button--danger" disabled={!canDelete} onClick={onDelete}>حذف</button>
-          <button type="button" onClick={onClose}>بستن</button>
-        </div>
-      </div>
-
-      <div className="journal-detail-grid">
-        <div><dt>تاریخ شمسی</dt><dd>{formatJournalVoucherDate(voucher.voucherDate)}</dd></div>
-        <div><dt>تاریخ داخلی</dt><dd dir="ltr">{voucher.voucherDate}</dd></div>
-        <div><dt>وضعیت</dt><dd>{journalVoucherStatusLabel()}</dd></div>
-        <div><dt>منبع</dt><dd>{journalVoucherSourceLabel(voucher.sourceType)}</dd></div>
-        <div><dt>مرجع</dt><dd>{voucher.reference || "—"}</dd></div>
-        <div><dt>نسخه</dt><dd>{voucher.version.toLocaleString("fa-IR")}</dd></div>
-        <div><dt>سال مالی</dt><dd dir="ltr">{voucher.fiscalYearId}</dd></div>
-        <div><dt>دوره مالی</dt><dd dir="ltr">{voucher.fiscalPeriodId}</dd></div>
-      </div>
-
-      <p className="journal-detail-description">{voucher.description || "بدون شرح سند"}</p>
-      <div className="journal-table-wrap">
-        <table className="journal-table">
-          <thead><tr><th>ردیف</th><th>حساب</th><th>شرح</th><th>ابعاد حسابداری</th><th>بدهکار</th><th>بستانکار</th></tr></thead>
-          <tbody>
-            {voucher.lines.map((line) => (
-              <tr key={line.id}>
-                <td>{line.order.toLocaleString("fa-IR")}</td>
-                <td>{accounts.find((account) => account.id === line.accountId)?.name ?? line.accountId}</td>
-                <td>{line.description || "—"}</td>
-                <td>{line.dimensionAssignments.length === 0 ? "—" : line.dimensionAssignments.map((assignment) => assignment.memberIds.join("، ")).join(" / ")}</td>
-                <td>{line.debit.amount ? formatJournalRials(line.debit.amount) : "—"}</td>
-                <td>{line.credit.amount ? formatJournalRials(line.credit.amount) : "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot><tr><td colSpan={4}>جمع</td><td>{formatJournalRials(voucher.totalDebit.amount)}</td><td>{formatJournalRials(voucher.totalCredit.amount)}</td></tr></tfoot>
-        </table>
-      </div>
-    </section>
-  );
+function VoucherDetail({ voucher, accounts, canEdit, canDelete, onEdit, onDelete, onClose }: { voucher: JournalVoucherDto; accounts: readonly JournalAccountOption[]; canEdit: boolean; canDelete: boolean; onEdit: () => void; onDelete: () => void; onClose: () => void }) {
+  const accountNames = new Map(accounts.map((account) => [account.id, `${account.code} — ${account.name}`]));
+  return <section className="journal-detail-card"><div className="journal-section-heading"><div><p className="journal-page__eyebrow">مشاهده سند</p><h2>سند {voucher.number}</h2></div><div className="journal-actions"><span className="journal-status-badge">{journalVoucherStatusLabel(voucher.status)}</span><button type="button" onClick={onClose}>بستن</button>{canEdit && <button type="button" onClick={onEdit}>ویرایش</button>}{canDelete && <button className="journal-button--danger" type="button" onClick={onDelete}>حذف</button>}</div></div><dl className="journal-detail-grid"><div><dt>تاریخ</dt><dd>{formatJournalVoucherDate(voucher.voucherDate)}</dd></div><div><dt>شرکت</dt><dd>{voucher.companyId}</dd></div><div><dt>شعبه</dt><dd>{voucher.branchId ?? "—"}</dd></div><div><dt>منبع</dt><dd>{journalVoucherSourceLabel(voucher.sourceType)}</dd></div><div><dt>مرجع</dt><dd>{voucher.reference ?? "—"}</dd></div><div><dt>نسخه</dt><dd>{voucher.version.toLocaleString("fa-IR")}</dd></div><div><dt>ایجاد</dt><dd>{new Date(voucher.createdAt).toLocaleString("fa-IR-u-ca-persian")}</dd></div><div><dt>آخرین تغییر</dt><dd>{new Date(voucher.updatedAt).toLocaleString("fa-IR-u-ca-persian")}</dd></div></dl><p className="journal-detail-description">{voucher.description || "بدون شرح کلی"}</p><div className="journal-table-wrap"><table className="journal-table"><thead><tr><th>ردیف</th><th>حساب</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th></tr></thead><tbody>{voucher.lines.map((line) => <tr key={line.id}><td>{line.lineNumber.toLocaleString("fa-IR")}</td><td>{accountNames.get(line.accountId) ?? line.accountId}</td><td>{line.description ?? "—"}</td><td>{formatJournalRials(line.debit.amount)}</td><td>{formatJournalRials(line.credit.amount)}</td></tr>)}</tbody><tfoot><tr><td colSpan={3}>جمع</td><td>{formatJournalRials(voucher.totalDebit.amount)}</td><td>{formatJournalRials(voucher.totalCredit.amount)}</td></tr></tfoot></table></div></section>;
 }
