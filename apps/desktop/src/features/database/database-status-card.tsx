@@ -1,57 +1,26 @@
-import {
-  useDatabaseStatus
-} from "./use-database-status";
+import { Badge } from "../../components/data-display";
+import { Feedback } from "../../components/feedback";
+import { Card } from "../../components/layout";
+import { useDatabaseStatus } from "./use-database-status";
 
 export function DatabaseStatusCard() {
   const status = useDatabaseStatus();
 
   if (status.state === "loading") {
-    return (
-      <section className="database-card">
-        <h2>پایگاه داده</h2>
-        <p>در حال آماده‌سازی پایگاه داده محلی...</p>
-      </section>
-    );
+    return <Feedback tone="info">در حال آماده‌سازی پایگاه داده محلی...</Feedback>;
   }
 
   if (status.state === "error") {
-    return (
-      <section className="database-card database-card-error">
-        <h2>خطای پایگاه داده</h2>
-        <p>{status.message}</p>
-      </section>
-    );
+    return <Feedback tone="error">{status.message}</Feedback>;
   }
 
   return (
-    <section className="database-card">
-      <h2>پایگاه داده آفلاین</h2>
-
-      <dl>
-        <div>
-          <dt>وضعیت</dt>
-          <dd>آماده</dd>
-        </div>
-
-        <div>
-          <dt>موتور</dt>
-          <dd>SQLite</dd>
-        </div>
-
-        <div>
-          <dt>نسخه</dt>
-          <dd>{status.health.databaseVersion}</dd>
-        </div>
-
-        <div>
-          <dt>کلیدهای خارجی</dt>
-          <dd>
-            {status.health.foreignKeysEnabled
-              ? "فعال"
-              : "غیرفعال"}
-          </dd>
-        </div>
+    <Card header={<><div><strong>پایگاه داده آفلاین</strong><small>زیرساخت ذخیره‌سازی محلی Desktop</small></div><Badge tone="success">آماده</Badge></>}>
+      <dl className="system-diagnostics__definition-list">
+        <div><dt>موتور</dt><dd>SQLite</dd></div>
+        <div><dt>نسخه</dt><dd dir="ltr">{status.health.databaseVersion}</dd></div>
+        <div><dt>کلیدهای خارجی</dt><dd><Badge tone={status.health.foreignKeysEnabled ? "success" : "danger"}>{status.health.foreignKeysEnabled ? "فعال" : "غیرفعال"}</Badge></dd></div>
       </dl>
-    </section>
+    </Card>
   );
 }
