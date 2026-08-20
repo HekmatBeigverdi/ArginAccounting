@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–7 completed.
+In progress. Steps 1–8 completed.
 
 ## Objective
 
@@ -146,6 +146,20 @@ The Fiscal form and shared `PersianDatePicker` were hardened with explicit conta
 - The Tauri main window now starts at `1366 × 768`, establishing the minimum desktop composition baseline used by the Phase 14 workspace designs.
 - `ActiveContextProvider.refresh()` now refreshes dependent Branch and Fiscal collections even when the active Company ID is unchanged. This is required after creating a Branch or Fiscal Year.
 
+## Step 8 — Security Workspace
+
+Step 8 consolidates the Foundation-era Security screens without changing authentication, authorization, assignment, or persistence semantics:
+
+- added a shared `SecurityWorkspace` with one consistent Users/Roles/Permissions tab surface instead of per-page ad-hoc back links and `temporary-page` wrappers;
+- migrated Login to shared `Panel`, `Field`, `Input`, `Button`, and `Feedback` primitives while retaining the existing `authenticateUser` boundary and session flow;
+- migrated User and Role creation to shared form primitives and preserved existing `createUser` and `createRole` Application use cases;
+- migrated User/Role/Permission listings to shared `DataTable` and `Badge` presentation with explicit loading, empty, and read-error states;
+- migrated Role Permission and User Access assignment surfaces to shared selectors, panels, feedback, and consistent checkbox-choice presentation;
+- preserved `replaceRolePermissions`, `replaceUserRoles`, and `replaceUserBranchAccess` assignment semantics, including System Administrator protection and inactive permission/role/branch disabled states;
+- removed development-only console logging from the touched Security user flows and replaced it with user-facing Persian feedback;
+- added `security-workspace.css` with token-based RTL, responsive, focus-visible, contained list, and login presentation;
+- added `apps/desktop/tests/security-workspace-ui-contract.test.ts` to lock the shared workspace, design-system adoption, authentication/assignment boundaries, disabled-state semantics, absence of temporary UI and console logging, and responsive/focus behavior.
+
 ## Active UI Technical Debt — Must Remain Visible Through Phase 14
 
 `apps/desktop/src/App.css` still contains legacy Vite starter styles and first-generation Foundation selectors. Those rules have already caused real runtime collisions with Phase 14 components. This is an active migration debt, not an accepted final state.
@@ -154,9 +168,10 @@ For every remaining Phase 14 UI step:
 
 - check touched screens against legacy `App.css` selectors before closing the step;
 - do not add new feature-specific overrides merely to coexist permanently with legacy global rules;
-- migrate/remove obsolete rules as their owning Security, Audit/Approval, and Accounting workspaces are consolidated;
+- migrate/remove obsolete rules as their owning Audit/Approval and Accounting workspaces are consolidated;
+- Security source code no longer consumes the legacy `security-panel`, `security-table`, `security-errors`, `security-success`, or `temporary-page` presentation selectors; their inert definitions remain part of the final legacy-selector cleanup in Steps 11–13;
 - complete a final legacy-selector audit in Steps 11–13 and ensure obsolete Vite/temporary/Foundation presentation rules are removed or explicitly justified before Phase 14 release.
 
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Steps 3–7 and their pre-Step-8 corrections add focused desktop/application source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
+Step-by-step evidence is maintained in the fixed plan. Steps 3–8 and their pre-Step-8 corrections add focused desktop/application source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
