@@ -21,6 +21,7 @@ import { SqliteCompanyRepository } from "@argin/company-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
 import { useAuthSession } from "../../app/providers/auth-session-provider";
+import { PersianDatePicker } from "../../components/forms";
 import { useAccountingServices } from "../../composition/accounting/accounting-provider";
 import type {
   JournalAccountOption,
@@ -490,11 +491,21 @@ export function JournalVouchersPage() {
         </label>
         <label>
           از تاریخ
-          <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+          <PersianDatePicker
+            value={dateFrom}
+            onChange={setDateFrom}
+            ariaLabel="از تاریخ"
+            placeholder="از تاریخ شمسی"
+          />
         </label>
         <label>
           تا تاریخ
-          <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+          <PersianDatePicker
+            value={dateTo}
+            onChange={setDateTo}
+            ariaLabel="تا تاریخ"
+            placeholder="تا تاریخ شمسی"
+          />
         </label>
         <button type="button" onClick={() => void reloadList()} disabled={busy}>جست‌وجو</button>
       </section>
@@ -563,8 +574,11 @@ export function JournalVouchersPage() {
                   </label>
                   <label>
                     تاریخ سند
-                    <input required type="date" value={draft.voucherDate} onChange={(event) => void changeVoucherDate(event.target.value)} />
-                    <small>شمسی: {formatJournalVoucherDate(draft.voucherDate)}</small>
+                    <PersianDatePicker
+                      value={draft.voucherDate}
+                      onChange={(value) => { void changeVoucherDate(value); }}
+                      ariaLabel="تاریخ سند"
+                    />
                   </label>
                   <label>
                     شعبه
