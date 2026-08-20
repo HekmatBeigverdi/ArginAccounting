@@ -57,29 +57,143 @@
 .ui-field__hint { margin: 0; color: var(--ui-text-muted); font-size: 0.78rem; line-height: 1.7; }
 .ui-field__error { margin: 0; color: var(--ui-danger); font-size: 0.78rem; line-height: 1.7; }
 
-.ui-persian-date { position: relative; min-width: 0; }
-.ui-persian-date__control { position: relative; display: flex; align-items: center; }
-.ui-persian-date__input { padding-left: 2.75rem; text-align: center; font-variant-numeric: tabular-nums; }
-.ui-persian-date__trigger { position: absolute; left: 0.35rem; display: grid; place-items: center; width: 2rem; height: 2rem; border: 0; border-radius: var(--ui-radius-sm); background: transparent; color: var(--ui-primary); font: inherit; font-size: 1.15rem; cursor: pointer; }
+.ui-persian-date {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  direction: rtl;
+}
+.ui-persian-date__control {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.ui-persian-date__input {
+  width: 100%;
+  padding-inline: 0.75rem 2.75rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  direction: rtl;
+}
+.ui-persian-date__trigger,
+.ui-persian-date__popover button {
+  min-width: 0 !important;
+  grid-column: auto !important;
+  justify-self: auto !important;
+  margin: 0;
+  border: 0;
+  box-shadow: none !important;
+  font: inherit;
+}
+.ui-persian-date__trigger {
+  position: absolute;
+  inset-inline-end: 0.35rem;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0 !important;
+  transform: translateY(-50%);
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--ui-primary);
+  font-size: 1rem;
+  cursor: pointer;
+}
 .ui-persian-date__trigger:hover:not(:disabled) { background: var(--ui-primary-soft); }
-.ui-persian-date__trigger:focus-visible { outline: 2px solid var(--ui-focus-ring); }
-.ui-persian-date__popover { position: absolute; z-index: 80; top: calc(100% + 0.4rem); right: 0; width: min(20rem, calc(100vw - 3rem)); padding: var(--ui-space-3); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-shadow-md); }
-.ui-persian-date__header { display: grid; grid-template-columns: 2rem 1fr 2rem; align-items: center; gap: var(--ui-space-2); margin-bottom: var(--ui-space-3); }
-.ui-persian-date__header strong { text-align: center; }
+.ui-persian-date__trigger:focus-visible { outline: 2px solid var(--ui-focus-ring); outline-offset: 1px; }
+.ui-persian-date__popover {
+  position: absolute;
+  z-index: 1200;
+  inset-block-start: calc(100% + 0.4rem);
+  inset-inline-start: 0;
+  width: 18.5rem;
+  max-width: min(18.5rem, calc(100vw - 2rem));
+  padding: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-md);
+  direction: rtl;
+}
+.ui-persian-date__header {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 2rem;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  margin-bottom: 0.65rem;
+}
+.ui-persian-date__header strong {
+  min-width: 0;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
 .ui-persian-date__header button,
-.ui-persian-date__footer button { border: 0; border-radius: var(--ui-radius-sm); background: transparent; color: var(--ui-primary); font: inherit; cursor: pointer; }
-.ui-persian-date__header button { width: 2rem; height: 2rem; font-size: 1.25rem; }
+.ui-persian-date__footer button {
+  padding: 0 !important;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--ui-primary);
+  cursor: pointer;
+}
+.ui-persian-date__header button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.15rem;
+}
 .ui-persian-date__header button:hover,
 .ui-persian-date__footer button:hover { background: var(--ui-primary-soft); }
 .ui-persian-date__weekdays,
-.ui-persian-date__days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.2rem; }
-.ui-persian-date__weekdays { margin-bottom: var(--ui-space-1); color: var(--ui-text-muted); font-size: 0.72rem; text-align: center; }
-.ui-persian-date__day { aspect-ratio: 1; border: 0; border-radius: var(--ui-radius-sm); background: transparent; color: var(--ui-text); font: inherit; font-size: 0.82rem; cursor: pointer; }
+.ui-persian-date__days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.2rem;
+  width: 100%;
+}
+.ui-persian-date__weekdays {
+  margin-bottom: 0.25rem;
+  color: var(--ui-text-muted);
+  font-size: 0.7rem;
+  text-align: center;
+}
+.ui-persian-date__weekdays span {
+  display: grid;
+  place-items: center;
+  height: 1.5rem;
+}
+.ui-persian-date__day {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0 !important;
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--ui-text);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
 .ui-persian-date__day:hover { background: var(--ui-primary-soft); color: var(--ui-primary-hover); }
 .ui-persian-date__day--active { background: var(--ui-primary); color: #fff; font-weight: 800; }
 .ui-persian-date__day--active:hover { background: var(--ui-primary-hover); color: #fff; }
-.ui-persian-date__footer { display: flex; justify-content: flex-end; margin-top: var(--ui-space-2); padding-top: var(--ui-space-2); border-top: 1px solid var(--ui-border); }
-.ui-persian-date__footer button { padding: 0.35rem 0.6rem; }
+.ui-persian-date__footer {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--ui-border);
+}
+.ui-persian-date__footer button {
+  min-height: 1.9rem;
+  padding: 0 0.6rem !important;
+  font-size: 0.78rem;
+}
 
 .ui-panel,
 .ui-card { min-width: 0; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); background: var(--ui-surface); box-shadow: var(--ui-shadow-sm); }
