@@ -11,7 +11,13 @@ import { SqliteFiscalUnitOfWork } from "@argin/fiscal-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
 import { Feedback } from "../../components/feedback";
-import { Button, Field, Input, Select } from "../../components/forms";
+import {
+  Button,
+  Field,
+  Input,
+  PersianDatePicker,
+  Select
+} from "../../components/forms";
 
 interface FiscalFormState {
   companyId: string;
@@ -79,10 +85,7 @@ export function FiscalYearForm({ companyId, onCreated }: FiscalYearFormProps) {
     return () => { cancelled = true; };
   }, [companyId]);
 
-  function updateField<K extends keyof FiscalFormState>(
-    field: K,
-    value: FiscalFormState[K]
-  ): void {
+  function updateField<K extends keyof FiscalFormState>(field: K, value: FiscalFormState[K]): void {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
@@ -118,15 +121,13 @@ export function FiscalYearForm({ companyId, onCreated }: FiscalYearFormProps) {
   }
 
   return (
-    <form
-      className="fiscal-form"
-      onSubmit={(event) => { void handleSubmit(event); }}
-    >
+    <form className="fiscal-form" onSubmit={(event) => { void handleSubmit(event); }}>
       <header className="fiscal-form__header">
-        <h2>تعریف سال مالی</h2>
-        <p>
-          تاریخ ورودی به صورت میلادی استاندارد ذخیره می‌شود؛ نمایش سال‌ها و دوره‌های ثبت‌شده در فضای کاری به صورت هجری شمسی است.
-        </p>
+        <div className="fiscal-form__title-icon" aria-hidden="true">▦</div>
+        <div>
+          <h2>ایجاد سال مالی جدید</h2>
+          <p>تاریخ‌ها را به صورت هجری شمسی وارد کنید. برنامه آن‌ها را برای ذخیره‌سازی استاندارد به تاریخ میلادی تبدیل می‌کند.</p>
+        </div>
       </header>
 
       <div className="fiscal-form__grid">
@@ -143,21 +144,34 @@ export function FiscalYearForm({ companyId, onCreated }: FiscalYearFormProps) {
           </Select>
         </Field>
 
-        <Field label="کد سال مالی">
-          <Input value={form.code} onChange={(event) => updateField("code", event.target.value)} />
+        <Field label="کد سال مالی" hint="مثال: ۱۴۰۵">
+          <Input value={form.code} inputMode="numeric" onChange={(event) => updateField("code", event.target.value)} />
         </Field>
 
-        <Field label="عنوان سال مالی">
+        <Field label="عنوان سال مالی" className="fiscal-form__field-wide">
           <Input value={form.title} onChange={(event) => updateField("title", event.target.value)} />
         </Field>
 
-        <Field label="تاریخ شروع" hint="فرمت ذخیره‌سازی: YYYY-MM-DD">
-          <Input type="date" value={form.startDate} onChange={(event) => updateField("startDate", event.target.value)} />
+        <Field label="تاریخ شروع سال مالی" hint="ورودی شمسی؛ مثال ۱۴۰۵/۰۱/۰۱">
+          <PersianDatePicker
+            value={form.startDate}
+            onChange={(value) => updateField("startDate", value)}
+            ariaLabel="تاریخ شروع سال مالی"
+          />
         </Field>
 
-        <Field label="تاریخ پایان" hint="فرمت ذخیره‌سازی: YYYY-MM-DD">
-          <Input type="date" value={form.endDate} onChange={(event) => updateField("endDate", event.target.value)} />
+        <Field label="تاریخ پایان سال مالی" hint="ورودی شمسی؛ مثال ۱۴۰۵/۱۲/۲۹">
+          <PersianDatePicker
+            value={form.endDate}
+            onChange={(value) => updateField("endDate", value)}
+            ariaLabel="تاریخ پایان سال مالی"
+          />
         </Field>
+      </div>
+
+      <div className="fiscal-form__notice">
+        <span aria-hidden="true">ⓘ</span>
+        <p>طبق قرارداد فعلی Fiscal، هنگام ایجاد سال مالی یک «دوره اصلی» با همین بازه ساخته می‌شود. مدیریت جزئیات دوره‌ها بدون تغییر قواعد دامنه در فضای کاری نمایش داده می‌شود.</p>
       </div>
 
       <label className="fiscal-form__check">
@@ -166,17 +180,21 @@ export function FiscalYearForm({ companyId, onCreated }: FiscalYearFormProps) {
           checked={form.makeCurrent}
           onChange={(event) => updateField("makeCurrent", event.target.checked)}
         />
-        <span>انتخاب به عنوان سال مالی جاری</span>
+        <span>
+          <strong>این سال مالی، سال جاری باشد</strong>
+          <small>پس از ایجاد، زمینه فعال برنامه روی این سال قرار می‌گیرد.</small>
+        </span>
       </label>
 
       {errors.length > 0 ? (
-        <Feedback tone="error">
-          {errors.map((error) => <div key={error}>{error}</div>)}
-        </Feedback>
+        <Feedback tone="error">{errors.map((error) => <div key={error}>{error}</div>)}</Feedback>
       ) : null}
       {message ? <Feedback tone="success">{message}</Feedback> : null}
 
       <div className="fiscal-form__actions">
+        <Button type="reset" onClick={() => setForm({ ...initialState, companyId: companyId ?? form.companyId })}>
+          پاک کردن فرم
+        </Button>
         <Button
           type="submit"
           variant="primary"
