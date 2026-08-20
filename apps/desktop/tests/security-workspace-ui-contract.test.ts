@@ -20,9 +20,10 @@ const securitySources = [usersPage, rolesPage, permissionsPage, loginPage, userM
 test("security pages use one shared workspace instead of temporary navigation", () => {
   assert.match(workspace, /<Page className="security-workspace"/u);
   assert.match(workspace, /NavLink/u);
-  assert.match(workspace, /\/system\/users/u);
-  assert.match(workspace, /\/system\/roles/u);
-  assert.match(workspace, /\/system\/permissions/u);
+  assert.match(workspace, /\/security\/users/u);
+  assert.match(workspace, /\/security\/roles/u);
+  assert.match(workspace, /\/security\/permissions/u);
+  assert.doesNotMatch(workspace, /\/system\/(users|roles|permissions)/u);
   for (const source of [usersPage, rolesPage, permissionsPage]) {
     assert.match(source, /<SecurityWorkspace/u);
     assert.doesNotMatch(source, /temporary-page/u);
