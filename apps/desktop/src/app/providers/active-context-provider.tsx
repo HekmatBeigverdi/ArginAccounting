@@ -50,6 +50,7 @@ export function ActiveContextProvider({ children }: PropsWithChildren) {
   const [companyId, setCompanyId] = useState("");
   const [branchId, setBranchId] = useState("");
   const [fiscalYearId, setFiscalYearId] = useState("");
+  const [refreshRevision, setRefreshRevision] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -69,6 +70,7 @@ export function ActiveContextProvider({ children }: PropsWithChildren) {
     setError("");
     try {
       await loadCompanies();
+      setRefreshRevision((current) => current + 1);
     } catch (reason) {
       setError(getErrorMessage(reason));
     } finally {
@@ -130,7 +132,7 @@ export function ActiveContextProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [companyId]);
+  }, [companyId, refreshRevision]);
 
   const value = useMemo<ActiveContextValue>(() => ({
     companies,
