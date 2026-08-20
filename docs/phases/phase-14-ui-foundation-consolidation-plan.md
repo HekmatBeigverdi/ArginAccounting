@@ -45,7 +45,7 @@ Out of scope:
 | 5 | Dashboard Modernization | Completed |
 | 6 | Company and Branch Workspace Consolidation | Completed |
 | 7 | Fiscal Workspace Consolidation | Completed |
-| 8 | Security Workspace Consolidation | Not started |
+| 8 | Security Workspace Consolidation | Completed |
 | 9 | Audit and Approval Workspace Harmonization | Not started |
 | 10 | Accounting Workspace Harmonization | Not started |
 | 11 | RTL, Accessibility, Keyboard, and Responsive Hardening | Not started |
@@ -201,15 +201,16 @@ Status: Completed
 Evidence:
 
 - Replaced the create-only `CompanySetupPage` presentation with a persisted Company/Branch management workspace backed by the shared `ActiveContextProvider`.
-- Added Company list/selection, active Company identity/status summary, and branch-oriented presentation using existing persisted Company and Branch repository data without introducing new mutation contracts.
+- Added Company list/selection, active Company identity/status summary, and branch-oriented presentation using existing persisted Company and Branch repository data.
 - Preserved company creation through the existing transactional `setupCompany` Application use case and added an `onCreated` callback so the shared context refreshes and selects the newly created Company after success.
-- Exposed the already-supported `updateCompanyActivityType` Application use case as the only Company edit operation in this step, preserving its existing permission contract and coding-template recommendation/preview semantics.
+- Exposed the already-supported `updateCompanyActivityType` Application use case, preserving its existing permission contract and coding-template recommendation/preview semantics.
 - Migrated the Company setup form to shared `Field`, `Input`, `Select`, `Textarea`, `Button`, and `Feedback` primitives while retaining existing validation, tax-profile, address, and head-office inputs.
 - Added `company-workspace.css` with token-based RTL layout, selected-row/focus states, branch cards, responsive two-column workspace behavior, and contained creation form presentation.
 - Renamed the navigation label from create-only `تعریف شرکت` to `شرکت‌ها و شعب` while preserving the stable `/company/setup` route.
 - Removed development-only `console.log`/`console.error` output from the normal Company form flow and from the `setupCompany` transaction without changing transaction or validation behavior.
-- Added `apps/desktop/tests/company-workspace-ui-contract.test.ts` to lock the management workspace, persisted Company/Branch context, supported activity-type edit use case, shared primitives, absence of development console output, responsive styling, and removal of temporary Company page presentation.
-- No new Company/Branch domain capability, migration, persistence semantic, Journal Lifecycle behavior, or future ERP functionality was introduced.
+- Added `addCompanyBranch` over the existing Company Unit of Work/Branch repository, with existing validation, Company existence checking, duplicate code protection, and non-head-office creation semantics.
+- Added inline Branch creation to the active Company workspace and corrected `ActiveContextProvider.refresh()` so Branch/Fiscal collections refresh after mutations even when Company ID is unchanged.
+- Added focused Company/Branch Application and desktop UI contract tests.
 
 ### Step 7 — Fiscal Workspace Consolidation
 
@@ -232,10 +233,11 @@ Evidence:
 - Added Fiscal Year list/selection, current/status badges, Solar Hijri start/end presentation, and selected-year summary without changing durable Gregorian ISO date storage.
 - Added persisted Fiscal Period presentation through the existing `SqliteFiscalPeriodRepository.findByFiscalYearId` read contract, including open/locked/closed state and Solar Hijri date ranges.
 - Preserved fiscal-year creation through the existing transactional `createFiscalYear` Application use case and existing single-period behavior; successful creation refreshes and selects the new Fiscal Year in shared context.
-- Migrated `FiscalYearForm` to shared `Field`, `Input`, `Select`, `Button`, and `Feedback` primitives and removed development-only console output from the user flow.
-- Replaced temporary presentation on the standalone `/fiscal/years/new` route with the shared Phase 14 Page/Panel workspace language while retaining route compatibility.
-- Added `fiscal-workspace.css` with token-based RTL, selected-year focus states, responsive year/detail layout, period rows, and responsive form grids.
-- Added `apps/desktop/tests/fiscal-workspace-ui-contract.test.ts` to lock management-workspace behavior, existing fiscal creation/read contracts, year/period states, Solar Hijri presentation, shared primitives, responsive/focus styling, and absence of future fiscal/Journal Lifecycle actions.
+- Migrated `FiscalYearForm` to shared form/feedback primitives and shared `PersianDatePicker`; Solar Hijri input is converted at the UI boundary while durable storage remains Gregorian ISO.
+- Replaced temporary presentation on the standalone `/fiscal/years/new` route with the shared Phase 14 workspace language while retaining route compatibility.
+- Hardened the Fiscal workspace and shared Date Picker against legacy global `App.css` rules after real runtime visual verification exposed button/calendar collisions.
+- Added token-based RTL/responsive styling and focused Fiscal/DatePicker contract coverage.
+- The Tauri main window was corrected to start at `1366 × 768` before Step 8, with a focused desktop window contract test.
 - No fiscal closing/reopening lifecycle, Journal Lifecycle behavior, domain rule, migration, or persistence semantic was added.
 
 ### Step 8 — Security Workspace Consolidation
@@ -251,7 +253,21 @@ Exit criteria:
 - Existing permission enforcement remains at the application boundary.
 - Security-focused desktop regression tests pass.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added a shared `SecurityWorkspace` for Users, Roles, and Permissions with consistent Persian RTL page header and tab navigation; removed `temporary-page` wrappers and per-page dashboard back links.
+- Migrated Login to shared `Panel`, `Field`, `Input`, `Button`, and `Feedback` primitives while preserving `authenticateUser`, the existing repositories/password hasher, session update, and route replacement behavior.
+- Migrated User and Role creation to shared form primitives while preserving the existing `createUser` and `createRole` Application use cases.
+- Migrated User, Role, and Permission read surfaces to shared `DataTable`, `Badge`, `Panel`, and explicit loading/empty/error states.
+- Migrated Role Permission and User Access assignment surfaces to shared selectors, panels, feedback, and consistent checkbox-choice presentation while preserving `replaceRolePermissions`, `replaceUserRoles`, and `replaceUserBranchAccess` semantics.
+- Preserved the System Administrator all-permissions protection and disabled assignment states for inactive permissions, roles, and branches.
+- Removed development-only `console.log`/`console.error` use from touched Security flows and replaced silent read failures with Persian feedback.
+- Added `security-workspace.css` with token-based responsive layout, focus-visible tab navigation, contained permission/access lists, and consolidated login presentation.
+- Security source code no longer consumes legacy `security-panel`, `security-table`, `security-errors`, `security-success`, or `temporary-page` selectors; their inert definitions remain tracked for the final `App.css` cleanup in Steps 11–13.
+- Added `apps/desktop/tests/security-workspace-ui-contract.test.ts` to lock workspace consistency, shared-primitives adoption, authentication/assignment boundaries, disabled-state semantics, removal of temporary UI/development console logging, and responsive/focus behavior.
+- No Security domain semantics, permission enforcement boundary, persistence schema, or Phase 15 Journal Lifecycle behavior was changed.
 
 ### Step 9 — Audit and Approval Workspace Harmonization
 
