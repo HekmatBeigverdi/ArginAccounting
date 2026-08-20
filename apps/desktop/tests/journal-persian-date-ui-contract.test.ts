@@ -2,14 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const journal = readFileSync(
-  new URL("../src/pages/accounting/journal-vouchers-page.tsx", import.meta.url),
-  "utf8",
-);
-const isolation = readFileSync(
-  new URL("../src/styles/persian-date-isolation.css", import.meta.url),
-  "utf8",
-);
+const journal = readFileSync(new URL("../src/pages/accounting/journal-vouchers-page.tsx", import.meta.url), "utf8");
+const isolation = readFileSync(new URL("../src/styles/persian-date-isolation.css", import.meta.url), "utf8");
 
 test("journal voucher user-facing date inputs use the shared Persian date picker", () => {
   assert.match(journal, /import \{ PersianDatePicker \} from "\.\.\/\.\.\/components\/forms"/u);
