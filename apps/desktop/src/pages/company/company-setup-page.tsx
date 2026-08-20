@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  addCompanyBranch,
   companyActivityTypeLabels,
   companyProfilePermissions,
   type CompanyActivityType,
@@ -14,7 +15,7 @@ import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Badge } from "../../components/data-display";
 import { Feedback } from "../../components/feedback";
-import { Button, Field, Select } from "../../components/forms";
+import { Button, Field, Input, Select } from "../../components/forms";
 import { Card, Page, Panel } from "../../components/layout";
 import { CompanySetupForm } from "../../features/company/company-setup-form";
 
@@ -24,12 +25,16 @@ export function CompanySetupPage() {
   const context = useActiveContext();
   const { session } = useAuthSession();
   const [showCreate, setShowCreate] = useState(context.companies.length === 0);
+  const [showBranchForm, setShowBranchForm] = useState(false);
+  const [branchCode, setBranchCode] = useState("");
+  const [branchName, setBranchName] = useState("");
   const [activityType, setActivityType] = useState<CompanyActivityType>(
     context.activeCompany?.activityType ?? "custom"
   );
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingBranch, setIsSavingBranch] = useState(false);
 
   const permissions = useMemo(
     () => new Set(session?.user.permissions ?? []),
@@ -43,6 +48,9 @@ export function CompanySetupPage() {
 
   useEffect(() => {
     if (activeCompany) setActivityType(activeCompany.activityType);
+    setShowBranchForm(false);
+    setBranchCode("");
+    setBranchName("");
   }, [activeCompany]);
 
   useEffect(() => {
@@ -96,12 +104,47 @@ export function CompanySetupPage() {
     }
   }
 
+  async function createBranch(): Promise<void> {
+    if (!activeCompany) return;
+    setIsSavingBranch(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const database = await getDesktopDatabase();
+      const unitOfWork = new SqliteCompanyUnitOfWork(database);
+      const branch = await addCompanyBranch(unitOfWork, {
+        companyId: activeCompany.id,
+        code: branchCode,
+        name: branchName
+      });
+      await context.refresh();
+      context.setCompanyId(activeCompany.id);
+      setBranchCode("");
+      setBranchName("");
+      setShowBranchForm(false);
+      setMessage(`شعبه «${branch.name}» با موفقیت به شرکت اضافه شد.`);
+    } catch (reason) {
+      if (reason instanceof CompanyValidationError) {
+        setError(reason.issues.map((issue) => issue.message).join(" "));
+      } else {
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "ثبت شعبه جدید انجام نشد."
+        );
+      }
+    } finally {
+      setIsSavingBranch(false);
+    }
+  }
+
   return (
     <Page className="company-workspace">
       <header className="company-workspace__header">
         <div>
           <h2>شرکت‌ها و شعب</h2>
-          <p>انتخاب شرکت، مشاهده شعب موجود و ثبت شرکت جدید در یک فضای کاری یکپارچه.</p>
+          <p>انتخاب شرکت، مدیریت شعب موجود و ثبت شرکت یا شعبه جدید در یک فضای کاری یکپارچه.</p>
         </div>
         <Button
           type="button"
@@ -242,7 +285,59 @@ export function CompanySetupPage() {
                   ) : null}
                 </Card>
 
-                <Card header={<h3>شعب شرکت</h3>}>
+                <Card
+                  header={
+                    <div className="company-workspace__branch-header">
+                      <div>
+                        <h3>شعب شرکت</h3>
+                        <p>دفتر مرکزی و شعب عملیاتی شرکت فعال</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={showBranchForm ? "default" : "primary"}
+                        compact
+                        onClick={() => {
+                          setShowBranchForm((current) => !current);
+                          setError("");
+                        }}
+                      >
+                        {showBranchForm ? "انصراف" : "+ افزودن شعبه"}
+                      </Button>
+                    </div>
+                  }
+                >
+                  {showBranchForm ? (
+                    <div className="company-workspace__branch-create">
+                      <div className="company-workspace__branch-create-grid">
+                        <Field label="کد شعبه" hint="کد باید در همین شرکت یکتا باشد.">
+                          <Input
+                            value={branchCode}
+                            autoFocus
+                            maxLength={32}
+                            onChange={(event) => setBranchCode(event.target.value)}
+                          />
+                        </Field>
+                        <Field label="نام شعبه">
+                          <Input
+                            value={branchName}
+                            maxLength={120}
+                            onChange={(event) => setBranchName(event.target.value)}
+                          />
+                        </Field>
+                      </div>
+                      <div className="company-workspace__branch-create-actions">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          disabled={isSavingBranch || !branchCode.trim() || !branchName.trim()}
+                          onClick={() => { void createBranch(); }}
+                        >
+                          {isSavingBranch ? "در حال ثبت..." : "ثبت شعبه"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
                   {context.branches.length === 0 ? (
                     <Feedback tone="info">برای این شرکت شعبه‌ای ثبت نشده است.</Feedback>
                   ) : (
