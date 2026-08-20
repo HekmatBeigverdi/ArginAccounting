@@ -14,6 +14,10 @@ const form = readFileSync(
   new URL("../src/features/fiscal/fiscal-year-form.tsx", import.meta.url),
   "utf8"
 );
+const datePicker = readFileSync(
+  new URL("../src/components/forms/persian-date-picker.tsx", import.meta.url),
+  "utf8"
+);
 const styles = readFileSync(
   new URL("../src/pages/fiscal/fiscal-workspace.css", import.meta.url),
   "utf8"
@@ -36,26 +40,41 @@ test("fiscal workspace presents supported year and period state", () => {
   assert.match(workspace, /formatJournalVoucherDate/u);
 });
 
-test("fiscal creation keeps existing application use case and shared primitives", () => {
+test("fiscal creation uses shared Solar Hijri entry and existing application use case", () => {
   assert.match(form, /createFiscalYear/u);
   assert.match(form, /SqliteFiscalUnitOfWork/u);
+  assert.match(form, /<PersianDatePicker/u);
   assert.match(form, /<Field/u);
-  assert.match(form, /<Input/u);
   assert.match(form, /<Select/u);
   assert.match(form, /<Button/u);
   assert.match(form, /<Feedback/u);
+  assert.doesNotMatch(form, /type="date"/u);
   assert.doesNotMatch(form, /console\.(log|error)/u);
 });
 
-test("new fiscal route no longer uses temporary presentation", () => {
-  assert.match(newPage, /<Page className="fiscal-workspace"/u);
-  assert.match(newPage, /<Panel/u);
+test("shared Persian date picker preserves Gregorian ISO boundary", () => {
+  assert.match(datePicker, /fa-IR-u-ca-persian-nu-latn/u);
+  assert.match(datePicker, /gregorianIsoToPersian/u);
+  assert.match(datePicker, /persianToGregorianIso/u);
+  assert.match(datePicker, /toISOString\(\)\.slice\(0, 10\)/u);
+  assert.match(datePicker, /انتخاب تاریخ شمسی/u);
+  assert.match(datePicker, /امروز/u);
+  assert.doesNotMatch(datePicker, /@argin\//u);
+});
+
+test("new fiscal route uses a structured creation workspace", () => {
+  assert.match(newPage, /fiscal-workspace__create-layout/u);
+  assert.match(newPage, /fiscal-workspace__context-panel/u);
+  assert.match(newPage, /fiscal-workspace__guide-panel/u);
+  assert.match(newPage, /<FiscalYearForm/u);
   assert.doesNotMatch(newPage, /temporary-page/u);
 });
 
-test("fiscal workspace is token based responsive and keyboard visible", () => {
+test("fiscal workspace is token based responsive and visually contained", () => {
   assert.match(styles, /var\(--ui-/u);
   assert.match(styles, /\.fiscal-workspace__year:focus-visible/u);
+  assert.match(styles, /\.fiscal-workspace__create-layout/u);
+  assert.match(styles, /\.fiscal-form__actions \.ui-button--primary/u);
   assert.match(styles, /@media \(max-width: 980px\)/u);
   assert.match(styles, /@media \(max-width: 680px\)/u);
 });
