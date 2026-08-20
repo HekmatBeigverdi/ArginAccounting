@@ -56,9 +56,14 @@ export const navigationItems: NavigationItem[] = [
     requiredPermission: "accounting.coding-templates.view",
   },
   {
+    label: "ورود به سیستم",
+    path: "/login",
+    group: "مدیریت سیستم",
+  },
+  {
     label: "وضعیت سیستم",
     path: "/system/diagnostics",
-    group: "سیستم",
+    group: "مدیریت سیستم",
   },
   {
     label: "کاربران",
