@@ -29,12 +29,17 @@ function normalizeDigits(value: string): string {
   });
 }
 
+function toPersianDigits(value: string): string {
+  const digits = "۰۱۲۳۴۵۶۷۸۹";
+  return value.replace(/\d/g, (digit) => digits[Number(digit)] ?? digit);
+}
+
 export function gregorianIsoToPersian(value: string): PersianDateParts | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(date.getTime())) return null;
   const parts = persianParts.formatToParts(date);
-  const read = (type: Intl.DateTimeFormatPartTypes) =>
+  const read = (type: "year" | "month" | "day") =>
     Number(parts.find((part) => part.type === type)?.value ?? "0");
   return { year: read("year"), month: read("month"), day: read("day") };
 }
@@ -59,7 +64,7 @@ export function persianToGregorianIso(target: PersianDateParts): string | null {
 
 function formatPersian(parts: PersianDateParts | null): string {
   if (!parts) return "";
-  return `${parts.year}/${String(parts.month).padStart(2, "0")}/${String(parts.day).padStart(2, "0")}`;
+  return toPersianDigits(`${parts.year}/${String(parts.month).padStart(2, "0")}/${String(parts.day).padStart(2, "0")}`);
 }
 
 function parsePersian(value: string): PersianDateParts | null {
@@ -180,7 +185,7 @@ export function PersianDatePicker({
           aria-label="باز کردن تقویم شمسی"
           aria-expanded={open}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => setOpen((current) => !current)}
         >
           <span aria-hidden="true">▦</span>
         </button>
@@ -191,7 +196,7 @@ export function PersianDatePicker({
         <div className="ui-persian-date__popover" role="dialog" aria-label="انتخاب تاریخ شمسی">
           <div className="ui-persian-date__header">
             <button type="button" onClick={() => moveMonth(1)} aria-label="ماه بعد">‹</button>
-            <strong>{monthNames[viewMonth - 1]} {viewYear}</strong>
+            <strong>{monthNames[viewMonth - 1]} {toPersianDigits(String(viewYear))}</strong>
             <button type="button" onClick={() => moveMonth(-1)} aria-label="ماه قبل">›</button>
           </div>
           <div className="ui-persian-date__weekdays">
@@ -208,7 +213,7 @@ export function PersianDatePicker({
                   className={active ? "ui-persian-date__day ui-persian-date__day--active" : "ui-persian-date__day"}
                   onClick={() => selectDay(day)}
                 >
-                  {day}
+                  {toPersianDigits(String(day))}
                 </button>
               );
             })}
