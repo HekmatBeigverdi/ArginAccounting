@@ -2,7 +2,7 @@
 
 ## Status
 
-In progress. Steps 1–8 completed.
+In progress. Steps 1–9 completed.
 
 ## Objective
 
@@ -160,6 +160,25 @@ Step 8 consolidates the Foundation-era Security screens without changing authent
 - added `security-workspace.css` with token-based RTL, responsive, focus-visible, contained list, and login presentation;
 - added `apps/desktop/tests/security-workspace-ui-contract.test.ts` to lock the shared workspace, design-system adoption, authentication/assignment boundaries, disabled-state semantics, absence of temporary UI and console logging, and responsive/focus behavior.
 
+### Step 8 follow-up corrections before Step 9
+
+- Restored the `ورود به سیستم` item in the right-side navigation so the existing `/login` route is reachable from the application UI.
+- Corrected Security workspace tab targets from the stale `/system/*` paths to the real `/security/users`, `/security/roles`, and `/security/permissions` routes and updated regression coverage.
+- Migrated Journal Voucher date-from/date-to filters and voucher-date input to the same shared `PersianDatePicker`, preserving Gregorian ISO values at the Application boundary and isolating the shared calendar from feature CSS collisions.
+
+## Step 9 — Audit and Approval Workspace Harmonization
+
+Step 9 aligns the two internal-control surfaces with the same Phase 14 presentation language while preserving their existing behavior boundaries:
+
+- migrated Approval list/filter/detail/action/history presentation to shared `Page`, `Panel`, `Card`, `Field`, `Input`, `Select`, `Textarea`, `Button`, `DataTable`, `Badge`, and `Feedback` primitives;
+- preserved the existing Approval service commands and permission checks for submit, approve, reject, return-to-draft, cancel, and comment;
+- migrated Audit list/filter/detail/snapshot presentation to the same shared workspace language while keeping Audit strictly read-only through `searchAuditEntries` and `getAuditEntry`;
+- standardized status/outcome badges, Persian calendar date-time presentation, detail hierarchy, loading/empty/error states, and list/detail navigation;
+- introduced `pages/governance/governance-workspace.css` as the shared token-based responsive presentation for Audit/Approval and removed the obsolete `approval-pages.css` and `audit-pages.css` feature styles;
+- removed development-only console logging from touched Audit/Approval flows and replaced read/action failures with Persian user feedback;
+- added `apps/desktop/tests/audit-approval-workspace-ui-contract.test.ts` to lock shared-primitives adoption, Approval workflow delegation, immutable/read-only Audit semantics, Persian timestamps, responsive/focus behavior, and removal of legacy temporary presentation;
+- introduced no Audit/Approval Domain, persistence, workflow, or Phase 15 Journal Lifecycle changes.
+
 ## Active UI Technical Debt — Must Remain Visible Through Phase 14
 
 `apps/desktop/src/App.css` still contains legacy Vite starter styles and first-generation Foundation selectors. Those rules have already caused real runtime collisions with Phase 14 components. This is an active migration debt, not an accepted final state.
@@ -168,10 +187,10 @@ For every remaining Phase 14 UI step:
 
 - check touched screens against legacy `App.css` selectors before closing the step;
 - do not add new feature-specific overrides merely to coexist permanently with legacy global rules;
-- migrate/remove obsolete rules as their owning Audit/Approval and Accounting workspaces are consolidated;
-- Security source code no longer consumes the legacy `security-panel`, `security-table`, `security-errors`, `security-success`, or `temporary-page` presentation selectors; their inert definitions remain part of the final legacy-selector cleanup in Steps 11–13;
+- migrate/remove obsolete rules as their owning Accounting workspaces are consolidated;
+- Security and Audit/Approval source code no longer consume their legacy page/panel/table/message selectors; their inert global definitions remain part of the final legacy-selector cleanup in Steps 11–13;
 - complete a final legacy-selector audit in Steps 11–13 and ensure obsolete Vite/temporary/Foundation presentation rules are removed or explicitly justified before Phase 14 release.
 
 ## Validation Evidence
 
-Step-by-step evidence is maintained in the fixed plan. Steps 3–8 and their pre-Step-8 corrections add focused desktop/application source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
+Step-by-step evidence is maintained in the fixed plan. Steps 3–9 and their follow-up corrections add focused desktop/application source-contract tests. Full focused runtime and monorepo validation remains mandatory at Step 13 after the implementation steps are complete.
