@@ -47,7 +47,7 @@ Out of scope:
 | 7 | Fiscal Workspace Consolidation | Completed |
 | 8 | Security Workspace Consolidation | Completed |
 | 9 | Audit and Approval Workspace Harmonization | Completed |
-| 10 | Accounting Workspace Harmonization | Not started |
+| 10 | Accounting Workspace Harmonization | Completed |
 | 11 | RTL, Accessibility, Keyboard, and Responsive Hardening | Not started |
 | 12 | Loading, Empty, Error, Success, and Feedback Standards | Not started |
 | 13 | UI Regression, Monorepo Validation, and Documentation | Not started |
@@ -263,7 +263,17 @@ Exit criteria:
 - No Phase 15 Journal Lifecycle controls or behavior are introduced.
 - Existing accounting desktop tests remain green.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added a shared token-based `accounting-workspace.css` presentation layer and aligned Chart of Accounts, Accounting Dimensions, Coding Templates, and Journal Voucher headers, controls, panels, tabs, feedback surfaces, dense tables, and responsive overflow with the Phase 14 design system.
+- Rebuilt the Chart of Accounts presentation as an expandable/collapsible semantic tree with visible hierarchy rails, level markers, parent-preserving search, summary counts, account metadata, contained scrolling, and compact actions while preserving existing Chart of Accounts Application operations.
+- Improved Coding Template preview hierarchy with matching level markers, branch rails, token-based status presentation, and shared compact controls without changing preview/apply semantics.
+- Preserved Solar Hijri Journal date inputs and all existing draft Journal behavior; no posting, approval, locking, reversal, or finalization controls were introduced.
+- Retired the legacy Vite starter/global Foundation selectors from `App.css`, limiting it to document-level defaults so shared components no longer require feature-specific defenses against those global rules. Migrated the remaining System Diagnostics consumers to shared primitives as part of making that removal safe.
+- Added `apps/desktop/tests/accounting-workspace-ui-contract.test.ts` to lock the consolidated accounting language, semantic account tree, contained dense-surface overflow, legacy-global CSS retirement, and Phase 15 boundary.
+- Focused and full local runtime/typecheck/test/build validation remains to be executed on the repository owner's macOS environment and is formally recorded in Step 13.
 
 ### Step 11 — RTL, Accessibility, Keyboard, and Responsive Hardening
 
