@@ -1,0 +1,106 @@
+.accounting-workspace {
+  display: grid;
+  gap: var(--ui-space-4);
+  min-width: 0;
+  color: var(--ui-text);
+}
+
+.accounting-workspace__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ui-space-5);
+}
+
+.accounting-workspace__header h1 {
+  margin: var(--ui-space-1) 0;
+  color: var(--ui-text);
+  font-size: clamp(1.45rem, 2.2vw, 2rem);
+  text-align: right;
+}
+
+.accounting-workspace__header p {
+  margin: 0;
+  color: var(--ui-text-muted);
+  line-height: 1.8;
+}
+
+.accounting-workspace__eyebrow {
+  color: var(--ui-primary) !important;
+  font-size: .8rem;
+  font-weight: 800;
+}
+
+.accounting-workspace__toolbar {
+  min-width: 0;
+}
+
+.accounting-workspace__tabs {
+  display: flex;
+  gap: var(--ui-space-1);
+  max-width: 100%;
+  padding: var(--ui-space-1);
+  overflow-x: auto;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface-subtle);
+}
+
+.accounting-workspace__tabs button {
+  min-height: var(--ui-control-height-compact);
+  padding: .4rem .75rem;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-md);
+  background: transparent;
+  color: var(--ui-text-muted);
+  box-shadow: none;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.accounting-workspace__tabs button:hover {
+  border-color: var(--ui-border-strong);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+
+.accounting-workspace__tabs button[aria-current="page"],
+.accounting-workspace__tabs button.is-active {
+  border-color: var(--ui-primary);
+  background: var(--ui-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.accounting-workspace__section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-4);
+}
+
+.accounting-workspace__section-title h2,
+.accounting-workspace__section-title h3,
+.accounting-workspace__section-title p {
+  margin: 0;
+}
+
+.accounting-workspace__section-title p {
+  margin-top: var(--ui-space-1);
+  color: var(--ui-text-muted);
+  font-size: .82rem;
+}
+
+.accounting-workspace__scroll {
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+}
+
+@media (max-width: 900px) {
+  .accounting-workspace__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
