@@ -12,9 +12,9 @@ interface SecurityWorkspaceProps extends PropsWithChildren {
 }
 
 const tabs = [
-  { path: "/system/users", label: "کاربران" },
-  { path: "/system/roles", label: "نقش‌ها" },
-  { path: "/system/permissions", label: "مجوزها" },
+  { path: "/security/users", label: "کاربران" },
+  { path: "/security/roles", label: "نقش‌ها" },
+  { path: "/security/permissions", label: "مجوزها" },
 ] as const;
 
 export function SecurityWorkspace({
