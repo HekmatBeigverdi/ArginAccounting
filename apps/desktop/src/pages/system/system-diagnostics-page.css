@@ -1,0 +1,11 @@
+.system-diagnostics { display: grid; gap: var(--ui-space-4); }
+.system-diagnostics__header h1 { margin: var(--ui-space-1) 0; font-size: clamp(1.45rem, 2.2vw, 2rem); }
+.system-diagnostics__header p { margin: 0; color: var(--ui-text-muted); }
+.system-diagnostics__eyebrow { color: var(--ui-primary) !important; font-size: .8rem; font-weight: 800; }
+.system-diagnostics .ui-card__header > div { display: grid; gap: var(--ui-space-1); }
+.system-diagnostics .ui-card__header small { color: var(--ui-text-muted); }
+.system-diagnostics__definition-list { display: grid; gap: var(--ui-space-3); margin: 0; }
+.system-diagnostics__definition-list div { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-4); padding-bottom: var(--ui-space-3); border-bottom: 1px solid var(--ui-border); }
+.system-diagnostics__definition-list div:last-child { padding-bottom: 0; border-bottom: 0; }
+.system-diagnostics__definition-list dt { color: var(--ui-text-muted); }
+.system-diagnostics__definition-list dd { margin: 0; font-weight: 700; }
