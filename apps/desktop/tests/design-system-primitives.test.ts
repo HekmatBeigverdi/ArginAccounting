@@ -14,6 +14,10 @@ const forms = readFileSync(
   new URL("../src/components/forms/index.tsx", import.meta.url),
   "utf8",
 );
+const persianDatePicker = readFileSync(
+  new URL("../src/components/forms/persian-date-picker.tsx", import.meta.url),
+  "utf8",
+);
 const layout = readFileSync(
   new URL("../src/components/layout/index.tsx", import.meta.url),
   "utf8",
@@ -45,14 +49,25 @@ test("design tokens cover typography, spacing, shape, semantic state, focus and 
   }
 });
 
-test("form primitives expose buttons and native form controls without business dependencies", () => {
+test("form primitives expose native controls and the shared Persian date picker without business dependencies", () => {
   assert.match(forms, /export const Button/u);
   assert.match(forms, /export const Input/u);
   assert.match(forms, /export const Select/u);
   assert.match(forms, /export const Textarea/u);
   assert.match(forms, /export function Field/u);
+  assert.match(forms, /PersianDatePicker/u);
   assert.doesNotMatch(forms, /@argin\//u);
   assert.doesNotMatch(forms, /tauri|sqlite/iu);
+  assert.doesNotMatch(persianDatePicker, /@argin\//u);
+});
+
+test("Persian date picker owns Solar Hijri presentation while preserving Gregorian ISO values", () => {
+  assert.match(persianDatePicker, /fa-IR-u-ca-persian-nu-latn/u);
+  assert.match(persianDatePicker, /gregorianIsoToPersian/u);
+  assert.match(persianDatePicker, /persianToGregorianIso/u);
+  assert.match(persianDatePicker, /toISOString\(\)\.slice\(0, 10\)/u);
+  assert.match(styles, /\.ui-persian-date__popover/u);
+  assert.match(styles, /\.ui-persian-date__day--active/u);
 });
 
 test("shared layout and data-display primitives cover panels, cards, toolbars, badges and tables", () => {
