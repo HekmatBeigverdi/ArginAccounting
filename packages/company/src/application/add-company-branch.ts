@@ -1,7 +1,7 @@
-import type { Branch } from "../domain/branch";
-import type { CompanyUnitOfWork } from "../contracts/company-unit-of-work";
-import { CompanyValidationError } from "../validation/company-validation-error";
-import { validateBranchInput } from "../validation/validate-branch-input";
+import type { Branch } from "../domain/branch.ts";
+import type { CompanyUnitOfWork } from "../contracts/company-unit-of-work.ts";
+import { CompanyValidationError } from "../validation/company-validation-error.ts";
+import { validateBranchInput } from "../validation/validate-branch-input.ts";
 
 export interface AddCompanyBranchCommand {
   companyId: string;

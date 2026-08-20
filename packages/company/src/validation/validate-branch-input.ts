@@ -1,10 +1,10 @@
 import type {
   CreateBranchInput
-} from "../domain/branch";
+} from "../domain/branch.ts";
 
 import type {
   CompanyValidationIssue
-} from "./company-validation-error";
+} from "./company-validation-error.ts";
 
 export function validateBranchInput(
   input: CreateBranchInput
