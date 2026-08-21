@@ -10,7 +10,7 @@ The phase preserves existing Domain/Application/Persistence semantics. Presentat
 
 The canonical fixed implementation plan is `docs/phases/phase-14-ui-foundation-consolidation-plan.md`. Step names, order, scope, and exit criteria remain governed by that document.
 
-## Delivered Through Step 10
+## Delivered Through Step 11
 
 ### Steps 1–4 — Foundation and shell
 
@@ -64,20 +64,30 @@ Step 10 aligns the Accounting Core surfaces from Phases 10–13 without changing
 
 No Journal posting, approval, locking, reversal, or finalization behavior was added.
 
-## Active UI Technical Debt After Step 10
+### Step 11 — RTL, Accessibility, Keyboard, and Responsive Hardening
+
+- added an always-available keyboard skip link from the application shell to a focusable main-content landmark;
+- connected collapsible navigation headers to their controlled regions with `aria-controls`/`aria-expanded`, retained semantic navigation landmarks, and labelled sidebar/status regions;
+- established a cross-workspace `accessibility.css` contract for focus-visible treatment, disabled controls, bidirectional isolation of Latin/code content, tabular numeric presentation, stable local scroll gutters, and reduced-motion preferences;
+- hardened the shell against destructive page-level horizontal overflow with `min-width: 0`, bounded workspace/main widths, wrapping status content, and narrow-window layout rules while preserving local scrolling for dense accounting surfaces;
+- improved mixed Persian/Latin content behavior with `unicode-bidi: isolate` for LTR/code content and retained logical CSS properties throughout the shell;
+- added `apps/desktop/tests/accessibility-responsive-ui-contract.test.ts` to lock keyboard landmarks, focus visibility, reduced-motion support, RTL/mixed-content isolation, local dense-surface scrolling, and narrow-window containment.
+
+No Domain, persistence, authorization, accounting, or Journal Lifecycle semantics were changed in Step 11.
+
+## Active UI Technical Debt After Step 11
 
 The original global `App.css` collision source has been retired rather than deferred: Vite starter selectors, global input/button presentation, `temporary-*`, legacy Company/Fiscal/Security selectors, and obsolete Foundation feature rules no longer live in the global stylesheet.
 
-Steps 11–13 must still perform a repository-wide presentation audit for:
+Steps 12–13 must still perform a repository-wide presentation audit for:
 
-- residual feature-local fixed-width or physical-direction assumptions;
-- keyboard/focus/semantic accessibility gaps;
-- remaining temporary naming or old presentation classes outside `App.css`;
 - standardized loading/empty/error/success/technical-detail patterns;
-- full focused and monorepo validation evidence.
+- remaining temporary naming or obsolete presentation classes outside `App.css`;
+- focused and monorepo runtime/typecheck/test/build validation evidence;
+- final accessibility/responsive regressions discovered by local runtime review.
 
 ## Validation Evidence
 
-Focused source-contract coverage now includes shell/navigation/context, Dashboard, Company/Branch, Fiscal, Security, Audit/Approval, Persian Journal dates, design-system primitives, desktop window baseline, and Accounting workspace harmonization.
+Focused source-contract coverage now includes shell/navigation/context, Dashboard, Company/Branch, Fiscal, Security, Audit/Approval, Persian Journal dates, design-system primitives, desktop window baseline, Accounting workspace harmonization, and the Step 11 accessibility/responsive contract.
 
-The GitHub connector cannot execute the local Tauri runtime or repository scripts. Full local typecheck/test/build and monorepo validation remains mandatory in Step 13; Step 10 completion records implementation and regression contracts, not a claim that those local commands have already run successfully.
+The GitHub connector cannot execute the local Tauri runtime or repository scripts. Full local typecheck/test/build and monorepo validation remains mandatory in Step 13; Step 11 completion records implementation and regression contracts, not a claim that those local commands have already run successfully.
