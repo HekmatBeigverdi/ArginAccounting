@@ -39,22 +39,73 @@
   --ui-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
   --ui-shadow-md: 0 8px 24px rgb(15 23 42 / 0.08);
 
-  --ui-control-height: 2.5rem;
-  --ui-control-height-compact: 2rem;
   --ui-page-max: 1440px;
-  --ui-table-cell-x: 0.75rem;
-  --ui-table-cell-y: 0.7rem;
+  --ui-workspace-height: calc(100dvh - 10.5rem);
 
-  /* Desktop operational density contract. */
+  /* Comfortable is the product default and remains denser than legacy Argin UI. */
+  --ui-control-height: 2.25rem;
+  --ui-control-height-compact: 2rem;
+  --ui-table-cell-x: 0.625rem;
+  --ui-table-cell-y: 0.45rem;
+  --ui-density-control-height: 2.25rem;
+  --ui-density-row-height: 2.125rem;
+  --ui-density-tree-row-height: 2.125rem;
+  --ui-density-cell-x: 0.625rem;
+  --ui-density-cell-y: 0.4rem;
+  --ui-density-gap: 0.625rem;
+  --ui-density-section-gap: 0.875rem;
+  --ui-density-panel-padding: 0.875rem;
+  --ui-density-toolbar-padding: 0.625rem;
+  --ui-density-font-size: 0.84rem;
+}
+
+:root[data-density="compact"] {
+  --ui-control-height: 2rem;
+  --ui-control-height-compact: 1.75rem;
+  --ui-table-cell-x: 0.5rem;
+  --ui-table-cell-y: 0.3rem;
   --ui-density-control-height: 2rem;
   --ui-density-row-height: 1.875rem;
   --ui-density-tree-row-height: 2rem;
   --ui-density-cell-x: 0.5rem;
-  --ui-density-cell-y: 0.32rem;
+  --ui-density-cell-y: 0.3rem;
   --ui-density-gap: 0.5rem;
   --ui-density-section-gap: 0.75rem;
   --ui-density-panel-padding: 0.75rem;
   --ui-density-toolbar-padding: 0.5rem;
   --ui-density-font-size: 0.82rem;
-  --ui-workspace-height: calc(100dvh - 10.5rem);
+}
+
+:root[data-density="comfortable"] {
+  --ui-control-height: 2.25rem;
+  --ui-control-height-compact: 2rem;
+  --ui-table-cell-x: 0.625rem;
+  --ui-table-cell-y: 0.45rem;
+  --ui-density-control-height: 2.25rem;
+  --ui-density-row-height: 2.125rem;
+  --ui-density-tree-row-height: 2.125rem;
+  --ui-density-cell-x: 0.625rem;
+  --ui-density-cell-y: 0.4rem;
+  --ui-density-gap: 0.625rem;
+  --ui-density-section-gap: 0.875rem;
+  --ui-density-panel-padding: 0.875rem;
+  --ui-density-toolbar-padding: 0.625rem;
+  --ui-density-font-size: 0.84rem;
+}
+
+:root[data-density="spacious"] {
+  --ui-control-height: 2.75rem;
+  --ui-control-height-compact: 2.375rem;
+  --ui-table-cell-x: 0.875rem;
+  --ui-table-cell-y: 0.7rem;
+  --ui-density-control-height: 2.75rem;
+  --ui-density-row-height: 2.75rem;
+  --ui-density-tree-row-height: 2.75rem;
+  --ui-density-cell-x: 0.875rem;
+  --ui-density-cell-y: 0.65rem;
+  --ui-density-gap: 0.75rem;
+  --ui-density-section-gap: 1rem;
+  --ui-density-panel-padding: 1rem;
+  --ui-density-toolbar-padding: 0.75rem;
+  --ui-density-font-size: 0.88rem;
 }
