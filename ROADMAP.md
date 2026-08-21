@@ -42,17 +42,18 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 ## Desktop Experience
 
-14. 🚧 UI Foundation Consolidation
+14. ✅ UI Foundation Consolidation
    - Shared design system and reusable desktop primitives
    - Final application shell and navigation
    - Dashboard modernization
    - Company, branch, fiscal, security, audit, and approval UI consolidation
    - Accounting workspace visual harmonization
+   - Global Compact / Comfortable / Spacious display density
    - Persian RTL, accessibility, keyboard, responsive, loading, empty, and error-state standards
 
 ## Accounting Core — Continued
 
-15. ⏳ Journal Lifecycle
+15. 🚧 Journal Lifecycle
 16. ⏳ Accounting Reports
 
 ## Master Data
@@ -116,9 +117,9 @@ Platform Infrastructure is intentionally placed before the Accounting Core. Buil
 
 ## Phase 14 Rationale
 
-UI Foundation Consolidation is intentionally placed after the first complete accounting workspace and before Journal Lifecycle. Phases 05–08 still contain temporary or first-generation desktop surfaces, while Phases 10–13 established a more mature workspace-oriented Persian RTL interface. Consolidating the shell, design system, shared primitives, and earlier workspaces now prevents duplicated UI patterns and broad visual refactoring across later accounting and ERP phases.
+UI Foundation Consolidation is intentionally placed after the first complete accounting workspace and before Journal Lifecycle. Consolidating the shell, design system, shared primitives, earlier workspaces, and global density contract prevents duplicated UI patterns and broad visual refactoring across later accounting and ERP phases.
 
-Phase 14 is a presentation and desktop-experience phase. It must not introduce Phase 15 Journal Lifecycle business behavior or move domain/application rules into UI components.
+Phase 14 is a presentation and desktop-experience phase. It does not introduce Phase 15 Journal Lifecycle business behavior or move domain/application rules into UI components.
 
 ## Delivery Rules
 
@@ -137,8 +138,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 14 — UI Foundation Consolidation.
+Phase 15 — Journal Lifecycle.
 
 ## Latest Completed Accounting Milestone
 
-Phase 13 — Journal Voucher Engine, merged and released as `v0.13.0`.
+Phase 14 — UI Foundation Consolidation, merged and released as `v0.14.0`.
