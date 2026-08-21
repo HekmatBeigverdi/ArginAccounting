@@ -1,60 +1,97 @@
 .accounting-workspace {
   display: grid;
-  gap: var(--ui-space-4);
+  gap: var(--ui-density-section-gap);
   min-width: 0;
   color: var(--ui-text);
+  font-size: var(--ui-density-font-size);
 }
 
 .accounting-workspace__header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--ui-space-5);
+  gap: var(--ui-space-3);
 }
 
 .accounting-workspace__header h1 {
-  margin: var(--ui-space-1) 0;
+  margin: 0;
   color: var(--ui-text);
-  font-size: clamp(1.45rem, 2.2vw, 2rem);
+  font-size: clamp(1.15rem, 1.7vw, 1.45rem);
+  line-height: 1.45;
   text-align: right;
 }
 
 .accounting-workspace__header p {
   margin: 0;
   color: var(--ui-text-muted);
-  line-height: 1.8;
+  font-size: .78rem;
+  line-height: 1.55;
 }
 
 .accounting-workspace__eyebrow {
   color: var(--ui-primary) !important;
-  font-size: .8rem;
+  font-size: .72rem !important;
   font-weight: 800;
 }
 
-.accounting-workspace__toolbar {
+.accounting-workspace__toolbar,
+.accounting-workspace .ui-toolbar {
   min-width: 0;
+  gap: var(--ui-density-gap);
+  padding: var(--ui-density-toolbar-padding);
+}
+
+.accounting-workspace .ui-button,
+.accounting-workspace .ui-input,
+.accounting-workspace .ui-select {
+  min-height: var(--ui-density-control-height);
+}
+
+.accounting-workspace .ui-panel,
+.accounting-workspace .ui-card__body {
+  padding: var(--ui-density-panel-padding);
+}
+
+.accounting-workspace .ui-table {
+  font-size: var(--ui-density-font-size);
+}
+
+.accounting-workspace .ui-table th,
+.accounting-workspace .ui-table td {
+  height: var(--ui-density-row-height);
+  padding: var(--ui-density-cell-y) var(--ui-density-cell-x);
+  white-space: nowrap;
+}
+
+.accounting-workspace .ui-table th {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  background: var(--ui-surface-subtle);
+  box-shadow: 0 1px 0 var(--ui-border);
 }
 
 .accounting-workspace__tabs {
   display: flex;
-  gap: var(--ui-space-1);
+  gap: .2rem;
   max-width: 100%;
-  padding: var(--ui-space-1);
+  padding: .2rem;
   overflow-x: auto;
   border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-lg);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-surface-subtle);
 }
 
 .accounting-workspace__tabs button {
-  min-height: var(--ui-control-height-compact);
-  padding: .4rem .75rem;
+  min-height: var(--ui-density-control-height);
+  padding: .25rem .6rem;
   border: 1px solid transparent;
-  border-radius: var(--ui-radius-md);
+  border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--ui-text-muted);
   box-shadow: none;
   font: inherit;
+  font-size: .78rem;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -77,30 +114,51 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ui-space-4);
+  gap: var(--ui-space-2);
 }
 
 .accounting-workspace__section-title h2,
 .accounting-workspace__section-title h3,
-.accounting-workspace__section-title p {
-  margin: 0;
-}
+.accounting-workspace__section-title p { margin: 0; }
+.accounting-workspace__section-title h2,
+.accounting-workspace__section-title h3 { font-size: .95rem; }
+.accounting-workspace__section-title p { margin-top: .15rem; color: var(--ui-text-muted); font-size: .74rem; }
 
-.accounting-workspace__section-title p {
-  margin-top: var(--ui-space-1);
-  color: var(--ui-text-muted);
-  font-size: .82rem;
-}
-
-.accounting-workspace__scroll {
+.accounting-workspace__scroll,
+.accounting-workspace .ui-table-wrap {
   max-width: 100%;
   overflow: auto;
-  overscroll-behavior-inline: contain;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.accounting-workspace__data-surface {
+  min-height: 12rem;
+  max-height: var(--ui-workspace-height);
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 1100px) and (min-height: 700px) {
+  .accounting-workspace {
+    align-content: start;
+  }
+
+  .accounting-workspace__scroll,
+  .accounting-workspace .ui-table-wrap {
+    max-height: var(--ui-workspace-height);
+  }
 }
 
 @media (max-width: 900px) {
   .accounting-workspace__header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .accounting-workspace .ui-table th,
+  .accounting-workspace .ui-table td {
+    height: auto;
   }
 }
