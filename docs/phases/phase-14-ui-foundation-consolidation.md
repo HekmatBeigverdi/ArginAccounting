@@ -10,7 +10,7 @@ The phase preserves existing Domain/Application/Persistence semantics. Presentat
 
 The canonical fixed implementation plan is `docs/phases/phase-14-ui-foundation-consolidation-plan.md`. Step names, order, scope, and exit criteria remain governed by that document.
 
-## Delivered Through Step 12
+## Delivered Through Step 14
 
 ### Steps 1–4 — Foundation and shell
 
@@ -18,36 +18,37 @@ Phase 14 established the five-layer presentation architecture, design tokens/sha
 
 ### Steps 5–10 — Workspace consolidation
 
-Dashboard, Company/Branch, Fiscal, Security, Audit/Approval, Chart of Accounts, Accounting Dimensions, Coding Templates, and Journal Voucher were consolidated onto the shared desktop presentation language while preserving their existing Application/Domain contracts. Solar Hijri presentation remains the user-facing date standard while durable dates remain Gregorian. Chart of Accounts now uses a semantic expandable hierarchy with parent-preserving search and contained scrolling.
+Dashboard, Company/Branch, Fiscal, Security, Audit/Approval, Chart of Accounts, Accounting Dimensions, Coding Templates, and Journal Voucher were consolidated onto the shared desktop presentation language while preserving their existing Application/Domain contracts. Solar Hijri presentation remains the user-facing date standard while durable dates remain Gregorian. Chart of Accounts uses a semantic expandable hierarchy with parent-preserving search and contained scrolling.
 
 ### Step 11 — RTL, Accessibility, Keyboard, and Responsive Hardening
 
-- added a keyboard skip link to a focusable main-content landmark;
-- connected collapsible navigation with accessible expanded/control relationships;
-- added shared focus-visible, bidirectional mixed-content, tabular numeric, reduced-motion, and overflow-containment rules;
-- hardened Shell resizing while preserving local scrolling for dense accounting surfaces;
-- added `apps/desktop/tests/accessibility-responsive-ui-contract.test.ts`.
+Keyboard skip navigation, semantic/focusable main content, accessible collapsible navigation, focus-visible treatment, mixed RTL/LTR isolation, tabular numeric presentation, reduced-motion support, and page-overflow containment were standardized with regression coverage.
 
 ### Step 12 — Loading, Empty, Error, Success, and Feedback Standards
 
-- extended the shared feedback layer with canonical `LoadingState`, `EmptyState`, and `ErrorState` components;
-- retained semantic `Feedback` tones for information, success, warning, and error outcomes and added consistent live-region behavior;
-- standardized loading semantics with `aria-busy`, explicit empty-state copy/action regions, and actionable error-state regions;
-- added optional expandable technical diagnostics so Persian user explanations remain primary while low-level details are available separately when appropriate;
-- added token-based state presentation, LTR technical output, and reduced-motion-safe loading behavior;
-- added `apps/desktop/tests/feedback-states-ui-contract.test.ts` to lock the reusable feedback contract;
-- preserved all Domain/Application/persistence behavior and did not introduce Journal Lifecycle functionality.
+Canonical Loading/Empty/Error state primitives, semantic live regions, optional separated technical diagnostics, token-based state presentation, and reduced-motion-safe loading behavior were added without changing application semantics.
 
-## Active UI Technical Debt After Step 12
+### Step 13 — UI Regression, Monorepo Validation, and Documentation
 
-The original global `App.css` collision source has been retired. Remaining Phase 14 work is deliberately bounded to:
+- regression contracts cover the consolidated shell and all primary Phase 14 workspaces;
+- repository owner confirmed frozen install, Desktop typecheck/test/build, full monorepo lint/typecheck/test/build, generated documentation index, clean status review, and `git diff --check` completed successfully on macOS;
+- `CHANGELOG.md` now includes the Phase 14 Unreleased delivery summary and corrected Phase 15/16 forward references;
+- canonical plan and implementation record were synchronized with validation evidence.
 
-- Step 13: focused/full regression execution evidence, monorepo validation, documentation/index/changelog reconciliation;
-- Step 14: desktop data-density and accounting workspace optimization already present in the approved fixed plan;
-- Step 15: final review, merge, and release.
+### Step 14 — Desktop Data Density and Accounting Workspace Optimization
 
-Runtime/typecheck/test/build success is not claimed by the GitHub connector. Step 13 remains the formal validation gate.
+- introduced reusable operational density tokens rather than feature-specific sizing overrides: 32px controls/tree rows, approximately 30px table rows, compact cells/panels/toolbars, and viewport-derived workspace height;
+- made Accounting headers, tabs, toolbars, panels and tables materially more compact while retaining Persian RTL readability and accessible controls;
+- standardized sticky table headers and locally contained vertical/horizontal scrolling so wide/dense accounting data does not force the whole application shell to scroll;
+- densified Chart of Accounts hierarchy from the earlier large-card row treatment to a 32px operational tree target with restrained indentation, compact expand controls/level markers, code-plus-title identity, hierarchy rails and locally contained viewport-height scrolling;
+- kept the Chart editor side surface compact and independently scrollable on wide desktop layouts, with responsive fallback to normal document flow on smaller windows;
+- added `apps/desktop/tests/desktop-density-ui-contract.test.ts` to lock the density tokens, sticky/local scrolling, compact Chart hierarchy and responsive degradation;
+- no accounting Domain/Application/persistence or Phase 15 Journal Lifecycle behavior was introduced.
 
 ## Validation Evidence
 
-Source-contract coverage now includes shell/navigation/context, Dashboard, Company/Branch, Fiscal, Security, Audit/Approval, Persian Journal dates, design-system primitives, desktop window baseline, Accounting workspace harmonization, accessibility/responsive hardening, and standardized feedback states.
+Step 13 full repository validation was confirmed successful by the repository owner before Step 14 started. Step 14 adds focused source-contract regression coverage; its presentation changes should receive the normal local Desktop typecheck/test/build smoke check before final Phase 14 release.
+
+## Remaining Phase 14 Work
+
+Only Step 15 — Final Review, Merge, and Release — remains. Before release, perform the final scope/diff review and the post-Step-14 Desktop validation, then merge/tag/release through the approved GitHub publishing workflow.
