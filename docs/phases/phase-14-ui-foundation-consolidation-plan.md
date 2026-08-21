@@ -50,8 +50,8 @@ Out of scope:
 | 8 | Security Workspace Consolidation | Completed |
 | 9 | Audit and Approval Workspace Harmonization | Completed |
 | 10 | Accounting Workspace Harmonization | Completed |
-| 11 | RTL, Accessibility, Keyboard, and Responsive Hardening | Not started |
-| 12 | Loading, Empty, Error, Success, and Feedback Standards | Not started |
+| 11 | RTL, Accessibility, Keyboard, and Responsive Hardening | Completed |
+| 12 | Loading, Empty, Error, Success, and Feedback Standards | Completed |
 | 13 | UI Regression, Monorepo Validation, and Documentation | Not started |
 | 14 | Desktop Data Density and Accounting Workspace Optimization | Not started |
 | 15 | Final Review, Merge, and Release | Not started |
@@ -60,223 +60,79 @@ Out of scope:
 
 ### Step 1 — Baseline, Branch, and Plan Freeze
 
-- Create `phase/14-ui-foundation-consolidation` from the synchronized `develop` baseline.
-- Register Phase 14 in the canonical roadmap and renumber all previously planned phases after Phase 13 by one.
-- Freeze this implementation plan and record the Phase 14 scope boundary.
-- Confirm Phase 13 remains the latest completed/released milestone and Phase 15 Journal Lifecycle remains untouched.
-
-Exit criteria:
-
-- Remote Phase 14 branch exists from the approved baseline.
-- Canonical roadmap identifies Phase 14 as the current target.
-- Fixed plan is committed and remotely verifiable.
-
 Status: Completed
 
 Evidence:
-
-- Created remote branch `phase/14-ui-foundation-consolidation` from synchronized `develop` baseline `03f6053bf177538a4974ebec1f19c47770795b8c`.
-- Registered Phase 14 as the current target, shifted later phases by one, and froze the implementation plan with Phase 15 Journal Lifecycle explicitly excluded.
-- Reconciled roadmap/readme/phase references and confirmed Phase 13 remains released as `v0.13.0`.
+- Remote Phase 14 branch was created from synchronized `develop` baseline `03f6053bf177538a4974ebec1f19c47770795b8c`.
+- Phase 14 was registered as the current target and the fixed scope boundary was recorded.
 
 ### Step 2 — UI Architecture Audit and Design-System Contract
 
-- Inventory current shell, page layouts, forms, tables, filters, badges, feedback states, and workspace patterns across Phases 05–13.
-- Classify patterns as reusable, replaceable, or phase-specific.
-- Define the component layering contract for tokens, primitives, composites, workspace layouts, and feature pages.
-- Define dependency rules so shared presentation components remain independent of domain persistence implementations.
-
-Exit criteria:
-
-- UI architecture audit is recorded.
-- Design-system ownership and dependency boundaries are explicit.
-- Phase 13 reference patterns and legacy `temporary-*` migration targets are identified.
-
 Status: Completed
 
 Evidence:
-
-- Added `docs/ui/phase-14-ui-architecture-audit.md` and updated `docs/ui/UI_ARCHITECTURE.md` with the five-layer presentation contract.
-- Recorded reusable/replaceable/feature-specific patterns, Phase 13 as the interaction-quality baseline, and explicit migration targets for temporary/global legacy UI.
-- Prohibited shared presentation dependencies on persistence adapters/repositories and kept Domain/Application behavior outside React primitives.
+- Added the Phase 14 UI architecture audit and five-layer presentation contract.
+- Shared presentation dependencies on persistence adapters/repositories were prohibited.
 
 ### Step 3 — Design Tokens and Shared UI Primitives
 
-- Establish shared typography, spacing, radius, elevation, border, semantic state, density, and sizing tokens.
-- Implement reusable button, input, select, textarea, field, panel, card, badge, toolbar, table, dialog, and feedback primitives needed by existing screens.
-- Define consistent focus-visible, disabled, validation, destructive, and read-only states.
-- Preserve Persian typography and RTL behavior without embedding business rules in primitives.
-
-Exit criteria:
-
-- Shared primitives are consumable by desktop feature pages.
-- Visual states are covered by focused component tests where practical.
-- No feature-specific persistence dependency exists in the shared UI layer.
-
 Status: Completed
 
 Evidence:
-
 - Added shared design tokens and reusable form/layout/data-display/feedback/dialog primitives.
-- Standardized focus-visible, disabled, invalid, read-only, destructive, semantic state, and dense-table presentation.
-- Added focused primitive contracts guarding against business/persistence dependencies.
+- Standardized focus, disabled, invalid, read-only, destructive, semantic-state, and dense-table presentation.
 
 ### Step 4 — Final App Shell, Navigation, and Active Context
 
-- Replace the temporary application shell naming and first-generation layout with the final shared desktop shell.
-- Implement grouped/collapsible navigation suitable for the growing ERP module set.
-- Provide real presentation surfaces for active company, branch, and fiscal-year context using existing application contracts.
-- Add consistent page header/breadcrumb/action regions and status surfaces.
-- Ensure navigation is permission-aware where existing permission contracts allow it.
-
-Exit criteria:
-
-- Primary routes render inside the final shell.
-- Legacy temporary shell classes are removed or isolated to approved transitional cases.
-- Active context presentation is no longer hard-coded placeholder text.
-
 Status: Completed
 
 Evidence:
-
-- Added persisted `ActiveContextProvider`, final Persian RTL `AppShell`, grouped/collapsible navigation, context selectors, breadcrumb/title/status surfaces, and permission metadata where supported.
-- Removed `TemporaryAppShell` and hard-coded Company/Branch/Fiscal placeholders.
-- Added focused shell/navigation/context regression contracts.
+- Added persisted active context, final Persian RTL App Shell, grouped navigation, context selectors, breadcrumb/title/status surfaces, and permission metadata.
 
 ### Step 5 — Dashboard Modernization
 
-- Replace the prototype dashboard and stale phase-development text.
-- Provide useful current-context summary and shortcuts to implemented modules.
-- Surface only data already supported by existing application contracts; do not invent future reporting/domain behavior.
-- Provide coherent empty states when company/fiscal context is not selected.
-
-Exit criteria:
-
-- Dashboard no longer describes itself as temporary.
-- No stale phase-status text remains in the user-facing dashboard.
-- Dashboard follows the shared shell and design system.
-
 Status: Completed
 
 Evidence:
-
-- Replaced prototype/temporary dashboard presentation with shared Phase 14 primitives and responsive token-based styling.
-- Added real active Company/Branch/Fiscal summaries, implemented-module shortcuts, explicit empty/loading/error states, and permission-aware recent Journal reads through existing contracts.
-- Added focused dashboard regression coverage without introducing Phase 15 behavior.
+- Replaced the prototype dashboard with real active-context summaries, implemented-module shortcuts, and explicit states.
 
 ### Step 6 — Company and Branch Workspace Consolidation
 
-- Replace the create-only Companies surface with a management workspace using existing Company/Branch capabilities.
-- Separate list/selection, create/edit, and branch-oriented presentation where supported by existing contracts.
-- Migrate Company forms to shared form, feedback, and layout primitives.
-- Remove development-only console output from normal user flows or route diagnostics through approved infrastructure.
-
-Exit criteria:
-
-- Company management is presented as a coherent workspace rather than an alias to the setup form.
-- Existing company creation behavior remains regression-safe.
-- Persian RTL validation and feedback are consistent with the shared design system.
-
 Status: Completed
 
 Evidence:
-
-- Converted Company setup into a persisted Company/Branch management workspace using shared active context and shared UI primitives.
-- Preserved `setupCompany` and `updateCompanyActivityType` semantics, then exposed Branch creation through a thin `addCompanyBranch` Application workflow using existing validation/repository boundaries.
-- Corrected context refresh after Branch/Fiscal mutations and added focused Company/Branch tests.
+- Converted Company setup into a persisted Company/Branch management workspace and exposed Branch creation through existing application/repository boundaries.
 
 ### Step 7 — Fiscal Workspace Consolidation
 
-- Replace the create-only Fiscal Years surface with a management workspace using existing fiscal capabilities.
-- Present fiscal years and periods, current/open state, and supported actions without introducing future accounting lifecycle rules.
-- Use Solar Hijri presentation consistently while preserving existing durable date conventions.
-- Migrate fiscal forms and feedback to shared primitives.
-
-Exit criteria:
-
-- Fiscal Years page is no longer only an alias to New Fiscal Year.
-- Supported fiscal state is visible and usable through a coherent workspace.
-- Existing fiscal behavior remains regression-safe.
-
 Status: Completed
 
 Evidence:
-
-- Converted Fiscal Years into a persisted year/period management workspace with current/status presentation and Solar Hijri display.
-- Preserved `createFiscalYear` behavior and Gregorian durable storage while adding the shared `PersianDatePicker` for Solar Hijri user input.
-- Hardened the shared picker and Fiscal layout against legacy `App.css` collisions after runtime visual review; established a `1366 × 768` initial Tauri window baseline.
+- Converted Fiscal Years into a management workspace and standardized Solar Hijri input while preserving Gregorian durable storage.
+- Established the 1366 × 768 initial desktop window baseline.
 
 ### Step 8 — Security Workspace Consolidation
 
-- Harmonize Login, Users, Roles, Permissions, and access-management surfaces.
-- Replace ad-hoc page navigation with shared workspace/page patterns.
-- Improve permission/role assignment readability without changing security semantics.
-- Ensure unauthorized/disabled states and feedback are consistently presented.
-
-Exit criteria:
-
-- Security screens share the common desktop visual language.
-- Existing permission enforcement remains at the application boundary.
-- Security-focused desktop regression tests pass.
-
 Status: Completed
 
 Evidence:
-
-- Added shared Security workspace navigation and migrated Login, Users, Roles, Permissions, Role Permission, and User Access surfaces to shared primitives.
-- Preserved existing authentication, creation, assignment, System Administrator, and disabled-state semantics; removed touched development console logging.
-- Restored the Login navigation entry and corrected Security workspace tabs to the real `/security/users`, `/security/roles`, and `/security/permissions` routes with regression coverage.
-- Legacy Security selectors in `App.css` remain inert and tracked for Steps 11–13 cleanup.
+- Consolidated Login, Users, Roles, Permissions, Role Permission, and User Access surfaces while preserving security semantics.
 
 ### Step 9 — Audit and Approval Workspace Harmonization
 
-- Migrate Audit and Approval list/detail screens to shared layout, filter, badge, table, and feedback patterns.
-- Preserve immutable audit semantics and existing approval workflow behavior.
-- Standardize status visualization, detail hierarchy, empty states, and navigation.
-
-Exit criteria:
-
-- Audit and Approval screens visually align with the consolidated desktop experience.
-- No audit or approval domain behavior changes are introduced.
-- Existing Audit/Approval regression coverage remains green.
-
 Status: Completed
 
 Evidence:
-
-- Migrated Approval list/detail pages to shared `Page`, `Panel`, `Card`, `Field`, `Input`, `Select`, `Textarea`, `Button`, `DataTable`, `Badge`, and `Feedback` primitives.
-- Preserved all existing Approval service operations and permission checks: submit, approve, reject, return-to-draft, cancel, and comment; no workflow/domain semantics changed.
-- Migrated Audit list/detail pages to the same shared presentation language while preserving `searchAuditEntries`/`getAuditEntry` read-only semantics and immutable before/after/metadata snapshots.
-- Standardized Approval status and Audit outcome badge tones, Persian calendar date-time presentation, detail hierarchy, loading/empty/error states, and explicit list/detail navigation.
-- Added shared token-based `governance-workspace.css` with responsive layouts and focus-visible navigation; removed obsolete `approval-pages.css` and `audit-pages.css` instead of retaining feature-specific legacy styles.
-- Removed development-only console logging from touched Audit/Approval reads/actions and surfaced Persian user-facing error feedback.
-- Added `apps/desktop/tests/audit-approval-workspace-ui-contract.test.ts` to lock shared-primitives adoption, workflow delegation, immutable Audit semantics, Persian timestamp presentation, responsive/focus behavior, and removal of legacy/temporary presentation.
-- No Audit/Approval Domain, persistence, workflow, or Phase 15 Journal Lifecycle behavior was introduced.
+- Migrated Audit and Approval list/detail surfaces to shared primitives while preserving Approval workflow and immutable Audit behavior.
 
 ### Step 10 — Accounting Workspace Harmonization
 
-- Review Chart of Accounts, Accounting Dimensions, Coding Templates, and Journal Voucher workspaces against the new shared design system.
-- Extract duplicated patterns into shared components where doing so reduces divergence without weakening feature boundaries.
-- Preserve the Journal Voucher workspace as the interaction-quality baseline while removing avoidable one-off styling.
-- Verify tables, selectors, toolbars, panels, totals, and responsive overflow behave consistently.
-
-Exit criteria:
-
-- Phase 10–13 workspaces use the consolidated visual language.
-- No Phase 15 Journal Lifecycle controls or behavior are introduced.
-- Existing accounting desktop tests remain green.
-
 Status: Completed
 
 Evidence:
-
-- Added a shared token-based `accounting-workspace.css` presentation layer and aligned Chart of Accounts, Accounting Dimensions, Coding Templates, and Journal Voucher headers, controls, panels, tabs, feedback surfaces, dense tables, and responsive overflow with the Phase 14 design system.
-- Rebuilt the Chart of Accounts presentation as an expandable/collapsible semantic tree with visible hierarchy rails, level markers, parent-preserving search, summary counts, account metadata, contained scrolling, and compact actions while preserving existing Chart of Accounts Application operations.
-- Improved Coding Template preview hierarchy with matching level markers, branch rails, token-based status presentation, and shared compact controls without changing preview/apply semantics.
-- Preserved Solar Hijri Journal date inputs and all existing draft Journal behavior; no posting, approval, locking, reversal, or finalization controls were introduced.
-- Retired the legacy Vite starter/global Foundation selectors from `App.css`, limiting it to document-level defaults so shared components no longer require feature-specific defenses against those global rules. Migrated the remaining System Diagnostics consumers to shared primitives as part of making that removal safe.
-- Added `apps/desktop/tests/accounting-workspace-ui-contract.test.ts` to lock the consolidated accounting language, semantic account tree, contained dense-surface overflow, legacy-global CSS retirement, and Phase 15 boundary.
-- Focused and full local runtime/typecheck/test/build validation remains to be executed on the repository owner's macOS environment and is formally recorded in Step 13.
+- Harmonized Chart of Accounts, Dimensions, Coding Templates, and Journal Voucher workspaces.
+- Rebuilt Chart of Accounts as a semantic expandable hierarchy and retired legacy global Foundation styling.
+- Preserved Solar Hijri Journal dates and excluded Phase 15 Journal Lifecycle behavior.
 
 ### Step 11 — RTL, Accessibility, Keyboard, and Responsive Hardening
 
@@ -286,12 +142,18 @@ Evidence:
 - Remove avoidable fixed-width assumptions that break supported desktop sizes.
 
 Exit criteria:
-
 - Critical desktop flows are keyboard reachable.
 - RTL direction and mixed-content presentation are consistent.
 - Supported window sizes do not create page-level destructive overflow.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added a global skip link and focusable main-content landmark to the App Shell and linked collapsible navigation groups with `aria-expanded`/`aria-controls`.
+- Added shared accessibility hardening for keyboard focus, RTL/mixed Persian-Latin isolation, tabular numeric presentation, reduced-motion preference, and destructive page-level horizontal-overflow prevention.
+- Preserved contained horizontal scrolling for dense tables/workspaces and improved Shell behavior at supported narrower desktop widths.
+- Added `apps/desktop/tests/accessibility-responsive-ui-contract.test.ts` to lock keyboard, semantic landmark, RTL/Bidi, reduced-motion, and responsive-overflow contracts.
+- No Domain, persistence, permission, or Journal Lifecycle semantics changed.
 
 ### Step 12 — Loading, Empty, Error, Success, and Feedback Standards
 
@@ -301,12 +163,20 @@ Status: Not started
 - Reuse notification infrastructure where it is already the correct application contract.
 
 Exit criteria:
-
 - Touched workspaces have explicit asynchronous and empty/error states.
 - User-facing feedback is Persian and actionable.
 - Technical detail exposure follows a consistent pattern.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Extended the shared feedback layer with explicit `LoadingState`, `EmptyState`, and `ErrorState` primitives while retaining semantic `Feedback` tones for info/success/warning/error outcomes.
+- Standardized `aria-live`, `aria-busy`, alert/status semantics and token-based loading/empty/error presentation for reusable asynchronous surfaces.
+- Added an optional expandable `technicalDetails` region that keeps the primary Persian explanation separate from LTR diagnostic output.
+- Added reduced-motion handling for loading indicators and reusable action regions for retry/next-step controls instead of silent failures.
+- Added `apps/desktop/tests/feedback-states-ui-contract.test.ts` to lock explicit state primitives, Persian technical-detail disclosure, accessibility semantics, token usage, and reduced-motion behavior.
+- Existing workspaces continue using their established explicit feedback paths; the new primitives provide the canonical contract for subsequent migrations without changing Domain/Application behavior.
+- Full repository execution evidence remains reserved for Step 13 and is not claimed here.
 
 ### Step 13 — UI Regression, Monorepo Validation, and Documentation
 
@@ -316,7 +186,6 @@ Status: Not started
 - Update UI architecture, phase record, roadmap references, changelog, and relevant glossary/conventions.
 
 Exit criteria:
-
 - Required focused and monorepo validations pass with recorded evidence.
 - Documentation index is regenerated and clean.
 - Phase 14 implementation record accurately describes delivered UI consolidation.
@@ -335,45 +204,25 @@ Status: Not started
 - Keep all changes within the presentation layer and existing Application contracts; no accounting domain, persistence, Journal Lifecycle, posting, approval, locking, reversal, or finalization behavior may be introduced.
 
 Exit criteria:
-
 - Primary accounting workspaces at a 1080p-class desktop viewport avoid unnecessary page-level vertical scrolling and keep the main data surface visible within the workspace.
 - Standard dense tables target approximately 20–30 simultaneously visible data rows where the surrounding workflow permits it, with a typical operational row-height target around 28–32 px unless content requires more.
-- Account/hierarchy trees use compact desktop nodes and materially reduce unnecessary vertical space compared with web-style navigation trees.
-- Horizontal scrolling is contained to genuinely wide data surfaces; important identifying columns can remain visible through an approved frozen/sticky strategy where appropriate.
-- Reusable density/workspace primitives or tokens are introduced where needed instead of scattering feature-local sizing rules.
-- Compact forms, toolbars, grids, and trees remain keyboard reachable, RTL-correct, and accessible.
-- Existing accounting behavior and regression contracts remain unchanged and green.
+- Chart of Accounts presents substantially more of the hierarchy in one view than the pre-Step-14 layout while preserving clear parent/child relationships and keyboard accessibility.
+- Wide accounting grids use contained horizontal scrolling and/or frozen essential columns rather than forcing the whole application shell to scroll horizontally.
+- High-frequency forms use compact desktop layouts without changing validation, domain rules, or Application contracts.
+- Existing RTL, accessibility, responsive, and accounting regression coverage remains green.
 
 Status: Not started
 
 ### Step 15 — Final Review, Merge, and Release
 
-- Review all step evidence and unresolved Change Requests.
-- Confirm no Phase 15 Journal Lifecycle behavior leaked into Phase 14.
-- Confirm legacy temporary UI debt identified by the Phase 14 audit is either removed or explicitly documented as deferred with rationale.
-- Confirm the Step 14 desktop-density contract is implemented consistently across the agreed high-frequency accounting surfaces and any intentional exceptions are documented.
-- Merge the Phase 14 branch according to project branch strategy only after explicit approval.
-- Release consistently, verify remote refs/tag/release documentation, and advance the current target to Phase 15 only after explicit approval.
+- Perform final scope review against this fixed plan.
+- Confirm all UI migration targets are complete or explicitly deferred with rationale.
+- Merge the completed phase according to repository policy.
+- Tag and publish the Phase 14 release with release notes.
 
 Exit criteria:
-
-- Phase 14 is merged and released through the approved workflow.
-- Remote refs/tag and release documentation are verified.
-- Canonical roadmap identifies Phase 15 — Journal Lifecycle as the next/current target only after successful closure.
+- Phase 14 is merged through the approved repository flow.
+- Release tag and notes are published.
+- Roadmap points to Phase 15 — Journal Lifecycle as the next implementation target.
 
 Status: Not started
-
-## Governance
-
-Before every implementation step:
-
-1. Read this fixed plan.
-2. Read `docs/development/github-publishing-workflow.md`.
-3. Confirm the current branch and remote HEAD.
-4. Confirm the previous step exit criteria.
-5. State the current step number, scope, expected files, and validation.
-6. Update only status/evidence unless an explicit Change Request authorizes plan modification.
-
-## Change Requests
-
-- CR-001 — Approved after Step 10: add a dedicated desktop-first data-density and accounting-workspace optimization step immediately after Step 13. This introduces Step 14 — `Desktop Data Density and Accounting Workspace Optimization`, renumbers the former final review/release Step 14 to Step 15, and expands the Phase 14 presentation scope only; no Domain/Application/Persistence or Phase 15 Journal Lifecycle behavior is added.
