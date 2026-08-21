@@ -7,6 +7,10 @@ import {
 } from "./app/providers/auth-session-provider";
 
 import {
+  DisplayDensityProvider
+} from "./app/providers/display-density-provider";
+
+import {
   SecurityBootstrapProvider
 } from "./app/providers/security-bootstrap-provider";
 
@@ -40,7 +44,9 @@ function App() {
           <AuditProvider>
             <AccountingProvider>
               <ActiveContextProvider>
-                <AppRouter />
+                <DisplayDensityProvider>
+                  <AppRouter />
+                </DisplayDensityProvider>
               </ActiveContextProvider>
             </AccountingProvider>
           </AuditProvider>
