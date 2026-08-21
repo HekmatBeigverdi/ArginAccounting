@@ -39,7 +39,7 @@ export function LoadingState({ children = "در حال بارگذاری…", cla
   );
 }
 
-export interface EmptyStateProps extends ComponentPropsWithoutRef<"div"> {
+export interface EmptyStateProps extends Omit<ComponentPropsWithoutRef<"div">, "title"> {
   title: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
@@ -55,7 +55,7 @@ export function EmptyState({ title, description, action, className = "", ...prop
   );
 }
 
-export interface ErrorStateProps extends ComponentPropsWithoutRef<"div"> {
+export interface ErrorStateProps extends Omit<ComponentPropsWithoutRef<"div">, "title"> {
   title?: ReactNode;
   children: ReactNode;
   technicalDetails?: ReactNode;

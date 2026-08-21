@@ -10,6 +10,7 @@ defval
 finaliz
 irreproducible
 NOCASE
+nums
 passwordhash
 payables
 pgdata
@@ -22,6 +23,7 @@ Tadbir
 tauri
 topbar
 unpost
+viewports
 Vite
 آبان
 آخرین
@@ -401,6 +403,7 @@ Vite
 کلیدهای
 کلیدی
 کمتر
+کناری
 کنترل
 کنندگان
 کننده
@@ -476,6 +479,7 @@ Vite
 مقادیر
 مقدار
 مقداری
+ممکن
 ممنوع
 ممیزی
 مناسب

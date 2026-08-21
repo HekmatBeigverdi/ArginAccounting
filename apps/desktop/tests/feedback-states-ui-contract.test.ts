@@ -1,30 +1,31 @@
+import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, it } from "node:test";
 
 const feedback = readFileSync(new URL("../src/components/feedback/index.tsx", import.meta.url), "utf8");
 const uiCss = readFileSync(new URL("../src/components/ui.css", import.meta.url), "utf8");
 
 describe("Phase 14 feedback state contract", () => {
   it("provides explicit loading, empty, error, and semantic feedback primitives", () => {
-    expect(feedback).toContain("export function LoadingState");
-    expect(feedback).toContain("export function EmptyState");
-    expect(feedback).toContain("export function ErrorState");
-    expect(feedback).toContain('aria-busy="true"');
-    expect(feedback).toContain('aria-live="assertive"');
-    expect(feedback).toContain('aria-live="polite"');
+    assert.ok(feedback.includes("export function LoadingState"));
+    assert.ok(feedback.includes("export function EmptyState"));
+    assert.ok(feedback.includes("export function ErrorState"));
+    assert.ok(feedback.includes('aria-busy="true"'));
+    assert.ok(feedback.includes('aria-live="assertive"'));
+    assert.ok(feedback.includes('aria-live="polite"'));
   });
 
   it("keeps user-facing error text separate from optional technical diagnostics", () => {
-    expect(feedback).toContain("technicalDetails");
-    expect(feedback).toContain("جزئیات فنی");
-    expect(feedback).toContain('<pre dir="ltr">');
+    assert.ok(feedback.includes("technicalDetails"));
+    assert.ok(feedback.includes("جزئیات فنی"));
+    assert.ok(feedback.includes('<pre dir="ltr">'));
   });
 
   it("uses shared token-based presentation and respects reduced motion", () => {
-    expect(uiCss).toContain(".ui-state--loading");
-    expect(uiCss).toContain(".ui-state--empty");
-    expect(uiCss).toContain(".ui-state--error");
-    expect(uiCss).toContain("prefers-reduced-motion: reduce");
-    expect(uiCss).toContain("var(--ui-danger-soft)");
+    assert.ok(uiCss.includes(".ui-state--loading"));
+    assert.ok(uiCss.includes(".ui-state--empty"));
+    assert.ok(uiCss.includes(".ui-state--error"));
+    assert.ok(uiCss.includes("prefers-reduced-motion: reduce"));
+    assert.ok(uiCss.includes("var(--ui-danger-soft)"));
   });
 });
