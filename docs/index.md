@@ -128,8 +128,8 @@
 
 ## ui
 
-- [ArginAccounting UI Architecture](ui/UI_ARCHITECTURE.md)
 - [Phase 14 — UI Architecture Audit](ui/phase-14-ui-architecture-audit.md)
+- [ArginAccounting UI Architecture](ui/UI_ARCHITECTURE.md)
 
 ## vision
 
