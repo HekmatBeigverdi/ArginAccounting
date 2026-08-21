@@ -44,4 +44,17 @@
   --ui-page-max: 1440px;
   --ui-table-cell-x: 0.75rem;
   --ui-table-cell-y: 0.7rem;
+
+  /* Desktop operational density contract. */
+  --ui-density-control-height: 2rem;
+  --ui-density-row-height: 1.875rem;
+  --ui-density-tree-row-height: 2rem;
+  --ui-density-cell-x: 0.5rem;
+  --ui-density-cell-y: 0.32rem;
+  --ui-density-gap: 0.5rem;
+  --ui-density-section-gap: 0.75rem;
+  --ui-density-panel-padding: 0.75rem;
+  --ui-density-toolbar-padding: 0.5rem;
+  --ui-density-font-size: 0.82rem;
+  --ui-workspace-height: calc(100dvh - 10.5rem);
 }
