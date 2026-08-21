@@ -30,6 +30,7 @@ import "./styles/design-tokens.css";
 import "./components/ui.css";
 import "./App.css";
 import "./styles/persian-date-isolation.css";
+import "./styles/accessibility.css";
 
 function App() {
   return (
