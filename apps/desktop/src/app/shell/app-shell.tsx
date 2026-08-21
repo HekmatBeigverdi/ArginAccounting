@@ -13,6 +13,10 @@ function navigationClassName({ isActive }: { isActive: boolean }): string {
     : "app-shell__nav-link";
 }
 
+function groupId(group: string): string {
+  return `app-nav-group-${group.replace(/[^\p{L}\p{N}]+/gu, "-")}`;
+}
+
 export function AppShell() {
   const { pathname } = useLocation();
   const { session } = useAuthSession();
@@ -54,7 +58,8 @@ export function AppShell() {
 
   return (
     <div className="app-shell" dir="rtl">
-      <aside className="app-shell__sidebar">
+      <a className="app-shell__skip-link" href="#app-main-content">پرش به محتوای اصلی</a>
+      <aside className="app-shell__sidebar" aria-label="نوار کناری برنامه">
         <div className="app-shell__brand">
           <strong>ArginAccounting</strong>
           <span>نرم‌افزار حسابداری شرکتی آرگین</span>
@@ -63,29 +68,33 @@ export function AppShell() {
         <nav className="app-shell__nav" aria-label="ناوبری اصلی">
           {groups.map((group) => {
             const collapsed = collapsedGroups.has(group);
+            const controlledId = groupId(group);
             return (
               <section key={group} className="app-shell__nav-group">
                 <button
                   type="button"
                   className="app-shell__nav-group-header"
                   aria-expanded={!collapsed}
+                  aria-controls={controlledId}
                   onClick={() => toggleGroup(group)}
                 >
                   <span>{group}</span>
                   <span aria-hidden="true">{collapsed ? "‹" : "⌄"}</span>
                 </button>
 
-                {!collapsed && visibleItems
-                  .filter((item) => item.group === group)
-                  .map((item) => (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      className={navigationClassName}
-                    >
-                      {item.label}
-                    </NavLink>
-                  ))}
+                <div id={controlledId} hidden={collapsed}>
+                  {visibleItems
+                    .filter((item) => item.group === group)
+                    .map((item) => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={navigationClassName}
+                      >
+                        {item.label}
+                      </NavLink>
+                    ))}
+                </div>
               </section>
             );
           })}
@@ -101,7 +110,7 @@ export function AppShell() {
         <header className="app-shell__topbar">
           <div className="app-shell__topbar-row">
             <div>
-              <div className="app-shell__breadcrumb">
+              <div className="app-shell__breadcrumb" aria-label="مسیر صفحه">
                 آرگین / {currentItem?.group ?? "صفحه"}
               </div>
               <h1 className="app-shell__page-title">
@@ -157,16 +166,16 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="app-shell__main">
+        <main id="app-main-content" className="app-shell__main" tabIndex={-1}>
           <Outlet />
         </main>
 
-        <footer className="app-shell__statusbar">
+        <footer className="app-shell__statusbar" aria-label="وضعیت برنامه">
           <span>حالت آفلاین</span>
           <span>SQLite</span>
           <span>{context.activeCompany?.legalName ?? "بدون شرکت فعال"}</span>
           {context.error && (
-            <span className="app-shell__statusbar-error">{context.error}</span>
+            <span className="app-shell__statusbar-error" role="status">{context.error}</span>
           )}
         </footer>
       </div>
