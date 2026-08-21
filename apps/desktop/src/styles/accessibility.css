@@ -1,0 +1,48 @@
+/* Phase 14 Step 11: cross-workspace accessibility, bidi, and motion contract. */
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: 2px;
+}
+
+:where(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+}
+
+:where(code, kbd, samp, [dir="ltr"]) {
+  unicode-bidi: isolate;
+}
+
+:where(.ui-table, [role="grid"], [role="tree"]) {
+  min-width: 0;
+}
+
+:where(.ui-table-wrap, .accounting-workspace__scroll) {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-gutter: stable;
+}
+
+.ui-table :where(td, th) [dir="ltr"],
+.ui-table :where(td, th) code,
+.ui-table :where(td, th) data {
+  font-variant-numeric: tabular-nums;
+  text-align: start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .ui-dialog-backdrop { padding: var(--ui-space-3); }
+  .ui-dialog { max-width: 100%; max-height: calc(100dvh - 1.5rem); }
+  .ui-toolbar { align-items: stretch; }
+}
