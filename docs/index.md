@@ -91,6 +91,8 @@
 - [Phase 12 — Coding Templates](phases/phase-12-coding-templates.md)
 - [Phase 13 — Journal Voucher Engine: Fixed Implementation Plan](phases/phase-13-journal-voucher-engine-plan.md)
 - [Phase 13 — Journal Voucher Engine](phases/phase-13-journal-voucher-engine.md)
+- [Phase 14 — UI Foundation Consolidation — Fixed Implementation Plan](phases/phase-14-ui-foundation-consolidation-plan.md)
+- [Phase 14 — UI Foundation Consolidation](phases/phase-14-ui-foundation-consolidation.md)
 - [Phase Documentation](phases/README.md)
 
 ## registries
@@ -126,6 +128,7 @@
 
 ## ui
 
+- [Phase 14 — UI Architecture Audit](ui/phase-14-ui-architecture-audit.md)
 - [ArginAccounting UI Architecture](ui/UI_ARCHITECTURE.md)
 
 ## vision

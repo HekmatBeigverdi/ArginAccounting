@@ -22,11 +22,12 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 
 - Phase 01–13: completed and merged into `develop` and `main`
 - Latest release: Phase 13 — Journal Voucher Engine (`v0.13.0`)
-- Current target: Phase 14 — Journal Lifecycle
+- Current target: Phase 14 — UI Foundation Consolidation
+- Next accounting target after UI consolidation: Phase 15 — Journal Lifecycle
 
-Phase 13 delivers the persisted Draft Journal Voucher Engine: strict double-entry vouchers and lines, account/fiscal/dimension validation, scoped Number Series, retry-safe Application use cases, SQLite persistence, journal-backed integrity guards, permissions/audit/events, and a Persian RTL Journal workspace.
+Phase 14 consolidates the Persian RTL desktop experience: shared design-system primitives, the final application shell and navigation, dashboard modernization, Foundation workspace modernization, and visual/interaction harmonization of the Accounting Core UI delivered in Phases 10–13.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 13 implementation record](docs/phases/phase-13-journal-voucher-engine.md), and [ADR-0013](docs/adr/ADR-0013-journal-voucher-engine.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 14 implementation record](docs/phases/phase-14-ui-foundation-consolidation.md), and [Phase 14 fixed implementation plan](docs/phases/phase-14-ui-foundation-consolidation-plan.md).
 
 ## Main Modules
 
@@ -125,8 +126,8 @@ Validation commands are requirements, not proof of success. Phase and release do
 - [Product Vision](docs/vision/product-vision.md)
 - [Architecture](ARCHITECTURE.md)
 - [Roadmap](ROADMAP.md)
-- [Phase 13 — Journal Voucher Engine](docs/phases/phase-13-journal-voucher-engine.md)
-- [Phase 13 Fixed Implementation Plan](docs/phases/phase-13-journal-voucher-engine-plan.md)
+- [Phase 14 — UI Foundation Consolidation](docs/phases/phase-14-ui-foundation-consolidation.md)
+- [Phase 14 Fixed Implementation Plan](docs/phases/phase-14-ui-foundation-consolidation-plan.md)
 - [ADR Registry](docs/adr/README.md)
 - [Database Design](docs/database/database-design.md)
 - [Accounting Engine](docs/accounting/accounting-engine.md)

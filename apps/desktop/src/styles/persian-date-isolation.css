@@ -1,0 +1,30 @@
+.ui-persian-date .ui-persian-date__header button,
+.ui-persian-date .ui-persian-date__footer button,
+.ui-persian-date .ui-persian-date__day {
+  border: 0 !important;
+  box-shadow: none !important;
+  font: inherit !important;
+}
+
+.ui-persian-date .ui-persian-date__header button,
+.ui-persian-date .ui-persian-date__footer button {
+  background: transparent !important;
+  color: var(--ui-primary) !important;
+}
+
+.ui-persian-date .ui-persian-date__header button:hover,
+.ui-persian-date .ui-persian-date__footer button:hover,
+.ui-persian-date .ui-persian-date__day:hover {
+  background: var(--ui-primary-soft) !important;
+}
+
+.ui-persian-date .ui-persian-date__day {
+  background: transparent !important;
+  color: var(--ui-text) !important;
+}
+
+.ui-persian-date .ui-persian-date__day--active,
+.ui-persian-date .ui-persian-date__day--active:hover {
+  background: var(--ui-primary) !important;
+  color: #fff !important;
+}

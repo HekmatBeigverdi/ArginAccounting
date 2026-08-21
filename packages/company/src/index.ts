@@ -68,6 +68,14 @@ export {
 } from "./application/setup-company";
 
 export {
+  addCompanyBranch
+} from "./application/add-company-branch";
+
+export type {
+  AddCompanyBranchCommand
+} from "./application/add-company-branch";
+
+export {
   companyProfilePermissions
 } from "./application/company-profile-permissions";
 

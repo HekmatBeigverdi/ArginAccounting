@@ -1,6 +1,14 @@
 import {
+  ActiveContextProvider
+} from "./app/providers/active-context-provider";
+
+import {
   AuthSessionProvider
 } from "./app/providers/auth-session-provider";
+
+import {
+  DisplayDensityProvider
+} from "./app/providers/display-density-provider";
 
 import {
   SecurityBootstrapProvider
@@ -22,7 +30,11 @@ import {
   PlatformProvider
 } from "./platform";
 
+import "./styles/design-tokens.css";
+import "./components/ui.css";
 import "./App.css";
+import "./styles/persian-date-isolation.css";
+import "./styles/accessibility.css";
 
 function App() {
   return (
@@ -31,7 +43,11 @@ function App() {
         <AuthSessionProvider>
           <AuditProvider>
             <AccountingProvider>
-              <AppRouter />
+              <ActiveContextProvider>
+                <DisplayDensityProvider>
+                  <AppRouter />
+                </DisplayDensityProvider>
+              </ActiveContextProvider>
             </AccountingProvider>
           </AuditProvider>
         </AuthSessionProvider>
