@@ -32,22 +32,27 @@ Canonical Loading/Empty/Error state primitives, semantic live regions, optional 
 
 - regression contracts cover the consolidated shell and all primary Phase 14 workspaces;
 - repository owner confirmed frozen install, Desktop typecheck/test/build, full monorepo lint/typecheck/test/build, generated documentation index, clean status review, and `git diff --check` completed successfully on macOS;
-- `CHANGELOG.md` now includes the Phase 14 Unreleased delivery summary and corrected Phase 15/16 forward references;
-- canonical plan and implementation record were synchronized with validation evidence.
+- `CHANGELOG.md` includes the Phase 14 Unreleased delivery summary and corrected Phase 15/16 forward references.
 
 ### Step 14 — Desktop Data Density and Accounting Workspace Optimization
 
-- introduced reusable operational density tokens rather than feature-specific sizing overrides: 32px controls/tree rows, approximately 30px table rows, compact cells/panels/toolbars, and viewport-derived workspace height;
-- made Accounting headers, tabs, toolbars, panels and tables materially more compact while retaining Persian RTL readability and accessible controls;
-- standardized sticky table headers and locally contained vertical/horizontal scrolling so wide/dense accounting data does not force the whole application shell to scroll;
-- densified Chart of Accounts hierarchy from the earlier large-card row treatment to a 32px operational tree target with restrained indentation, compact expand controls/level markers, code-plus-title identity, hierarchy rails and locally contained viewport-height scrolling;
-- kept the Chart editor side surface compact and independently scrollable on wide desktop layouts, with responsive fallback to normal document flow on smaller windows;
-- added `apps/desktop/tests/desktop-density-ui-contract.test.ts` to lock the density tokens, sticky/local scrolling, compact Chart hierarchy and responsive degradation;
+Phase 14 now defines density as a global application preference rather than an Accounting-only presentation rule.
+
+- added three global density levels: `compact`, `comfortable`, and `spacious`;
+- `comfortable` is the default and remains materially denser than the pre-Phase-14 Argin interface;
+- `compact` targets professional high-density accounting work with approximately 30px table rows and 32px controls/tree rows;
+- `spacious` increases controls/tree/table rows to approximately 44px for touch-oriented or readability-focused use;
+- the selected density is applied to the document root through `data-density`, so shared Design System tokens affect Shell, navigation, context selectors, shared controls, tables and all current/future workspaces rather than Accounting alone;
+- the App Shell exposes the Persian `تراکم نمایش` selector with `فشرده`, `استاندارد`, and `بزرگ` choices;
+- the preference is persisted locally under `argin.ui.display-density` and restored at application startup; invalid/missing values safely fall back to `comfortable`;
+- Accounting workspaces retain sticky table headers, contained scrolling, compact forms/toolbars and viewport-derived data surfaces, now driven by the selected global density tokens;
+- Chart of Accounts hierarchy retains semantic rails, level markers, code-plus-title identity and responsive degradation while its row/control dimensions follow the global density contract;
+- added `apps/desktop/tests/display-density-ui-contract.test.ts` alongside the existing desktop-density regression contract;
 - no accounting Domain/Application/persistence or Phase 15 Journal Lifecycle behavior was introduced.
 
 ## Validation Evidence
 
-Step 13 full repository validation was confirmed successful by the repository owner before Step 14 started. Step 14 adds focused source-contract regression coverage; its presentation changes should receive the normal local Desktop typecheck/test/build smoke check before final Phase 14 release.
+Step 13 full repository validation was confirmed successful by the repository owner before Step 14 started. Step 14 now has focused source-contract coverage for both operational density and the three-level global density preference. Its final runtime/typecheck/test/build smoke check remains required before Phase 14 release.
 
 ## Remaining Phase 14 Work
 
