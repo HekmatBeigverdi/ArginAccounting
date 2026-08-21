@@ -16,6 +16,7 @@ In scope:
 - Company/Branch, Fiscal, Security, Audit, and Approval UI consolidation.
 - Visual and interaction harmonization of Chart of Accounts, Accounting Dimensions, Coding Templates, and Journal Voucher workspaces.
 - Accessibility, keyboard interaction, responsive behavior, and consistent loading/empty/error/success states.
+- Desktop-first data density, contained workspace scrolling, compact accounting trees/tables/forms, and efficient use of 1080p-class desktop viewports.
 - UI-focused regression tests and documentation.
 
 Out of scope:
@@ -31,6 +32,7 @@ Out of scope:
 - Iranian Rial remains the primary accounting currency presentation.
 - Solar Hijri is used for user-facing dates while durable/internal dates remain Gregorian according to existing project conventions.
 - Phase 13 Journal Voucher workspace is the primary interaction and visual reference, but reusable patterns must be extracted rather than copied page-by-page.
+- Operational accounting surfaces must prefer desktop-first, data-dense workspaces over web/SaaS-style oversized cards, controls, and page-level scrolling.
 - Domain and application rules remain outside React components.
 - Shared UI components must not depend directly on SQLite or Tauri persistence implementations.
 
@@ -51,7 +53,8 @@ Out of scope:
 | 11 | RTL, Accessibility, Keyboard, and Responsive Hardening | Not started |
 | 12 | Loading, Empty, Error, Success, and Feedback Standards | Not started |
 | 13 | UI Regression, Monorepo Validation, and Documentation | Not started |
-| 14 | Final Review, Merge, and Release | Not started |
+| 14 | Desktop Data Density and Accounting Workspace Optimization | Not started |
+| 15 | Final Review, Merge, and Release | Not started |
 
 ## Steps
 
@@ -320,11 +323,35 @@ Exit criteria:
 
 Status: Not started
 
-### Step 14 — Final Review, Merge, and Release
+### Step 14 — Desktop Data Density and Accounting Workspace Optimization
+
+- Establish an explicit desktop density contract for operational ERP/accounting surfaces, with compact sizing tokens for rows, controls, toolbars, spacing, tree nodes, and form layouts instead of page-specific CSS overrides.
+- Prefer workspace-height layouts with contained grid/tree scrolling over long page-level vertical scrolling on primary accounting screens.
+- Optimize dense Data Grid presentation with compact row heights, sticky headers, practical frozen columns, column resizing/visibility, compact filters, keyboard navigation, and local horizontal overflow where wide accounting data genuinely requires it.
+- Optimize Chart of Accounts and other hierarchical selectors for dense desktop use with compact nodes, restrained indentation, code-plus-title presentation, fast expand/collapse, parent-preserving search, and master-detail/split-view patterns where they materially reduce navigation and scrolling.
+- Convert operational forms away from oversized SaaS-style vertical stacking toward compact multi-column desktop layouts where field semantics allow it, while preserving readable validation, RTL behavior, and accessible labeling.
+- Reduce oversized cards, whitespace, and redundant chrome in high-frequency accounting workflows without reducing clarity or introducing legacy visual styling.
+- Preserve responsive degradation for smaller supported windows; desktop density must not be implemented through brittle fixed dimensions.
+- Keep all changes within the presentation layer and existing Application contracts; no accounting domain, persistence, Journal Lifecycle, posting, approval, locking, reversal, or finalization behavior may be introduced.
+
+Exit criteria:
+
+- Primary accounting workspaces at a 1080p-class desktop viewport avoid unnecessary page-level vertical scrolling and keep the main data surface visible within the workspace.
+- Standard dense tables target approximately 20–30 simultaneously visible data rows where the surrounding workflow permits it, with a typical operational row-height target around 28–32 px unless content requires more.
+- Account/hierarchy trees use compact desktop nodes and materially reduce unnecessary vertical space compared with web-style navigation trees.
+- Horizontal scrolling is contained to genuinely wide data surfaces; important identifying columns can remain visible through an approved frozen/sticky strategy where appropriate.
+- Reusable density/workspace primitives or tokens are introduced where needed instead of scattering feature-local sizing rules.
+- Compact forms, toolbars, grids, and trees remain keyboard reachable, RTL-correct, and accessible.
+- Existing accounting behavior and regression contracts remain unchanged and green.
+
+Status: Not started
+
+### Step 15 — Final Review, Merge, and Release
 
 - Review all step evidence and unresolved Change Requests.
 - Confirm no Phase 15 Journal Lifecycle behavior leaked into Phase 14.
 - Confirm legacy temporary UI debt identified by the Phase 14 audit is either removed or explicitly documented as deferred with rationale.
+- Confirm the Step 14 desktop-density contract is implemented consistently across the agreed high-frequency accounting surfaces and any intentional exceptions are documented.
 - Merge the Phase 14 branch according to project branch strategy only after explicit approval.
 - Release consistently, verify remote refs/tag/release documentation, and advance the current target to Phase 15 only after explicit approval.
 
@@ -349,4 +376,4 @@ Before every implementation step:
 
 ## Change Requests
 
-No Change Requests are open at plan creation.
+- CR-001 — Approved after Step 10: add a dedicated desktop-first data-density and accounting-workspace optimization step immediately after Step 13. This introduces Step 14 — `Desktop Data Density and Accounting Workspace Optimization`, renumbers the former final review/release Step 14 to Step 15, and expands the Phase 14 presentation scope only; no Domain/Application/Persistence or Phase 15 Journal Lifecycle behavior is added.
