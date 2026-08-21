@@ -1,16 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
+
 import type { ApprovalAction, ApprovalRequest, ApprovalStatus } from "@argin/audit";
+
+import { Badge } from "../../components/data-display";
+import { Feedback } from "../../components/feedback";
+import { Button, Field, Textarea } from "../../components/forms";
+import { Card, Page, Panel } from "../../components/layout";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { useAuditServices } from "../../composition/audit";
-import "./approval-pages.css";
+
+import "../governance/governance-workspace.css";
 
 const statusLabels: Record<ApprovalStatus, string> = {
   draft: "پیش‌نویس",
   pending: "در انتظار تأیید",
   approved: "تأییدشده",
   rejected: "ردشده",
-  cancelled: "لغوشده"
+  cancelled: "لغوشده",
 };
 
 const actionLabels: Record<ApprovalAction, string> = {
@@ -20,8 +27,41 @@ const actionLabels: Record<ApprovalAction, string> = {
   reject: "رد",
   "return-to-draft": "بازگشت به پیش‌نویس",
   cancel: "لغو",
-  comment: "ثبت یادداشت"
+  comment: "ثبت یادداشت",
 };
+
+type ExecutableApprovalAction = Exclude<ApprovalAction, "create">;
+
+function statusTone(status: ApprovalStatus) {
+  if (status === "approved") return "success" as const;
+  if (status === "pending") return "warning" as const;
+  if (status === "rejected" || status === "cancelled") return "danger" as const;
+  return "neutral" as const;
+}
+
+function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString("fa-IR-u-ca-persian");
+}
+
+function SectionTitle({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="governance-card-title">
+      <div>
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function DefinitionItem({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
 
 export function ApprovalRequestDetailsPage() {
   const { id = "" } = useParams();
@@ -34,105 +74,218 @@ export function ApprovalRequestDetailsPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const permissions = useMemo(() => new Set(session?.user.permissions ?? []), [session]);
-  const hasPermission = (code: string) => permissions.has("system.full-access") || permissions.has(code);
+  const hasPermission = (code: string) =>
+    permissions.has("system.full-access") || permissions.has(code);
 
   async function load(): Promise<void> {
     setIsLoading(true);
     setErrorMessage("");
     try {
       setRequest(await services.getApprovalRequest(id));
-    } catch (error) {
-      console.error(error);
+    } catch {
       setErrorMessage("دریافت جزئیات درخواست تأیید با خطا مواجه شد.");
     } finally {
       setIsLoading(false);
     }
   }
 
-  useEffect(() => { void load(); }, [id]);
+  useEffect(() => {
+    void load();
+  }, [id]);
 
-  async function execute(action: Exclude<ApprovalAction, "create">): Promise<void> {
+  async function execute(action: ExecutableApprovalAction): Promise<void> {
     if (!request || !session) {
       setErrorMessage("برای انجام عملیات باید وارد سامانه شوید.");
       return;
     }
     setIsSubmitting(true);
     setErrorMessage("");
+    const trimmedComment = comment.trim();
     const command = {
       approvalRequestId: request.id,
-      actor: { type: "user" as const, id: session.user.id, displayName: session.user.displayName },
-      ...(comment.trim() ? { comment: comment.trim() } : {})
+      actor: {
+        type: "user" as const,
+        id: session.user.id,
+        displayName: session.user.displayName,
+      },
+      ...(trimmedComment ? { comment: trimmedComment } : {}),
     };
+
     try {
-      const updated = action === "submit" ? await services.submitApprovalRequest(command)
-        : action === "approve" ? await services.approveApprovalRequest(command)
-        : action === "reject" ? await services.rejectApprovalRequest(command)
-        : action === "return-to-draft" ? await services.returnApprovalRequestToDraft(command)
-        : action === "cancel" ? await services.cancelApprovalRequest(command)
-        : await services.commentOnApprovalRequest(command);
+      let updated: ApprovalRequest;
+
+      switch (action) {
+        case "submit":
+          updated = await services.submitApprovalRequest(command);
+          break;
+        case "approve":
+          updated = await services.approveApprovalRequest(command);
+          break;
+        case "reject":
+          updated = await services.rejectApprovalRequest(command);
+          break;
+        case "return-to-draft":
+          updated = await services.returnApprovalRequestToDraft(command);
+          break;
+        case "cancel":
+          updated = await services.cancelApprovalRequest(command);
+          break;
+        case "comment":
+          updated = await services.commentOnApprovalRequest(command);
+          break;
+      }
+
       setRequest(updated);
       setComment("");
     } catch (error) {
-      console.error(error);
       setErrorMessage(error instanceof Error ? error.message : "انجام عملیات با خطا مواجه شد.");
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  if (isLoading) return <section className="temporary-page"><p>در حال دریافت اطلاعات...</p></section>;
-  if (!request) return <section className="temporary-page approval-page"><p className="approval-message approval-message--error">{errorMessage || "درخواست یافت نشد."}</p><Link to="/approval/requests">بازگشت</Link></section>;
+  if (isLoading) {
+    return (
+      <Page className="governance-page">
+        <Feedback tone="info">در حال دریافت جزئیات درخواست...</Feedback>
+      </Page>
+    );
+  }
+
+  if (!request) {
+    return (
+      <Page className="governance-page">
+        <Feedback tone="error">{errorMessage || "درخواست یافت نشد."}</Feedback>
+        <Link className="governance-back-link" to="/approval/requests">
+          بازگشت به درخواست‌های تأیید
+        </Link>
+      </Page>
+    );
+  }
+
+  const canSubmit = request.status === "draft" && hasPermission("approval.requests.submit");
+  const canApprove = request.status === "pending" && hasPermission("approval.requests.approve");
+  const canReject = request.status === "pending" && hasPermission("approval.requests.reject");
+  const canReturnToDraft =
+    request.status === "pending" && hasPermission("approval.requests.return-to-draft");
+  const canCancel =
+    ["draft", "pending"].includes(request.status) && hasPermission("approval.requests.cancel");
+  const canComment = hasPermission("approval.requests.comment");
 
   return (
-    <section className="temporary-page approval-page">
-      <header className="approval-page__header">
-        <div><h1>{request.title}</h1><p>{request.description ?? "بدون توضیحات"}</p></div>
-        <Link to="/approval/requests">بازگشت به فهرست</Link>
+    <Page className="governance-page">
+      <header className="governance-header">
+        <div>
+          <p className="governance-eyebrow">کنترل داخلی / جزئیات گردش تأیید</p>
+          <h2>{request.title}</h2>
+          <p>{request.description ?? "بدون توضیحات"}</p>
+        </div>
+        <div className="governance-header__actions">
+          <Badge tone={statusTone(request.status)}>{statusLabels[request.status]}</Badge>
+          <Link className="governance-back-link" to="/approval/requests">
+            بازگشت به فهرست
+          </Link>
+        </div>
       </header>
 
-      {errorMessage && <p className="approval-message approval-message--error">{errorMessage}</p>}
+      {errorMessage ? <Feedback tone="error">{errorMessage}</Feedback> : null}
 
-      <div className="approval-grid">
-        <article className="approval-card">
-          <h2>اطلاعات درخواست</h2>
-          <dl className="approval-detail-list">
-            <dt>وضعیت</dt><dd><span className="approval-status">{statusLabels[request.status]}</span></dd>
-            <dt>نوع درخواست</dt><dd>{request.requestType}</dd>
-            <dt>موجودیت مرتبط</dt><dd>{request.target.entityDisplayName ?? `${request.target.entityType} / ${request.target.entityId}`}</dd>
-            <dt>درخواست‌کننده</dt><dd>{request.requestedBy.displayName}</dd>
-            <dt>نسخه</dt><dd>{request.version}</dd>
-            <dt>ایجاد</dt><dd>{new Date(request.createdAt).toLocaleString("fa-IR")}</dd>
-            <dt>آخرین تغییر</dt><dd>{new Date(request.updatedAt).toLocaleString("fa-IR")}</dd>
-            {request.decisionComment && <><dt>توضیح تصمیم</dt><dd>{request.decisionComment}</dd></>}
+      <div className="governance-detail-grid">
+        <Card className="governance-detail-card">
+          <SectionTitle
+            title="اطلاعات درخواست"
+            description="مشخصات ثبت‌شده و وضعیت فعلی گردش."
+          />
+          <dl className="governance-definition-list">
+            <DefinitionItem label="وضعیت">
+              <Badge tone={statusTone(request.status)}>{statusLabels[request.status]}</Badge>
+            </DefinitionItem>
+            <DefinitionItem label="نوع درخواست">{request.requestType}</DefinitionItem>
+            <DefinitionItem label="موجودیت مرتبط">
+              {request.target.entityDisplayName ??
+                `${request.target.entityType} / ${request.target.entityId}`}
+            </DefinitionItem>
+            <DefinitionItem label="درخواست‌کننده">{request.requestedBy.displayName}</DefinitionItem>
+            <DefinitionItem label="نسخه">{request.version.toLocaleString("fa-IR")}</DefinitionItem>
+            <DefinitionItem label="ایجاد">{formatDateTime(request.createdAt)}</DefinitionItem>
+            <DefinitionItem label="آخرین تغییر">{formatDateTime(request.updatedAt)}</DefinitionItem>
+            {request.decisionComment ? (
+              <DefinitionItem label="توضیح تصمیم">{request.decisionComment}</DefinitionItem>
+            ) : null}
           </dl>
-        </article>
+        </Card>
 
-        <article className="approval-card approval-action-form">
-          <h2>عملیات</h2>
-          <label>توضیح یا یادداشت<textarea rows={5} value={comment} onChange={(event) => setComment(event.target.value)} /></label>
-          <div className="approval-actions">
-            {request.status === "draft" && hasPermission("approval.requests.submit") && <button disabled={isSubmitting} onClick={() => void execute("submit")}>ارسال برای تأیید</button>}
-            {request.status === "pending" && hasPermission("approval.requests.approve") && <button disabled={isSubmitting} onClick={() => void execute("approve")}>تأیید</button>}
-            {request.status === "pending" && hasPermission("approval.requests.reject") && <button disabled={isSubmitting} onClick={() => void execute("reject")}>رد</button>}
-            {request.status === "pending" && hasPermission("approval.requests.return-to-draft") && <button disabled={isSubmitting} onClick={() => void execute("return-to-draft")}>بازگشت به پیش‌نویس</button>}
-            {(request.status === "draft" || request.status === "pending") && hasPermission("approval.requests.cancel") && <button disabled={isSubmitting} onClick={() => void execute("cancel")}>لغو</button>}
-            {hasPermission("approval.requests.comment") && <button disabled={isSubmitting || !comment.trim()} onClick={() => void execute("comment")}>ثبت یادداشت</button>}
+        <Panel className="governance-action-form">
+          <SectionTitle
+            title="عملیات مجاز"
+            description="عملیات بر اساس وضعیت درخواست و مجوزهای کاربر نمایش داده می‌شوند."
+          />
+          <Field label="توضیح یا یادداشت">
+            <Textarea
+              rows={5}
+              value={comment}
+              disabled={isSubmitting}
+              onChange={(event) => setComment(event.target.value)}
+            />
+          </Field>
+          <div className="governance-actions">
+            {canSubmit ? (
+              <Button disabled={isSubmitting} variant="primary" onClick={() => void execute("submit")}>
+                ارسال برای تأیید
+              </Button>
+            ) : null}
+            {canApprove ? (
+              <Button disabled={isSubmitting} variant="primary" onClick={() => void execute("approve")}>
+                تأیید
+              </Button>
+            ) : null}
+            {canReject ? (
+              <Button disabled={isSubmitting} variant="danger" onClick={() => void execute("reject")}>
+                رد
+              </Button>
+            ) : null}
+            {canReturnToDraft ? (
+              <Button disabled={isSubmitting} onClick={() => void execute("return-to-draft")}>
+                بازگشت به پیش‌نویس
+              </Button>
+            ) : null}
+            {canCancel ? (
+              <Button disabled={isSubmitting} variant="danger" onClick={() => void execute("cancel")}>
+                لغو
+              </Button>
+            ) : null}
+            {canComment ? (
+              <Button
+                disabled={isSubmitting || !comment.trim()}
+                onClick={() => void execute("comment")}
+              >
+                ثبت یادداشت
+              </Button>
+            ) : null}
           </div>
-        </article>
+        </Panel>
       </div>
 
-      <article className="approval-card">
-        <h2>تاریخچه گردش</h2>
-        <ol className="approval-timeline">
+      <Panel>
+        <SectionTitle
+          title="تاریخچه گردش"
+          description="تمام تغییرات ثبت‌شده در درخواست به ترتیب زمانی معکوس."
+        />
+        <ol className="governance-timeline">
           {[...request.history].reverse().map((entry) => (
             <li key={entry.id}>
-              <strong>{actionLabels[entry.action]}</strong> توسط {entry.actor.displayName}
-              <small>{entry.fromStatus ? `${statusLabels[entry.fromStatus]} ← ` : ""}{statusLabels[entry.toStatus]} — {new Date(entry.occurredAt).toLocaleString("fa-IR")}</small>
-              {entry.comment && <p>{entry.comment}</p>}
+              <strong>
+                {actionLabels[entry.action]} توسط {entry.actor.displayName}
+              </strong>
+              <small>
+                {entry.fromStatus ? `${statusLabels[entry.fromStatus]} ← ` : ""}
+                {statusLabels[entry.toStatus]} — {formatDateTime(entry.occurredAt)}
+              </small>
+              {entry.comment ? <p>{entry.comment}</p> : null}
             </li>
           ))}
         </ol>
-      </article>
-    </section>
+      </Panel>
+    </Page>
   );
 }

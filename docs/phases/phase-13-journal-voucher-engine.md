@@ -28,7 +28,7 @@ Phase 13 delivers the first persisted double-entry Journal Voucher Engine in Arg
 
 ## Domain and Application Rules
 
-Phase 13 exposes only the `draft` lifecycle state. Posting, approval, locking, reversal, replacement, voiding, and controlled amendment remain Phase 14 responsibilities.
+Phase 13 exposes only the `draft` lifecycle state. Posting, approval, locking, reversal, replacement, voiding, and controlled amendment remain Phase 15 Journal Lifecycle responsibilities after the inserted Phase 14 UI Foundation Consolidation.
 
 Every voucher must contain at least two effective lines, every line must carry a positive amount on exactly one side, line ordering must be deterministic and unique, and total debit must equal total credit. Account, fiscal, dimension, authorization, numbering, concurrency, and transaction concerns are orchestrated outside the aggregate through persistence-neutral Application contracts.
 
@@ -87,4 +87,4 @@ Domain and Application contracts remain independent from React, Tauri, SQLite, P
 
 ## Next Phase
 
-Phase 14 — Journal Lifecycle.
+Phase 14 — UI Foundation Consolidation. Journal Lifecycle follows as Phase 15.

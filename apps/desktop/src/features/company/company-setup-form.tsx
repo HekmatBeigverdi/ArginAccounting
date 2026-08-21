@@ -6,17 +6,25 @@ import {
 import {
   companyActivityTypeLabels,
   type CompanyActivityType,
+  type CompanySetupResult,
   CompanyValidationError,
   setupCompany
 } from "@argin/company";
-
 import {
   SqliteCompanyUnitOfWork
 } from "@argin/company-tauri";
-
 import {
   getDesktopDatabase
 } from "@argin/database-tauri";
+
+import { Feedback } from "../../components/feedback";
+import {
+  Button,
+  Field,
+  Input,
+  Select,
+  Textarea
+} from "../../components/forms";
 
 interface FormState {
   companyCode: string;
@@ -34,6 +42,10 @@ interface FormState {
   phone: string;
   economicCode: string;
   fiscalId: string;
+}
+
+interface CompanySetupFormProps {
+  onCreated?(result: CompanySetupResult): void | Promise<void>;
 }
 
 const initialState: FormState = {
@@ -54,52 +66,32 @@ const initialState: FormState = {
   fiscalId: ""
 };
 
-export function CompanySetupForm() {
-  const [form, setForm] = useState<FormState>(
-    initialState
-  );
-
+export function CompanySetupForm({ onCreated }: CompanySetupFormProps) {
+  const [form, setForm] = useState<FormState>(initialState);
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function updateField(
-    field: keyof FormState,
-    value: string
-  ): void {
-    setForm((current) => ({
-      ...current,
-      [field]: value
-    }));
+  function updateField(field: keyof FormState, value: string): void {
+    setForm((current) => ({ ...current, [field]: value }));
   }
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ): Promise<void> {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-
     setMessage("");
     setErrors([]);
     setIsSubmitting(true);
 
     try {
-      console.log("شروع ثبت شرکت...");
-
       const database = await getDesktopDatabase();
-      console.log("اتصال به پایگاه داده برقرار شد");
-
-      const unitOfWork =
-        new SqliteCompanyUnitOfWork(database);
-
-      const setupInput = {
+      const unitOfWork = new SqliteCompanyUnitOfWork(database);
+      const result = await setupCompany(unitOfWork, {
         company: {
           code: form.companyCode,
           legalName: form.legalName,
           tradeName: form.tradeName || null,
           nationalId: form.nationalId || null,
-          registrationNumber:
-            form.registrationNumber || null,
+          registrationNumber: form.registrationNumber || null,
           activityType: form.activityType
         },
         headOffice: {
@@ -117,43 +109,30 @@ export function CompanySetupForm() {
               }
             }
           : {}),
-        ...(
-          form.economicCode || form.fiscalId
-            ? {
-                taxProfile: {
-                  economicCode:
-                    form.economicCode || null,
-                  fiscalId: form.fiscalId || null,
-                  sellerBranchCode: null,
-                  taxpayerType: "legal" as const,
-                  isEnabled: false
-                }
+        ...(form.economicCode || form.fiscalId
+          ? {
+              taxProfile: {
+                economicCode: form.economicCode || null,
+                fiscalId: form.fiscalId || null,
+                sellerBranchCode: null,
+                taxpayerType: "legal" as const,
+                isEnabled: false
               }
-            : {}
-        )
-      };
+            }
+          : {})
+      });
 
-      console.log("داده‌های ارسالی:", setupInput);
-
-      await setupCompany(unitOfWork, setupInput);
-
-      console.log("ثبت شرکت با موفقیت انجام شد");
-      setMessage("اطلاعات شرکت با موفقیت ثبت شد.");
+      setMessage("اطلاعات شرکت و دفتر مرکزی با موفقیت ثبت شد.");
+      await onCreated?.(result);
     } catch (error) {
       if (error instanceof CompanyValidationError) {
-        setErrors(
-          error.issues.map((issue) => issue.message)
-        );
+        setErrors(error.issues.map((issue) => issue.message));
       } else {
-        console.error("خطا در ثبت شرکت:", error);
-
-        // نمایش پیام خطای دقیق به کاربر
-        const errorMessage =
+        setErrors([
           error instanceof Error
             ? error.message
-            : "ثبت اطلاعات شرکت با خطا مواجه شد.";
-
-        setErrors([errorMessage]);
+            : "ثبت اطلاعات شرکت با خطا مواجه شد."
+        ]);
       }
     } finally {
       setIsSubmitting(false);
@@ -162,265 +141,139 @@ export function CompanySetupForm() {
 
   return (
     <form
-      className="company-form"
-      onSubmit={(event) => {
-        void handleSubmit(event);
-      }}
+      className="company-setup-form"
+      onSubmit={(event) => { void handleSubmit(event); }}
     >
-      <header>
-        <h2>تعریف شرکت</h2>
-        <p>
-          اطلاعات پایه شرکت و دفتر مرکزی را وارد کنید.
-        </p>
-      </header>
-
-      <fieldset>
+      <fieldset className="company-setup-form__section">
         <legend>اطلاعات حقوقی شرکت</legend>
-
-        <label>
-          کد شرکت
-          <input
-            value={form.companyCode}
-            onChange={(event) => {
-              updateField(
-                "companyCode",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          نام قانونی شرکت
-          <input
-            value={form.legalName}
-            onChange={(event) => {
-              updateField(
-                "legalName",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          نام تجاری
-          <input
-            value={form.tradeName}
-            onChange={(event) => {
-              updateField(
-                "tradeName",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          نوع فعالیت شرکت
-          <select
-            value={form.activityType}
-            onChange={(event) => {
-              updateField(
-                "activityType",
-                event.target.value as CompanyActivityType
-              );
-            }}
+        <div className="company-setup-form__grid">
+          <Field label="کد شرکت">
+            <Input
+              value={form.companyCode}
+              onChange={(event) => updateField("companyCode", event.target.value)}
+            />
+          </Field>
+          <Field label="نام قانونی شرکت">
+            <Input
+              value={form.legalName}
+              onChange={(event) => updateField("legalName", event.target.value)}
+            />
+          </Field>
+          <Field label="نام تجاری">
+            <Input
+              value={form.tradeName}
+              onChange={(event) => updateField("tradeName", event.target.value)}
+            />
+          </Field>
+          <Field
+            label="نوع فعالیت شرکت"
+            hint="این انتخاب فقط الگوی مناسب را پیشنهاد می‌دهد؛ اعمال کدینگ پس از پیش‌نمایش و تأیید جداگانه انجام می‌شود."
           >
-            {Object.entries(companyActivityTypeLabels).map(
-              ([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              )
-            )}
-          </select>
-          <small>
-            این انتخاب فقط الگوی مناسب را پیشنهاد می‌دهد؛ اعمال کدینگ
-            پس از پیش‌نمایش و تأیید جداگانه انجام می‌شود.
-          </small>
-        </label>
-
-        <label>
-          شناسه ملی
-          <input
-            inputMode="numeric"
-            value={form.nationalId}
-            onChange={(event) => {
-              updateField(
-                "nationalId",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          شماره ثبت
-          <input
-            value={form.registrationNumber}
-            onChange={(event) => {
-              updateField(
-                "registrationNumber",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>دفتر مرکزی</legend>
-
-        <label>
-          کد شعبه
-          <input
-            value={form.branchCode}
-            onChange={(event) => {
-              updateField(
-                "branchCode",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          نام شعبه
-          <input
-            value={form.branchName}
-            onChange={(event) => {
-              updateField(
-                "branchName",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          استان
-          <input
-            value={form.province}
-            onChange={(event) => {
-              updateField(
-                "province",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          شهر
-          <input
-            value={form.city}
-            onChange={(event) => {
-              updateField(
-                "city",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label className="company-form-wide">
-          نشانی
-          <textarea
-            value={form.addressLine}
-            onChange={(event) => {
-              updateField(
-                "addressLine",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          کد پستی
-          <input
-            inputMode="numeric"
-            value={form.postalCode}
-            onChange={(event) => {
-              updateField(
-                "postalCode",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          تلفن
-          <input
-            value={form.phone}
-            onChange={(event) => {
-              updateField(
-                "phone",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-      </fieldset>
-
-      <fieldset>
-        <legend>اطلاعات اولیه سامانه مودیان</legend>
-
-        <p className="company-form-note">
-          تکمیل این بخش در حال حاضر اختیاری است.
-        </p>
-
-        <label>
-          شماره اقتصادی
-          <input
-            value={form.economicCode}
-            onChange={(event) => {
-              updateField(
-                "economicCode",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-
-        <label>
-          شناسه حافظه مالیاتی
-          <input
-            value={form.fiscalId}
-            onChange={(event) => {
-              updateField(
-                "fiscalId",
-                event.target.value
-              );
-            }}
-          />
-        </label>
-      </fieldset>
-
-      {errors.length > 0 && (
-        <div className="company-form-errors">
-          {errors.map((error) => (
-            <p key={error}>{error}</p>
-          ))}
+            <Select
+              value={form.activityType}
+              onChange={(event) => updateField("activityType", event.target.value)}
+            >
+              {Object.entries(companyActivityTypeLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="شناسه ملی">
+            <Input
+              inputMode="numeric"
+              value={form.nationalId}
+              onChange={(event) => updateField("nationalId", event.target.value)}
+            />
+          </Field>
+          <Field label="شماره ثبت">
+            <Input
+              value={form.registrationNumber}
+              onChange={(event) => updateField("registrationNumber", event.target.value)}
+            />
+          </Field>
         </div>
-      )}
+      </fieldset>
 
-      {message && (
-        <p className="company-form-success">
-          {message}
-        </p>
-      )}
+      <fieldset className="company-setup-form__section">
+        <legend>دفتر مرکزی</legend>
+        <div className="company-setup-form__grid">
+          <Field label="کد شعبه">
+            <Input
+              value={form.branchCode}
+              onChange={(event) => updateField("branchCode", event.target.value)}
+            />
+          </Field>
+          <Field label="نام شعبه">
+            <Input
+              value={form.branchName}
+              onChange={(event) => updateField("branchName", event.target.value)}
+            />
+          </Field>
+          <Field label="استان">
+            <Input
+              value={form.province}
+              onChange={(event) => updateField("province", event.target.value)}
+            />
+          </Field>
+          <Field label="شهر">
+            <Input
+              value={form.city}
+              onChange={(event) => updateField("city", event.target.value)}
+            />
+          </Field>
+          <Field label="نشانی" className="company-setup-form__wide">
+            <Textarea
+              value={form.addressLine}
+              onChange={(event) => updateField("addressLine", event.target.value)}
+            />
+          </Field>
+          <Field label="کد پستی">
+            <Input
+              inputMode="numeric"
+              value={form.postalCode}
+              onChange={(event) => updateField("postalCode", event.target.value)}
+            />
+          </Field>
+          <Field label="تلفن">
+            <Input
+              value={form.phone}
+              onChange={(event) => updateField("phone", event.target.value)}
+            />
+          </Field>
+        </div>
+      </fieldset>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-      >
-        {isSubmitting
-          ? "در حال ثبت..."
-          : "ثبت شرکت"}
-      </button>
+      <fieldset className="company-setup-form__section">
+        <legend>اطلاعات اولیه سامانه مودیان</legend>
+        <p className="company-setup-form__note">تکمیل این بخش در حال حاضر اختیاری است.</p>
+        <div className="company-setup-form__grid">
+          <Field label="شماره اقتصادی">
+            <Input
+              value={form.economicCode}
+              onChange={(event) => updateField("economicCode", event.target.value)}
+            />
+          </Field>
+          <Field label="شناسه حافظه مالیاتی">
+            <Input
+              value={form.fiscalId}
+              onChange={(event) => updateField("fiscalId", event.target.value)}
+            />
+          </Field>
+        </div>
+      </fieldset>
+
+      {errors.length > 0 ? (
+        <Feedback tone="error">
+          {errors.map((error) => <div key={error}>{error}</div>)}
+        </Feedback>
+      ) : null}
+      {message ? <Feedback tone="success">{message}</Feedback> : null}
+
+      <div className="company-setup-form__actions">
+        <Button type="submit" variant="primary" disabled={isSubmitting}>
+          {isSubmitting ? "در حال ثبت..." : "ثبت شرکت و دفتر مرکزی"}
+        </Button>
+      </div>
     </form>
   );
 }

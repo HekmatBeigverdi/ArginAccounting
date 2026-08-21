@@ -1,96 +1,55 @@
-import {
-  type FormEvent,
-  useState
-} from "react";
+import { type FormEvent, useState } from "react";
+import { Link, useNavigate } from "react-router";
 
-import {
-  authenticateUser,
-  SecurityValidationError
-} from "@argin/security";
-
+import { authenticateUser, SecurityValidationError } from "@argin/security";
 import {
   SqlitePermissionRepository,
   SqliteRoleRepository,
   SqliteSecurityAssignmentRepository,
   SqliteUserRepository,
-  TauriPasswordHasher
+  TauriPasswordHasher,
 } from "@argin/security-tauri";
+import { getDesktopDatabase } from "@argin/database-tauri";
 
-import {
-  getDesktopDatabase
-} from "@argin/database-tauri";
+import { useAuthSession } from "../../app/providers/auth-session-provider";
+import { Feedback } from "../../components/feedback";
+import { Button, Field, Input } from "../../components/forms";
+import { Panel } from "../../components/layout";
 
-import {
-  Link,
-  useNavigate
-} from "react-router";
-
-import {
-  useAuthSession
-} from "../../app/providers/auth-session-provider";
+import "./security-workspace.css";
 
 export function LoginPage() {
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
-  const [username, setUsername] =
-    useState("");
-  const [password, setPassword] =
-    useState("");
-  const [message, setMessage] =
-    useState("");
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const navigate = useNavigate();
   const { setSession } = useAuthSession();
 
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ): Promise<void> {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setIsSubmitting(true);
-    setMessage("");
     setErrorMessage("");
 
     try {
-      const database =
-        await getDesktopDatabase();
-
+      const database = await getDesktopDatabase();
       const session = await authenticateUser(
         new SqliteUserRepository(database),
         new SqliteRoleRepository(database),
         new SqlitePermissionRepository(database),
-        new SqliteSecurityAssignmentRepository(
-          database
-        ),
+        new SqliteSecurityAssignmentRepository(database),
         new TauriPasswordHasher(),
-        {
-          username,
-          password
-        }
+        { username, password },
       );
 
       setSession(session);
-      setMessage(
-        `ورود ${session.user.displayName} موفق بود.`
-      );
-      navigate("/dashboard", {
-        replace: true
-      });
+      navigate("/dashboard", { replace: true });
     } catch (error) {
-      if (
-        error instanceof
-        SecurityValidationError
-      ) {
-        setErrorMessage(
-          error.issues[0]?.message ??
-            "ورود ناموفق بود."
-        );
+      if (error instanceof SecurityValidationError) {
+        setErrorMessage(error.issues[0]?.message ?? "نام کاربری یا رمز عبور معتبر نیست.");
       } else {
-        console.error(error);
-        setErrorMessage(
-          "ورود با خطا مواجه شد."
-        );
+        setErrorMessage("ورود به سیستم انجام نشد. دوباره تلاش کنید.");
       }
     } finally {
       setIsSubmitting(false);
@@ -98,69 +57,50 @@ export function LoginPage() {
   }
 
   return (
-    <section className="temporary-page">
-      <form
-        className="security-panel"
-        style={{
-          maxWidth: "420px",
-          margin: "4rem auto"
-        }}
-        onSubmit={(event) => {
-          void handleSubmit(event);
-        }}
-      >
-        <h1>ورود به ArginAccounting</h1>
+    <main className="security-login-page" lang="fa" dir="rtl">
+      <Panel className="security-login-card">
+        <div className="security-login-card__brand">
+          <div className="security-login-card__mark" aria-hidden="true">آ</div>
+          <h1>ورود به آرگین</h1>
+          <p>برای ادامه، با حساب کاربری محلی خود وارد شوید.</p>
+        </div>
 
-        <label>
-          نام کاربری
-          <input
-            value={username}
-            autoComplete="username"
-            onChange={(event) => {
-              setUsername(event.target.value);
-            }}
-          />
-        </label>
+        <form className="security-form" onSubmit={(event) => { void handleSubmit(event); }}>
+          <Field label="نام کاربری">
+            <Input
+              value={username}
+              autoComplete="username"
+              autoFocus
+              disabled={isSubmitting}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+          </Field>
 
-        <label>
-          رمز عبور
-          <input
-            type="password"
-            value={password}
-            autoComplete="current-password"
-            onChange={(event) => {
-              setPassword(event.target.value);
-            }}
-          />
-        </label>
+          <Field label="رمز عبور">
+            <Input
+              type="password"
+              value={password}
+              autoComplete="current-password"
+              disabled={isSubmitting}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </Field>
 
-        {errorMessage && (
-          <p className="security-errors">
-            {errorMessage}
-          </p>
-        )}
+          {errorMessage ? <Feedback tone="error">{errorMessage}</Feedback> : null}
 
-        {message && (
-          <p className="security-success">
-            {message}
-          </p>
-        )}
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={isSubmitting || !username.trim() || !password}
+          >
+            {isSubmitting ? "در حال ورود..." : "ورود"}
+          </Button>
+        </form>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-        >
-          {isSubmitting
-            ? "در حال ورود..."
-            : "ورود"}
-        </button>
-        <Link
-          to="/dashboard"
-          className="temporary-page__back"
-        >
-          بازگشت به داشبورد
-        </Link>
-      </form>
-    </section>
+        <div className="security-login-card__footer">
+          <Link to="/dashboard">بازگشت به داشبورد</Link>
+        </div>
+      </Panel>
+    </main>
   );
 }

@@ -1,39 +1,17 @@
-import { Link } from "react-router";
-import {
-  UserManagement
-} from "../../features/security/user-management";
-
-import {
-  UserAccessManagement
-} from "../../features/security/user-access-management";
+import { UserAccessManagement } from "../../features/security/user-access-management";
+import { UserManagement } from "../../features/security/user-management";
+import { SecurityWorkspace } from "./security-workspace";
 
 export function UsersPage() {
   return (
-    <section className="temporary-page">
-      <header className="temporary-page__header">
-        <div>
-          <p className="temporary-page__eyebrow">
-            مدیریت سیستم
-          </p>
-
-          <h1>کاربران</h1>
-
-          <p>
-            ایجاد کاربران محلی و مدیریت وضعیت
-            حساب‌های کاربری.
-          </p>
-        </div>
-
-        <Link
-          to="/dashboard"
-          className="temporary-page__back"
-        >
-          بازگشت به داشبورد
-        </Link>
-      </header>
-
-      <UserManagement />
-      <UserAccessManagement />
-    </section>
+    <SecurityWorkspace
+      title="کاربران"
+      description="حساب‌های کاربری محلی را ایجاد کنید و نقش‌ها و شعب قابل دسترس هر کاربر را مدیریت کنید."
+    >
+      <div className="security-feature-stack">
+        <UserManagement />
+        <UserAccessManagement />
+      </div>
+    </SecurityWorkspace>
   );
 }
