@@ -23,7 +23,10 @@ All phase records live in this directory and follow the permanent [phase templat
 
 ## Current Target
 
-Phase 15 — Journal Lifecycle.
+15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — in progress
+   - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
+   - Current step: Step 1 — Baseline, Branch, and Plan Freeze — Completed
+   - Next step: Step 2 — Lifecycle Domain Analysis and ADR
 
 ## Renumbering Rule
 
