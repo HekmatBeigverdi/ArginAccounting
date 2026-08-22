@@ -117,7 +117,7 @@ Platform Infrastructure is intentionally placed before the Accounting Core. Buil
 
 ## Phase 14 Rationale
 
-UI Foundation Consolidation is intentionally placed after the first complete accounting workspace and before Journal Lifecycle. Consolidating the shell, design system, shared primitives, earlier workspaces, and global density contract prevents duplicated UI patterns and broad visual refactoring across later accounting and ERP phases.
+UI Foundation Consolidation is intentionally placed after the first complete accounting workspace and before Journal Lifecycle. Phases 05–08 still contained temporary or first-generation desktop surfaces, while Phases 10–13 established a more mature workspace-oriented Persian RTL interface. Consolidating the shell, design system, shared primitives, earlier workspaces, and global density contract prevents duplicated UI patterns and broad visual refactoring across later accounting and ERP phases.
 
 Phase 14 is a presentation and desktop-experience phase. It does not introduce Phase 15 Journal Lifecycle business behavior or move domain/application rules into UI components.
 

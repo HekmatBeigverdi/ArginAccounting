@@ -17,7 +17,7 @@ The accounting engine is the authoritative domain for double-entry accounting. I
 - Durable dates remain canonical Gregorian; Persian UI presents Solar Hijri dates.
 - Iranian Rial is the default presentation currency while currency remains explicit in the contracts.
 
-Posted-voucher immutability, posting approval, reversal, replacement, locking, and controlled amendment belong to Phase 14 and are not active Phase 13 behavior.
+Posted-voucher immutability, posting approval, reversal, replacement, locking, and controlled amendment belong to Phase 15 and are not active Phase 13 behavior.
 
 ## Implemented Journal Voucher Engine
 
@@ -57,7 +57,7 @@ It does not own invoice calculation, inventory valuation, payroll calculation, c
 
 ## Foundation Timeline
 
-Phase 09 supplies Money, Event Bus, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs. Phase 10 supplies the Chart of Accounts. Phase 11 supplies independent accounting dimensions and reusable assignment validation. Phase 12 supplies immutable coding-template/provenance patterns. Phase 13 supplies the persisted Draft Journal Voucher Engine and journal-backed account/dimension usage detection. Phase 14 will add the controlled Journal Lifecycle.
+Phase 09 supplies Money, Event Bus, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs. Phase 10 supplies the Chart of Accounts. Phase 11 supplies independent accounting dimensions and reusable assignment validation. Phase 12 supplies immutable coding-template/provenance patterns. Phase 13 supplies the persisted Draft Journal Voucher Engine and journal-backed account/dimension usage detection. Phase 14 consolidates the desktop UI foundation and global density contract. Phase 15 adds the controlled Journal Lifecycle.
 
 ## Auditability
 
