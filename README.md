@@ -20,14 +20,14 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 
 ## Current Status
 
-- Phase 01–13: completed and merged into `develop` and `main`
-- Latest release: Phase 13 — Journal Voucher Engine (`v0.13.0`)
-- Current target: Phase 14 — UI Foundation Consolidation
-- Next accounting target after UI consolidation: Phase 15 — Journal Lifecycle
+- Phase 01–14: completed and merged into `develop` and `main`
+- Latest release: Phase 14 — UI Foundation Consolidation (`v0.14.0`)
+- Current target: Phase 15 — Journal Lifecycle
+- Next planned accounting target: Phase 16 — Accounting Reports
 
-Phase 14 consolidates the Persian RTL desktop experience: shared design-system primitives, the final application shell and navigation, dashboard modernization, Foundation workspace modernization, and visual/interaction harmonization of the Accounting Core UI delivered in Phases 10–13.
+Phase 14 consolidated the Persian RTL desktop experience: shared design-system primitives, the final application shell and navigation, dashboard and Foundation workspace modernization, Accounting Core UI harmonization, accessibility/feedback standards, and the global Compact / Comfortable / Spacious display-density contract.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 14 implementation record](docs/phases/phase-14-ui-foundation-consolidation.md), and [Phase 14 fixed implementation plan](docs/phases/phase-14-ui-foundation-consolidation-plan.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 14 implementation record](docs/phases/phase-14-ui-foundation-consolidation.md), [Phase 14 fixed implementation plan](docs/phases/phase-14-ui-foundation-consolidation-plan.md), and [ADR-0014](docs/adr/ADR-0014-ui-foundation-and-global-density.md).
 
 ## Main Modules
 
@@ -128,6 +128,7 @@ Validation commands are requirements, not proof of success. Phase and release do
 - [Roadmap](ROADMAP.md)
 - [Phase 14 — UI Foundation Consolidation](docs/phases/phase-14-ui-foundation-consolidation.md)
 - [Phase 14 Fixed Implementation Plan](docs/phases/phase-14-ui-foundation-consolidation-plan.md)
+- [ADR-0014 — UI Foundation and Global Display Density](docs/adr/ADR-0014-ui-foundation-and-global-density.md)
 - [ADR Registry](docs/adr/README.md)
 - [Database Design](docs/database/database-design.md)
 - [Accounting Engine](docs/accounting/accounting-engine.md)
