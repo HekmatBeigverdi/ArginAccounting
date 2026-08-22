@@ -26,6 +26,10 @@ Density is a global application preference rather than an Accounting-only rule:
 
 The selected density is applied through root `data-density` Design System tokens, exposed by the Persian App Shell selector, persisted locally, and restored at startup. Accounting workspaces use contained scrolling, sticky headers, compact operational surfaces, and a denser Chart of Accounts hierarchy while retaining responsive degradation.
 
+## Architecture Decision
+
+The architectural rationale and durable presentation contract are recorded in [ADR-0014 — UI Foundation and Global Display Density](../adr/ADR-0014-ui-foundation-and-global-density.md). The canonical current UI rules remain in [UI Architecture](../ui/UI_ARCHITECTURE.md).
+
 ## Validation
 
 Focused Desktop contracts cover shell/navigation/context, Foundation and Accounting workspaces, Persian dates, accessibility/responsive behavior, feedback states, desktop density, and the global three-level density preference. The repository owner executed the requested frozen install, Desktop typecheck/test/build, full monorepo lint/typecheck/test/build, documentation-index generation, and diff validation during the Phase 14 release gate.
