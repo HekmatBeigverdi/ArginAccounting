@@ -17,20 +17,18 @@ All phase records live in this directory and follow the permanent [phase templat
 11. [Phase 11 — Accounting Dimensions](phase-11-accounting-dimensions.md)
 12. [Phase 12 — Coding Templates](phase-12-coding-templates.md)
 13. [Phase 13 — Journal Voucher Engine](phase-13-journal-voucher-engine.md) — completed, merged, and released as `v0.13.0`
-
-## Current Implementation
-
-14. [Phase 14 — UI Foundation Consolidation](phase-14-ui-foundation-consolidation.md)
+14. [Phase 14 — UI Foundation Consolidation](phase-14-ui-foundation-consolidation.md) — completed, merged, and released as `v0.14.0`
    - [Fixed Implementation Plan](phase-14-ui-foundation-consolidation-plan.md)
+   - [ADR-0014 — UI Foundation and Global Display Density](../adr/ADR-0014-ui-foundation-and-global-density.md)
 
 ## Current Target
 
-Phase 14 — UI Foundation Consolidation.
+Phase 15 — Journal Lifecycle.
 
 ## Renumbering Rule
 
-The insertion of Platform Infrastructure as Phase 09 shifted Chart of Accounts and every subsequent roadmap phase by one. The insertion of UI Foundation Consolidation as Phase 14 now shifts every previously planned phase after Phase 13 by one. Journal Lifecycle is Phase 15. `ROADMAP.md` is the canonical numbering source.
+The insertion of Platform Infrastructure as Phase 09 shifted Chart of Accounts and every subsequent roadmap phase by one. The insertion of UI Foundation Consolidation as Phase 14 shifts every previously planned phase after Phase 13 by one. Journal Lifecycle is Phase 15. `ROADMAP.md` is the canonical numbering source.
 
 ## Historical Refactor Policy
 
-Phase 01–13 documents retain their implementation history and historical phase numbers. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
+Phase 01–14 documents retain their implementation history and historical phase numbers. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.

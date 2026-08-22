@@ -23,6 +23,7 @@
 - [ADR-0011 — Independent Accounting Dimensions](adr/ADR-0011-independent-accounting-dimensions.md)
 - [ADR-0012 — Versioned Coding Templates](adr/ADR-0012-versioned-coding-templates.md)
 - [ADR-0013 — Journal Voucher Engine Architecture](adr/ADR-0013-journal-voucher-engine.md)
+- [ADR-0014 — UI Foundation and Global Display Density](adr/ADR-0014-ui-foundation-and-global-density.md)
 - [Architecture Decision Records](adr/README.md)
 
 ## architecture
