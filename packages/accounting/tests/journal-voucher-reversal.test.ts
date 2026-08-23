@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createAccount } from "../src/domain/account.ts";
 import type { JournalVoucher } from "../src/domain/journal-voucher.ts";
 import { createJournalVoucher } from "../src/domain/journal-voucher.ts";
 import {
   JournalVoucherReversalError,
   reverseJournalVoucher,
-  type JournalVoucherReversalLineage,
   type JournalVoucherReversalRecord,
   type JournalVoucherReversalSession,
 } from "../src/application/journal-voucher-reversal.ts";
@@ -16,18 +16,35 @@ function postedVoucher(id = "voucher-1"): JournalVoucher {
     id,
     companyId: "company-1",
     branchId: "branch-1",
-    number: "JV-000001",
+    number: id === "voucher-1" ? "JV-000001" : "JV-000010",
     voucherDate: "2026-08-01",
     fiscalYearId: "fy-1405",
     fiscalPeriodId: "fp-05",
     lines: [
-      { id: "line-1", order: 1, accountId: "cash", debit: 1_000, credit: 0 },
-      { id: "line-2", order: 2, accountId: "revenue", debit: 0, credit: 1_000 },
+      { id: `${id}-line-1`, order: 1, accountId: "cash", debit: 1_000, credit: 0 },
+      { id: `${id}-line-2`, order: 2, accountId: "revenue", debit: 0, credit: 1_000 },
     ],
     createdAt: "2026-08-01T08:00:00.000Z",
     version: 3,
   });
   return Object.freeze({ ...draft, status: "posted" as const });
+}
+
+function postingAccount(id: string) {
+  return createAccount({
+    id,
+    companyId: "company-1",
+    parentId: "general-1",
+    level: "subsidiary",
+    code: id === "cash" ? "110101" : "410101",
+    name: id,
+    nature: id === "cash" ? "debit" : "credit",
+    normalBalance: id === "cash" ? "debit" : "credit",
+    statementType: id === "cash" ? "balance_sheet" : "income_statement",
+    postingAllowed: true,
+    status: "active",
+    createdAt: "2026-01-01T00:00:00.000Z",
+  });
 }
 
 function harness() {
@@ -60,24 +77,7 @@ function harness() {
   let idSequence = 0;
   const deps = {
     accounts: {
-      async findById(id: string) {
-        return {
-          id,
-          companyId: "company-1",
-          parentId: "parent",
-          level: "subsidiary" as const,
-          code: id,
-          name: id,
-          nature: "debit" as const,
-          normalBalance: "debit" as const,
-          statementType: "balance_sheet" as const,
-          postingAllowed: true,
-          status: "active" as const,
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z",
-          version: 1,
-        };
-      },
+      async findById(id: string) { return postingAccount(id); },
     },
     fiscalContext: {
       async resolve() {
@@ -119,7 +119,7 @@ function harness() {
     },
   };
 
-  return { deps, getOriginal: () => original, getRecord: () => reversalRecord, vouchers };
+  return { deps, vouchers };
 }
 
 const command = {
@@ -175,7 +175,11 @@ test("rejects a second reversal with a different request id", async () => {
 
 test("records optional replacement voucher lineage without mutating the original facts", async () => {
   const { deps, vouchers } = harness();
-  const replacement = Object.freeze({ ...postedVoucher("replacement-1"), status: "draft" as const, version: 1 });
+  const replacement = Object.freeze({
+    ...postedVoucher("replacement-1"),
+    status: "draft" as const,
+    version: 1,
+  });
   vouchers.set(replacement.id, replacement);
 
   const result = await reverseJournalVoucher(
