@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 7 — Reversal and Replacement Lineage — Completed**.
+Current step: **Step 8 — Application Contracts, Commands, and Queries — Completed**.
 
-Next step: **Step 8 — Application Contracts, Commands, and Queries**.
+Next step: **Step 9 — Authorization, Permissions, and Segregation of Duties**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -67,7 +67,7 @@ draft -> pending_approval -> approved -> posted -> reversed
             +----> draft <-----+
 ```
 
-Step 4 integrates the Journal lifecycle with reusable `@argin/audit` Approval contracts. Step 5 adds authoritative final posting while preserving approval/posting separation. Step 6 makes editability explicit. Step 7 completes post-publication correction semantics through a separate inverse voucher plus durable lineage; posted accounting facts are never rewritten in place.
+Step 4 integrates the Journal lifecycle with reusable `@argin/audit` Approval contracts. Step 5 adds authoritative final posting while preserving approval/posting separation. Step 6 makes editability explicit. Step 7 completes post-publication correction semantics through a separate inverse voucher plus durable lineage; posted accounting facts are never rewritten in place. Step 8 now exposes those semantics through one canonical persistence-neutral Application command/query/DTO surface suitable for desktop consumers and future Argin Bridge/.NET API adapters.
 
 ## Domain Model
 
@@ -101,7 +101,7 @@ Successful posting creates immutable posting evidence containing voucher id, app
 
 Step 6 adds `packages/accounting/src/application/journal-voucher-locking.ts` as the persistence-neutral editability and amendment policy.
 
-Ordinary edit/delete policy is now explicit:
+Ordinary edit/delete policy is explicit:
 
 - `draft`: editable and deletable through normal Draft commands;
 - `pending_approval`: locked while approval is pending;
@@ -117,67 +117,81 @@ Controlled pre-post amendment is implemented by `reopenApprovedJournalVoucherFor
 
 Step 7 adds `packages/accounting/src/application/journal-voucher-reversal.ts`.
 
-`reverseJournalVoucher` is a dedicated compensating-posting operation. It requires:
+`reverseJournalVoucher` is a dedicated compensating-posting operation. It requires original voucher ownership, matching expected version, exact `posted` state, durable request/idempotency id, actor identity, timestamp, reversal date, and reason.
 
-- original voucher ownership in the requested company;
-- matching expected version;
-- original state exactly `posted`;
-- a durable request/idempotency id;
-- actor identity and occurrence timestamp;
-- an independently supplied reversal date;
-- a mandatory normalized reason.
+The reversal date resolves its own fiscal context and revalidates current fiscal/account/dimension eligibility. A new Journal Voucher is generated with a new stable id and Number Series number. Its lines preserve order, account and dimension assignments while swapping debit and credit amounts, producing the inverse accounting effect of the original posted voucher.
 
-The reversal date resolves its own fiscal context. The operation revalidates the current fiscal year/period state, account eligibility, and accounting dimensions for that reversal date; it does not reopen or mutate the original fiscal period.
+The original voucher remains structurally unchanged and transitions only from `posted -> reversed`. The atomic persistence contract stores the transitioned original, new reversal voucher, and durable lineage together. Optional replacement linkage remains explicit and queryable.
 
-A new Journal Voucher is generated with a new stable id and Number Series number. Its lines preserve order, account and dimension assignments but swap debit and credit amounts, producing the inverse accounting effect of the original posted voucher. The new voucher is committed as a separate `posted` compensating accounting fact.
+## Application Contracts, Commands, and Queries
 
-The original voucher remains structurally unchanged and transitions only from `posted -> reversed`. The atomic persistence contract `saveReversal` stores the transitioned original, the new reversal voucher, and the durable lineage together; concrete SQLite implementation remains Steps 10 and 11.
+Step 8 adds `packages/accounting/src/application/journal-voucher-lifecycle-contracts.ts` as the canonical lifecycle Application contract.
 
-`JournalVoucherReversalLineage` records:
+`JournalVoucherLifecycleCommandContext` carries the portable command metadata needed across current desktop and future synchronized/server execution:
 
-- original voucher id;
-- reversal voucher id;
-- optional replacement/correcting voucher id;
+- actor id;
+- company id;
 - request/idempotency id;
-- reversal actor;
-- reversal timestamp;
-- reason.
+- correlation id;
+- causation id;
+- occurrence timestamp.
 
-Optional replacement linkage must resolve to an existing voucher in the same company, cannot reference the original itself, and cannot reference an already reversed voucher. The replacement remains an independent Journal Voucher and follows the normal lifecycle; linking it does not mutate original posted lines.
+Explicit canonical commands now exist for:
 
-Reversal retries are deterministic. The same company/request id returns the already committed reversal result. Reuse of that request id for another original is an idempotency conflict. A second reversal with a different request is rejected both by lifecycle state and by explicit original-to-reversal lineage lookup.
+- submit for approval;
+- approval decision;
+- final posting;
+- controlled amendment/reopen;
+- reversal with optional replacement linkage.
+
+Each mutation carries `expectedVersion` where required. Approval decisions additionally carry Approval expected version. Reversal obtains its durable retry key from the standard request id.
+
+`packages/accounting/src/application/journal-voucher-lifecycle-command-handlers.ts` adapts these canonical commands to the Step 4–7 Application services. Presentation and transport code therefore no longer need to know the different internal service signatures.
+
+Step 8 also adds `JournalVoucherLifecycleDto`, which exposes:
+
+- persisted Journal state/version;
+- state-policy capabilities;
+- current Approval trace;
+- posting evidence;
+- latest controlled-amendment evidence;
+- reversal/replacement lineage.
+
+The capability set in Step 8 is intentionally state-policy-only. It answers what the lifecycle permits for the state, not whether the current user is authorized. Step 9 combines granular permissions and segregation-of-duties policy with these capabilities.
+
+`packages/accounting/src/application/journal-voucher-lifecycle-queries.ts` defines a persistence-neutral reader and `getJournalVoucherLifecycle` query. SQLite readers are deferred to Steps 10/11.
+
+`JournalVoucherListItemDto` now includes persisted `status`, so list/workspace surfaces can render lifecycle status without an extra detail query.
+
+The stable `JournalVoucherLifecycleApplicationErrorCode` vocabulary covers invalid transition, lock, approval, posting, amendment, reversal, idempotency, authorization, concurrency, and persistence families. Persian presentation can map these stable codes later without parsing technical exception messages.
 
 ## Data and Migrations
 
-Persistence of lifecycle state, approval-cycle linkage, posting evidence, controlled-amendment evidence, reversal lineage, and idempotency remains Steps 10 and 11 scope.
+Persistence of lifecycle state, approval-cycle linkage, posting evidence, controlled-amendment evidence, reversal lineage, idempotency, and lifecycle read models remains Steps 10 and 11 scope.
 
 Existing Phase 13 Draft vouchers must upgrade without data loss and receive `draft` as their deterministic lifecycle state.
 
 ## Security
 
-Actor evidence is retained for posting, controlled amendment, and reversal, but lifecycle permissions and segregation-of-duties policy remain Step 9 scope. UI visibility is never treated as authorization or transition authority.
+Actor evidence is retained for lifecycle commands. Step 8 state-policy capabilities are not authorization decisions. Granular permissions and segregation-of-duties policy remain Step 9 scope, and UI visibility is never treated as authorization authority.
 
 ## UI
 
-The Journal Voucher workspace will display persisted lifecycle status, allowed actions, confirmations, and approval/posting/reversal traceability using the canonical Phase 14 RTL design system in later UI steps.
+The Journal Voucher workspace will consume the canonical lifecycle DTO/capability surface and later combine it with Step 9 authorization. Persian RTL lifecycle UI remains Steps 13 and 14 scope.
 
 ## Testing
 
-Focused coverage through Step 7 includes:
+Focused coverage through Step 8 includes:
 
 - Domain lifecycle legal/illegal paths;
-- submit/approve/reject/return/cancel Approval integration;
-- duplicate current Approval-cycle prevention;
-- valid final posting with current exact approval evidence;
-- fiscal-state revalidation immediately before posting;
-- stale approval/content-version rejection;
-- ordinary editability only in `draft`;
-- lock reasons and controlled `approved -> draft` amendment;
-- separate posted inverse reversal voucher creation;
-- original `posted -> reversed` transition without original-line mutation;
-- same-request idempotent replay;
-- second-reversal rejection;
-- optional replacement/correcting voucher lineage.
+- Approval integration and duplicate-cycle prevention;
+- final posting and fiscal/content revalidation;
+- draft-only ordinary editability and controlled amendment;
+- separate posted inverse reversal, replay, double-reversal prevention, and replacement lineage;
+- persisted lifecycle status in Journal list projection;
+- Draft lifecycle state-policy capabilities;
+- approved current-Approval trace and pre-post actions;
+- posted/reversed traceability and terminal capability behavior.
 
 The exhaustive Domain/Application matrix remains Step 15 scope.
 
@@ -192,7 +206,7 @@ pnpm --filter @argin/accounting test
 
 Step 5 validation is confirmed from the user's local environment: both focused Accounting typecheck and test commands completed successfully after pulling the Step 5 branch state.
 
-Step 6 and Step 7 code and focused tests are committed; runtime success for the updated branch is not claimed until it is executed locally or through CI.
+Step 6–8 code and focused tests are committed; runtime success for the updated Step 8 branch is not claimed until it is executed locally or through CI.
 
 ## Documentation Impact
 
@@ -248,20 +262,25 @@ Phase 15 must maintain, as applicable:
 ## Step 6 Evidence
 
 - Added `journal-voucher-locking.ts` with explicit draft-only editability and deterministic lock reasons for every non-Draft lifecycle state.
-- Added controlled amendment for approved-but-unposted vouchers through `reopenApprovedJournalVoucherForAmendment` with expected version, current approval cycle, actor identity, reason, cycle closure, and immutable amendment evidence.
+- Added controlled amendment for approved-but-unposted vouchers with expected version, current approval cycle, actor identity, reason, cycle closure, and immutable amendment evidence.
 - Posted and reversed vouchers have no amendment path.
 - Added focused locking tests and exported persistence-neutral contracts.
 
 ## Step 7 Evidence
 
-- Added `journal-voucher-reversal.ts` with explicit posted-only reversal semantics and stable Application errors.
-- Added reversal-date fiscal/account/dimension revalidation independent from the original posting period.
-- Added separate posted inverse Journal creation with new id/number/source metadata and unchanged original accounting lines.
-- Added atomic original/reversal/lineage persistence contract and explicit `JournalVoucherReversalLineage`.
-- Added durable request-id replay and conflict semantics plus explicit double-reversal prevention.
-- Added optional replacement/correcting voucher linkage with same-company validation.
-- Added focused reversal tests for inverse amounts, state transition, retry replay, double reversal, replacement linkage, and original immutability.
-- Exported the reversal contracts through `@argin/accounting/journal` without SQLite/Tauri/React/PostgreSQL/.NET coupling, preserving Argin Bridge portability.
+- Added `journal-voucher-reversal.ts` with posted-only reversal semantics, reversal-date revalidation, separate inverse posted Journal creation, atomic lineage, request-id replay/conflict handling, double-reversal prevention, and optional replacement linkage.
+- Added focused reversal tests and exported persistence-neutral contracts suitable for Argin Bridge.
+
+## Step 8 Evidence
+
+- Added canonical lifecycle command context and explicit submit/decision/post/reopen/reverse command contracts.
+- Added stable lifecycle Application error-code vocabulary suitable for Persian UI mapping and transport-neutral API contracts.
+- Added explicit lifecycle command handlers over the Step 4–7 services so consumers do not couple to internal service signatures.
+- Added persistence-neutral lifecycle reader/query contracts and the composite `JournalVoucherLifecycleDto` with approval/posting/amendment/reversal traceability.
+- Kept lifecycle state capabilities separate from authorization so Step 9 can compose permission and segregation-of-duties rules without contaminating Domain state policy.
+- Added lifecycle status to Journal list DTO/projection.
+- Added focused lifecycle-contract/query tests.
+- Exported the complete Step 8 surface through `@argin/accounting/journal` with no React, Tauri, SQLite, HTTP, PostgreSQL, or .NET coupling.
 
 ## Exit Criteria
 
