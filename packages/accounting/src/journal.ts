@@ -139,6 +139,20 @@ export {
   JournalVoucherLockingError,
   reopenApprovedJournalVoucherForAmendment,
 } from "./application/journal-voucher-locking.ts";
+export type {
+  JournalVoucherReversalDependencies,
+  JournalVoucherReversalErrorCode,
+  JournalVoucherReversalLineage,
+  JournalVoucherReversalRecord,
+  JournalVoucherReversalResult,
+  JournalVoucherReversalSession,
+  JournalVoucherReversalUnitOfWork,
+  ReverseJournalVoucherCommand,
+} from "./application/journal-voucher-reversal.ts";
+export {
+  JournalVoucherReversalError,
+  reverseJournalVoucher,
+} from "./application/journal-voucher-reversal.ts";
 export {
   projectJournalVoucherDetail,
   projectJournalVoucherListItem,
