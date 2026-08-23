@@ -8,6 +8,21 @@ export type {
   JournalVoucherStatus,
 } from "./domain/journal-voucher.ts";
 export { createJournalVoucher } from "./domain/journal-voucher.ts";
+export type {
+  JournalVoucherLifecycleAction,
+  JournalVoucherLifecycleErrorCode,
+  JournalVoucherLifecycleSnapshot,
+  JournalVoucherLifecycleStatus,
+  JournalVoucherTransitionCommand,
+  JournalVoucherTransitionEvidence,
+  JournalVoucherTransitionResult,
+} from "./domain/journal-voucher-lifecycle.ts";
+export {
+  canTransitionJournalVoucher,
+  getAllowedJournalVoucherLifecycleActions,
+  JournalVoucherLifecycleError,
+  transitionJournalVoucher,
+} from "./domain/journal-voucher-lifecycle.ts";
 export type { RehydrateJournalVoucherInput } from "./domain/rehydrate-journal-voucher.ts";
 export { rehydrateJournalVoucher } from "./domain/rehydrate-journal-voucher.ts";
 export type {
