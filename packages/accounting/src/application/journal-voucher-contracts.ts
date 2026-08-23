@@ -98,6 +98,7 @@ export interface JournalVoucherListItemDto {
   readonly reference: string | null;
   readonly voucherDate: string;
   readonly description: string | null;
+  readonly status: JournalVoucherStatus;
   readonly totalDebit: MoneyValue;
   readonly totalCredit: MoneyValue;
   readonly version: number;
