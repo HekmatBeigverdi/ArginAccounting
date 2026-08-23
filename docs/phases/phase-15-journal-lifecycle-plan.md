@@ -81,7 +81,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | Lifecycle Domain Analysis and ADR | Completed |
-| 3 | Journal State Model and Transition Invariants | Not started |
+| 3 | Journal State Model and Transition Invariants | Completed |
 | 4 | Approval Workflow Integration | Not started |
 | 5 | Final Posting Policy and Accounting Immutability | Not started |
 | 6 | Locking and Controlled Amendment Policy | Not started |
@@ -161,7 +161,18 @@ Exit criteria:
 - Legal transitions succeed and illegal transitions fail through focused Domain tests.
 - No transition can bypass aggregate invariants.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Expanded the authoritative `JournalVoucherStatus` aggregate type to `draft`, `pending_approval`, `approved`, `posted`, and `reversed`, while new vouchers still originate only as `draft`.
+- Added `packages/accounting/src/domain/journal-voucher-lifecycle.ts` with the ADR-0015 transition table and persistence-neutral Domain APIs.
+- Implemented legal transition discovery/checking and immutable execution through `getAllowedJournalVoucherLifecycleActions`, `canTransitionJournalVoucher`, and `transitionJournalVoucher`.
+- Successful transitions increment optimistic version, update canonical ISO occurrence time, and return immutable actor/time/previous-state/new-state/previous-version/new-version evidence.
+- Illegal transitions, missing/oversized actor identity, invalid timestamps, and version overflow fail deterministically through `JournalVoucherLifecycleError` without mutating the original aggregate.
+- Added focused Domain coverage in `packages/accounting/tests/journal-voucher-lifecycle.test.ts` for the accepted happy path, terminal reversal, reject/return/cancel paths, controlled reopen, illegal transitions, version evidence, actor evidence, and timestamp validation.
+- Exported the lifecycle model through `@argin/accounting/journal` with no React, Tauri, SQLite, PostgreSQL, HTTP, or .NET coupling, preserving Argin Bridge portability.
+- Runtime package validation was attempted in the connected execution environment, but a fresh checkout could not start because that environment could not resolve `github.com`; no successful command result is falsely claimed. Local commands are `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`.
 
 ### Step 4 — Approval Workflow Integration
 
