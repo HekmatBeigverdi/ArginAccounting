@@ -43,6 +43,7 @@ export function projectJournalVoucherListItem(
     reference: voucher.reference,
     voucherDate: voucher.voucherDate,
     description: voucher.description,
+    status: voucher.status,
     totalDebit: Object.freeze({ ...voucher.totalDebit }),
     totalCredit: Object.freeze({ ...voucher.totalCredit }),
     version: voucher.version,
