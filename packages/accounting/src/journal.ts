@@ -88,6 +88,26 @@ export {
   deleteJournalVoucherDraft,
   updateJournalVoucherDraft,
 } from "./application/journal-voucher-use-cases.ts";
+export type {
+  DecideJournalVoucherApprovalCommand,
+  JournalVoucherApprovalCycle,
+  JournalVoucherApprovalDecision,
+  JournalVoucherApprovalGateway,
+  JournalVoucherApprovalIntegrationDependencies,
+  JournalVoucherApprovalIntegrationResult,
+  JournalVoucherApprovalMutationContext,
+  JournalVoucherApprovalSession,
+  JournalVoucherApprovalUnitOfWork,
+  SubmitJournalVoucherForApprovalCommand,
+} from "./application/journal-voucher-approval-integration.ts";
+export {
+  assertCurrentApprovalForPosting,
+  decideJournalVoucherApproval,
+  JOURNAL_VOUCHER_APPROVAL_REQUEST_TYPE,
+  JOURNAL_VOUCHER_APPROVAL_TARGET_TYPE,
+  JournalVoucherApprovalIntegrationError,
+  submitJournalVoucherForApproval,
+} from "./application/journal-voucher-approval-integration.ts";
 export {
   projectJournalVoucherDetail,
   projectJournalVoucherListItem,
