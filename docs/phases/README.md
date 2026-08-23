@@ -26,8 +26,8 @@ All phase records live in this directory and follow the permanent [phase templat
 15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — in progress
    - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
    - [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md)
-   - Current step: Step 7 — Reversal and Replacement Lineage — Completed
-   - Next step: Step 8 — Application Contracts, Commands, and Queries
+   - Current step: Step 8 — Application Contracts, Commands, and Queries — Completed
+   - Next step: Step 9 — Authorization, Permissions, and Segregation of Duties
 
 ## Renumbering Rule
 
