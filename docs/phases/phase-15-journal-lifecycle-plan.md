@@ -82,7 +82,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | Lifecycle Domain Analysis and ADR | Completed |
 | 3 | Journal State Model and Transition Invariants | Completed |
-| 4 | Approval Workflow Integration | Not started |
+| 4 | Approval Workflow Integration | Completed |
 | 5 | Final Posting Policy and Accounting Immutability | Not started |
 | 6 | Locking and Controlled Amendment Policy | Not started |
 | 7 | Reversal and Replacement Lineage | Not started |
@@ -186,7 +186,22 @@ Exit criteria:
 - Approval lifecycle is expressed through existing reusable contracts.
 - Journal state and approval state cannot drift into contradictory persisted conditions.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `@argin/audit` as an explicit workspace dependency of `@argin/accounting` and reused the Phase 08 `ApprovalRequest`, `ApprovalActor`, `ApprovalTarget`, `ApprovalScope`, and status semantics rather than introducing an Accounting-specific approval state machine.
+- Added `packages/accounting/src/application/journal-voucher-approval-integration.ts` as the Application orchestration boundary between the Journal lifecycle and generic Approval subsystem.
+- Fixed the Approval request/target discriminator as `accounting.journal-voucher` and requires company, branch, fiscal-year, and voucher identity to match before a Journal state transition is accepted.
+- `submitJournalVoucherForApproval` coordinates generic Approval creation/submission with Journal `draft -> pending_approval`, records the submitted content version, and prevents a second current approval cycle.
+- `decideJournalVoucherApproval` maps generic Approval outcomes deterministically: `approved -> approved`, `rejected -> draft`, `return-to-draft -> draft`, and `cancelled -> draft` on the Journal lifecycle.
+- Rejection, return, and cancellation close the current Journal approval cycle. Any later resubmission therefore creates a new cycle/request instead of treating historical approval evidence as current authorization for changed content.
+- An approved cycle remains current so Step 5 can require it as explicit posting evidence through `assertCurrentApprovalForPosting`; Approval does not auto-post the voucher.
+- Defined `JournalVoucherApprovalUnitOfWork`/session contracts so Journal state, Approval mutation, and approval-cycle linkage execute inside one atomic boundary. The SQLite implementation of this combined boundary remains Step 11 work; the Application contract itself prevents a design that intentionally commits contradictory partial states.
+- Added focused tests in `packages/accounting/tests/journal-voucher-approval-integration.test.ts` for submit, approve, reject-to-draft/close-cycle, and duplicate-current-cycle prevention.
+- No approval-bypass policy was introduced because the current Phase 08 contract does not provide a canonical configurable bypass policy; Phase 15 manual Journal posting therefore continues to require Approval per ADR-0015.
+- The integration remains transport/persistence neutral and carries stable identity/version/correlation context suitable for future Argin Bridge/PostgreSQL/.NET adapters.
+- Runtime typecheck/test success is not claimed in this environment. Local validation commands remain `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`.
 
 ### Step 5 — Final Posting Policy and Accounting Immutability
 
