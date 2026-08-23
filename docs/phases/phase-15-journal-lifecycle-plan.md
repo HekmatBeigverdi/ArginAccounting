@@ -83,7 +83,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | 2 | Lifecycle Domain Analysis and ADR | Completed |
 | 3 | Journal State Model and Transition Invariants | Completed |
 | 4 | Approval Workflow Integration | Completed |
-| 5 | Final Posting Policy and Accounting Immutability | Not started |
+| 5 | Final Posting Policy and Accounting Immutability | Completed |
 | 6 | Locking and Controlled Amendment Policy | Not started |
 | 7 | Reversal and Replacement Lineage | Not started |
 | 8 | Application Contracts, Commands, and Queries | Not started |
@@ -215,7 +215,21 @@ Exit criteria:
 - Only eligible vouchers can become finally posted.
 - Posted accounting facts cannot be silently mutated or deleted.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/application/journal-voucher-posting.ts` as the persistence-neutral Final Posting policy/orchestration boundary.
+- `postJournalVoucher` requires company ownership, expected-version match, Journal state `approved`, a current matching Approval Request, and exact submitted-content version evidence before any posting transition is accepted.
+- Exact approval/content matching is enforced from the Step 4 cycle evidence: an approved Journal must still be at `submittedContentVersion + 2` (submit transition plus approve transition); any extra version movement invalidates the Approval as posting authority and requires a new approval cycle.
+- Final posting re-resolves the fiscal context immediately before commit and requires the resolved fiscal year/period identity to match the voucher; closed/closing/locked fiscal state therefore blocks posting even when the voucher was valid earlier.
+- Final posting revalidates double-entry balance/minimum effective structure, current account existence/company/status/level/postability, and current accounting-dimension policies/types/members using the existing Phase 13/11 validators.
+- Successful posting executes the Domain `approved -> posted` transition, increments optimistic version, and creates immutable posting evidence containing voucher id, approval request id, submitted content version, posted version, posting actor, canonical ISO posting time, and optional normalized posting reference.
+- Added `assertJournalVoucherAccountingFactsMutable` and wired it into the existing Draft update/delete Application paths so `posted` and `reversed` vouchers cannot be silently rewritten or deleted even if a stale/legacy client invokes Draft mutation commands. Full locking rules for other non-Draft states remain Step 6 scope.
+- Added focused tests in `packages/accounting/tests/journal-voucher-posting.test.ts` covering valid posting, fiscal revalidation failure, stale approval/content evidence rejection, and immutable `posted`/`reversed` facts.
+- Exported the posting contracts/policy from `@argin/accounting/journal` without SQLite, Tauri, React, PostgreSQL, HTTP, or .NET coupling, preserving the Argin Bridge portability constraint.
+- Concrete persistence of posting evidence and atomic SQLite implementation remain Steps 10 and 11; no premature migration/adapter implementation was introduced in Step 5.
+- Runtime typecheck/test success is not claimed in this environment. Local focused validation commands are `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`.
 
 ### Step 6 — Locking and Controlled Amendment Policy
 
