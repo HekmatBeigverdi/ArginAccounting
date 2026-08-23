@@ -1,17 +1,19 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createJournalVoucher } from "../src/domain/journal-voucher.ts";
+import {
+  createJournalVoucher,
+  type JournalVoucher,
+} from "../src/domain/journal-voucher.ts";
 import {
   canTransitionJournalVoucher,
   getAllowedJournalVoucherLifecycleActions,
   JournalVoucherLifecycleError,
   transitionJournalVoucher,
   type JournalVoucherLifecycleAction,
-  type JournalVoucherLifecycleSnapshot,
 } from "../src/domain/journal-voucher-lifecycle.ts";
 
-function draftVoucher(): JournalVoucherLifecycleSnapshot {
+function draftVoucher(): JournalVoucher {
   return createJournalVoucher({
     id: "voucher-1",
     companyId: "company-1",
@@ -42,10 +44,10 @@ function draftVoucher(): JournalVoucherLifecycleSnapshot {
 }
 
 function apply(
-  voucher: JournalVoucherLifecycleSnapshot,
+  voucher: JournalVoucher,
   action: JournalVoucherLifecycleAction,
   minute: number,
-): JournalVoucherLifecycleSnapshot {
+): JournalVoucher {
   return transitionJournalVoucher(voucher, {
     action,
     actorId: "user-1",
@@ -103,7 +105,7 @@ test("reopens an approved unposted voucher only through controlled amendment", (
 });
 
 test("rejects illegal transitions independently from UI state", () => {
-  const invalid: readonly [JournalVoucherLifecycleSnapshot, JournalVoucherLifecycleAction][] = [
+  const invalid: readonly [JournalVoucher, JournalVoucherLifecycleAction][] = [
     [draftVoucher(), "post"],
     [draftVoucher(), "reverse"],
     [apply(draftVoucher(), "submit_for_approval", 31), "post"],
