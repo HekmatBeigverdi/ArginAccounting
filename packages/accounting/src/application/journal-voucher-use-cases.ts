@@ -40,9 +40,9 @@ import {
   type JournalVoucherPermission,
 } from "./journal-voucher-permissions.ts";
 import {
-  assertJournalVoucherAccountingFactsMutable,
-  JournalVoucherPostingError,
-} from "./journal-voucher-posting.ts";
+  assertJournalVoucherDraftEditable,
+  JournalVoucherLockingError,
+} from "./journal-voucher-locking.ts";
 
 export interface JournalVoucherMutationResult {
   readonly voucher: JournalVoucher;
@@ -157,7 +157,7 @@ export async function updateJournalVoucherDraft(
   );
   assertOwnedVoucher(existing, command.context.companyId, command.voucherId);
   assertExpectedVersion(existing, command.expectedVersion);
-  assertFinalizedFactsMutable(existing);
+  assertDraftEditable(existing);
 
   const fiscal = await resolveFiscalContext(
     dependencies,
@@ -177,7 +177,7 @@ export async function updateJournalVoucherDraft(
       const current = await journals.findById(command.voucherId);
       assertOwnedVoucher(current, command.context.companyId, command.voucherId);
       assertExpectedVersion(current, command.expectedVersion);
-      assertFinalizedFactsMutable(current);
+      assertDraftEditable(current);
 
       const updated = rehydrateJournalVoucher({
         id: current.id,
@@ -230,7 +230,7 @@ export async function deleteJournalVoucherDraft(
       const current = await journals.findById(command.voucherId);
       assertOwnedVoucher(current, command.context.companyId, command.voucherId);
       assertExpectedVersion(current, command.expectedVersion);
-      assertFinalizedFactsMutable(current);
+      assertDraftEditable(current);
       await journals.deleteDraft(
         current.id,
         current.companyId,
@@ -434,15 +434,15 @@ function assertExpectedVersion(
   }
 }
 
-function assertFinalizedFactsMutable(voucher: JournalVoucher): void {
+function assertDraftEditable(voucher: JournalVoucher): void {
   try {
-    assertJournalVoucherAccountingFactsMutable(voucher);
+    assertJournalVoucherDraftEditable(voucher);
   } catch (error) {
-    if (error instanceof JournalVoucherPostingError) {
+    if (error instanceof JournalVoucherLockingError) {
       throw new JournalVoucherApplicationError(
         "journal.validation-failed",
         error.message,
-        { status: voucher.status },
+        { status: voucher.status, lockingCode: error.code, ...error.details },
         { cause: error },
       );
     }
