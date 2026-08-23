@@ -1,7 +1,11 @@
-import type {
-  JournalVoucher,
-  JournalVoucherStatus,
-} from "./journal-voucher.ts";
+import type { JournalVoucher } from "./journal-voucher.ts";
+
+export type JournalVoucherLifecycleStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "posted"
+  | "reversed";
 
 export type JournalVoucherLifecycleAction =
   | "submit_for_approval"
@@ -20,6 +24,10 @@ export type JournalVoucherLifecycleErrorCode =
   | "occurred_at_invalid"
   | "version_overflow";
 
+export type JournalVoucherLifecycleSnapshot = Omit<JournalVoucher, "status"> & {
+  readonly status: JournalVoucherLifecycleStatus;
+};
+
 export interface JournalVoucherTransitionCommand {
   readonly action: JournalVoucherLifecycleAction;
   readonly actorId: string;
@@ -28,8 +36,8 @@ export interface JournalVoucherTransitionCommand {
 
 export interface JournalVoucherTransitionEvidence {
   readonly action: JournalVoucherLifecycleAction;
-  readonly previousStatus: JournalVoucherStatus;
-  readonly newStatus: JournalVoucherStatus;
+  readonly previousStatus: JournalVoucherLifecycleStatus;
+  readonly newStatus: JournalVoucherLifecycleStatus;
   readonly actorId: string;
   readonly occurredAt: string;
   readonly previousVersion: number;
@@ -37,19 +45,19 @@ export interface JournalVoucherTransitionEvidence {
 }
 
 export interface JournalVoucherTransitionResult {
-  readonly voucher: JournalVoucher;
+  readonly voucher: JournalVoucherLifecycleSnapshot;
   readonly evidence: JournalVoucherTransitionEvidence;
 }
 
 export class JournalVoucherLifecycleError extends Error {
   readonly code: JournalVoucherLifecycleErrorCode;
-  readonly currentStatus: JournalVoucherStatus;
+  readonly currentStatus: JournalVoucherLifecycleStatus;
   readonly action: JournalVoucherLifecycleAction | null;
 
   constructor(
     code: JournalVoucherLifecycleErrorCode,
     message: string,
-    currentStatus: JournalVoucherStatus,
+    currentStatus: JournalVoucherLifecycleStatus,
     action: JournalVoucherLifecycleAction | null = null,
   ) {
     super(message);
@@ -62,8 +70,10 @@ export class JournalVoucherLifecycleError extends Error {
 
 const TRANSITIONS: Readonly<
   Record<
-    JournalVoucherStatus,
-    Readonly<Partial<Record<JournalVoucherLifecycleAction, JournalVoucherStatus>>>
+    JournalVoucherLifecycleStatus,
+    Readonly<
+      Partial<Record<JournalVoucherLifecycleAction, JournalVoucherLifecycleStatus>>
+    >
   >
 > = Object.freeze({
   draft: Object.freeze({
@@ -86,7 +96,7 @@ const TRANSITIONS: Readonly<
 });
 
 export function getAllowedJournalVoucherLifecycleActions(
-  status: JournalVoucherStatus,
+  status: JournalVoucherLifecycleStatus,
 ): readonly JournalVoucherLifecycleAction[] {
   return Object.freeze(
     Object.keys(TRANSITIONS[status]) as JournalVoucherLifecycleAction[],
@@ -94,14 +104,14 @@ export function getAllowedJournalVoucherLifecycleActions(
 }
 
 export function canTransitionJournalVoucher(
-  status: JournalVoucherStatus,
+  status: JournalVoucherLifecycleStatus,
   action: JournalVoucherLifecycleAction,
 ): boolean {
   return TRANSITIONS[status][action] !== undefined;
 }
 
 export function transitionJournalVoucher(
-  voucher: JournalVoucher,
+  voucher: JournalVoucherLifecycleSnapshot,
   command: JournalVoucherTransitionCommand,
 ): JournalVoucherTransitionResult {
   const nextStatus = TRANSITIONS[voucher.status][command.action];
@@ -132,14 +142,14 @@ export function transitionJournalVoucher(
   }
 
   const newVersion = voucher.version + 1;
-  const transitionedVoucher = Object.freeze({
+  const transitionedVoucher: JournalVoucherLifecycleSnapshot = Object.freeze({
     ...voucher,
     status: nextStatus,
     updatedAt: occurredAt,
     version: newVersion,
   });
 
-  const evidence = Object.freeze({
+  const evidence: JournalVoucherTransitionEvidence = Object.freeze({
     action: command.action,
     previousStatus: voucher.status,
     newStatus: nextStatus,
@@ -157,7 +167,7 @@ export function transitionJournalVoucher(
 
 function normalizeActorId(
   value: string,
-  currentStatus: JournalVoucherStatus,
+  currentStatus: JournalVoucherLifecycleStatus,
   action: JournalVoucherLifecycleAction,
 ): string {
   const normalized = value.trim();
@@ -185,7 +195,7 @@ function normalizeActorId(
 
 function normalizeOccurredAt(
   value: string,
-  currentStatus: JournalVoucherStatus,
+  currentStatus: JournalVoucherLifecycleStatus,
   action: JournalVoucherLifecycleAction,
 ): string {
   const normalized = value.trim();
