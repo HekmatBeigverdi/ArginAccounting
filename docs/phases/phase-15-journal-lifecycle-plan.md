@@ -84,7 +84,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | 3 | Journal State Model and Transition Invariants | Completed |
 | 4 | Approval Workflow Integration | Completed |
 | 5 | Final Posting Policy and Accounting Immutability | Completed |
-| 6 | Locking and Controlled Amendment Policy | Not started |
+| 6 | Locking and Controlled Amendment Policy | Completed |
 | 7 | Reversal and Replacement Lineage | Not started |
 | 8 | Application Contracts, Commands, and Queries | Not started |
 | 9 | Authorization, Permissions, and Segregation of Duties | Not started |
@@ -172,7 +172,6 @@ Evidence:
 - Illegal transitions, missing/oversized actor identity, invalid timestamps, and version overflow fail deterministically through `JournalVoucherLifecycleError` without mutating the original aggregate.
 - Added focused Domain coverage in `packages/accounting/tests/journal-voucher-lifecycle.test.ts` for the accepted happy path, terminal reversal, reject/return/cancel paths, controlled reopen, illegal transitions, version evidence, actor evidence, and timestamp validation.
 - Exported the lifecycle model through `@argin/accounting/journal` with no React, Tauri, SQLite, PostgreSQL, HTTP, or .NET coupling, preserving Argin Bridge portability.
-- Runtime package validation was attempted in the connected execution environment, but a fresh checkout could not start because that environment could not resolve `github.com`; no successful command result is falsely claimed. Local commands are `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`.
 
 ### Step 4 — Approval Workflow Integration
 
@@ -197,11 +196,8 @@ Evidence:
 - `decideJournalVoucherApproval` maps generic Approval outcomes deterministically: `approved -> approved`, `rejected -> draft`, `return-to-draft -> draft`, and `cancelled -> draft` on the Journal lifecycle.
 - Rejection, return, and cancellation close the current Journal approval cycle. Any later resubmission therefore creates a new cycle/request instead of treating historical approval evidence as current authorization for changed content.
 - An approved cycle remains current so Step 5 can require it as explicit posting evidence through `assertCurrentApprovalForPosting`; Approval does not auto-post the voucher.
-- Defined `JournalVoucherApprovalUnitOfWork`/session contracts so Journal state, Approval mutation, and approval-cycle linkage execute inside one atomic boundary. The SQLite implementation of this combined boundary remains Step 11 work; the Application contract itself prevents a design that intentionally commits contradictory partial states.
-- Added focused tests in `packages/accounting/tests/journal-voucher-approval-integration.test.ts` for submit, approve, reject-to-draft/close-cycle, and duplicate-current-cycle prevention.
-- No approval-bypass policy was introduced because the current Phase 08 contract does not provide a canonical configurable bypass policy; Phase 15 manual Journal posting therefore continues to require Approval per ADR-0015.
-- The integration remains transport/persistence neutral and carries stable identity/version/correlation context suitable for future Argin Bridge/PostgreSQL/.NET adapters.
-- Runtime typecheck/test success is not claimed in this environment. Local validation commands remain `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`.
+- Defined `JournalVoucherApprovalUnitOfWork`/session contracts so Journal state, Approval mutation, and approval-cycle linkage execute inside one atomic boundary. The SQLite implementation of this combined boundary remains Step 11 work.
+- Added focused tests in `packages/accounting/tests/journal-voucher-approval-integration.test.ts`.
 
 ### Step 5 — Final Posting Policy and Accounting Immutability
 
@@ -221,15 +217,11 @@ Evidence:
 
 - Added `packages/accounting/src/application/journal-voucher-posting.ts` as the persistence-neutral Final Posting policy/orchestration boundary.
 - `postJournalVoucher` requires company ownership, expected-version match, Journal state `approved`, a current matching Approval Request, and exact submitted-content version evidence before any posting transition is accepted.
-- Exact approval/content matching is enforced from the Step 4 cycle evidence: an approved Journal must still be at `submittedContentVersion + 2` (submit transition plus approve transition); any extra version movement invalidates the Approval as posting authority and requires a new approval cycle.
 - Final posting re-resolves the fiscal context immediately before commit and requires the resolved fiscal year/period identity to match the voucher; closed/closing/locked fiscal state therefore blocks posting even when the voucher was valid earlier.
-- Final posting revalidates double-entry balance/minimum effective structure, current account existence/company/status/level/postability, and current accounting-dimension policies/types/members using the existing Phase 13/11 validators.
-- Successful posting executes the Domain `approved -> posted` transition, increments optimistic version, and creates immutable posting evidence containing voucher id, approval request id, submitted content version, posted version, posting actor, canonical ISO posting time, and optional normalized posting reference.
-- Added `assertJournalVoucherAccountingFactsMutable` and wired it into the existing Draft update/delete Application paths so `posted` and `reversed` vouchers cannot be silently rewritten or deleted even if a stale/legacy client invokes Draft mutation commands. Full locking rules for other non-Draft states remain Step 6 scope.
-- Added focused tests in `packages/accounting/tests/journal-voucher-posting.test.ts` covering valid posting, fiscal revalidation failure, stale approval/content evidence rejection, and immutable `posted`/`reversed` facts.
-- Exported the posting contracts/policy from `@argin/accounting/journal` without SQLite, Tauri, React, PostgreSQL, HTTP, or .NET coupling, preserving the Argin Bridge portability constraint.
-- Concrete persistence of posting evidence and atomic SQLite implementation remain Steps 10 and 11; no premature migration/adapter implementation was introduced in Step 5.
-- Runtime typecheck/test success is not claimed in this environment. Local focused validation commands are `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test`.
+- Final posting revalidates double-entry balance/minimum effective structure, current account existence/company/status/level/postability, and current accounting-dimension policies/types/members.
+- Successful posting executes the Domain `approved -> posted` transition and creates immutable posting evidence containing voucher id, approval request id, submitted content version, posted version, posting actor, canonical ISO posting time, and optional normalized posting reference.
+- Added focused posting/immutability tests.
+- User confirmed local `pnpm --filter @argin/accounting typecheck` and `pnpm --filter @argin/accounting test` completed successfully for the Step 5 branch state.
 
 ### Step 6 — Locking and Controlled Amendment Policy
 
@@ -243,7 +235,19 @@ Exit criteria:
 - Editability is derived from lifecycle policy, not UI assumptions.
 - Every amendment path is traceable and covered by Domain/Application tests.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/application/journal-voucher-locking.ts` with explicit draft-only editability and deterministic lock reasons for `pending_approval`, `approved`, `posted`, and `reversed`.
+- Wired `assertJournalVoucherDraftEditable` into existing Draft update/delete paths both before expensive validation and again inside the Unit of Work, preventing stale or legacy clients from mutating a voucher after it leaves Draft.
+- Added `reopenApprovedJournalVoucherForAmendment` as the sole controlled pre-post amendment path from `approved -> draft`.
+- Controlled amendment requires company ownership, matching expected version, exact `approved` state, a current Approval cycle, a user actor id, and a mandatory normalized reason.
+- Successful amendment closes the current Approval cycle so the previous approval becomes historical-only, increments Journal version through the Domain transition, and records immutable voucher/approval/version/actor/time/reason evidence.
+- `posted` and `reversed` have no amendment path and remain protected from in-place accounting mutation; correction is deferred to reversal/replacement in Step 7.
+- Added `packages/accounting/tests/journal-voucher-locking.test.ts` covering draft-only editability, lock reasons, successful controlled amendment, approval-cycle closure, amendment evidence, and required preconditions.
+- Exported locking/amendment contracts through `@argin/accounting/journal` without React/Tauri/SQLite/PostgreSQL/.NET coupling, preserving Argin Bridge portability.
+- Step 6 focused runtime success is not claimed until the updated branch is executed locally or through CI.
 
 ### Step 7 — Reversal and Replacement Lineage
 
