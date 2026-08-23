@@ -26,8 +26,8 @@ All phase records live in this directory and follow the permanent [phase templat
 15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — in progress
    - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
    - [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md)
-   - Current step: Step 2 — Lifecycle Domain Analysis and ADR — Completed
-   - Next step: Step 3 — Journal State Model and Transition Invariants
+   - Current step: Step 3 — Journal State Model and Transition Invariants — Completed
+   - Next step: Step 4 — Approval Workflow Integration
 
 ## Renumbering Rule
 
