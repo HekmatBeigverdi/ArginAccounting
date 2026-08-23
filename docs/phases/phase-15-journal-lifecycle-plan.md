@@ -109,6 +109,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 - Create the Phase 15 implementation record before business implementation begins.
 
 Exit criteria:
+
 - Branch starts from the released Phase 14 baseline.
 - Fixed implementation plan is committed on the Phase 15 branch.
 - Phase record exists and identifies Step 1 as completed.
@@ -117,6 +118,7 @@ Exit criteria:
 Status: Completed
 
 Evidence:
+
 - `main` records Phase 14 as completed and released as `v0.14.0` and Phase 15 as the current target.
 - `phase/15-journal-lifecycle` was created from `main` on 2026-08-22.
 - This fixed plan establishes the immutable 18-step execution sequence.
@@ -130,6 +132,7 @@ Evidence:
 - Add the Phase 15 lifecycle ADR.
 
 Exit criteria:
+
 - State ownership, transition semantics, approval relationship, and portability constraints are unambiguous.
 - ADR is accepted before lifecycle code is implemented.
 
@@ -143,6 +146,7 @@ Status: Not started
 - Preserve version/timestamp/actor evidence required by later persistence and audit steps.
 
 Exit criteria:
+
 - Legal transitions succeed and illegal transitions fail through focused Domain tests.
 - No transition can bypass aggregate invariants.
 
@@ -156,6 +160,7 @@ Status: Not started
 - Define behavior when approval is disabled/not required by policy, if supported by existing architecture.
 
 Exit criteria:
+
 - Approval lifecycle is expressed through existing reusable contracts.
 - Journal state and approval state cannot drift into contradictory persisted conditions.
 
@@ -169,6 +174,7 @@ Status: Not started
 - Prevent destructive update/delete operations after posting.
 
 Exit criteria:
+
 - Only eligible vouchers can become finally posted.
 - Posted accounting facts cannot be silently mutated or deleted.
 
@@ -182,6 +188,7 @@ Status: Not started
 - Explicitly prevent direct mutation of immutable posted facts.
 
 Exit criteria:
+
 - Editability is derived from lifecycle policy, not UI assumptions.
 - Every amendment path is traceable and covered by Domain/Application tests.
 
@@ -195,6 +202,7 @@ Status: Not started
 - Preserve original accounting facts unchanged.
 
 Exit criteria:
+
 - Reversal is audit-safe, deterministic, balanced, and idempotent against retry.
 - Original/reversal lineage is queryable without reconstructing it from descriptions.
 
@@ -208,6 +216,7 @@ Status: Not started
 - Carry request/idempotency, correlation, causation, expected-version, and actor metadata where required.
 
 Exit criteria:
+
 - Application contracts support SQLite now and future PostgreSQL/API adapters without transport coupling.
 - All lifecycle mutations pass through explicit command handlers/services.
 
@@ -221,6 +230,7 @@ Status: Not started
 - Record denied operations in audit evidence where appropriate.
 
 Exit criteria:
+
 - UI visibility is not relied upon for security.
 - Permission and actor-policy failures are deterministic and test-covered.
 
@@ -233,6 +243,7 @@ Status: Not started
 - Preserve migration portability and rollback/upgrade safety according to repository policy.
 
 Exit criteria:
+
 - Clean database and upgrade-from-Phase-14/13 data paths are deterministic.
 - Existing Draft vouchers migrate to the correct initial lifecycle state without data loss.
 
@@ -247,6 +258,7 @@ Status: Not started
 - Verify post-commit event publication ordering.
 
 Exit criteria:
+
 - Concurrent and retried lifecycle commands preserve a single valid accounting outcome.
 - Failure before commit leaves no partial lifecycle state.
 
@@ -260,6 +272,7 @@ Status: Not started
 - Add user notifications only where they provide operational value and fit existing notification architecture.
 
 Exit criteria:
+
 - Every meaningful transition is reconstructable from audit evidence.
 - Integration events are emitted only after successful commit.
 
@@ -273,6 +286,7 @@ Status: Not started
 - Preserve compact desktop density, keyboard accessibility, RTL behavior, loading/empty/error states, and Solar Hijri presentation.
 
 Exit criteria:
+
 - Users can understand current lifecycle state and permitted next actions without exposing technical implementation details.
 - Presentation does not become the source of truth for transition validity.
 
@@ -286,6 +300,7 @@ Status: Not started
 - Ensure destructive/high-impact actions require deliberate confirmation and cannot be triggered accidentally by keyboard/navigation behavior.
 
 Exit criteria:
+
 - Posting/reversal history is understandable and navigable from the voucher workspace.
 - Expected business rejections and unexpected technical failures are visually distinct.
 
@@ -298,6 +313,7 @@ Status: Not started
 - Cover company/branch/fiscal scope and Phase 13 balance/account/dimension regressions.
 
 Exit criteria:
+
 - Domain/Application lifecycle behavior is comprehensively covered independent of SQLite and UI.
 
 Status: Not started
@@ -310,6 +326,7 @@ Status: Not started
 - Add desktop contract/regression tests for status/actions, confirmations, traceability, accessibility, RTL, and density.
 
 Exit criteria:
+
 - Persistence and desktop adapters cannot violate lifecycle contracts under covered scenarios.
 - Existing Phase 13/14 regressions remain green.
 
@@ -323,6 +340,7 @@ Status: Not started
 - Record commands and actual results; do not claim unexecuted validation.
 
 Exit criteria:
+
 - Required validation is green with evidence recorded.
 - Documentation Governance obligations for Phase 15 are satisfied.
 - Phase 16 — Accounting Reports is clearly identified as the next target without implementing report behavior here.
@@ -338,6 +356,7 @@ Status: Not started
 - Verify `main` and roadmap identify Phase 16 — Accounting Reports as the next target.
 
 Exit criteria:
+
 - Phase 15 is merged and released.
 - Release evidence and documentation are consistent with the merged commit.
 - No unresolved lifecycle-critical issue is silently carried forward.
@@ -349,6 +368,7 @@ Status: Not started
 None.
 
 Any future change request must record:
+
 - requested change,
 - reason,
 - affected fixed step(s),

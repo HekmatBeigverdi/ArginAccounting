@@ -32,6 +32,7 @@ Baseline release: `v0.14.0`
 ## Scope
 
 Included:
+
 - Lifecycle domain model and transition policy.
 - Approval integration.
 - Posting and immutable posted state.
@@ -45,6 +46,7 @@ Included:
 - Full validation and documentation.
 
 Excluded:
+
 - Accounting Reports.
 - Automatic posting from operational source modules.
 - Later Posting Rules / Source Document Integrity phases.
@@ -60,6 +62,7 @@ The authoritative lifecycle transition graph and approval/posting relationship w
 ## Domain Model
 
 Baseline concepts inherited from Phase 13:
+
 - Journal Voucher aggregate.
 - Journal Line entities.
 - Company/Branch/Fiscal context.
@@ -88,6 +91,7 @@ The Journal Voucher workspace will display lifecycle status, allowed actions, co
 ## Testing
 
 Planned coverage:
+
 - Domain transition matrix.
 - Application lifecycle orchestration.
 - Approval/posting/locking/amendment/reversal behavior.
@@ -105,6 +109,7 @@ Step 1 validates repository/phase baseline only. Production lifecycle validation
 ## Documentation Impact
 
 Phase 15 must maintain, as applicable:
+
 - this implementation record,
 - the fixed implementation plan,
 - Phase 15 ADR,
@@ -124,6 +129,7 @@ Phase 15 must maintain, as applicable:
 ## Exit Criteria
 
 Phase 15 is complete only when:
+
 - the fixed 18-step plan is satisfied or an explicit approved Change Request records any change,
 - lifecycle rules are enforced outside UI,
 - posted accounting facts are audit-safe,
