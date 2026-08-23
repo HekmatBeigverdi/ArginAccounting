@@ -108,6 +108,20 @@ export {
   JournalVoucherApprovalIntegrationError,
   submitJournalVoucherForApproval,
 } from "./application/journal-voucher-approval-integration.ts";
+export type {
+  JournalVoucherPostingDependencies,
+  JournalVoucherPostingErrorCode,
+  JournalVoucherPostingEvidence,
+  JournalVoucherPostingResult,
+  JournalVoucherPostingSession,
+  JournalVoucherPostingUnitOfWork,
+  PostJournalVoucherCommand,
+} from "./application/journal-voucher-posting.ts";
+export {
+  assertJournalVoucherAccountingFactsMutable,
+  JournalVoucherPostingError,
+  postJournalVoucher,
+} from "./application/journal-voucher-posting.ts";
 export {
   projectJournalVoucherDetail,
   projectJournalVoucherListItem,
