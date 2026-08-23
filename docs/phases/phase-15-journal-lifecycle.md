@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 4 — Approval Workflow Integration — Completed**.
+Current step: **Step 5 — Final Posting Policy and Accounting Immutability — Completed**.
 
-Next step: **Step 5 — Final Posting Policy and Accounting Immutability**.
+Next step: **Step 6 — Locking and Controlled Amendment Policy**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -67,13 +67,11 @@ draft -> pending_approval -> approved -> posted -> reversed
             +----> draft <-----+
 ```
 
-Step 4 implements the Application integration boundary using the existing `@argin/audit` Approval contracts. Accounting does not duplicate Approval states or transitions. Submission creates/submits a generic Approval Request and moves the Journal voucher to `pending_approval`; Approval decisions then drive the corresponding Journal transition.
-
-Approval and posting remain separate decisions. An approved voucher is not posted until Step 5 final posting validation succeeds.
+Step 4 integrates the Journal lifecycle with the reusable `@argin/audit` Approval contracts. Step 5 adds authoritative final posting while preserving approval/posting separation: Approval never auto-posts a voucher.
 
 ## Domain Model
 
-Step 3 promotes the lifecycle states directly into the `JournalVoucherStatus` aggregate type:
+The authoritative `JournalVoucherStatus` states are:
 
 - `draft`
 - `pending_approval`
@@ -81,39 +79,57 @@ Step 3 promotes the lifecycle states directly into the `JournalVoucherStatus` ag
 - `posted`
 - `reversed`
 
-`packages/accounting/src/domain/journal-voucher-lifecycle.ts` implements the accepted transition table and persistence-neutral Domain helpers.
+`packages/accounting/src/domain/journal-voucher-lifecycle.ts` owns deterministic state transitions. Every successful transition increments optimistic `version`, normalizes occurrence time to ISO UTC, records actor identity, and returns immutable transition evidence.
 
-Every successful Domain transition increments optimistic `version`, normalizes occurrence time to ISO UTC, records actor identity, and returns immutable transition evidence. Illegal transitions fail deterministically without mutating the source voucher.
+Posted and reversed accounting facts are now explicitly protected from direct destructive mutation through the Application mutation path. Full editability/locking policy for the other non-Draft states is Step 6 scope.
 
-## Application Services
+## Approval Integration
 
-Step 4 adds `packages/accounting/src/application/journal-voucher-approval-integration.ts`.
+`packages/accounting/src/application/journal-voucher-approval-integration.ts` reuses Phase 08 Approval contracts and fixes the request/target discriminator as `accounting.journal-voucher`.
 
-The integration reuses Phase 08 types from `@argin/audit`, including `ApprovalRequest`, `ApprovalActor`, `ApprovalTarget`, and `ApprovalScope`. The canonical request and target discriminator is `accounting.journal-voucher`.
+Submission records `submittedContentVersion` before the Journal `draft -> pending_approval` transition. Approval then moves `pending_approval -> approved`. Reject/return/cancel close the current cycle and return the Journal to `draft`; resubmission creates a new approval cycle.
 
-`submitJournalVoucherForApproval`:
+Approved cycles remain current for posting evidence. Company, branch, fiscal-year, target identity, and Approval status must all match the Journal.
 
-- requires the expected Journal version;
-- rejects a second current approval cycle;
-- creates/submits the generic Approval Request;
-- validates voucher target/company/branch/fiscal scope;
-- records the submitted content version;
-- transitions Journal `draft -> pending_approval`.
+## Final Posting Policy
 
-`decideJournalVoucherApproval` maps generic Approval outcomes to Journal state:
+Step 5 adds `packages/accounting/src/application/journal-voucher-posting.ts`.
 
-- `approved -> approved`;
-- `rejected -> draft`;
-- `return-to-draft -> draft`;
-- `cancelled -> draft`.
+`postJournalVoucher` requires all of the following before final posting:
 
-Reject/return/cancel close the current approval cycle. A later resubmission therefore creates a new Approval cycle instead of treating historical approval evidence as current authorization for changed content.
+- the Journal exists in the requested company scope;
+- `expectedVersion` matches the current optimistic version;
+- Journal state is exactly `approved`;
+- a current matching Approval cycle exists;
+- the referenced generic Approval Request exists and is `approved`;
+- Approval target/company/branch/fiscal scope matches the Journal;
+- the approved Journal version is exactly `submittedContentVersion + 2`, representing only the submit and approve lifecycle transitions after content submission;
+- current double-entry totals remain balanced and effective;
+- every referenced account still exists, belongs to the company, is active, subsidiary-level, and posting-enabled;
+- current accounting-dimension policies/types/members still validate all line assignments;
+- fiscal context is re-resolved immediately before posting, the same fiscal year/period identity is retained, and both remain open.
 
-Approved cycles remain current and can be validated by `assertCurrentApprovalForPosting` in Step 5. Approval never automatically posts a Journal Voucher.
+Only after these checks does the Domain execute `approved -> posted`.
 
-`JournalVoucherApprovalUnitOfWork` defines one atomic cross-aggregate transaction boundary for Journal state, generic Approval mutation, and approval-cycle linkage. The concrete SQLite implementation is intentionally deferred to Step 11; the Application contract prevents a design that intentionally commits contradictory partial Journal/Approval state.
+Successful final posting produces immutable posting evidence containing:
 
-No configurable approval-bypass policy is introduced because Phase 08 currently has no canonical bypass-policy contract. Manual Journal posting in Phase 15 therefore continues to require current approval evidence per ADR-0015.
+- voucher id;
+- approval request id;
+- submitted content version;
+- posted Journal version;
+- posting actor;
+- canonical ISO posting timestamp;
+- optional normalized posting reference.
+
+The posting/session contract makes the Journal state transition and posting evidence one persistence operation. Concrete SQLite persistence is intentionally deferred to Steps 10 and 11.
+
+## Accounting Immutability
+
+`assertJournalVoucherAccountingFactsMutable` rejects destructive accounting mutation for `posted` and `reversed` vouchers.
+
+The existing `updateJournalVoucherDraft` and `deleteJournalVoucherDraft` paths now invoke this guard both before expensive validation and again inside their Unit of Work before write/delete. This protects finalized facts from stale or legacy clients even before the later UI/capability work exists.
+
+Step 6 will expand the policy from final-state immutability to the complete lock/editability model for `pending_approval` and `approved`, including controlled pre-post amendment.
 
 ## Data and Migrations
 
@@ -123,9 +139,7 @@ Existing Phase 13 Draft vouchers must upgrade without data loss and receive `dra
 
 ## Security
 
-Step 4 preserves Approval actor identity and Journal actor evidence but does not finalize lifecycle permissions or segregation-of-duties rules. Those remain Step 9 scope.
-
-UI visibility is never treated as authorization or transition authority.
+Posting actor identity is retained in posting evidence, but lifecycle permissions and segregation-of-duties policy remain Step 9 scope. UI visibility is never treated as authorization or transition authority.
 
 ## UI
 
@@ -133,15 +147,17 @@ The Journal Voucher workspace will display persisted lifecycle status, allowed a
 
 ## Testing
 
-Focused coverage now includes:
+Focused coverage through Step 5 includes:
 
-- Domain lifecycle happy/illegal paths from Step 3;
-- Journal submission through the shared Approval contract;
-- approval decision mapping to Journal `approved`;
-- rejection returning the Journal to `draft` and closing the cycle;
-- prevention of a second current approval cycle.
+- Domain lifecycle legal/illegal paths;
+- submit/approve/reject/return/cancel Approval integration;
+- duplicate current Approval-cycle prevention;
+- valid final posting with current exact approval evidence;
+- fiscal-state revalidation immediately before posting;
+- stale approval/content-version rejection;
+- immutability of `posted` and `reversed` accounting facts.
 
-The exhaustive Domain/Application transition matrix remains Step 15 scope.
+The exhaustive Domain/Application matrix remains Step 15 scope.
 
 ## Validation
 
@@ -192,14 +208,21 @@ Phase 15 must maintain, as applicable:
 
 ## Step 4 Evidence
 
-- Added `@argin/audit` as an Accounting workspace dependency and reused the Phase 08 generic Approval model rather than duplicating it.
-- Added the Journal/Approval Application orchestration boundary with canonical request/target identity and strict company/branch/fiscal matching.
-- Added submit, approve, reject, return-to-draft, and cancel integration semantics.
-- Fixed resubmission to use a new approval cycle after reject/return/cancel.
-- Added a combined atomic Unit of Work contract for Journal + Approval + cycle-link writes; concrete SQLite coordination remains Step 11.
-- Added explicit current-approved-evidence validation for later posting.
-- Added focused Approval integration tests.
-- Preserved transport/persistence neutrality and Argin Bridge/PostgreSQL/.NET portability.
+- Reused the Phase 08 generic Approval model rather than duplicating it.
+- Added the Journal/Approval Application orchestration boundary with strict target/scope matching.
+- Added submit, approve, reject, return-to-draft, cancel, resubmission-cycle, and current-approval semantics.
+- Defined an atomic Journal + Approval + cycle-link Unit of Work contract for the later adapter step.
+
+## Step 5 Evidence
+
+- Added the Final Posting Application boundary and posting evidence contract.
+- Required `approved` state, expected version, current approved Approval Request, exact submitted-content version, and strict Journal/Approval scope identity.
+- Revalidated double-entry, accounts, dimensions, and fiscal eligibility immediately before posting.
+- Re-resolved and matched the exact fiscal year/period and rejected non-open fiscal state.
+- Added `posted` actor/time/reference/version evidence without transport or persistence coupling.
+- Wired final-state immutability into existing Draft update/delete paths.
+- Added focused posting and immutable-facts tests.
+- Preserved Argin Bridge/PostgreSQL/.NET portability; SQLite evidence persistence remains Steps 10/11.
 
 ## Exit Criteria
 
