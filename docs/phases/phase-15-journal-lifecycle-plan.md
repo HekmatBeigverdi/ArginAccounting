@@ -85,7 +85,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | 4 | Approval Workflow Integration | Completed |
 | 5 | Final Posting Policy and Accounting Immutability | Completed |
 | 6 | Locking and Controlled Amendment Policy | Completed |
-| 7 | Reversal and Replacement Lineage | Not started |
+| 7 | Reversal and Replacement Lineage | Completed |
 | 8 | Application Contracts, Commands, and Queries | Not started |
 | 9 | Authorization, Permissions, and Segregation of Duties | Not started |
 | 10 | Migration and Lifecycle Persistence Model | Not started |
@@ -261,7 +261,22 @@ Exit criteria:
 - Reversal is audit-safe, deterministic, balanced, and idempotent against retry.
 - Original/reversal lineage is queryable without reconstructing it from descriptions.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/application/journal-voucher-reversal.ts` as the persistence-neutral reversal policy/orchestration boundary.
+- Reversal requires company ownership, matching expected version, an original voucher in exact `posted` state, a durable request/idempotency id, actor, timestamp, reversal date, and mandatory reason.
+- The reversal date resolves its own current fiscal context and revalidates open fiscal year/period, account eligibility, and accounting dimensions independently from the original posting period.
+- A separate Journal Voucher is generated with a new stable id and Number Series number; every line preserves account/dimensions/order while swapping debit and credit to create the exact inverse accounting effect. The reversal voucher is committed as a separate `posted` compensating fact; original posted lines are never edited.
+- The original transitions `posted -> reversed` only in the same `saveReversal` atomic persistence contract that stores the reversal voucher and durable lineage.
+- Added `JournalVoucherReversalLineage` with explicit original voucher id, reversal voucher id, optional replacement/correcting voucher id, request id, actor, timestamp, and reason, so traceability never depends on descriptions.
+- Optional replacement linkage is validated against an existing voucher in the same company and cannot point back to the original or to an already reversed voucher. Replacement remains a separate voucher that follows its normal lifecycle.
+- Reversal is retry-safe: the same company/request id returns the existing committed reversal; reuse of the request id for another original fails as an idempotency conflict.
+- Double reversal is rejected both by Journal lifecycle state and by the unique original-to-reversal lineage lookup inside the atomic boundary.
+- Added `packages/accounting/tests/journal-voucher-reversal.test.ts` covering inverse posted voucher creation, original `reversed` transition, same-request replay, second-reversal rejection, and optional replacement lineage without mutation of original accounting facts.
+- Exported reversal contracts through `@argin/accounting/journal` without SQLite/Tauri/React/PostgreSQL/.NET coupling, retaining Argin Bridge portability. Concrete persistence constraints/indexes remain Steps 10 and 11.
+- Step 7 runtime typecheck/test success is not claimed until the updated branch is executed locally or through CI.
 
 ### Step 8 — Application Contracts, Commands, and Queries
 
