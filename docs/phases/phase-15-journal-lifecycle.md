@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 2 — Lifecycle Domain Analysis and ADR — Completed**.
+Current step: **Step 3 — Journal State Model and Transition Invariants — Completed**.
 
-Next step: **Step 3 — Journal State Model and Transition Invariants**.
+Next step: **Step 4 — Approval Workflow Integration**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -84,11 +84,19 @@ Baseline concepts inherited from Phase 13:
 - Stable voucher numbering and source metadata.
 - Optimistic versioning.
 
-Step 2 fixes the lifecycle states as `draft`, `pending_approval`, `approved`, `posted`, and `reversed`.
+Step 3 promotes the lifecycle states directly into the `JournalVoucherStatus` aggregate type:
 
-Ordinary content editing is allowed only in `draft`. `pending_approval`, `approved`, `posted`, and `reversed` are locked against ordinary mutation. `posted` and `reversed` accounting facts are permanently immutable; lifecycle/audit metadata may be appended without changing posted accounting lines.
+- `draft`
+- `pending_approval`
+- `approved`
+- `posted`
+- `reversed`
 
-Every transition requires legal source state, expected version, authorized actor, matching company/branch scope, and required request/correlation/causation evidence. Posting additionally revalidates balance, accounts, dimensions, fiscal context, and current approval. Reversal requires a posted unreversed original, an eligible reversal fiscal date/context, an exact inverse balanced voucher, and explicit lineage.
+`packages/accounting/src/domain/journal-voucher-lifecycle.ts` implements the accepted transition table and exposes persistence-neutral Domain helpers for legal-action discovery, transition checking, and immutable state transition execution.
+
+Every successful Domain transition increments the optimistic `version`, normalizes the occurrence timestamp to canonical ISO UTC, records actor identity, and returns immutable transition evidence containing previous/new state and previous/new version. Illegal transitions fail deterministically through `JournalVoucherLifecycleError` without changing the original voucher.
+
+Ordinary content editing remains a later locking/Application concern; Step 3 only establishes authoritative state transition invariants. Persistence of non-Draft lifecycle state/evidence remains intentionally deferred to Steps 10 and 11.
 
 ## Application Services
 
@@ -118,25 +126,29 @@ The UI does not determine transition validity. Capability/action availability mu
 
 ## Testing
 
-Planned coverage:
+Step 3 adds focused Domain coverage for:
 
-- exhaustive Domain transition matrix for the five accepted states;
-- Application lifecycle orchestration;
-- approval/posting separation and exact-version approval validity;
-- locking and controlled amendment;
-- immutable posting and reversal lineage;
-- permission and actor constraints;
-- concurrency and idempotent retry;
-- migration and SQLite persistence;
-- audit/integration evidence;
-- desktop status/action/traceability regressions;
-- full monorepo validation.
+- the accepted happy path `draft -> pending_approval -> approved -> posted -> reversed`;
+- terminal `reversed` behavior;
+- reject/return/cancel paths back to `draft`;
+- controlled reopen from `approved` to `draft`;
+- deterministic rejection of illegal transitions independent of UI state;
+- optimistic version increment;
+- immutable actor/timestamp transition evidence;
+- actor and occurrence-time validation.
+
+The exhaustive Domain/Application transition matrix remains Step 15 scope.
 
 ## Validation
 
-Step 2 is an architecture/documentation step. Its exit criteria are satisfied by the accepted ADR and synchronized phase records; no production lifecycle behavior or runtime test result is claimed in this step.
+Focused validation commands for Step 3 are:
 
-Implementation validation begins with Step 3 and later implementation steps. Validation results must be recorded only after commands are actually executed.
+```bash
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+```
+
+The connected execution environment could not reach `github.com` to clone the branch for runtime execution (`Could not resolve host: github.com`). Therefore this record does not falsely claim those commands were executed successfully here. The Domain implementation and focused tests are committed, and the same commands are provided for local verification.
 
 ## Documentation Impact
 
@@ -173,6 +185,17 @@ Phase 15 must maintain, as applicable:
 - Fixed reversal as a separate inverse balanced voucher with atomic durable lineage; no in-place mutation of the original posted lines is permitted.
 - Fixed optimistic-concurrency, idempotency, atomic cross-aggregate coordination, post-commit event ordering, audit evidence, failure semantics, fiscal revalidation, and future PostgreSQL/.NET portability constraints.
 - Added and accepted `docs/adr/ADR-0015-journal-lifecycle.md` before production lifecycle code is introduced.
+
+## Step 3 Evidence
+
+- Expanded `JournalVoucherStatus` from Draft-only to the five ADR-0015 lifecycle states while keeping new voucher creation deterministically `draft`.
+- Added `journal-voucher-lifecycle.ts` with the authoritative Domain transition table.
+- Added `transitionJournalVoucher`, `canTransitionJournalVoucher`, and `getAllowedJournalVoucherLifecycleActions` without React, Tauri, SQLite, PostgreSQL, HTTP, or .NET coupling.
+- Successful transitions are immutable, increment optimistic version, update canonical occurrence time, and return actor/time/version/state evidence for later persistence and audit integration.
+- Invalid state/action combinations fail with stable Domain lifecycle errors and do not mutate the original voucher.
+- Added focused Domain tests in `journal-voucher-lifecycle.test.ts` for legal paths, illegal paths, terminal behavior, amendment return, versioning, actor evidence, and timestamp evidence.
+- Exported the lifecycle Domain contract through `@argin/accounting/journal` for later Application and adapter steps.
+- Runtime validation was not claimed because the execution environment could not resolve GitHub for a fresh checkout; local validation commands are recorded above.
 
 ## Exit Criteria
 
