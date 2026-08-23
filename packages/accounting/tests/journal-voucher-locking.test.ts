@@ -106,7 +106,7 @@ test("controlled amendment reopens approved voucher, closes approval cycle, and 
     isCurrent: true,
   });
   let closedApprovalId: string | null = null;
-  let evidence: JournalVoucherAmendmentEvidence | null = null;
+  const savedEvidence: JournalVoucherAmendmentEvidence[] = [];
 
   const result = await reopenApprovedJournalVoucherForAmendment(
     {
@@ -130,7 +130,7 @@ test("controlled amendment reopens approved voucher, closes approval cycle, and 
             closedApprovalId = approvalRequestId;
           },
           saveAmendmentEvidence: async (value) => {
-            evidence = value;
+            savedEvidence.push(value);
           },
         }),
       },
@@ -140,9 +140,10 @@ test("controlled amendment reopens approved voucher, closes approval cycle, and 
   assert.equal(result.voucher.status, "draft");
   assert.equal(result.voucher.version, 4);
   assert.equal(closedApprovalId, "approval-1");
-  assert.equal(evidence?.approvalRequestId, "approval-1");
-  assert.equal(evidence?.reopenedBy, "editor-1");
-  assert.equal(evidence?.reason, "اصلاح شرح سند");
+  assert.equal(savedEvidence.length, 1);
+  assert.equal(savedEvidence[0]?.approvalRequestId, "approval-1");
+  assert.equal(savedEvidence[0]?.reopenedBy, "editor-1");
+  assert.equal(savedEvidence[0]?.reason, "اصلاح شرح سند");
   assert.equal(isJournalVoucherEditable(result.voucher), true);
 });
 

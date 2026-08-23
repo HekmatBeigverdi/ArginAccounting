@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createAccount } from "../src/domain/account.ts";
+import { createAccount } from "../src/domain/create-account.ts";
 import type { JournalVoucher } from "../src/domain/journal-voucher.ts";
 import { createJournalVoucher } from "../src/domain/journal-voucher.ts";
 import {
