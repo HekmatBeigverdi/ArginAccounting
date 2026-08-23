@@ -122,6 +122,23 @@ export {
   JournalVoucherPostingError,
   postJournalVoucher,
 } from "./application/journal-voucher-posting.ts";
+export type {
+  JournalVoucherAmendmentDependencies,
+  JournalVoucherAmendmentEvidence,
+  JournalVoucherAmendmentResult,
+  JournalVoucherAmendmentSession,
+  JournalVoucherAmendmentUnitOfWork,
+  JournalVoucherLockReason,
+  JournalVoucherLockingErrorCode,
+  ReopenApprovedJournalVoucherForAmendmentCommand,
+} from "./application/journal-voucher-locking.ts";
+export {
+  assertJournalVoucherDraftEditable,
+  getJournalVoucherLockReason,
+  isJournalVoucherEditable,
+  JournalVoucherLockingError,
+  reopenApprovedJournalVoucherForAmendment,
+} from "./application/journal-voucher-locking.ts";
 export {
   projectJournalVoucherDetail,
   projectJournalVoucherListItem,
