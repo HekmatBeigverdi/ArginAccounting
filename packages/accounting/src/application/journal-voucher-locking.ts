@@ -7,7 +7,6 @@ import {
 import type { JournalVoucher } from "../domain/journal-voucher.ts";
 import type {
   JournalVoucherApprovalCycle,
-  JournalVoucherApprovalUnitOfWork,
 } from "./journal-voucher-approval-integration.ts";
 
 export type JournalVoucherLockReason =
