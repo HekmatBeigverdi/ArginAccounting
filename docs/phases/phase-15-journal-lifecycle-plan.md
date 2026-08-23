@@ -80,7 +80,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
-| 2 | Lifecycle Domain Analysis and ADR | Not started |
+| 2 | Lifecycle Domain Analysis and ADR | Completed |
 | 3 | Journal State Model and Transition Invariants | Not started |
 | 4 | Approval Workflow Integration | Not started |
 | 5 | Final Posting Policy and Accounting Immutability | Not started |
@@ -136,7 +136,18 @@ Exit criteria:
 - State ownership, transition semantics, approval relationship, and portability constraints are unambiguous.
 - ADR is accepted before lifecycle code is implemented.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added and accepted `ADR-0015 — Journal Lifecycle Architecture` before any production lifecycle implementation.
+- Fixed `JournalVoucher` as the authoritative owner of accounting lifecycle state while retaining the Phase 08 `ApprovalRequest` as the authoritative owner of approval state/history.
+- Fixed the Journal lifecycle graph as `draft -> pending_approval -> approved -> posted -> reversed`; approval rejection/return/cancellation and controlled pre-post amendment return the voucher to `draft`.
+- Fixed approval and posting as separate decisions; manual Journal posting in Phase 15 requires current approval for the exact unmodified voucher version.
+- Fixed ordinary editing to `draft` only. `pending_approval`, `approved`, `posted`, and `reversed` are locked against ordinary mutation; posted/reversed accounting facts are immutable.
+- Fixed reversal as a separate balanced inverse voucher with durable original/reversal lineage and atomic transition of the original to `reversed`; in-place mutation of posted lines is prohibited.
+- Defined expected-version concurrency, durable idempotency for retry-sensitive commands, atomic Journal/Approval coordination, post-commit event publication, audit evidence, stable failure semantics, final fiscal revalidation, and future PostgreSQL/.NET portability constraints.
+- Updated the Phase 15 implementation record and ADR registry to reflect the accepted architecture.
 
 ### Step 3 — Journal State Model and Transition Invariants
 
