@@ -11,7 +11,6 @@ export { createJournalVoucher } from "./domain/journal-voucher.ts";
 export type {
   JournalVoucherLifecycleAction,
   JournalVoucherLifecycleErrorCode,
-  JournalVoucherLifecycleSnapshot,
   JournalVoucherLifecycleStatus,
   JournalVoucherTransitionCommand,
   JournalVoucherTransitionEvidence,
