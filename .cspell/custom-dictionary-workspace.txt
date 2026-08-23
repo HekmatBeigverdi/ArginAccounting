@@ -23,6 +23,7 @@ Tadbir
 tauri
 topbar
 unpost
+unposted
 Vazirmatn
 viewports
 Vite
@@ -106,6 +107,7 @@ Vite
 اولین
 اولیه
 ایجاد
+ایجادشده
 ایجادکننده
 ایران
 بارگذاری

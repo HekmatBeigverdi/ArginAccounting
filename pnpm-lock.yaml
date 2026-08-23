@@ -142,6 +142,9 @@ importers:
 
   packages/accounting:
     dependencies:
+      '@argin/audit':
+        specifier: workspace:*
+        version: link:../audit
       '@argin/platform':
         specifier: workspace:*
         version: link:../platform
