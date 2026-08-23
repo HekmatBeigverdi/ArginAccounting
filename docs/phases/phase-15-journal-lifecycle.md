@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 1 — Baseline, Branch, and Plan Freeze — Completed**.
+Current step: **Step 2 — Lifecycle Domain Analysis and ADR — Completed**.
 
-Next step: **Step 2 — Lifecycle Domain Analysis and ADR**.
+Next step: **Step 3 — Journal State Model and Transition Invariants**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -55,9 +55,23 @@ Excluded:
 
 ## Architecture
 
-Phase 15 extends the existing Journal Voucher aggregate and Application contracts rather than replacing them. Domain/Application code remains persistence- and presentation-independent. SQLite is the current adapter; future PostgreSQL/API implementations must be able to preserve the same lifecycle semantics.
+Phase 15 extends the existing Journal Voucher aggregate and Application contracts rather than replacing them. Domain/Application code remains persistence- and presentation-independent. SQLite is the current adapter; future PostgreSQL/API implementations must preserve the same lifecycle semantics.
 
-The authoritative lifecycle transition graph and approval/posting relationship will be fixed in Step 2 through the Phase 15 ADR before production lifecycle behavior is implemented.
+Step 2 accepted [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md). `JournalVoucher` remains the authoritative owner of accounting lifecycle state, while the generic Phase 08 `ApprovalRequest` remains a separate reusable aggregate and authoritative owner of approval history/state. Application orchestration coordinates the two atomically when one business action changes both.
+
+The selected Journal lifecycle graph is:
+
+```text
+draft -> pending_approval -> approved -> posted -> reversed
+            |                  |
+            +----> draft <-----+
+```
+
+Return, rejection, or cancellation of the active approval cycle moves the Journal voucher from `pending_approval` back to `draft`. Reopening an approved but unposted voucher for amendment also returns it to `draft` and invalidates the previous approval for the modified content.
+
+Approval and posting are explicitly separate decisions. An approved voucher is not posted until final posting validation and the posting command succeed. Manual Journal posting in Phase 15 requires current approval evidence for the exact unmodified voucher version.
+
+Posted accounting lines are immutable. Correction is additive through a separate balanced reversal voucher with durable lineage; the original voucher transitions to `reversed` only atomically with the successful reversal write.
 
 ## Domain Model
 
@@ -70,41 +84,59 @@ Baseline concepts inherited from Phase 13:
 - Stable voucher numbering and source metadata.
 - Optimistic versioning.
 
-Phase 15 will add lifecycle state, transition evidence, locking/amendment semantics, posting evidence, and reversal/replacement lineage according to the accepted ADR.
+Step 2 fixes the lifecycle states as `draft`, `pending_approval`, `approved`, `posted`, and `reversed`.
+
+Ordinary content editing is allowed only in `draft`. `pending_approval`, `approved`, `posted`, and `reversed` are locked against ordinary mutation. `posted` and `reversed` accounting facts are permanently immutable; lifecycle/audit metadata may be appended without changing posted accounting lines.
+
+Every transition requires legal source state, expected version, authorized actor, matching company/branch scope, and required request/correlation/causation evidence. Posting additionally revalidates balance, accounts, dimensions, fiscal context, and current approval. Reversal requires a posted unreversed original, an eligible reversal fiscal date/context, an exact inverse balanced voucher, and explicit lineage.
 
 ## Application Services
 
-Planned lifecycle operations include explicit command/query contracts for transition actions selected by the final lifecycle policy. All mutations will enforce authorization, expected version, accounting preconditions, atomicity, idempotency where required, and stable error contracts.
+Lifecycle operations are explicit Application commands. Domain code owns legal Journal state transitions; Application orchestration owns authorization, approval evidence, cross-aggregate coordination, final accounting validation, optimistic concurrency, idempotency, Unit of Work behavior, audit evidence, and post-commit integration events.
+
+Stable Application failures will distinguish invalid transition, stale version, missing/non-current approval, locked voucher, posting validation failure, fiscal ineligibility, duplicate/already reversed conditions, permission denial, and idempotency conflict.
+
+Cross-aggregate commands that update Journal and Approval state must not commit contradictory partial outcomes. Retried submission/posting/reversal operations must return the existing committed result rather than duplicate approval history, posting evidence, reversal vouchers, audit-success records, or success events.
 
 ## Data and Migrations
 
-A versioned migration will be added only after the lifecycle model is fixed. Existing Phase 13 Draft vouchers must upgrade without data loss and receive a deterministic valid lifecycle state.
+A versioned migration will be added only after the lifecycle model fixed by ADR-0015 is implemented in Domain/Application contracts. Existing Phase 13 Draft vouchers must upgrade without data loss and receive `draft` as their deterministic lifecycle state.
+
+Lifecycle persistence will eventually include state/version evidence, active approval linkage, posting evidence, controlled-amendment evidence, durable reversal/replacement lineage, and idempotency data required by the accepted architecture.
 
 ## Security
 
-Lifecycle actions will use granular permissions enforced at the Application boundary. Segregation-of-duties constraints will be evaluated explicitly in Step 9 and will not rely on UI visibility.
+Lifecycle actions will use granular permissions enforced at the Application boundary. The architecture records distinct submitting/requesting, approving, posting, amendment, and reversal actors.
+
+ADR-0015 intentionally does not hard-code an organization-specific creator/approver/poster segregation rule; Step 9 will finalize that policy while retaining all actor evidence needed to enforce it deterministically.
 
 ## UI
 
-The Journal Voucher workspace will display lifecycle status, allowed actions, confirmations, traceability, and stable Persian business errors using the canonical Phase 14 RTL design system, compact density contract, keyboard/accessibility rules, and feedback-state primitives.
+The Journal Voucher workspace will display persisted lifecycle status, allowed actions, confirmations, and approval/posting/reversal traceability using the canonical Phase 14 RTL design system.
+
+The UI does not determine transition validity. Capability/action availability must come from Application rules plus authorization context, and every command revalidates authoritative state/version even if UI capability data is stale.
 
 ## Testing
 
 Planned coverage:
 
-- Domain transition matrix.
-- Application lifecycle orchestration.
-- Approval/posting/locking/amendment/reversal behavior.
-- Permission and actor constraints.
-- Concurrency and idempotent retry.
-- Migration and SQLite persistence.
-- Audit/integration evidence.
-- Desktop status/action/traceability regressions.
-- Full monorepo validation.
+- exhaustive Domain transition matrix for the five accepted states;
+- Application lifecycle orchestration;
+- approval/posting separation and exact-version approval validity;
+- locking and controlled amendment;
+- immutable posting and reversal lineage;
+- permission and actor constraints;
+- concurrency and idempotent retry;
+- migration and SQLite persistence;
+- audit/integration evidence;
+- desktop status/action/traceability regressions;
+- full monorepo validation.
 
 ## Validation
 
-Step 1 validates repository/phase baseline only. Production lifecycle validation begins with later implementation steps. Validation results must be recorded only after commands are actually executed.
+Step 2 is an architecture/documentation step. Its exit criteria are satisfied by the accepted ADR and synchronized phase records; no production lifecycle behavior or runtime test result is claimed in this step.
+
+Implementation validation begins with Step 3 and later implementation steps. Validation results must be recorded only after commands are actually executed.
 
 ## Documentation Impact
 
@@ -112,7 +144,7 @@ Phase 15 must maintain, as applicable:
 
 - this implementation record,
 - the fixed implementation plan,
-- Phase 15 ADR,
+- [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md),
 - accounting architecture/semantics,
 - security/permissions documentation,
 - database/migration documentation,
@@ -123,8 +155,24 @@ Phase 15 must maintain, as applicable:
 
 ## Related ADRs
 
-- Existing Phase 13 Journal Voucher architecture ADR remains the voucher-engine baseline.
-- Phase 15 lifecycle ADR: pending Step 2.
+- [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md) — accepted in Step 2 and authoritative for Phase 15 lifecycle semantics.
+- [ADR-0013 — Journal Voucher Engine Architecture](../adr/ADR-0013-journal-voucher-engine.md) — persisted Journal aggregate baseline.
+- [ADR-0008 — Approval Workflow with Optimistic Concurrency](../adr/ADR-0008-approval-optimistic-concurrency.md) — reusable approval subsystem.
+- [ADR-0007 — Immutable Audit Trail](../adr/ADR-0007-immutable-audit-trail.md).
+- [ADR-0005 — Repository and Unit of Work](../adr/ADR-0005-repository-unit-of-work.md).
+- [ADR-0009 — Shared Platform Infrastructure Before Accounting Core](../adr/ADR-0009-platform-infrastructure-first.md).
+- [ADR-0014 — UI Foundation and Global Display Density](../adr/ADR-0014-ui-foundation-and-global-density.md).
+
+## Step 2 Evidence
+
+- Reconciled the Phase 13 Journal aggregate with Phase 08 Approval and Phase 09 concurrency/idempotency/event infrastructure.
+- Fixed `JournalVoucher` as the sole owner of accounting lifecycle state and retained `ApprovalRequest` as the sole owner of approval state/history.
+- Fixed the Journal state graph as `draft -> pending_approval -> approved -> posted -> reversed`, with reject/return/cancel and controlled pre-post amendment returning to `draft`.
+- Fixed approval and posting as separate decisions; Phase 15 manual posting requires current approval for the exact voucher version.
+- Fixed ordinary editability to `draft` only and posted/reversed accounting facts as immutable.
+- Fixed reversal as a separate inverse balanced voucher with atomic durable lineage; no in-place mutation of the original posted lines is permitted.
+- Fixed optimistic-concurrency, idempotency, atomic cross-aggregate coordination, post-commit event ordering, audit evidence, failure semantics, fiscal revalidation, and future PostgreSQL/.NET portability constraints.
+- Added and accepted `docs/adr/ADR-0015-journal-lifecycle.md` before production lifecycle code is introduced.
 
 ## Exit Criteria
 
