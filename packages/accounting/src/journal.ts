@@ -56,18 +56,10 @@ export type {
   ListJournalVouchersQuery,
   UpdateJournalVoucherDraftCommand,
 } from "./application/journal-voucher-contracts.ts";
-export type {
-  JournalVoucherApplicationErrorCode,
-} from "./application/journal-voucher-application-error.ts";
-export {
-  JournalVoucherApplicationError,
-} from "./application/journal-voucher-application-error.ts";
-export type {
-  JournalVoucherPermission,
-} from "./application/journal-voucher-permissions.ts";
-export {
-  journalVoucherPermissions,
-} from "./application/journal-voucher-permissions.ts";
+export type { JournalVoucherApplicationErrorCode } from "./application/journal-voucher-application-error.ts";
+export { JournalVoucherApplicationError } from "./application/journal-voucher-application-error.ts";
+export type { JournalVoucherPermission } from "./application/journal-voucher-permissions.ts";
+export { journalVoucherPermissions } from "./application/journal-voucher-permissions.ts";
 export type {
   JournalVoucherAuditEventType,
   JournalVoucherAuthorizationDeniedEvent,
@@ -80,9 +72,7 @@ export {
   createJournalVoucherAuthorizationDeniedEvent,
   createJournalVoucherSuccessEvent,
 } from "./application/journal-voucher-events.ts";
-export type {
-  JournalVoucherMutationResult,
-} from "./application/journal-voucher-use-cases.ts";
+export type { JournalVoucherMutationResult } from "./application/journal-voucher-use-cases.ts";
 export {
   createJournalVoucherDraft,
   deleteJournalVoucherDraft,
@@ -153,6 +143,34 @@ export {
   JournalVoucherReversalError,
   reverseJournalVoucher,
 } from "./application/journal-voucher-reversal.ts";
+export type {
+  DecideJournalVoucherLifecycleApprovalCommand,
+  GetJournalVoucherLifecycleQuery,
+  JournalVoucherAmendmentTraceDto,
+  JournalVoucherApprovalTraceDto,
+  JournalVoucherLifecycleActionCapability,
+  JournalVoucherLifecycleApplicationErrorCode,
+  JournalVoucherLifecycleCapabilitiesDto,
+  JournalVoucherLifecycleCommandContext,
+  JournalVoucherLifecycleDto,
+  JournalVoucherPostingTraceDto,
+  JournalVoucherReversalTraceDto,
+  PostJournalVoucherLifecycleCommand,
+  ReopenJournalVoucherLifecycleCommand,
+  ReverseJournalVoucherLifecycleCommand,
+  SubmitJournalVoucherLifecycleCommand,
+} from "./application/journal-voucher-lifecycle-contracts.ts";
+export { JournalVoucherLifecycleApplicationError } from "./application/journal-voucher-lifecycle-contracts.ts";
+export type { JournalVoucherLifecycleCommandDependencies } from "./application/journal-voucher-lifecycle-command-handlers.ts";
+export {
+  handleDecideJournalVoucherLifecycleApprovalCommand,
+  handlePostJournalVoucherLifecycleCommand,
+  handleReopenJournalVoucherLifecycleCommand,
+  handleReverseJournalVoucherLifecycleCommand,
+  handleSubmitJournalVoucherLifecycleCommand,
+} from "./application/journal-voucher-lifecycle-command-handlers.ts";
+export type { JournalVoucherLifecycleReader } from "./application/journal-voucher-lifecycle-queries.ts";
+export { getJournalVoucherLifecycle } from "./application/journal-voucher-lifecycle-queries.ts";
 export {
   projectJournalVoucherDetail,
   projectJournalVoucherListItem,
