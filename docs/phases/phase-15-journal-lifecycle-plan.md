@@ -86,7 +86,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | 5 | Final Posting Policy and Accounting Immutability | Completed |
 | 6 | Locking and Controlled Amendment Policy | Completed |
 | 7 | Reversal and Replacement Lineage | Completed |
-| 8 | Application Contracts, Commands, and Queries | Not started |
+| 8 | Application Contracts, Commands, and Queries | Completed |
 | 9 | Authorization, Permissions, and Segregation of Duties | Not started |
 | 10 | Migration and Lifecycle Persistence Model | Not started |
 | 11 | SQLite Repository, Unit of Work, Concurrency, and Idempotency | Not started |
@@ -290,7 +290,22 @@ Exit criteria:
 - Application contracts support SQLite now and future PostgreSQL/API adapters without transport coupling.
 - All lifecycle mutations pass through explicit command handlers/services.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/application/journal-voucher-lifecycle-contracts.ts` as the canonical persistence-neutral Application contract for Phase 15 lifecycle operations.
+- Added one stable `JournalVoucherLifecycleCommandContext` carrying actor, company, request/idempotency id, correlation id, causation id, and occurrence time; lifecycle mutation commands additionally carry the required expected version and operation-specific evidence.
+- Added explicit standard commands for submit-for-approval, approval decision, final posting, controlled amendment, and reversal/replacement without embedding Tauri, SQLite, HTTP, PostgreSQL, or .NET concerns.
+- Added stable lifecycle Application error-code vocabulary covering transition, locking, approval, posting, amendment, reversal, idempotency, authorization, concurrency, and persistence failure families for later Persian error mapping.
+- Added `JournalVoucherLifecycleDto` with state-policy capabilities plus approval, posting, amendment, and reversal trace DTOs. Capability data in Step 8 intentionally represents lifecycle/state policy only; user authorization is composed in Step 9 rather than duplicated into the state machine.
+- Added `packages/accounting/src/application/journal-voucher-lifecycle-command-handlers.ts` to adapt the canonical commands to the already-implemented Step 4–7 Application services. Reversal requires the durable request id from the standard command context and forwards correlation/causation metadata.
+- Added `packages/accounting/src/application/journal-voucher-lifecycle-queries.ts` with a persistence-neutral reader contract and `getJournalVoucherLifecycle` query. The query returns persisted Journal status/version, state-policy capabilities, current Approval trace, posting evidence, latest amendment evidence, and reversal/replacement lineage without requiring UI code to reconstruct lifecycle semantics.
+- Extended `JournalVoucherListItemDto` and its read-model projection with persisted lifecycle `status`, allowing list/workspace UI to render status without a second detail query.
+- Exported the complete canonical lifecycle command/query/DTO surface through `@argin/accounting/journal` for current desktop consumers and future Argin Bridge/.NET API adapters.
+- Added focused tests in `packages/accounting/tests/journal-voucher-lifecycle-contracts.test.ts` covering list status projection, Draft state-policy capabilities, approved/current-approval trace, and posted/reversed traceability/capabilities.
+- Concrete persistence readers/writers remain Steps 10 and 11; granular permission filtering and segregation of duties remain Step 9. Step 8 introduces no premature adapter or authorization implementation.
+- Step 8 runtime typecheck/test success is not claimed until the updated branch is executed locally or through CI.
 
 ### Step 9 — Authorization, Permissions, and Segregation of Duties
 
