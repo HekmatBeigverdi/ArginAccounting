@@ -70,7 +70,7 @@ Excluded: Accounting Reports, automatic posting from operational modules, later 
 | 12 | Audit, Integration Events, and Notifications | Completed |
 | 13 | Persian RTL Lifecycle Status and Action UI | Completed |
 | 14 | Posting, Reversal, Traceability, and Failure UX | Completed |
-| 15 | Domain and Application Test Matrix | Not started |
+| 15 | Domain and Application Test Matrix | Completed |
 | 16 | Repository, Migration, Permission, and Desktop Regression Tests | Not started |
 | 17 | Monorepo Validation and Documentation Completion | Not started |
 | 18 | Final Review, Merge, and Release | Not started |
@@ -280,7 +280,7 @@ Evidence:
 - Stable `journal.*` failures are presented as business rejections with Persian recovery guidance and without leaking raw technical detail. Unknown failures are visually separated as technical errors with expandable diagnostics.
 - Added focused presenter coverage for business-vs-technical error classification and explicit irreversible confirmation copy for Post/Reversal.
 - Preserved Step 12 ordering: lifecycle transaction commits before Audit/Integration Event/Notification effects; desktop composition does not nest Audit inside the Posting/Reversal transaction.
-- Runtime green is not claimed until the updated desktop branch is executed locally or through CI.
+- User confirmed Step 14 local validation is green.
 
 ### Step 15 — Domain and Application Test Matrix
 
@@ -288,7 +288,19 @@ Evidence:
 
 Exit: Domain/Application lifecycle behavior is comprehensively covered independent of SQLite/UI.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/tests/journal-voucher-lifecycle-matrix.test.ts` as the cross-cutting Domain/Application contract matrix.
+- The matrix evaluates every one of the 5 lifecycle states against all 8 Domain lifecycle actions, asserting both legal target states and rejection of every illegal state/action pair.
+- Every successful transition in the matrix verifies optimistic version increment and previous/new state evidence.
+- Added capability projection coverage for Draft, Pending Approval with/without a current cycle, Approved with/without a current cycle, Posted, and terminal Reversed states.
+- Added company-scope isolation coverage: a voucher from another company resolves as stable `journal.not-found` rather than leaking cross-company existence.
+- Added complete mapping checks for all eight lifecycle authorization actions and every UI lifecycle capability against the registered Journal permission vocabulary.
+- Existing focused tests remain the authoritative detailed coverage for Approval submit/decision/resubmission, final Posting and stale approval/fiscal revalidation, Draft-only locking/controlled amendment, expected-version failures, exact inverse Reversal, request-id replay/double-reversal prevention, authorization/SoD, post-commit audit/event ordering, and stable error semantics.
+- Added `docs/phases/phase-15-step-15-test-matrix.md` to map each Step 15 requirement to its concrete test evidence and keep Step 16 persistence/desktop responsibilities separate.
+- Step 15 runtime green is not claimed until `@argin/accounting` typecheck/tests are executed locally or through CI.
 
 ### Step 16 — Repository, Migration, Permission, and Desktop Regression Tests
 
