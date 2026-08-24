@@ -205,7 +205,11 @@ function asAuditDatabase(database: DatabaseExecutor | DatabaseSession): SqliteDa
     execute: (sql, parameters = []) =>
       database.execute(sql, parameters as readonly DatabaseValue[]),
     async select<T>(sql: string, parameters: unknown[] = []): Promise<T> {
-      return database.query(sql, parameters as readonly DatabaseValue[]) as Promise<T>;
+      const rows = await database.query<unknown>(
+        sql,
+        parameters as readonly DatabaseValue[],
+      );
+      return rows as unknown as T;
     },
   };
 }
@@ -231,6 +235,13 @@ class DesktopLifecycleJournalNumberSeries implements NumberSeries {
           paddingLength: 6,
           resetPolicy: "fiscal-year",
         });
+      }
+      if (
+        series.entityType !== request.seriesType ||
+        series.branchId !== branchId ||
+        series.fiscalYearId !== fiscalYearId
+      ) {
+        throw new Error("Journal voucher Number Series scope does not match its stored definition.");
       }
       const reserved = await repository.reserveNext(series.id);
       return Object.freeze({
