@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 15 — Domain and Application Test Matrix — Completed**.
+Current step: **Step 16 — Repository, Migration, Permission, and Desktop Regression Tests — Completed**.
 
-Next step: **Step 16 — Repository, Migration, Permission, and Desktop Regression Tests**.
+Next step: **Step 17 — Monorepo Validation and Documentation Completion**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -154,26 +154,31 @@ The user confirmed Step 14 local validation is green.
 
 Step 15 consolidates persistence-independent lifecycle verification and adds a cross-cutting matrix instead of duplicating the already-focused test suites.
 
-`packages/accounting/tests/journal-voucher-lifecycle-matrix.test.ts` adds:
-
-- exhaustive verification of all 5 lifecycle states against all 8 Domain lifecycle actions;
-- explicit success target-state checks for every legal transition;
-- explicit rejection checks for every illegal transition;
-- optimistic version increment and transition-evidence assertions;
-- capability projection for Pending/Approved states both with and without a current Approval cycle;
-- company-scope isolation with stable `journal.not-found` behavior;
-- complete mapping of all eight lifecycle authorization actions to registered Journal permissions;
-- permission mapping coverage for every UI lifecycle capability.
+`packages/accounting/tests/journal-voucher-lifecycle-matrix.test.ts` adds exhaustive verification of all state/action pairs, capability projection, company-scope isolation, optimistic transition evidence, and complete authorization/capability permission mapping.
 
 The existing focused suites remain authoritative for detailed Approval, Posting, locking/amendment, Reversal, stale-version, authorization/SoD, request-id idempotency, post-commit effects, and stable error semantics.
 
-`docs/phases/phase-15-step-15-test-matrix.md` records the requirement-to-test mapping and explicitly keeps repository/migration/desktop regression responsibilities in Step 16.
+`docs/phases/phase-15-step-15-test-matrix.md` records the requirement-to-test mapping. The user confirmed Step 15 local validation is green.
 
-Step 15 implementation is complete. Runtime green is not claimed until the updated Accounting typecheck/tests are executed locally or through CI.
+## Step 16 — Repository, Migration, Permission, and Desktop Regression Tests
+
+Step 16 extends coverage across the persistence and desktop adapter boundary without duplicating Step 15 Domain/Application tests.
+
+New regression coverage includes:
+
+- `packages/accounting-tauri/tests/sqlite-journal-voucher-lifecycle-concurrency.test.ts`: a stale lifecycle compare-and-swap returns zero affected rows and must fail without issuing a second write;
+- `apps/desktop/tests/journal-lifecycle-constraints.test.ts`: SQLite enforces one current Approval cycle, one Posting evidence row, amendment-version integrity, unique original/reversal/request lineage, and invalid self-lineage rejection;
+- `apps/desktop/tests/journal-lifecycle-desktop-regression.test.ts`: all eight lifecycle permissions remain present in the default Security catalog, Post is hidden without its permission, Post/Reversal remain wired through canonical Application handlers/UoWs rather than direct React SQL, deliberate confirmations remain present, and business errors stay separate from technical diagnostics.
+
+Existing Step 10/11 tests remain the primary coverage for Phase 13 upgrade preservation, migration registration, lifecycle-state constraints, atomic Posting/Amendment/Reversal persistence, and same-session Approval gateway behavior.
+
+`docs/phases/phase-15-step-16-regression-matrix.md` maps every Step 16 requirement to concrete test evidence and retains the two test rules learned from the Step 10 local correction: plain-object conversion for `node:sqlite` row equality and `sqlite_master.tbl_name` for index discovery.
+
+Step 16 implementation is complete. Runtime green is not claimed until the focused Accounting/Accounting-Tauri/Desktop commands are executed locally or through CI.
 
 ## Security
 
-Application authorization remains authoritative. Lifecycle UI cannot grant a transition. The default self-approval prohibition remains enforced independently of which actions are displayed.
+Application authorization remains authoritative. Lifecycle UI cannot grant a transition. The default self-approval prohibition remains enforced independently of which actions are displayed. Step 16 additionally protects the default permission registry from silently dropping any lifecycle permission.
 
 ## Testing and Validation
 
@@ -184,18 +189,23 @@ Confirmed local validation:
 - Step 11 local validation;
 - Step 12 local validation;
 - Step 13 local validation;
-- Step 14 local validation.
+- Step 14 local validation;
+- Step 15 local validation.
 
-Focused commands for the Step 15 branch state are:
+Focused commands for the Step 16 branch state are:
 
 ```bash
 pnpm --filter @argin/accounting typecheck
 pnpm --filter @argin/accounting test
+pnpm --filter @argin/accounting-tauri typecheck
+pnpm --filter @argin/accounting-tauri test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
 ```
 
-Step 15 runtime success is not claimed until these updated checks are executed locally or through CI.
+Step 16 runtime success is not claimed until these updated checks are executed locally or through CI.
 
-The full persistence/permission/desktop regression matrix remains Step 16.
+Full monorepo lint/typecheck/test/build validation and final documentation completion remain Step 17.
 
 ## Related ADRs
 
@@ -213,7 +223,7 @@ Phase 15 is complete only when all fixed steps are satisfied or explicitly chang
 
 ## Next Step
 
-Step 16 — Repository, Migration, Permission, and Desktop Regression Tests.
+Step 17 — Monorepo Validation and Documentation Completion.
 
 ## Next Phase
 
