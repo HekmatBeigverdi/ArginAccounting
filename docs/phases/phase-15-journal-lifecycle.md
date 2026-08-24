@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 14 — Posting, Reversal, Traceability, and Failure UX — Completed**.
+Current step: **Step 15 — Domain and Application Test Matrix — Completed**.
 
-Next step: **Step 15 — Domain and Application Test Matrix**.
+Next step: **Step 16 — Repository, Migration, Permission, and Desktop Regression Tests**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -140,54 +140,36 @@ The existing editor remains Draft-only, which is the correct lifecycle policy. T
 
 Step 14 converts the high-impact lifecycle actions from presentation-only affordances into executable desktop workflows without placing accounting policy in React.
 
-### Desktop lifecycle composition
+`apps/desktop/src/composition/accounting/create-journal-lifecycle-services.ts` composes canonical Application handlers with the Step 11 SQLite Unit of Work adapters, current Approval evidence, account/fiscal/dimension readers, Journal Number Series, and Step 12 Audit/Event/Notification effects.
 
-`apps/desktop/src/composition/accounting/create-journal-lifecycle-services.ts` composes canonical Application handlers with:
+The lifecycle overview executes canonical `post` and `reverse` commands with expected-version, actor, request/correlation metadata, occurrence time, optional posting reference, required reversal date, and mandatory reversal reason.
 
-- `SqliteJournalVoucherPostingUnitOfWork`;
-- `SqliteJournalVoucherReversalUnitOfWork`;
-- `SqliteJournalVoucherLifecycleReader`;
-- current Approval evidence through `SqliteApprovalRepository`;
-- current account, fiscal, and dimension readers;
-- Journal Number Series for reversal vouchers;
-- Step 12 Audit, EventBus, and Notification effects.
+Both operations use deliberate confirmation UX. After success, the UI reloads persisted lifecycle state and reports the new posted version or generated reversal voucher number.
 
-A small adapter translates the generic database `query()` contract into the existing Audit adapter `select()` contract only at the composition boundary. Repository and Domain contracts are unchanged.
+Traceability surfaces expose current Approval, Posting evidence, latest controlled Amendment, and Reversal/Replacement lineage. Stable `journal.*` failures are shown as business rejections with Persian recovery guidance while unknown failures are separated as technical diagnostics.
 
-`AccountingProvider` exposes the new `journalLifecycle` service alongside the existing Phase 13 Journal service.
+The user confirmed Step 14 local validation is green.
 
-### Posting and reversal UX
+## Step 15 — Domain and Application Test Matrix
 
-The lifecycle overview now executes canonical `post` and `reverse` commands.
+Step 15 consolidates persistence-independent lifecycle verification and adds a cross-cutting matrix instead of duplicating the already-focused test suites.
 
-Posting supplies actor/company/voucher/expected-version/correlation metadata and an optional posting reference. Reversal additionally requires a durable request id, reversal date, and mandatory reason.
+`packages/accounting/tests/journal-voucher-lifecycle-matrix.test.ts` adds:
 
-Both operations use deliberate confirmation UX. The modal explains the irreversible accounting effect and a second explicit confirmation is required before execution. Reversal cannot continue while its reason is empty.
+- exhaustive verification of all 5 lifecycle states against all 8 Domain lifecycle actions;
+- explicit success target-state checks for every legal transition;
+- explicit rejection checks for every illegal transition;
+- optimistic version increment and transition-evidence assertions;
+- capability projection for Pending/Approved states both with and without a current Approval cycle;
+- company-scope isolation with stable `journal.not-found` behavior;
+- complete mapping of all eight lifecycle authorization actions to registered Journal permissions;
+- permission mapping coverage for every UI lifecycle capability.
 
-After success, the UI reloads persisted lifecycle state and reports either the new posted version or the generated reversal voucher number.
+The existing focused suites remain authoritative for detailed Approval, Posting, locking/amendment, Reversal, stale-version, authorization/SoD, request-id idempotency, post-commit effects, and stable error semantics.
 
-### Traceability
+`docs/phases/phase-15-step-15-test-matrix.md` records the requirement-to-test mapping and explicitly keeps repository/migration/desktop regression responsibilities in Step 16.
 
-Every row can expand an in-place traceability surface showing:
-
-- current Approval request and submitted content version;
-- Posting actor/time/version/reference;
-- latest controlled Amendment actor/time/version/reason;
-- original/reversal/replacement ids, reversal actor/time/reason.
-
-Approval request ids navigate to the existing Approval details route, while reversal lineage is rendered from the durable lifecycle reader rather than reconstructed from descriptions.
-
-### Failure UX
-
-`presentJournalVoucherLifecycleFailure` separates stable `journal.*` Application/business failures from unknown technical failures.
-
-Business rejections receive Persian recovery guidance for stale version, authorization, segregation of duties, missing/invalid Approval, posting validation, reversal validation, changed approved content, and already-reversed states. Raw technical details are not shown for these expected business outcomes.
-
-Unknown failures are rendered as a visually distinct technical error with an expandable diagnostic section. This preserves the project convention of user-friendly error text plus separately accessible technical detail.
-
-Focused desktop presenter tests now cover business-vs-technical failure classification and explicit irreversible confirmation copy for Post/Reversal.
-
-Step 14 implementation is complete. Runtime green is not claimed until the updated desktop typecheck/tests are executed locally or through CI.
+Step 15 implementation is complete. Runtime green is not claimed until the updated Accounting typecheck/tests are executed locally or through CI.
 
 ## Security
 
@@ -201,22 +183,19 @@ Confirmed local validation:
 - Step 10 desktop migration tests after the user's correction commit;
 - Step 11 local validation;
 - Step 12 local validation;
-- Step 13 local validation.
+- Step 13 local validation;
+- Step 14 local validation.
 
-Focused commands for the Step 14 branch state are:
+Focused commands for the Step 15 branch state are:
 
 ```bash
 pnpm --filter @argin/accounting typecheck
 pnpm --filter @argin/accounting test
-pnpm --filter @argin/accounting-tauri typecheck
-pnpm --filter @argin/accounting-tauri test
-pnpm --filter @argin/desktop typecheck
-pnpm --filter @argin/desktop test
 ```
 
-Step 14 runtime success is not claimed until these updated desktop checks are executed locally or through CI.
+Step 15 runtime success is not claimed until these updated checks are executed locally or through CI.
 
-The exhaustive Domain/Application matrix is Step 15 and the full persistence/permission/desktop regression matrix is Step 16.
+The full persistence/permission/desktop regression matrix remains Step 16.
 
 ## Related ADRs
 
@@ -234,7 +213,7 @@ Phase 15 is complete only when all fixed steps are satisfied or explicitly chang
 
 ## Next Step
 
-Step 15 — Domain and Application Test Matrix.
+Step 16 — Repository, Migration, Permission, and Desktop Regression Tests.
 
 ## Next Phase
 
