@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 15 adds the controlled lifecycle for Journal Vouchers created by the Phase 13 Journal Voucher Engine. It turns persisted Draft vouchers into governed accounting records through explicit approval, posting, locking, amendment, reversal, authorization, and traceability while preserving auditability, concurrency safety, and double-entry integrity.
+Phase 15 adds the controlled lifecycle for Journal Vouchers created by the Phase 13 Journal Voucher Engine. It turns persisted Draft vouchers into governed accounting records through explicit approval, posting, locking, amendment, reversal, authorization, persistence, and traceability while preserving auditability, concurrency safety, and double-entry integrity.
 
 The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md).
 
@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 9 — Authorization, Permissions, and Segregation of Duties — Completed**.
+Current step: **Step 10 — Migration and Lifecycle Persistence Model — Completed**.
 
-Next step: **Step 10 — Migration and Lifecycle Persistence Model**.
+Next step: **Step 11 — SQLite Repository, Unit of Work, Concurrency, and Idempotency**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -67,7 +67,7 @@ draft -> pending_approval -> approved -> posted -> reversed
             +----> draft <-----+
 ```
 
-Steps 4–8 provide approval integration, final posting, controlled amendment, reversal/lineage, and one canonical Application command/query surface. Step 9 now adds explicit authorization and segregation policy at that Application boundary so presentation visibility can never become the security authority.
+Steps 4–9 provide approval integration, final posting, controlled amendment, reversal/lineage, canonical Application contracts, and explicit authorization/segregation. Step 10 now adds the durable relational model needed for lifecycle state and evidence without prematurely implementing the SQLite repositories that consume it.
 
 ## Domain Model
 
@@ -79,11 +79,11 @@ The authoritative `JournalVoucherStatus` states are:
 - `posted`
 - `reversed`
 
-`packages/accounting/src/domain/journal-voucher-lifecycle.ts` owns deterministic state transitions. Authorization is intentionally not embedded in this state machine.
+`packages/accounting/src/domain/journal-voucher-lifecycle.ts` owns deterministic state transitions. Authorization and persistence remain outside the Domain state machine.
 
 ## Approval Integration
 
-`packages/accounting/src/application/journal-voucher-approval-integration.ts` reuses Phase 08 Approval contracts. Submission records the approved-content cycle and Approval decisions drive the accepted Journal transitions while preserving Approval as a separate aggregate.
+`packages/accounting/src/application/journal-voucher-approval-integration.ts` reuses Phase 08 Approval contracts. Submission records the approved-content cycle and Approval decisions drive accepted Journal transitions while preserving Approval as a separate aggregate.
 
 ## Final Posting Policy
 
@@ -107,44 +107,55 @@ State-policy capabilities answer what the lifecycle state allows; user authoriza
 
 ## Authorization, Permissions, and Segregation of Duties
 
-Step 9 extends `journalVoucherPermissions` with dedicated lifecycle permissions:
+Step 9 adds dedicated permissions for submit, approve, reject, return-to-draft, cancel approval, post, controlled amendment, and reversal. These permissions are registered in the Security default permission catalog and enforced at the Application boundary before lifecycle business execution.
 
-- `accounting.journal-vouchers.submit`
-- `accounting.journal-vouchers.approve`
-- `accounting.journal-vouchers.reject`
-- `accounting.journal-vouchers.return-to-draft`
-- `accounting.journal-vouchers.cancel-approval`
-- `accounting.journal-vouchers.post`
-- `accounting.journal-vouchers.reopen-for-amendment`
-- `accounting.journal-vouchers.reverse`
-
-The permissions are also registered in `packages/security/src/application/default-permissions.ts` for assignment by the existing Role/Permission subsystem.
-
-`packages/accounting/src/application/journal-voucher-lifecycle-authorization.ts` defines the transport/persistence-neutral authorization boundary. Every canonical lifecycle mutation handler invokes it before Approval, Posting, Amendment, or Reversal execution. Approval outcomes use independent permissions rather than a single broad approval capability.
-
-The project had no prior canonical rule requiring creator, approver, poster, and reverser all to be distinct users. Phase 15 therefore adopts a conservative default segregation policy: the actor recorded as `requestedBy` on the current Approval Request cannot approve that same cycle. Poster/reverser/amendment actors are not artificially forced to be distinct, but each requires its own granular permission and is retained in operation evidence.
-
-Stable failures distinguish missing permission (`journal.unauthorized`) from actor-policy violation (`journal.segregation-of-duties-violation`). Durable denied-operation audit event publication is completed in Step 12 together with lifecycle audit/integration events.
+The default segregation policy prohibits self-approval for the active Approval cycle while avoiding unsupported mandatory separation for poster/reverser in small organizations. Stable failures distinguish missing permission from segregation-of-duties violation.
 
 ## Data and Migrations
 
-Persistence of lifecycle state, approval-cycle linkage, posting evidence, controlled-amendment evidence, reversal lineage, idempotency, and lifecycle read models remains Steps 10 and 11 scope.
+Step 10 adds `apps/desktop/src-tauri/migrations/0014_journal_lifecycle.sql`, registered as migration version 14 (`journal_lifecycle`) in the Tauri SQL migration runner.
 
-Existing Phase 13 Draft vouchers must upgrade without data loss and receive `draft` as their deterministic lifecycle state.
+The Phase 13 table has a legacy `status` constraint fixed to `draft`. Rather than rebuilding `journal_vouchers` and risking child foreign-key rewrites during upgrade, the Phase 15 migration is additive and introduces:
+
+- `lifecycle_status` on `journal_vouchers` as the authoritative lifecycle persistence column;
+- a CHECK constraint limited to `draft`, `pending_approval`, `approved`, `posted`, and `reversed`;
+- a company/status/date index for lifecycle list and workspace queries.
+
+Existing Phase 13 rows receive `lifecycle_status = 'draft'` by default. Their ids, numbers, lines, dimensions, totals, timestamps, request ids, and optimistic versions are not rewritten.
+
+Lifecycle evidence is stored in dedicated relational tables:
+
+- `journal_voucher_approval_cycles`: Approval linkage, submitted-content version, current/closed state, and history;
+- `journal_voucher_posting_evidence`: one durable posting record per voucher with Approval/version/actor/time/reference evidence;
+- `journal_voucher_amendment_evidence`: append-only controlled-amendment history keyed by voucher/reopened version;
+- `journal_voucher_reversal_lineage`: unique original/reversal linkage, optional replacement, company/request idempotency key, actor/time/reason.
+
+Protective relational rules include:
+
+- one current Approval cycle per voucher through a partial unique index;
+- one posting-evidence row per voucher;
+- deterministic amendment version progression;
+- unique original and reversal identities in reversal lineage;
+- unique `(company_id, request_id)` reversal replay key;
+- same-company foreign keys to Journal Vouchers;
+- bounded actor/reference/reason/request fields and distinct-identity checks;
+- indexes for Approval history, posting evidence, latest amendment, lifecycle status, and replacement lineage.
+
+Concrete expected-version SQL updates, transaction composition, repository mapping to `lifecycle_status`, and retry execution remain Step 11.
 
 ## Security
 
-Authorization is deny-by-default at the Application boundary. UI gates are usability only. Granular lifecycle permissions are independently assignable and the default self-approval prohibition is enforced from current Approval evidence rather than from client state.
+Authorization is deny-by-default at the Application boundary. UI gates are usability only. Granular lifecycle permissions are independently assignable and the default self-approval prohibition is enforced from current Approval evidence rather than client state.
 
-The canonical security documentation is updated in `docs/security/security-model.md`.
+The canonical security documentation is maintained in `docs/security/security-model.md`.
 
 ## UI
 
-Later lifecycle UI consumes state-policy capabilities and permission-aware Application results; it does not reproduce authorization rules in React/Tauri.
+Later lifecycle UI consumes state-policy capabilities and permission-aware Application results; it does not reproduce authorization or persistence rules in React/Tauri.
 
 ## Testing
 
-Focused coverage through Step 9 includes:
+Focused coverage through Step 10 includes:
 
 - Domain lifecycle legal/illegal paths;
 - Approval integration and duplicate-cycle prevention;
@@ -152,13 +163,13 @@ Focused coverage through Step 9 includes:
 - draft-only ordinary editability and controlled amendment;
 - reversal replay/double-reversal/replacement lineage;
 - lifecycle command/query/DTO contracts;
-- granular lifecycle permission mapping;
-- denied operations without permission;
-- permitted operations with the required permission;
-- default self-approval rejection;
-- approval by a different authorized actor.
+- granular lifecycle permission and self-approval rules;
+- migration 14 registration in the desktop runner;
+- upgrade of existing Phase 13 Draft vouchers to `lifecycle_status = 'draft'` without data loss;
+- enforcement of the five allowed lifecycle states;
+- creation of lifecycle evidence tables and protective indexes.
 
-The exhaustive Domain/Application matrix remains Step 15 scope.
+The exhaustive Domain/Application matrix remains Step 15 and the full migration/repository regression suite remains Step 16.
 
 ## Validation
 
@@ -167,13 +178,14 @@ Focused local validation commands are:
 ```bash
 pnpm --filter @argin/accounting typecheck
 pnpm --filter @argin/accounting test
+pnpm --filter @argin/desktop test
 ```
 
-Step 5 validation is confirmed from the user's local environment. Step 6–9 code and focused tests are committed; runtime success for the updated Step 9 branch is not claimed until it is executed locally or through CI.
+Step 5 validation is confirmed from the user's local environment. Step 6–10 code and focused tests are committed; runtime success for the updated Step 10 branch is not claimed until it is executed locally or through CI.
 
 ## Documentation Impact
 
-Phase 15 maintains the fixed plan, this implementation record, ADR-0015, and security model as implementation progresses. Database/migration, audit/integration, glossary, roadmap, changelog, and release documentation remain aligned with their scheduled steps.
+Phase 15 maintains the fixed plan, this implementation record, ADR-0015, security model, migration registration, and persistence-model evidence as implementation progresses. Audit/integration, glossary, roadmap, changelog, and release documentation remain aligned with their scheduled steps.
 
 ## Related ADRs
 
@@ -215,14 +227,15 @@ Phase 15 maintains the fixed plan, this implementation record, ADR-0015, and sec
 
 ## Step 9 Evidence
 
-- Added eight granular lifecycle permissions to Accounting and the Security default permission registry.
-- Added persistence-neutral lifecycle authorization and default segregation policy.
-- Wired authorization into every canonical lifecycle mutation handler before business execution.
-- Kept approve/reject/return/cancel permissions independent.
-- Prohibited self-approval for the active Approval cycle while avoiding unsupported mandatory poster/reverser separation.
-- Added stable unauthorized and segregation-violation errors.
-- Added focused authorization/SoD tests.
-- Updated the canonical security model and retained future Argin Bridge/server portability.
+- Added eight granular lifecycle permissions, Application-boundary authorization, default self-approval prohibition, stable authorization errors, and focused permission/SoD tests.
+
+## Step 10 Evidence
+
+- Added and registered `0014_journal_lifecycle.sql`.
+- Added additive `lifecycle_status` with the five-state relational constraint and deterministic Draft upgrade behavior.
+- Added durable Approval-cycle, posting, amendment, and reversal-lineage tables with foreign keys, checks, unique constraints, and query indexes.
+- Added migration tests for registration, Phase 13 upgrade, lifecycle-state validation, and schema/index creation.
+- Kept Repository/UoW/concurrency/idempotent execution in Step 11.
 
 ## Exit Criteria
 
