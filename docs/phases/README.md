@@ -26,8 +26,9 @@ All phase records live in this directory and follow the permanent [phase templat
 15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — in progress
    - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
    - [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md)
-   - Current step: Step 14 — Posting, Reversal, Traceability, and Failure UX — Completed
-   - Next step: Step 15 — Domain and Application Test Matrix
+   - [Step 15 Domain and Application Test Matrix](phase-15-step-15-test-matrix.md)
+   - Current step: Step 15 — Domain and Application Test Matrix — Completed
+   - Next step: Step 16 — Repository, Migration, Permission, and Desktop Regression Tests
 
 ## Renumbering Rule
 
