@@ -71,7 +71,7 @@ Excluded: Accounting Reports, automatic posting from operational modules, later 
 | 13 | Persian RTL Lifecycle Status and Action UI | Completed |
 | 14 | Posting, Reversal, Traceability, and Failure UX | Completed |
 | 15 | Domain and Application Test Matrix | Completed |
-| 16 | Repository, Migration, Permission, and Desktop Regression Tests | Not started |
+| 16 | Repository, Migration, Permission, and Desktop Regression Tests | Completed |
 | 17 | Monorepo Validation and Documentation Completion | Not started |
 | 18 | Final Review, Merge, and Release | Not started |
 
@@ -300,7 +300,7 @@ Evidence:
 - Added complete mapping checks for all eight lifecycle authorization actions and every UI lifecycle capability against the registered Journal permission vocabulary.
 - Existing focused tests remain the authoritative detailed coverage for Approval submit/decision/resubmission, final Posting and stale approval/fiscal revalidation, Draft-only locking/controlled amendment, expected-version failures, exact inverse Reversal, request-id replay/double-reversal prevention, authorization/SoD, post-commit audit/event ordering, and stable error semantics.
 - Added `docs/phases/phase-15-step-15-test-matrix.md` to map each Step 15 requirement to its concrete test evidence and keep Step 16 persistence/desktop responsibilities separate.
-- Step 15 runtime green is not claimed until `@argin/accounting` typecheck/tests are executed locally or through CI.
+- User confirmed Step 15 local validation is green.
 
 ### Step 16 — Repository, Migration, Permission, and Desktop Regression Tests
 
@@ -308,7 +308,19 @@ Evidence:
 
 Exit: persistence and desktop adapters cannot violate lifecycle contracts under covered scenarios.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Existing migration regression keeps deterministic Phase 13 Draft upgrade, migration registration, five-state CHECK protection, evidence-table creation, and protective-index discovery covered.
+- Added `apps/desktop/tests/journal-lifecycle-constraints.test.ts` using real in-memory SQLite to prove one-current-Approval-cycle uniqueness, one Posting evidence row, Amendment version integrity, reversal original/reversal/request uniqueness, and invalid self-lineage rejection.
+- Added `packages/accounting-tauri/tests/sqlite-journal-voucher-lifecycle-concurrency.test.ts` to prove `updateLifecycleState` stale expected-version CAS fails when no row is affected and does not issue a follow-up write.
+- Existing `sqlite-journal-voucher-lifecycle.test.ts` remains the focused evidence for one-transaction Posting, Amendment, Reversal/lineage, and exact-session Approval gateway composition.
+- Added `apps/desktop/tests/journal-lifecycle-desktop-regression.test.ts` to ensure all eight lifecycle permissions remain in the default Security registry, Post is not exposed without its explicit permission, and real Post/Reversal execution remains routed through canonical Application handlers/UoWs rather than direct React SQL.
+- Desktop regression also protects deliberate confirmation and the separation of stable business rejection from expandable technical diagnostics.
+- Added `docs/phases/phase-15-step-16-regression-matrix.md` mapping persistence/migration/permission/desktop requirements to their concrete tests.
+- Preserved the Step 10 test rules: convert `node:sqlite` result rows to plain objects before strict equality and use `sqlite_master.tbl_name` when discovering indexes attached to a table.
+- Step 16 runtime green is not claimed until the focused Accounting, Accounting-Tauri, and Desktop checks are executed locally or through CI.
 
 ### Step 17 — Monorepo Validation and Documentation Completion
 
