@@ -1,4 +1,3 @@
-import type { ApprovalRequest } from "@argin/audit";
 import type {
   JournalVoucher,
   JournalVoucherApprovalCycle,
@@ -61,9 +60,7 @@ export type JournalVoucherApprovalGatewayFactory =
   (session: DatabaseSession) => JournalVoucherApprovalGateway;
 
 export type JournalVoucherApprovalRequestReaderFactory =
-  (session: DatabaseSession) => {
-    findById(approvalRequestId: string): Promise<ApprovalRequest | null>;
-  };
+  (session: DatabaseSession) => Pick<JournalVoucherPostingSession, "getApprovalRequest">;
 
 class SqliteJournalVoucherLifecycleStore {
   readonly journals: SqliteJournalVoucherRepository;
@@ -294,7 +291,7 @@ export class SqliteJournalVoucherPostingUnitOfWork implements JournalVoucherPost
       return work({
         getVoucher: (id) => store.getVoucher(id),
         getCurrentApprovalCycle: (id) => store.getCurrentApprovalCycle(id),
-        getApprovalRequest: (id) => approvals.findById(id),
+        getApprovalRequest: (id) => approvals.getApprovalRequest(id),
         savePostedVoucher: async (voucher, expectedVersion, evidence) => {
           await store.saveVoucher(voucher, expectedVersion);
           await store.savePostingEvidence(evidence);
