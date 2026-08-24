@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 13 — Persian RTL Lifecycle Status and Action UI — Completed**.
+Current step: **Step 14 — Posting, Reversal, Traceability, and Failure UX — Completed**.
 
-Next step: **Step 14 — Posting, Reversal, Traceability, and Failure UX**.
+Next step: **Step 15 — Domain and Application Test Matrix**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -55,15 +55,7 @@ Domain/Application remain independent of React, Tauri, SQLite, PostgreSQL, HTTP,
 
 ## Step 5 — Final Posting
 
-Final posting requires:
-
-- company ownership and matching expected version;
-- exact `approved` state;
-- a current matching approved Approval request;
-- exact submitted-content version evidence;
-- current double-entry balance;
-- eligible accounts and accounting dimensions;
-- current open matching fiscal year/period.
+Final posting requires company ownership, matching expected version, exact `approved` state, current matching approved Approval evidence, exact submitted-content version, current double-entry/account/dimension validity, and a current open matching fiscal year/period.
 
 Successful posting creates immutable posting evidence containing Approval request, submitted/posted versions, actor, timestamp, and optional posting reference.
 
@@ -71,15 +63,7 @@ Successful posting creates immutable posting evidence containing Approval reques
 
 Ordinary update/delete is Draft-only. Pending Approval, Approved, Posted, and Reversed vouchers are locked.
 
-Approved vouchers may return to Draft only through the controlled amendment service with:
-
-- expected version;
-- current Approval cycle;
-- actor;
-- mandatory reason;
-- immutable amendment evidence.
-
-The current Approval cycle is closed so prior approval cannot authorize changed content.
+Approved vouchers may return to Draft only through the controlled amendment service with expected version, current Approval cycle, actor, mandatory reason, and immutable amendment evidence. The current Approval cycle is closed so prior approval cannot authorize changed content.
 
 ## Step 7 — Reversal and Replacement Lineage
 
@@ -89,28 +73,13 @@ Reversal uses durable `(companyId, requestId)` idempotency and prevents double r
 
 ## Step 8 — Application Contracts and Queries
 
-The canonical lifecycle Application surface exports:
-
-- explicit lifecycle commands;
-- expected-version and actor/request/correlation/causation metadata;
-- stable error codes;
-- lifecycle query/reader contracts;
-- `JournalVoucherLifecycleDto` with status/version/capabilities and Approval/Posting/Amendment/Reversal trace DTOs.
+The canonical lifecycle Application surface exports explicit lifecycle commands, expected-version and actor/request/correlation/causation metadata, stable error codes, lifecycle query/reader contracts, and `JournalVoucherLifecycleDto` with Approval/Posting/Amendment/Reversal trace DTOs.
 
 The contracts remain suitable for SQLite now and future Argin Bridge/PostgreSQL/.NET adapters.
 
 ## Step 9 — Authorization and Segregation of Duties
 
-Granular permissions exist for:
-
-- submit;
-- approve;
-- reject;
-- return to Draft;
-- cancel Approval;
-- post;
-- reopen for amendment;
-- reverse.
+Granular permissions exist for submit, approve, reject, return to Draft, cancel Approval, post, reopen for amendment, and reverse.
 
 Authorization is enforced at the Application boundary. UI visibility is usability only. The default segregation policy prohibits self-approval for the active Approval cycle without inventing mandatory poster/reverser separation for small organizations.
 
@@ -118,12 +87,7 @@ Authorization is enforced at the Application boundary. UI visibility is usabilit
 
 Migration `0014_journal_lifecycle.sql` adds authoritative `lifecycle_status` while preserving the Phase 13 legacy `status='draft'` constraint for upgrade safety.
 
-Lifecycle evidence tables include:
-
-- `journal_voucher_approval_cycles`;
-- `journal_voucher_posting_evidence`;
-- `journal_voucher_amendment_evidence`;
-- `journal_voucher_reversal_lineage`.
+Lifecycle evidence tables include `journal_voucher_approval_cycles`, `journal_voucher_posting_evidence`, `journal_voucher_amendment_evidence`, and `journal_voucher_reversal_lineage`.
 
 Unique indexes and checks protect one current Approval cycle, one posting evidence record, append-only amendment versions, unique reversal identities, and unique reversal request-id replay keys.
 
@@ -138,12 +102,7 @@ The user locally validated the desktop migration tests after correcting two test
 
 Lifecycle CAS updates use `WHERE ... version = expectedVersion` and shared optimistic-concurrency assertions.
 
-SQLite adapters provide atomic Unit of Work boundaries for:
-
-- Approval + Journal cycle persistence;
-- Posting + posting evidence;
-- controlled amendment + Approval-cycle closure + amendment evidence;
-- original reversal transition + reversal voucher + durable lineage.
+SQLite adapters provide atomic Unit of Work boundaries for Approval + Journal cycle persistence, Posting + posting evidence, controlled amendment + Approval-cycle closure + amendment evidence, and original reversal transition + reversal voucher + durable lineage.
 
 The Approval gateway is created against the exact transaction session. Reversal request/original uniqueness and persisted replay prevent duplicate outcomes.
 
@@ -153,20 +112,11 @@ The user confirmed Step 11 local validation is green.
 
 ## Step 12 — Audit, Integration Events, and Notifications
 
-`journal-voucher-lifecycle-effects.ts` defines canonical lifecycle evidence with:
+`journal-voucher-lifecycle-effects.ts` defines canonical lifecycle evidence with action/outcome, actor/company/branch/voucher, previous/new status and version, request/idempotency/correlation/causation ids, Approval request id, posting reference, reversal/replacement ids, and optional reason/comment.
 
-- action/outcome;
-- actor/company/branch/voucher;
-- previous/new status and version;
-- request/idempotency, correlation, and causation ids;
-- Approval request id;
-- posting reference;
-- reversal/replacement ids;
-- optional reason/comment.
+`createJournalVoucherLifecycleAuditRecorder` records this evidence through the existing immutable Audit subsystem.
 
-`createJournalVoucherLifecycleAuditRecorder` records the evidence through the existing immutable Audit subsystem.
-
-Canonical lifecycle handlers execute effects only after the Step 11 transaction returns successfully. Ordering is:
+Canonical lifecycle handlers execute effects only after the Step 11 transaction returns successfully:
 
 ```text
 transaction commit -> durable audit -> integration event -> optional notification
@@ -178,64 +128,70 @@ The user confirmed Step 12 local validation is green.
 
 ## Step 13 — Persian RTL Lifecycle Status and Action UI
 
-Step 13 introduces a mounted lifecycle presentation surface on the existing `/accounting/journal-vouchers` workspace.
-
-### Presenter
-
-`apps/desktop/src/features/accounting/journal-voucher-lifecycle-presenter.ts` provides:
-
-- Persian labels for all five lifecycle states;
-- state explanations;
-- lock/editability description;
-- visual tone metadata;
-- Persian version text;
-- next-action labels;
-- confirmation copy for consequential actions.
+`apps/desktop/src/features/accounting/journal-voucher-lifecycle-presenter.ts` provides Persian labels for all five lifecycle states, state explanations, lock/editability description, visual tone metadata, Persian version text, next-action labels, and confirmation copy.
 
 The presenter receives `JournalVoucherLifecycleDto.capabilities.actions` and intersects them with the official Application `permissionForCapability` mapping. React therefore does not duplicate transition rules or invent permission codes.
 
-The existing `journal-voucher-presenter.ts` status formatter was also made lifecycle-aware instead of always returning `پیش‌نویس`.
+`JournalVoucherLifecycleOverview` is mounted through `JournalVouchersLifecyclePage` on the existing `/accounting/journal-vouchers` workspace. The compact RTL table displays voucher number, Solar Hijri date, canonical lifecycle status, status explanation, lock/editability state, optimistic version, and next actions allowed by both lifecycle policy and current permissions.
 
-### Mounted lifecycle overview
+The existing editor remains Draft-only, which is the correct lifecycle policy. The user confirmed Step 13 local validation is green.
 
-`JournalVoucherLifecycleOverview` is mounted through `JournalVouchersLifecyclePage` on the existing Journal Voucher route.
+## Step 14 — Posting, Reversal, Traceability, and Failure UX
 
-It reads durable lifecycle data through:
+Step 14 converts the high-impact lifecycle actions from presentation-only affordances into executable desktop workflows without placing accounting policy in React.
 
+### Desktop lifecycle composition
+
+`apps/desktop/src/composition/accounting/create-journal-lifecycle-services.ts` composes canonical Application handlers with:
+
+- `SqliteJournalVoucherPostingUnitOfWork`;
+- `SqliteJournalVoucherReversalUnitOfWork`;
 - `SqliteJournalVoucherLifecycleReader`;
-- `getJournalVoucherLifecycle`.
+- current Approval evidence through `SqliteApprovalRepository`;
+- current account, fiscal, and dimension readers;
+- Journal Number Series for reversal vouchers;
+- Step 12 Audit, EventBus, and Notification effects.
 
-The compact RTL table displays:
+A small adapter translates the generic database `query()` contract into the existing Audit adapter `select()` contract only at the composition boundary. Repository and Domain contracts are unchanged.
 
-- voucher number;
-- Solar Hijri date;
-- canonical lifecycle status;
-- status explanation;
-- lock/editability state;
-- optimistic version;
-- next actions allowed by both lifecycle policy and the current user's permissions.
+`AccountingProvider` exposes the new `journalLifecycle` service alongside the existing Phase 13 Journal service.
 
-The view includes company selection, refresh, loading, empty, and explicit error states. Styling follows the Phase 14 compact desktop-density direction and remains horizontally scrollable on constrained widths rather than inflating accounting rows.
+### Posting and reversal UX
 
-The existing editor remains Draft-only, which is the correct lifecycle policy. Step 13 does not introduce UI shortcuts that mutate non-Draft vouchers.
+The lifecycle overview now executes canonical `post` and `reverse` commands.
 
-### Tests
+Posting supplies actor/company/voucher/expected-version/correlation metadata and an optional posting reference. Reversal additionally requires a durable request id, reversal date, and mandatory reason.
 
-`apps/desktop/tests/journal-voucher-lifecycle-presenter.test.ts` covers:
+Both operations use deliberate confirmation UX. The modal explains the irreversible accounting effect and a second explicit confirmation is required before execution. Reversal cannot continue while its reason is empty.
 
-- Persian labels for all five states;
-- capability/permission intersection;
-- `system.full-access` behavior;
-- terminal Reversed state;
-- confirmation metadata for consequential actions.
+After success, the UI reloads persisted lifecycle state and reports either the new posted version or the generated reversal voucher number.
 
-Detailed Posting/Reversal execution, traceability navigation, deliberate execution confirmations, and stable business-vs-technical failure mapping remain Step 14 according to the frozen plan.
+### Traceability
+
+Every row can expand an in-place traceability surface showing:
+
+- current Approval request and submitted content version;
+- Posting actor/time/version/reference;
+- latest controlled Amendment actor/time/version/reason;
+- original/reversal/replacement ids, reversal actor/time/reason.
+
+Approval request ids navigate to the existing Approval details route, while reversal lineage is rendered from the durable lifecycle reader rather than reconstructed from descriptions.
+
+### Failure UX
+
+`presentJournalVoucherLifecycleFailure` separates stable `journal.*` Application/business failures from unknown technical failures.
+
+Business rejections receive Persian recovery guidance for stale version, authorization, segregation of duties, missing/invalid Approval, posting validation, reversal validation, changed approved content, and already-reversed states. Raw technical details are not shown for these expected business outcomes.
+
+Unknown failures are rendered as a visually distinct technical error with an expandable diagnostic section. This preserves the project convention of user-friendly error text plus separately accessible technical detail.
+
+Focused desktop presenter tests now cover business-vs-technical failure classification and explicit irreversible confirmation copy for Post/Reversal.
+
+Step 14 implementation is complete. Runtime green is not claimed until the updated desktop typecheck/tests are executed locally or through CI.
 
 ## Security
 
-Application authorization remains authoritative. The lifecycle overview is a presentation projection only and cannot grant a lifecycle transition.
-
-The default self-approval prohibition remains enforced at the Application boundary independent of which actions are displayed.
+Application authorization remains authoritative. Lifecycle UI cannot grant a transition. The default self-approval prohibition remains enforced independently of which actions are displayed.
 
 ## Testing and Validation
 
@@ -244,9 +200,10 @@ Confirmed local validation:
 - Step 5 focused Accounting tests/typecheck;
 - Step 10 desktop migration tests after the user's correction commit;
 - Step 11 local validation;
-- Step 12 local validation.
+- Step 12 local validation;
+- Step 13 local validation.
 
-Focused commands for the Step 13 branch state are:
+Focused commands for the Step 14 branch state are:
 
 ```bash
 pnpm --filter @argin/accounting typecheck
@@ -257,9 +214,9 @@ pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 ```
 
-Step 13 runtime success is not claimed until these updated desktop checks are executed locally or through CI.
+Step 14 runtime success is not claimed until these updated desktop checks are executed locally or through CI.
 
-The exhaustive Domain/Application matrix remains Step 15 and the full persistence/permission/desktop regression matrix remains Step 16.
+The exhaustive Domain/Application matrix is Step 15 and the full persistence/permission/desktop regression matrix is Step 16.
 
 ## Related ADRs
 
@@ -273,21 +230,11 @@ The exhaustive Domain/Application matrix remains Step 15 and the full persistenc
 
 ## Exit Criteria
 
-Phase 15 is complete only when:
-
-- all fixed steps are satisfied or explicitly changed through an approved Change Request;
-- lifecycle rules remain enforced outside UI;
-- posted accounting facts remain audit-safe;
-- Approval/Posting/Reversal flows are atomic and concurrency-safe;
-- permissions and audit evidence are present;
-- migration and adapter behavior are validated;
-- desktop lifecycle UX follows project standards;
-- documentation is complete;
-- the phase is merged and released.
+Phase 15 is complete only when all fixed steps are satisfied or explicitly changed through an approved Change Request; lifecycle rules remain enforced outside UI; posted accounting facts remain audit-safe; Approval/Posting/Reversal flows are atomic and concurrency-safe; permissions and audit evidence are present; migration and adapter behavior are validated; desktop lifecycle UX follows project standards; documentation is complete; and the phase is merged and released.
 
 ## Next Step
 
-Step 14 — Posting, Reversal, Traceability, and Failure UX.
+Step 15 — Domain and Application Test Matrix.
 
 ## Next Phase
 
