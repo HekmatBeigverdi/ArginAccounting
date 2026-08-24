@@ -181,6 +181,19 @@ export {
   handleReverseJournalVoucherLifecycleCommand,
   handleSubmitJournalVoucherLifecycleCommand,
 } from "./application/journal-voucher-lifecycle-command-handlers.ts";
+export type {
+  EmitJournalVoucherLifecycleSuccessInput,
+  JournalVoucherLifecycleAuditEvidence,
+  JournalVoucherLifecycleAuditRecorder,
+  JournalVoucherLifecycleEffectAction,
+  JournalVoucherLifecycleEffects,
+  JournalVoucherLifecycleEventPublisher,
+} from "./application/journal-voucher-lifecycle-effects.ts";
+export {
+  emitJournalVoucherAuthorizationDenied,
+  emitJournalVoucherLifecycleSuccess,
+} from "./application/journal-voucher-lifecycle-effects.ts";
+export { createJournalVoucherLifecycleAuditRecorder } from "./application/journal-voucher-lifecycle-audit-recorder.ts";
 export type { JournalVoucherLifecycleReader } from "./application/journal-voucher-lifecycle-queries.ts";
 export { getJournalVoucherLifecycle } from "./application/journal-voucher-lifecycle-queries.ts";
 export {
