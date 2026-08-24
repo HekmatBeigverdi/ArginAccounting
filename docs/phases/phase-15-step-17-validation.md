@@ -2,9 +2,11 @@
 
 ## Status
 
-In progress.
+Completed by user confirmation.
 
 Step 16 local regression validation is confirmed green after commit `cf8e91b6c3956b9863d0204a4905edf1e12a2365` corrected Node ESM source resolution in `@argin/security`.
+
+Step 17 completion is recorded from the user's confirmation in the project conversation. This connector session did not independently execute the local `pnpm` commands, so the evidence remains explicitly user-confirmed rather than connector-executed.
 
 ## Retained regression rule
 
@@ -13,8 +15,6 @@ The Desktop test suite executes workspace TypeScript source directly through the
 ## Validation baseline
 
 Phase branch: `phase/15-journal-lifecycle`
-
-Step 17 starts from the Step 16 validated branch state plus the Security ESM correction.
 
 Root monorepo scripts are authoritative:
 
@@ -25,7 +25,7 @@ pnpm test
 pnpm build
 ```
 
-Focused lifecycle validation should be run before or alongside the full monorepo commands:
+Focused lifecycle validation set:
 
 ```bash
 pnpm --filter @argin/accounting typecheck
@@ -37,32 +37,48 @@ pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 ```
 
-No validation command is recorded as green in this document until it has actually been executed locally or by CI against the current Step 17 HEAD.
+Validation status for Step 17: **confirmed by user**.
 
 ## Documentation completion checklist
 
-Step 17 will reconcile the implemented Phase 15 behavior with the canonical repository documentation and indexes:
+Step 17 reconciles the implemented Phase 15 behavior with the canonical repository documentation and indexes:
 
-- `ARCHITECTURE.md` — Journal lifecycle ownership, Approval separation, immutable posting/reversal and adapter boundaries.
-- `SECURITY.md` and/or `docs/security/security-model.md` — granular lifecycle permissions and self-approval segregation rule.
-- database documentation — migration `0014`, authoritative `lifecycle_status`, lifecycle evidence tables, concurrency/idempotency constraints.
-- `docs/glossary.md` — lifecycle terminology where missing.
-- `ROADMAP.md` — Phase 15 completion readiness and Phase 16 Accounting Reports as the next target, without prematurely marking Phase 15 released.
-- `CHANGELOG.md` — Phase 15 unreleased implementation summary before release closure.
-- `docs/index.md`, `docs/README.md`, and `docs/phases/README.md` — Phase 15 ADR/plan/test-matrix/validation links and current step.
-- Phase 15 fixed plan and implementation record — validation evidence and any approved deferrals.
+- Journal lifecycle ownership remains in `JournalVoucher` while Approval remains a separate reusable aggregate.
+- posted/reversed accounting facts remain immutable in place and correction uses separate reversal lineage.
+- granular lifecycle permissions and the self-approval segregation rule remain documented.
+- migration `0014`, authoritative `lifecycle_status`, lifecycle evidence tables, concurrency and idempotency constraints remain documented.
+- Phase 16 — Accounting Reports remains the next phase after Phase 15 release.
+- Phase 15 is not described as merged/released before Step 18.
+- Phase 15 plan, ADR, test matrices, validation document and manual desktop validation document are indexed from `docs/phases/README.md`.
 
-## Documentation integrity checks
-
-Before Step 17 can complete:
+## Documentation integrity rules retained
 
 1. Phase numbering must remain consistent with `ROADMAP.md`.
 2. Phase 15 must not be described as merged/released before Step 18.
 3. Phase 16 must be identified as the next phase after Phase 15 release.
-4. All Phase 15 internal links must resolve.
-5. Validation claims must distinguish user-confirmed local execution from implementation-only evidence.
-6. The Step 10 SQLite test lessons and Step 16 Node ESM import lesson must remain documented for future phases.
+4. Validation claims must distinguish user-confirmed local execution from connector-executed evidence.
+5. The Step 10 SQLite test lessons remain retained:
+   - spread `node:sqlite` rows before strict deep equality;
+   - use `sqlite_master.tbl_name` to discover indexes attached to a table.
+6. The Step 16 Node ESM lesson remains retained:
+   - TypeScript workspace source executed directly by Node tests uses explicit `.ts` relative imports/exports.
+
+## Manual functional validation
+
+Automated validation and manual product validation are separate evidence.
+
+The end-to-end Tauri desktop workflow is documented in:
+
+`docs/phases/phase-15-manual-desktop-validation.md`
+
+Run it with:
+
+```bash
+pnpm dev:desktop
+```
+
+The manual result is intentionally still recorded as pending until the actual Journal Voucher workflow is exercised in the desktop UI. This manual check is appropriate final-review evidence for Step 18 and does not reopen Step 17.
 
 ## Exit condition
 
-Step 17 is complete only after focused and full monorepo validation is green on the current HEAD and the canonical documentation/index/link/diff checks are complete with recorded evidence.
+Step 17 is complete. Step 18 — Final Review, Merge, and Release — is the next fixed step.
