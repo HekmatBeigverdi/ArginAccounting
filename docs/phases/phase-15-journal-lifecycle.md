@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 10 — Migration and Lifecycle Persistence Model — Completed**.
+Current step: **Step 11 — SQLite Repository, Unit of Work, Concurrency, and Idempotency — Completed**.
 
-Next step: **Step 11 — SQLite Repository, Unit of Work, Concurrency, and Idempotency**.
+Next step: **Step 12 — Audit, Integration Events, and Notifications**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -67,7 +67,7 @@ draft -> pending_approval -> approved -> posted -> reversed
             +----> draft <-----+
 ```
 
-Steps 4–9 provide approval integration, final posting, controlled amendment, reversal/lineage, canonical Application contracts, and explicit authorization/segregation. Step 10 now adds the durable relational model needed for lifecycle state and evidence without prematurely implementing the SQLite repositories that consume it.
+Steps 4–10 provide lifecycle behavior, authorization, and the durable relational schema. Step 11 now connects those persistence-neutral Application contracts to SQLite transactions without moving business rules into the adapter.
 
 ## Domain Model
 
@@ -103,7 +103,7 @@ Only `draft` is ordinarily editable. `approved` can return to `draft` only throu
 
 Step 8 exposes one persistence-neutral command/query/DTO surface through `@argin/accounting/journal`. `JournalVoucherLifecycleCommandContext` carries actor, company, request/idempotency, correlation, causation, and occurrence metadata. The lifecycle DTO exposes persisted state/version and Approval/Posting/Amendment/Reversal traceability.
 
-State-policy capabilities answer what the lifecycle state allows; user authorization is a separate concern resolved by Step 9.
+State-policy capabilities answer what the lifecycle state allows; user authorization remains a separate concern.
 
 ## Authorization, Permissions, and Segregation of Duties
 
@@ -115,33 +115,68 @@ The default segregation policy prohibits self-approval for the active Approval c
 
 Step 10 adds `apps/desktop/src-tauri/migrations/0014_journal_lifecycle.sql`, registered as migration version 14 (`journal_lifecycle`) in the Tauri SQL migration runner.
 
-The Phase 13 table has a legacy `status` constraint fixed to `draft`. Rather than rebuilding `journal_vouchers` and risking child foreign-key rewrites during upgrade, the Phase 15 migration is additive and introduces:
-
-- `lifecycle_status` on `journal_vouchers` as the authoritative lifecycle persistence column;
-- a CHECK constraint limited to `draft`, `pending_approval`, `approved`, `posted`, and `reversed`;
-- a company/status/date index for lifecycle list and workspace queries.
-
-Existing Phase 13 rows receive `lifecycle_status = 'draft'` by default. Their ids, numbers, lines, dimensions, totals, timestamps, request ids, and optimistic versions are not rewritten.
+The Phase 13 table retains its legacy `status = 'draft'` constraint for upgrade safety. Phase 15 adds `lifecycle_status` as the authoritative lifecycle persistence column with the five-state CHECK constraint and preserves existing Draft rows without destructive table rebuild.
 
 Lifecycle evidence is stored in dedicated relational tables:
 
-- `journal_voucher_approval_cycles`: Approval linkage, submitted-content version, current/closed state, and history;
-- `journal_voucher_posting_evidence`: one durable posting record per voucher with Approval/version/actor/time/reference evidence;
-- `journal_voucher_amendment_evidence`: append-only controlled-amendment history keyed by voucher/reopened version;
-- `journal_voucher_reversal_lineage`: unique original/reversal linkage, optional replacement, company/request idempotency key, actor/time/reason.
+- `journal_voucher_approval_cycles`;
+- `journal_voucher_posting_evidence`;
+- `journal_voucher_amendment_evidence`;
+- `journal_voucher_reversal_lineage`.
 
-Protective relational rules include:
+Protective uniqueness/index rules preserve one current Approval cycle, one posting record, append-only amendment versions, unique original/reversal identities, and unique reversal `(company_id, request_id)` replay keys.
 
-- one current Approval cycle per voucher through a partial unique index;
-- one posting-evidence row per voucher;
-- deterministic amendment version progression;
-- unique original and reversal identities in reversal lineage;
-- unique `(company_id, request_id)` reversal replay key;
-- same-company foreign keys to Journal Vouchers;
-- bounded actor/reference/reason/request fields and distinct-identity checks;
-- indexes for Approval history, posting evidence, latest amendment, lifecycle status, and replacement lineage.
+The user executed `pnpm --filter @argin/desktop test` locally after Step 10, fixed the two test-only defects, pushed commit `e9bae35ddfde307f752a287199bbe7b22bfcf3f5`, and confirmed the suite is green. The retained test rules are:
 
-Concrete expected-version SQL updates, transaction composition, repository mapping to `lifecycle_status`, and retry execution remain Step 11.
+- spread `node:sqlite` result rows into plain objects before strict deep equality;
+- use `sqlite_master.tbl_name` when discovering indexes attached to Journal tables rather than filtering index names as if they were table names.
+
+## SQLite Repository, Unit of Work, Concurrency, and Idempotency
+
+Step 11 extends `@argin/accounting-tauri` with the concrete SQLite lifecycle adapter.
+
+`SqliteJournalVoucherRepository` now treats `lifecycle_status` as the persisted lifecycle source of truth. `rehydrateJournalVoucher` restores persisted status rather than silently recreating every loaded voucher as `draft`.
+
+The legacy Phase 13 `status` column remains `draft`. New reversal/compensating vouchers can therefore be inserted with legacy `status='draft'` while their authoritative `lifecycle_status='posted'`, avoiding violation of the original CHECK constraint without weakening the Phase 15 model.
+
+Optimistic lifecycle state changes use `updateLifecycleState`:
+
+```text
+UPDATE journal_vouchers
+SET lifecycle_status = ?, updated_at = ?, version = ?
+WHERE id = ? AND company_id = ? AND version = ?
+```
+
+The shared `assertVersionedUpdate` path rejects stale transitions when no row matches the expected version.
+
+`packages/accounting-tauri/src/sqlite-journal-voucher-lifecycle.ts` provides:
+
+- `SqliteJournalVoucherApprovalUnitOfWork`;
+- `SqliteJournalVoucherPostingUnitOfWork`;
+- `SqliteJournalVoucherAmendmentUnitOfWork`;
+- `SqliteJournalVoucherReversalUnitOfWork`;
+- `SqliteJournalVoucherLifecycleReader`.
+
+Each multi-write lifecycle operation executes inside one `DatabaseExecutor.transaction(...)` boundary.
+
+Approval integration accepts a `JournalVoucherApprovalGatewayFactory` bound to the exact transaction `DatabaseSession`. This keeps the Journal transition, generic Approval mutation, and approval-cycle persistence eligible to commit or roll back together. Existing Approval-cycle rows are updated through UPSERT when an approved cycle remains current rather than attempting a second insert of the same Approval Request id.
+
+Posting performs the lifecycle CAS update and inserts posting evidence in the same transaction. Controlled amendment performs the lifecycle CAS update, current-cycle close, and amendment evidence insert in one transaction. Reversal performs the original CAS transition, new reversal-voucher persistence, and unique lineage insert in one transaction.
+
+Retry/concurrency protection is layered:
+
+- expected-version CAS protects stale Journal transitions;
+- the one-current-cycle partial unique index prevents concurrent duplicate current Approval cycles;
+- one-row posting evidence prevents duplicate final posting evidence;
+- unique reversal original/reversal identities prevent a second committed reversal chain;
+- unique `(company_id, request_id)` reversal lineage prevents duplicate retry outcomes;
+- existing Journal `(company_id, request_id)` uniqueness continues to protect retry-sensitive voucher creation.
+
+`SqliteJournalVoucherLifecycleReader` reads current Approval cycle, posting evidence, latest amendment evidence, and reversal/replacement lineage directly from durable tables, so traceability is not reconstructed from descriptions.
+
+Focused adapter tests were added in `packages/accounting-tauri/tests/sqlite-journal-voucher-lifecycle.test.ts` for one-transaction Amendment, one-transaction Reversal, same-session Approval gateway creation, and atomic Posting evidence persistence.
+
+Post-commit audit/integration-event dispatch remains Step 12 by the frozen plan. Step 11 deliberately guarantees database atomicity and leaves event emission outside the transaction boundary for the next step.
 
 ## Security
 
@@ -155,7 +190,7 @@ Later lifecycle UI consumes state-policy capabilities and permission-aware Appli
 
 ## Testing
 
-Focused coverage through Step 10 includes:
+Focused coverage through Step 11 includes:
 
 - Domain lifecycle legal/illegal paths;
 - Approval integration and duplicate-cycle prevention;
@@ -164,28 +199,31 @@ Focused coverage through Step 10 includes:
 - reversal replay/double-reversal/replacement lineage;
 - lifecycle command/query/DTO contracts;
 - granular lifecycle permission and self-approval rules;
-- migration 14 registration in the desktop runner;
-- upgrade of existing Phase 13 Draft vouchers to `lifecycle_status = 'draft'` without data loss;
-- enforcement of the five allowed lifecycle states;
-- creation of lifecycle evidence tables and protective indexes.
+- migration 14 registration and Phase 13 Draft upgrade;
+- lifecycle evidence schema and protective indexes;
+- persisted lifecycle-status rehydration boundary;
+- optimistic lifecycle update SQL;
+- atomic Posting, Amendment, Reversal, and Approval-session adapter behavior.
 
-The exhaustive Domain/Application matrix remains Step 15 and the full migration/repository regression suite remains Step 16.
+The exhaustive Domain/Application matrix remains Step 15 and the full persistence/permission/desktop regression matrix remains Step 16.
 
 ## Validation
 
-Focused local validation commands are:
+Focused local validation commands after Step 11 are:
 
 ```bash
 pnpm --filter @argin/accounting typecheck
 pnpm --filter @argin/accounting test
+pnpm --filter @argin/accounting-tauri typecheck
+pnpm --filter @argin/accounting-tauri test
 pnpm --filter @argin/desktop test
 ```
 
-Step 5 validation is confirmed from the user's local environment. Step 6–10 code and focused tests are committed; runtime success for the updated Step 10 branch is not claimed until it is executed locally or through CI.
+Step 10 desktop validation is confirmed green from the user's local environment after commit `e9bae35ddfde307f752a287199bbe7b22bfcf3f5`. Step 11 code and focused adapter tests are committed, but Step 11 runtime success is not claimed until these updated commands are executed locally or through CI.
 
 ## Documentation Impact
 
-Phase 15 maintains the fixed plan, this implementation record, ADR-0015, security model, migration registration, and persistence-model evidence as implementation progresses. Audit/integration, glossary, roadmap, changelog, and release documentation remain aligned with their scheduled steps.
+Phase 15 maintains the fixed plan, this implementation record, ADR-0015, security model, migration registration, and SQLite lifecycle adapter evidence as implementation progresses. Audit/integration, glossary, roadmap, changelog, and release documentation remain aligned with their scheduled steps.
 
 ## Related ADRs
 
@@ -234,8 +272,17 @@ Phase 15 maintains the fixed plan, this implementation record, ADR-0015, securit
 - Added and registered `0014_journal_lifecycle.sql`.
 - Added additive `lifecycle_status` with the five-state relational constraint and deterministic Draft upgrade behavior.
 - Added durable Approval-cycle, posting, amendment, and reversal-lineage tables with foreign keys, checks, unique constraints, and query indexes.
-- Added migration tests for registration, Phase 13 upgrade, lifecycle-state validation, and schema/index creation.
-- Kept Repository/UoW/concurrency/idempotent execution in Step 11.
+- Added migration tests and recorded the user's local correction/green validation commit `e9bae35ddfde307f752a287199bbe7b22bfcf3f5`.
+
+## Step 11 Evidence
+
+- Added persisted lifecycle status rehydration and separated the Phase 13 legacy status column from the authoritative Phase 15 lifecycle column.
+- Added expected-version SQLite CAS for lifecycle transitions.
+- Added SQLite Approval, Posting, Amendment, and Reversal Unit of Work adapters over the shared database transaction contract.
+- Added same-session Approval gateway factory integration and Approval-cycle UPSERT behavior.
+- Added atomic posting evidence, amendment evidence, reversal voucher/lineage persistence, and durable lifecycle trace reader.
+- Added focused Accounting Tauri lifecycle transaction tests and the explicit `@argin/audit` adapter dependency.
+- Preserved event publication as Step 12 post-commit work rather than emitting integration events inside the database transaction.
 
 ## Exit Criteria
 
