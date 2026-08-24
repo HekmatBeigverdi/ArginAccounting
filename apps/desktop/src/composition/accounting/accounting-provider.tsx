@@ -27,6 +27,10 @@ import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { usePlatform } from "../../platform";
 import { createCodingTemplateServices, type CodingTemplateServices } from "./create-coding-template-services";
 import {
+  createJournalLifecycleServices,
+  type JournalLifecycleDesktopServices,
+} from "./create-journal-lifecycle-services";
+import {
   createJournalVoucherServices,
   type JournalVoucherDesktopServices,
 } from "./create-journal-voucher-services";
@@ -37,18 +41,15 @@ interface AccountingServices {
   readonly dimensionSelector: AccountingDimensionSelectorService;
   readonly codingTemplates: CodingTemplateServices;
   readonly journals: JournalVoucherDesktopServices;
+  readonly journalLifecycle: JournalLifecycleDesktopServices;
 }
 
-const AccountingContext = createContext<AccountingServices | undefined>(
-  undefined,
-);
+const AccountingContext = createContext<AccountingServices | undefined>(undefined);
 
 export function AccountingProvider({ children }: PropsWithChildren) {
   const platform = usePlatform();
   const { session } = useAuthSession();
-  const [database, setDatabase] = useState<Awaited<
-    ReturnType<typeof getDesktopDatabase>
-  > | null>(null);
+  const [database, setDatabase] = useState<Awaited<ReturnType<typeof getDesktopDatabase>> | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -120,9 +121,7 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         platform.eventBus,
         context,
       ),
-      dimensionSelector: new SqliteAccountingDimensionSelectorService(
-        database,
-      ),
+      dimensionSelector: new SqliteAccountingDimensionSelectorService(database),
       codingTemplates: createCodingTemplateServices({
         database,
         clock: platform.clock,
@@ -138,12 +137,21 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         eventBus: platform.eventBus,
         authorizer,
       }),
+      journalLifecycle: createJournalLifecycleServices({
+        database,
+        clock: platform.clock,
+        idGenerator: platform.idGenerator,
+        eventBus: platform.eventBus,
+        notificationService: platform.notificationService,
+        authorizer,
+      }),
     };
   }, [
     database,
     platform.clock,
     platform.eventBus,
     platform.idGenerator,
+    platform.notificationService,
     session,
   ]);
 
@@ -182,9 +190,7 @@ export function AccountingProvider({ children }: PropsWithChildren) {
 export function useAccountingServices(): AccountingServices {
   const services = useContext(AccountingContext);
   if (services === undefined) {
-    throw new Error(
-      "useAccountingServices must be used inside AccountingProvider.",
-    );
+    throw new Error("useAccountingServices must be used inside AccountingProvider.");
   }
   return services;
 }
