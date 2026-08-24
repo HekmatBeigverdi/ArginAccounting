@@ -24,6 +24,13 @@ Step 16 covers persistence, migration, permission, and desktop regression bounda
 | High-impact confirmation remains present | `journal-lifecycle-desktop-regression.test.ts` |
 | Business failures remain separate from technical diagnostics | `journal-lifecycle-desktop-regression.test.ts` |
 | Reversal request replay and duplicate reversal semantics | Step 15 Application tests plus SQLite uniqueness coverage above |
+| Node ESM can directly load Security source used by Desktop regression tests | Relative Security imports/exports use explicit `.ts` extensions and Security enables `allowImportingTsExtensions` |
+
+## Regression lesson retained from local validation
+
+The first local `@argin/desktop` run exposed a Node ESM resolution failure in `@argin/security`: the Desktop regression test imports the Security package source directly, but Security still used extensionless relative ESM imports. Commit `cf8e91b6c3956b9863d0204a4905edf1e12a2365` corrected the package by adding explicit `.ts` extensions to relative imports/exports and enabling `allowImportingTsExtensions` in `packages/security/tsconfig.json`.
+
+Retained rule for future phases: if a workspace package's TypeScript source is executed directly by the Node test runner, relative ESM imports/exports must follow the repository's explicit `.ts` extension convention; do not assume the bundler will resolve extensionless source imports during Node tests.
 
 ## Local validation for Step 16
 
@@ -36,4 +43,4 @@ pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 ```
 
-Step 16 implementation completion does not imply these commands are green until executed locally or in CI.
+The user confirmed the Step 16 local validation is green after the Security ESM import correction was pushed.
