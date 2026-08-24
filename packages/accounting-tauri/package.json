@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@argin/accounting": "workspace:*",
-    "@argin/audit": "workspace:*",
     "@argin/database": "workspace:*",
     "xlsx": "0.18.5"
   },
