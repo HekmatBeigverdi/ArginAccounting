@@ -88,7 +88,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | 7 | Reversal and Replacement Lineage | Completed |
 | 8 | Application Contracts, Commands, and Queries | Completed |
 | 9 | Authorization, Permissions, and Segregation of Duties | Completed |
-| 10 | Migration and Lifecycle Persistence Model | Not started |
+| 10 | Migration and Lifecycle Persistence Model | Completed |
 | 11 | SQLite Repository, Unit of Work, Concurrency, and Idempotency | Not started |
 | 12 | Audit, Integration Events, and Notifications | Not started |
 | 13 | Persian RTL Lifecycle Status and Action UI | Not started |
@@ -347,7 +347,21 @@ Exit criteria:
 - Clean database and upgrade-from-Phase-14/13 data paths are deterministic.
 - Existing Draft vouchers migrate to the correct initial lifecycle state without data loss.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `apps/desktop/src-tauri/migrations/0014_journal_lifecycle.sql` and registered migration version 14 (`journal_lifecycle`) in the Tauri SQL migration runner.
+- Preserved the Phase 13 `journal_vouchers.status = 'draft'` schema contract for upgrade safety and introduced additive `lifecycle_status` as the authoritative Phase 15 state column with a relational CHECK for exactly `draft`, `pending_approval`, `approved`, `posted`, and `reversed`.
+- Existing Phase 13 vouchers receive `lifecycle_status = 'draft'` through the column default without table rebuild, line/dimension rewrite, number changes, or version changes.
+- Added `journal_voucher_approval_cycles` with durable submitted-content version, current/closed state, Approval Request linkage, history index, and a partial unique index enforcing at most one current cycle per voucher.
+- Added `journal_voucher_posting_evidence` for approval request, submitted/posted versions, actor, timestamp, and posting reference with one posting-evidence row per voucher and validation constraints.
+- Added append-only `journal_voucher_amendment_evidence` keyed by voucher/reopened version with prior version, approval request, actor, timestamp, and bounded mandatory reason.
+- Added `journal_voucher_reversal_lineage` with unique original voucher, unique reversal voucher, optional replacement voucher, company/request idempotency key, actor/time/reason evidence, same-company foreign keys, distinct-identity checks, and unique `(company_id, request_id)` replay protection.
+- Added lifecycle/status, approval-history, posting, amendment-latest, and reversal/replacement indexes for the common read paths required by Step 8 DTO/query contracts.
+- Kept concrete Repository/Unit of Work SQL behavior, expected-version UPDATE predicates, transaction composition, and retry execution in Step 11 rather than embedding adapter behavior into the migration.
+- Added `apps/desktop/tests/journal-lifecycle-migration.test.ts` covering migration registration, Phase 13 Draft upgrade without data loss, allowed/invalid lifecycle-state constraints, and creation of lifecycle evidence tables/protective indexes.
+- Step 10 runtime migration/test success is not claimed until the updated branch is executed locally or through CI.
 
 ### Step 11 — SQLite Repository, Unit of Work, Concurrency, and Idempotency
 
