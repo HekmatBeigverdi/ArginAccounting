@@ -68,7 +68,7 @@ Excluded: Accounting Reports, automatic posting from operational modules, later 
 | 10 | Migration and Lifecycle Persistence Model | Completed |
 | 11 | SQLite Repository, Unit of Work, Concurrency, and Idempotency | Completed |
 | 12 | Audit, Integration Events, and Notifications | Completed |
-| 13 | Persian RTL Lifecycle Status and Action UI | Not started |
+| 13 | Persian RTL Lifecycle Status and Action UI | Completed |
 | 14 | Posting, Reversal, Traceability, and Failure UX | Not started |
 | 15 | Domain and Application Test Matrix | Not started |
 | 16 | Repository, Migration, Permission, and Desktop Regression Tests | Not started |
@@ -235,7 +235,7 @@ Evidence:
 - Approval requester receives in-app notifications for approved/rejected/returned/cancelled outcomes; Posting/Reversal avoid redundant self-notification.
 - Added focused `journal-voucher-lifecycle-effects.test.ts` coverage for audit-before-event ordering, Approval notification, and audit-only denial.
 - Preserved `exactOptionalPropertyTypes` compatibility by conditionally omitting absent event/notification properties.
-- Step 12 runtime green is not claimed until the updated branch is executed locally or through CI.
+- User confirmed Step 12 local validation is green.
 
 ### Step 13 — Persian RTL Lifecycle Status and Action UI
 
@@ -245,7 +245,20 @@ Evidence:
 
 Exit: users understand state and allowed next actions; presentation is not source of truth.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `journal-voucher-lifecycle-presenter.ts` with canonical Persian labels/descriptions for `draft`, `pending_approval`, `approved`, `posted`, and `reversed`, lock state, visual tone, version text, action labels, and confirmation copy.
+- Presenter intersects `JournalVoucherLifecycleDto.capabilities.actions` with the official Application `permissionForCapability` mapping; React does not duplicate transition or permission codes.
+- Added `JournalVoucherLifecycleOverview` to the main `/accounting/journal-vouchers` route, reading current persisted lifecycle through `SqliteJournalVoucherLifecycleReader` and `getJournalVoucherLifecycle`.
+- The mounted compact RTL table exposes voucher number, Solar Hijri date, lifecycle state/explanation, lock/editability, version, and the next actions currently allowed by both state policy and user permissions.
+- Kept the existing editor Draft-only, matching lifecycle policy; non-Draft mutation rules remain outside presentation.
+- Added compact responsive styling aligned with Phase 14 desktop-density conventions and explicit loading, empty, refresh, and error states.
+- Made the existing journal presenter lifecycle-status label aware for compatibility with later detail integration.
+- Added desktop presenter tests covering all five Persian state labels, capability/permission intersection, full-access behavior, terminal reversed state, and confirmation metadata for consequential actions.
+- Execution wiring for high-impact Posting/Reversal actions, detailed lineage navigation, and business-vs-technical failure presentation remains Step 14 as frozen.
+- Step 13 runtime green is not claimed until the updated desktop branch is executed locally or through CI.
 
 ### Step 14 — Posting, Reversal, Traceability, and Failure UX
 
