@@ -69,8 +69,7 @@ export async function emitJournalVoucherLifecycleSuccess(
 ): Promise<void> {
   const evidence = createEvidence(input);
 
-  // The command transaction has already committed before this function is called.
-  // Persist audit evidence first, then publish integration events.
+  // The business transaction has already committed when the handler calls this function.
   await effects.audit.record(evidence);
   await effects.events.publish(createIntegrationEvent(evidence));
 
@@ -84,7 +83,7 @@ export async function emitJournalVoucherLifecycleSuccess(
         message: notification.message,
         severity: notification.severity,
         channels: ["in-app"],
-        correlationId: evidence.correlationId ?? undefined,
+        ...(evidence.correlationId ? { correlationId: evidence.correlationId } : {}),
         sourceModule: "accounting",
         data: {
           voucherId: evidence.voucherId,
@@ -164,9 +163,9 @@ function createIntegrationEvent(evidence: JournalVoucherLifecycleAuditEvidence):
     occurredAt: evidence.occurredAt,
     aggregateId: evidence.voucherId,
     aggregateType: "accounting.journal-voucher",
-    aggregateVersion: evidence.newVersion ?? undefined,
-    correlationId: evidence.correlationId ?? undefined,
-    causationId: evidence.causationId ?? undefined,
+    ...(evidence.newVersion === null ? {} : { aggregateVersion: evidence.newVersion }),
+    ...(evidence.correlationId ? { correlationId: evidence.correlationId } : {}),
+    ...(evidence.causationId ? { causationId: evidence.causationId } : {}),
     payload: Object.freeze({ ...evidence }),
     metadata: Object.freeze({ schemaVersion: 1, sourceModule: "accounting" }),
   });
