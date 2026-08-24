@@ -87,7 +87,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | 6 | Locking and Controlled Amendment Policy | Completed |
 | 7 | Reversal and Replacement Lineage | Completed |
 | 8 | Application Contracts, Commands, and Queries | Completed |
-| 9 | Authorization, Permissions, and Segregation of Duties | Not started |
+| 9 | Authorization, Permissions, and Segregation of Duties | Completed |
 | 10 | Migration and Lifecycle Persistence Model | Not started |
 | 11 | SQLite Repository, Unit of Work, Concurrency, and Idempotency | Not started |
 | 12 | Audit, Integration Events, and Notifications | Not started |
@@ -319,7 +319,22 @@ Exit criteria:
 - UI visibility is not relied upon for security.
 - Permission and actor-policy failures are deterministic and test-covered.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Extended `journalVoucherPermissions` with dedicated permissions for submit, approve, reject, return-to-draft, cancel-approval, final post, controlled amendment reopen, and reversal.
+- Registered every new lifecycle permission in `packages/security/src/application/default-permissions.ts` so the existing Role/Permission subsystem can assign them independently.
+- Added `packages/accounting/src/application/journal-voucher-lifecycle-authorization.ts` as the persistence-neutral authorization and segregation boundary.
+- Every Step 8 lifecycle command handler now performs authorization before calling Approval, Posting, Amendment, or Reversal services; UI visibility is therefore never treated as security enforcement.
+- Approval decision permissions are separated by outcome: approve, reject, return-to-draft, and cancel each require their own explicit permission.
+- Added deterministic `journal.unauthorized` and `journal.segregation-of-duties-violation` Application failures suitable for later Persian UX mapping.
+- No pre-existing project-wide creator/approver/poster segregation rule was found. The Phase 15 default policy therefore prohibits self-approval (the user who submitted the current Approval Request cannot approve that same cycle) without inventing a mandatory distinct poster/reverser policy for small organizations.
+- Poster, controlled-amendment actor, and reverser still require independent granular permissions and remain attributable through the evidence contracts from Steps 5–7.
+- Added focused tests in `packages/accounting/tests/journal-voucher-lifecycle-authorization.test.ts` for permission mapping, denied operations, granted operations, default self-approval rejection, and approval by a different authorized actor.
+- Exported authorization/segregation contracts through `@argin/accounting/journal` for desktop and future Argin Bridge/server adapters.
+- Dedicated denied-operation audit event persistence is intentionally completed in Step 12 together with the lifecycle audit/integration event model; Step 9 establishes deterministic authorization evidence/error data without introducing premature event plumbing.
+- Step 9 runtime typecheck/test success is not claimed until the updated branch is executed locally or through CI.
 
 ### Step 10 — Migration and Lifecycle Persistence Model
 
