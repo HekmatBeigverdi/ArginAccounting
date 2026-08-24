@@ -3,9 +3,7 @@ import type {
   JournalVoucherLifecycleDto,
   JournalVoucherStatus,
 } from "@argin/accounting/journal";
-import {
-  permissionForCapability,
-} from "@argin/accounting/journal";
+import { permissionForCapability } from "@argin/accounting/journal";
 
 export interface JournalVoucherLifecycleActionView {
   readonly action: JournalVoucherLifecycleActionCapability;
@@ -24,9 +22,14 @@ export interface JournalVoucherLifecycleViewModel {
   readonly locked: boolean;
 }
 
-export function journalVoucherLifecycleStatusLabel(
-  status: JournalVoucherStatus,
-): string {
+export interface JournalVoucherLifecyclePresentedFailure {
+  readonly kind: "business" | "technical";
+  readonly title: string;
+  readonly message: string;
+  readonly technical: string | null;
+}
+
+export function journalVoucherLifecycleStatusLabel(status: JournalVoucherStatus): string {
   switch (status) {
     case "draft": return "پیش‌نویس";
     case "pending_approval": return "در انتظار تأیید";
@@ -44,7 +47,7 @@ export function presentJournalVoucherLifecycle(
   const actions = lifecycle.capabilities.actions
     .filter((action) => {
       const permission = permissionForCapability(action);
-      return permission === null || fullAccess || grantedPermissions.has(permission);
+      return fullAccess || grantedPermissions.has(permission);
     })
     .map(presentAction);
 
@@ -59,30 +62,42 @@ export function presentJournalVoucherLifecycle(
   });
 }
 
-function presentAction(
-  action: JournalVoucherLifecycleActionCapability,
-): JournalVoucherLifecycleActionView {
+export function presentJournalVoucherLifecycleFailure(
+  error: unknown,
+): JournalVoucherLifecyclePresentedFailure {
+  const code = lifecycleErrorCode(error);
+  if (code) {
+    return Object.freeze({
+      kind: "business",
+      title: businessFailureTitle(code),
+      message: businessFailureMessage(code, error),
+      technical: null,
+    });
+  }
+
+  const technical = error instanceof Error
+    ? `${error.name}: ${error.message}`
+    : String(error);
+  return Object.freeze({
+    kind: "technical",
+    title: "خطای فنی",
+    message: "عملیات چرخه عمر سند انجام نشد. جزئیات فنی برای بررسی نگه‌داری شده است.",
+    technical,
+  });
+}
+
+function presentAction(action: JournalVoucherLifecycleActionCapability): JournalVoucherLifecycleActionView {
   switch (action) {
-    case "edit":
-      return view(action, "ویرایش", null, false);
-    case "delete":
-      return view(action, "حذف پیش‌نویس", "این پیش‌نویس حذف شود؟", true);
-    case "submit_for_approval":
-      return view(action, "ارسال برای تأیید", "سند برای گردش تأیید ارسال شود؟", true);
-    case "approve":
-      return view(action, "تأیید", "این سند تأیید شود؟", true);
-    case "reject":
-      return view(action, "رد", "سند رد و به پیش‌نویس بازگردانده شود؟", true);
-    case "return_to_draft":
-      return view(action, "بازگشت برای اصلاح", "سند برای اصلاح به پیش‌نویس بازگردد؟", true);
-    case "cancel_approval":
-      return view(action, "لغو گردش تأیید", "گردش تأیید این سند لغو شود؟", true);
-    case "reopen_for_amendment":
-      return view(action, "بازگشایی برای اصلاح", "تأیید فعلی باطل و سند برای اصلاح بازگشایی شود؟", true);
-    case "post":
-      return view(action, "ثبت نهایی", "ثبت نهایی قابل ویرایش مستقیم نیست. ادامه می‌دهید؟", true);
-    case "reverse":
-      return view(action, "برگشت سند", "برای اصلاح سند ثبت‌شده، سند برگشتی مستقل ایجاد شود؟", true);
+    case "edit": return view(action, "ویرایش", null, false);
+    case "delete": return view(action, "حذف پیش‌نویس", "این پیش‌نویس حذف شود؟", true);
+    case "submit_for_approval": return view(action, "ارسال برای تأیید", "سند برای گردش تأیید ارسال شود؟", true);
+    case "approve": return view(action, "تأیید", "این سند تأیید شود؟", true);
+    case "reject": return view(action, "رد", "سند رد و به پیش‌نویس بازگردانده شود؟", true);
+    case "return_to_draft": return view(action, "بازگشت برای اصلاح", "سند برای اصلاح به پیش‌نویس بازگردد؟", true);
+    case "cancel_approval": return view(action, "لغو گردش تأیید", "گردش تأیید این سند لغو شود؟", true);
+    case "reopen_for_amendment": return view(action, "بازگشایی برای اصلاح", "تأیید فعلی باطل و سند برای اصلاح بازگشایی شود؟", true);
+    case "post": return view(action, "ثبت نهایی", "ثبت نهایی، اطلاعات حسابداری سند را تغییرناپذیر می‌کند. ادامه می‌دهید؟", true);
+    case "reverse": return view(action, "برگشت سند", "یک سند برگشتی مستقل با اثر معکوس ایجاد می‌شود و سند اصلی برگشت‌شده خواهد شد. ادامه می‌دهید؟", true);
   }
 }
 
@@ -112,5 +127,48 @@ function statusTone(status: JournalVoucherStatus): JournalVoucherLifecycleViewMo
     case "approved": return "positive";
     case "posted": return "final";
     case "reversed": return "muted";
+  }
+}
+
+function lifecycleErrorCode(error: unknown): string | null {
+  if (typeof error !== "object" || error === null || !("code" in error)) return null;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" && code.startsWith("journal.") ? code : null;
+}
+
+function businessFailureTitle(code: string): string {
+  switch (code) {
+    case "journal.version-conflict": return "سند توسط کاربر دیگری تغییر کرده است";
+    case "journal.unauthorized": return "دسترسی مجاز نیست";
+    case "journal.segregation-of-duties-violation": return "تفکیک وظایف اجازه این عملیات را نمی‌دهد";
+    case "journal.posting-validation-failed": return "سند آماده ثبت نهایی نیست";
+    case "journal.reversal-validation-failed": return "برگشت سند قابل انجام نیست";
+    case "journal.approval-cycle-missing": return "تأیید معتبر پیدا نشد";
+    case "journal.approval-content-version-mismatch": return "سند پس از تأیید تغییر کرده است";
+    case "journal.already-reversed": return "سند قبلاً برگشت شده است";
+    default: return "عملیات چرخه عمر پذیرفته نشد";
+  }
+}
+
+function businessFailureMessage(code: string, error: unknown): string {
+  switch (code) {
+    case "journal.version-conflict":
+      return "نسخه نمایش‌داده‌شده قدیمی است. وضعیت سند را تازه‌سازی کنید و دوباره اقدام کنید.";
+    case "journal.unauthorized":
+      return "مجوز لازم برای انجام این عملیات به کاربر جاری اختصاص داده نشده است.";
+    case "journal.segregation-of-duties-violation":
+      return "کاربری که سند را برای تأیید ارسال کرده است نمی‌تواند همان چرخه را تأیید کند.";
+    case "journal.posting-validation-failed":
+      return "اعتبارسنجی نهایی حساب‌ها، ابعاد، تراز یا دوره مالی موفق نبود. سند را بررسی و دوباره تلاش کنید.";
+    case "journal.reversal-validation-failed":
+      return "شرایط حسابداری یا دوره مالی برای ایجاد سند برگشتی معتبر نیست.";
+    case "journal.approval-cycle-missing":
+      return "چرخه تأیید جاری و معتبر برای این سند وجود ندارد.";
+    case "journal.approval-content-version-mismatch":
+      return "محتوای سند با نسخه‌ای که تأیید شده مطابقت ندارد و باید دوباره وارد گردش تأیید شود.";
+    case "journal.already-reversed":
+      return "برای این سند قبلاً سند برگشتی ثبت شده است.";
+    default:
+      return error instanceof Error ? error.message : "عملیات با قواعد چرخه عمر سند سازگار نیست.";
   }
 }
