@@ -71,7 +71,7 @@ describe("journal lifecycle migration", () => {
         lifecycle_status: string;
         version: number;
       };
-    assert.deepEqual(row, {
+    assert.deepEqual({ ...row }, {
       id: "voucher-1",
       status: "draft",
       lifecycle_status: "draft",
@@ -95,7 +95,7 @@ describe("journal lifecycle migration", () => {
   it("creates lifecycle evidence tables and protective indexes", () => {
     const db = database();
     const names = db.prepare(`SELECT name FROM sqlite_master
-      WHERE type IN ('table', 'index') AND name LIKE 'journal_%'`).all() as Array<{ name: string }>;
+      WHERE type IN ('table', 'index') AND tbl_name LIKE 'journal_%'`).all() as Array<{ name: string }>;
     const found = new Set(names.map((item) => item.name));
 
     for (const name of [
