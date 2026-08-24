@@ -27,8 +27,9 @@ All phase records live in this directory and follow the permanent [phase templat
    - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
    - [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md)
    - [Step 15 Domain and Application Test Matrix](phase-15-step-15-test-matrix.md)
-   - Current step: Step 15 — Domain and Application Test Matrix — Completed
-   - Next step: Step 16 — Repository, Migration, Permission, and Desktop Regression Tests
+   - [Step 16 Persistence and Desktop Regression Matrix](phase-15-step-16-regression-matrix.md)
+   - Current step: Step 16 — Repository, Migration, Permission, and Desktop Regression Tests — Completed
+   - Next step: Step 17 — Monorepo Validation and Documentation Completion
 
 ## Renumbering Rule
 
