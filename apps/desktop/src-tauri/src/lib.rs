@@ -90,6 +90,12 @@ fn database_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0013_journal_vouchers.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 14,
+            description: "journal_lifecycle",
+            sql: include_str!("../migrations/0014_journal_lifecycle.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
