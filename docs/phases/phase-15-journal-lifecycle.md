@@ -2,7 +2,7 @@
 
 ## Overview
 
-Phase 15 adds the controlled lifecycle for Journal Vouchers created by the Phase 13 Journal Voucher Engine. It turns persisted Draft vouchers into governed accounting records through explicit approval, posting, locking, amendment, reversal, authorization, persistence, and traceability while preserving auditability, concurrency safety, and double-entry integrity.
+Phase 15 adds the controlled lifecycle for Journal Vouchers created by the Phase 13 Journal Voucher Engine. It turns persisted Draft vouchers into governed accounting records through explicit approval, posting, locking, amendment, reversal, authorization, persistence, auditability, integration events, and traceability while preserving concurrency safety and double-entry integrity.
 
 The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md).
 
@@ -10,9 +10,9 @@ The fixed execution sequence is defined in [Phase 15 — Journal Lifecycle — F
 
 In progress.
 
-Current step: **Step 11 — SQLite Repository, Unit of Work, Concurrency, and Idempotency — Completed**.
+Current step: **Step 12 — Audit, Integration Events, and Notifications — Completed**.
 
-Next step: **Step 12 — Audit, Integration Events, and Notifications**.
+Next step: **Step 13 — Persian RTL Lifecycle Status and Action UI**.
 
 Branch: `phase/15-journal-lifecycle`
 
@@ -67,7 +67,7 @@ draft -> pending_approval -> approved -> posted -> reversed
             +----> draft <-----+
 ```
 
-Steps 4–10 provide lifecycle behavior, authorization, and the durable relational schema. Step 11 now connects those persistence-neutral Application contracts to SQLite transactions without moving business rules into the adapter.
+Steps 4–10 provide lifecycle behavior, authorization, and the durable relational schema. Step 11 connects those contracts to atomic SQLite transactions. Step 12 now adds durable audit recording and post-commit integration/notification effects without moving those concerns into Domain or Repository code.
 
 ## Domain Model
 
@@ -79,7 +79,7 @@ The authoritative `JournalVoucherStatus` states are:
 - `posted`
 - `reversed`
 
-`packages/accounting/src/domain/journal-voucher-lifecycle.ts` owns deterministic state transitions. Authorization and persistence remain outside the Domain state machine.
+`packages/accounting/src/domain/journal-voucher-lifecycle.ts` owns deterministic state transitions. Authorization, persistence, audit, events, and notifications remain outside the Domain state machine.
 
 ## Approval Integration
 
@@ -139,15 +139,7 @@ Step 11 extends `@argin/accounting-tauri` with the concrete SQLite lifecycle ada
 
 The legacy Phase 13 `status` column remains `draft`. New reversal/compensating vouchers can therefore be inserted with legacy `status='draft'` while their authoritative `lifecycle_status='posted'`, avoiding violation of the original CHECK constraint without weakening the Phase 15 model.
 
-Optimistic lifecycle state changes use `updateLifecycleState`:
-
-```text
-UPDATE journal_vouchers
-SET lifecycle_status = ?, updated_at = ?, version = ?
-WHERE id = ? AND company_id = ? AND version = ?
-```
-
-The shared `assertVersionedUpdate` path rejects stale transitions when no row matches the expected version.
+Optimistic lifecycle state changes use `updateLifecycleState` with an expected-version predicate. The shared `assertVersionedUpdate` path rejects stale transitions when no row matches the expected version.
 
 `packages/accounting-tauri/src/sqlite-journal-voucher-lifecycle.ts` provides:
 
@@ -159,38 +151,74 @@ The shared `assertVersionedUpdate` path rejects stale transitions when no row ma
 
 Each multi-write lifecycle operation executes inside one `DatabaseExecutor.transaction(...)` boundary.
 
-Approval integration accepts a `JournalVoucherApprovalGatewayFactory` bound to the exact transaction `DatabaseSession`. This keeps the Journal transition, generic Approval mutation, and approval-cycle persistence eligible to commit or roll back together. Existing Approval-cycle rows are updated through UPSERT when an approved cycle remains current rather than attempting a second insert of the same Approval Request id.
+Approval integration accepts a `JournalVoucherApprovalGatewayFactory` bound to the exact transaction `DatabaseSession`. Posting performs the lifecycle CAS update and inserts posting evidence in the same transaction. Controlled amendment performs the lifecycle CAS update, current-cycle close, and amendment evidence insert in one transaction. Reversal performs the original CAS transition, new reversal-voucher persistence, and unique lineage insert in one transaction.
 
-Posting performs the lifecycle CAS update and inserts posting evidence in the same transaction. Controlled amendment performs the lifecycle CAS update, current-cycle close, and amendment evidence insert in one transaction. Reversal performs the original CAS transition, new reversal-voucher persistence, and unique lineage insert in one transaction.
-
-Retry/concurrency protection is layered:
-
-- expected-version CAS protects stale Journal transitions;
-- the one-current-cycle partial unique index prevents concurrent duplicate current Approval cycles;
-- one-row posting evidence prevents duplicate final posting evidence;
-- unique reversal original/reversal identities prevent a second committed reversal chain;
-- unique `(company_id, request_id)` reversal lineage prevents duplicate retry outcomes;
-- existing Journal `(company_id, request_id)` uniqueness continues to protect retry-sensitive voucher creation.
+Retry/concurrency protection is layered through expected-version CAS, current-cycle uniqueness, one-row posting evidence, reversal lineage uniqueness, and durable request-id uniqueness.
 
 `SqliteJournalVoucherLifecycleReader` reads current Approval cycle, posting evidence, latest amendment evidence, and reversal/replacement lineage directly from durable tables, so traceability is not reconstructed from descriptions.
 
 Focused adapter tests were added in `packages/accounting-tauri/tests/sqlite-journal-voucher-lifecycle.test.ts` for one-transaction Amendment, one-transaction Reversal, same-session Approval gateway creation, and atomic Posting evidence persistence.
 
-Post-commit audit/integration-event dispatch remains Step 12 by the frozen plan. Step 11 deliberately guarantees database atomicity and leaves event emission outside the transaction boundary for the next step.
+The user confirmed Step 11 local validation is green. The direct `@argin/audit` dependency briefly considered for `@argin/accounting-tauri` was removed before completion; the Approval reader type is derived from the Accounting posting contract so `pnpm-lock.yaml` remains consistent with `--frozen-lockfile` workflows.
+
+## Audit, Integration Events, and Notifications
+
+Step 12 adds `packages/accounting/src/application/journal-voucher-lifecycle-effects.ts` as the persistence-neutral lifecycle side-effect boundary.
+
+Every successful lifecycle mutation can now emit immutable `JournalVoucherLifecycleAuditEvidence` carrying:
+
+- lifecycle action and outcome;
+- voucher/company/branch identities;
+- actor and occurrence time;
+- previous/new status and version;
+- request/idempotency, correlation, and causation ids;
+- Approval request id;
+- posting reference;
+- reversal and replacement voucher ids;
+- optional reason/comment.
+
+`createJournalVoucherLifecycleAuditRecorder` adapts this evidence to the existing Phase 08 `recordAuditEntry` service. Successful transitions are recorded with `success`; authorization/segregation denials are recorded with `denied`. Audit snapshots retain prior/new lifecycle status/version and metadata retains request, causation, Approval, Posting, and Reversal identifiers.
+
+Canonical lifecycle command handlers now run effects only after their Step 11 business transaction returns successfully. The ordering is:
+
+```text
+transaction commit -> durable audit record -> integration event -> optional notification
+```
+
+Therefore failed/rolled-back transitions cannot publish a lifecycle integration event. Replayed reversals do not publish a second event because the persisted idempotency result is returned with `replayed=true` and the handler suppresses duplicate side effects.
+
+Integration events use stable dot-separated event names such as:
+
+- `accounting.journal-voucher.submit-for-approval`;
+- `accounting.journal-voucher.approve`;
+- `accounting.journal-voucher.reject`;
+- `accounting.journal-voucher.return-to-draft`;
+- `accounting.journal-voucher.cancel-approval`;
+- `accounting.journal-voucher.post`;
+- `accounting.journal-voucher.reopen-for-amendment`;
+- `accounting.journal-voucher.reverse`.
+
+Each event carries schema version `1`, aggregate id/version, actor/company context, previous/new state/version, request/correlation/causation metadata, and relevant Approval/Posting/Reversal lineage evidence.
+
+Authorization denial is audit-only and deliberately does not become an external integration event.
+
+Notifications are intentionally limited to operational Approval outcomes. The original Approval requester receives an in-app notification when the voucher is approved, rejected, returned for amendment, or its Approval cycle is cancelled. Posting and Reversal do not generate redundant self-notifications for the actor performing those commands.
+
+`packages/accounting/tests/journal-voucher-lifecycle-effects.test.ts` covers audit-before-event ordering, Approval requester notification, and audit-only authorization denial behavior.
 
 ## Security
 
 Authorization is deny-by-default at the Application boundary. UI gates are usability only. Granular lifecycle permissions are independently assignable and the default self-approval prohibition is enforced from current Approval evidence rather than client state.
 
-The canonical security documentation is maintained in `docs/security/security-model.md`.
+Denied lifecycle authorization attempts are now durably representable through the Step 12 audit recorder without being published as integration events.
 
 ## UI
 
-Later lifecycle UI consumes state-policy capabilities and permission-aware Application results; it does not reproduce authorization or persistence rules in React/Tauri.
+Step 13 will consume lifecycle status/capability/permission outputs and Step 12 trace evidence; React/Tauri remains presentation rather than the source of lifecycle policy.
 
 ## Testing
 
-Focused coverage through Step 11 includes:
+Focused coverage through Step 12 includes:
 
 - Domain lifecycle legal/illegal paths;
 - Approval integration and duplicate-cycle prevention;
@@ -203,13 +231,16 @@ Focused coverage through Step 11 includes:
 - lifecycle evidence schema and protective indexes;
 - persisted lifecycle-status rehydration boundary;
 - optimistic lifecycle update SQL;
-- atomic Posting, Amendment, Reversal, and Approval-session adapter behavior.
+- atomic Posting, Amendment, Reversal, and Approval-session adapter behavior;
+- lifecycle audit evidence and denied-operation recording;
+- post-commit audit/event ordering;
+- Approval requester notification behavior.
 
 The exhaustive Domain/Application matrix remains Step 15 and the full persistence/permission/desktop regression matrix remains Step 16.
 
 ## Validation
 
-Focused local validation commands after Step 11 are:
+Focused local validation commands after Step 12 are:
 
 ```bash
 pnpm --filter @argin/accounting typecheck
@@ -219,11 +250,11 @@ pnpm --filter @argin/accounting-tauri test
 pnpm --filter @argin/desktop test
 ```
 
-Step 10 desktop validation is confirmed green from the user's local environment after commit `e9bae35ddfde307f752a287199bbe7b22bfcf3f5`. Step 11 code and focused adapter tests are committed, but Step 11 runtime success is not claimed until these updated commands are executed locally or through CI.
+Step 10 and Step 11 local validation are confirmed green by the user. Step 12 code and focused tests are committed; Step 12 runtime success is not claimed until the updated branch is executed locally or through CI.
 
 ## Documentation Impact
 
-Phase 15 maintains the fixed plan, this implementation record, ADR-0015, security model, migration registration, and SQLite lifecycle adapter evidence as implementation progresses. Audit/integration, glossary, roadmap, changelog, and release documentation remain aligned with their scheduled steps.
+Phase 15 maintains the fixed plan, this implementation record, ADR-0015, security model, migration registration, SQLite lifecycle adapter evidence, and lifecycle audit/event/notification contracts as implementation progresses. Glossary, roadmap, changelog, and release documentation remain aligned with their scheduled steps.
 
 ## Related ADRs
 
@@ -276,13 +307,23 @@ Phase 15 maintains the fixed plan, this implementation record, ADR-0015, securit
 
 ## Step 11 Evidence
 
-- Added persisted lifecycle status rehydration and separated the Phase 13 legacy status column from the authoritative Phase 15 lifecycle column.
-- Added expected-version SQLite CAS for lifecycle transitions.
+- Added persisted lifecycle-status rehydration and expected-version SQLite CAS.
 - Added SQLite Approval, Posting, Amendment, and Reversal Unit of Work adapters over the shared database transaction contract.
-- Added same-session Approval gateway factory integration and Approval-cycle UPSERT behavior.
-- Added atomic posting evidence, amendment evidence, reversal voucher/lineage persistence, and durable lifecycle trace reader.
-- Added focused Accounting Tauri lifecycle transaction tests and the explicit `@argin/audit` adapter dependency.
-- Preserved event publication as Step 12 post-commit work rather than emitting integration events inside the database transaction.
+- Added same-session Approval gateway integration, Approval-cycle UPSERT, atomic posting/amendment/reversal persistence, and lifecycle trace reader.
+- Added focused Accounting Tauri lifecycle transaction tests.
+- User confirmed Step 11 local validation is green.
+- Removed the unnecessary direct `@argin/audit` adapter dependency before completion to keep the workspace lockfile stable.
+
+## Step 12 Evidence
+
+- Added lifecycle audit/effect contracts with actor, status/version, request/correlation/causation, Approval, Posting, Reversal, and Replacement evidence.
+- Added a concrete recorder over the existing immutable Audit subsystem.
+- Wired successful lifecycle handlers to durable audit first and Integration Event publication only after the Step 11 transaction has returned successfully.
+- Added audit-only recording for authorization/segregation denials.
+- Suppressed duplicate Integration Events on idempotent Reversal replay.
+- Added in-app Approval outcome notifications to the original requester while avoiding redundant Posting/Reversal notifications.
+- Added focused Step 12 effect-ordering, notification, and denial tests.
+- Preserved `exactOptionalPropertyTypes` compatibility by omitting absent Event/Notification metadata fields rather than explicitly assigning `undefined`.
 
 ## Exit Criteria
 
