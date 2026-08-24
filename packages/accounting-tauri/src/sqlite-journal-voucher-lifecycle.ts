@@ -96,11 +96,20 @@ class SqliteJournalVoucherLifecycleStore {
       `INSERT INTO journal_voucher_approval_cycles (
         approval_request_id, voucher_id, company_id,
         submitted_content_version, is_current, created_at, closed_at
+      ) VALUES (
+        ?, ?,
+        (SELECT company_id FROM journal_vouchers WHERE id = ?),
+        ?, ?,
+        (SELECT updated_at FROM journal_vouchers WHERE id = ?),
+        NULL
       )
-      SELECT ?, ?, company_id, ?, ?, updated_at, NULL
-      FROM journal_vouchers WHERE id = ?`,
+      ON CONFLICT(approval_request_id) DO UPDATE SET
+        submitted_content_version = excluded.submitted_content_version,
+        is_current = excluded.is_current,
+        closed_at = CASE WHEN excluded.is_current = 1 THEN NULL ELSE journal_voucher_approval_cycles.closed_at END`,
       [
         cycle.approvalRequestId,
+        cycle.voucherId,
         cycle.voucherId,
         cycle.submittedContentVersion,
         cycle.isCurrent ? 1 : 0,
