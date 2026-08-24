@@ -6,6 +6,7 @@ import { journalVoucherPermissions } from "@argin/accounting/journal";
 import {
   journalVoucherLifecycleStatusLabel,
   presentJournalVoucherLifecycle,
+  presentJournalVoucherLifecycleFailure,
 } from "../src/features/accounting/journal-voucher-lifecycle-presenter.ts";
 
 function lifecycle(
@@ -67,5 +68,38 @@ describe("journal voucher lifecycle presenter", () => {
 
     assert.equal(view.actions.length, 0);
     assert.equal(view.locked, true);
+  });
+
+  it("presents stable lifecycle errors as business rejections without technical leakage", () => {
+    const error = Object.assign(new Error("raw persistence detail must not be shown"), {
+      code: "journal.version-conflict",
+    });
+    const presented = presentJournalVoucherLifecycleFailure(error);
+
+    assert.equal(presented.kind, "business");
+    assert.equal(presented.technical, null);
+    assert.match(presented.message, /تازه‌سازی/);
+  });
+
+  it("keeps unknown failures in a separate technical diagnostic surface", () => {
+    const presented = presentJournalVoucherLifecycleFailure(new Error("database unavailable"));
+
+    assert.equal(presented.kind, "technical");
+    assert.equal(presented.title, "خطای فنی");
+    assert.match(presented.technical ?? "", /database unavailable/);
+  });
+
+  it("uses explicit irreversible confirmation copy for post and reverse", () => {
+    const post = presentJournalVoucherLifecycle(
+      lifecycle("approved", ["post"]),
+      new Set([journalVoucherPermissions.post]),
+    ).actions[0];
+    const reverse = presentJournalVoucherLifecycle(
+      lifecycle("posted", ["reverse"]),
+      new Set([journalVoucherPermissions.reverse]),
+    ).actions[0];
+
+    assert.match(post?.confirmation ?? "", /تغییرناپذیر/);
+    assert.match(reverse?.confirmation ?? "", /سند برگشتی مستقل/);
   });
 });
