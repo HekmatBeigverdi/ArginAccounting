@@ -1,6 +1,6 @@
 import type { ApprovalRequest } from "@argin/audit";
 
-import type { JournalVoucherLifecycleCapability } from "./journal-voucher-lifecycle-contracts.ts";
+import type { JournalVoucherLifecycleActionCapability } from "./journal-voucher-lifecycle-contracts.ts";
 import { JournalVoucherLifecycleApplicationError } from "./journal-voucher-lifecycle-contracts.ts";
 import {
   journalVoucherPermissions,
@@ -102,8 +102,8 @@ export function permissionForAction(
 }
 
 export function permissionForCapability(
-  capability: JournalVoucherLifecycleCapability,
-): JournalVoucherPermission | null {
+  capability: JournalVoucherLifecycleActionCapability,
+): JournalVoucherPermission {
   switch (capability) {
     case "edit":
       return journalVoucherPermissions.updateDraft;
