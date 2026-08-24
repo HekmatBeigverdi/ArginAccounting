@@ -29,9 +29,10 @@ All phase records live in this directory and follow the permanent [phase templat
    - [Step 15 Domain and Application Test Matrix](phase-15-step-15-test-matrix.md)
    - [Step 16 Persistence and Desktop Regression Matrix](phase-15-step-16-regression-matrix.md)
    - [Step 17 Monorepo Validation and Documentation Completion](phase-15-step-17-validation.md)
+   - [Manual Desktop Lifecycle Validation](phase-15-manual-desktop-validation.md)
    - Step 16 — Repository, Migration, Permission, and Desktop Regression Tests — Completed and locally validated
-   - Current step: Step 17 — Monorepo Validation and Documentation Completion — In progress
-   - Next step: Step 18 — Final Review, Merge, and Release
+   - Step 17 — Monorepo Validation and Documentation Completion — Completed
+   - Current step: Step 18 — Final Review, Merge, and Release — Not started
 
 ## Renumbering Rule
 
