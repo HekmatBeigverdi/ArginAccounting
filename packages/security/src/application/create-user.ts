@@ -1,26 +1,26 @@
 import type {
   PasswordHasher
-} from "../contracts/password-hasher";
+} from "../contracts/password-hasher.ts";
 
 import type {
   SecurityUnitOfWork
-} from "../contracts/security-unit-of-work";
+} from "../contracts/security-unit-of-work.ts";
 
 import type {
   UserSummary
-} from "../domain/user";
+} from "../domain/user.ts";
 
 import {
   SecurityValidationError
-} from "../validation/security-validation-error";
+} from "../validation/security-validation-error.ts";
 
 import {
   normalizeUsername
-} from "../validation/security-normalization";
+} from "../validation/security-normalization.ts";
 
 import {
   validatePassword
-} from "../validation/password-policy";
+} from "../validation/password-policy.ts";
 
 export interface CreateUserCommand {
   username: string;

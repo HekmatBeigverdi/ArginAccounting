@@ -1,18 +1,18 @@
 import type {
   PermissionRepository
-} from "./permission-repository";
+} from "./permission-repository.ts";
 
 import type {
   RoleRepository
-} from "./role-repository";
+} from "./role-repository.ts";
 
 import type {
   SecurityAssignmentRepository
-} from "./security-assignment-repository";
+} from "./security-assignment-repository.ts";
 
 import type {
   UserRepository
-} from "./user-repository";
+} from "./user-repository.ts";
 
 export interface SecurityUnitOfWorkRepositories {
   users: UserRepository;

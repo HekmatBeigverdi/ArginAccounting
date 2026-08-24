@@ -3,7 +3,7 @@ import type {
   User,
   UserStatus,
   UserSummary
-} from "../domain/user";
+} from "../domain/user.ts";
 
 export interface UserRepository {
   create(input: CreateUserRecordInput): Promise<User>;

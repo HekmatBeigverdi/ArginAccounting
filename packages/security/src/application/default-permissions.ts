@@ -1,4 +1,4 @@
-import type { PermissionDefinition } from "../domain/permission";
+import type { PermissionDefinition } from "../domain/permission.ts";
 
 export const defaultPermissions: PermissionDefinition[] = [
   { code: "system.full-access", module: "system", title: "دسترسی کامل سیستم", description: "مجوز مدیریتی کامل برای مدیر اصلی" },

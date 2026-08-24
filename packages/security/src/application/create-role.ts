@@ -1,18 +1,18 @@
 import type {
   SecurityUnitOfWork
-} from "../contracts/security-unit-of-work";
+} from "../contracts/security-unit-of-work.ts";
 
 import type {
   Role
-} from "../domain/role";
+} from "../domain/role.ts";
 
 import {
   SecurityValidationError
-} from "../validation/security-validation-error";
+} from "../validation/security-validation-error.ts";
 
 import {
   normalizeRoleCode
-} from "../validation/security-normalization";
+} from "../validation/security-normalization.ts";
 
 export interface CreateRoleCommand {
   code: string;

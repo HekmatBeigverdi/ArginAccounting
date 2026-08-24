@@ -1,10 +1,10 @@
 import type {
   SecurityUnitOfWork
-} from "../contracts/security-unit-of-work";
+} from "../contracts/security-unit-of-work.ts";
 
 import {
   defaultPermissions
-} from "./default-permissions";
+} from "./default-permissions.ts";
 
 export interface BootstrapSecurityResult {
   administratorRoleId: string;

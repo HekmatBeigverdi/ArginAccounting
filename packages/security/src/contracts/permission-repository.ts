@@ -1,7 +1,7 @@
 import type {
   Permission,
   PermissionDefinition
-} from "../domain/permission";
+} from "../domain/permission.ts";
 
 export interface PermissionRepository {
   upsertDefinitions(
