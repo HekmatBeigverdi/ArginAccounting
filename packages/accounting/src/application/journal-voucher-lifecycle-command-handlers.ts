@@ -205,9 +205,9 @@ async function authorizeWithAudit(
         companyId: context.companyId,
         actorId: context.actorId,
         occurredAt: context.occurredAt,
-        requestId: context.requestId,
-        correlationId: context.correlationId,
-        causationId: context.causationId,
+        requestId: normalizeOptional(context.requestId),
+        correlationId: normalizeOptional(context.correlationId),
+        causationId: normalizeOptional(context.causationId),
         reason: error instanceof Error ? error.message : "authorization denied",
       });
     }

@@ -1,4 +1,8 @@
-import type { AuditAction, AuditCommandContext } from "@argin/audit";
+import type {
+  AuditAction,
+  AuditCommandContext,
+  AuditSource,
+} from "@argin/audit";
 import { recordAuditEntry } from "@argin/audit";
 import type {
   JournalVoucherLifecycleAuditEvidence,
@@ -6,7 +10,7 @@ import type {
 } from "./journal-voucher-lifecycle-effects.ts";
 
 export function createJournalVoucherLifecycleAuditRecorder(
-  context: AuditCommandContext,
+  context: AuditCommandContext & { readonly auditSource: AuditSource },
 ): JournalVoucherLifecycleAuditRecorder {
   return Object.freeze({
     async record(evidence: JournalVoucherLifecycleAuditEvidence): Promise<void> {
