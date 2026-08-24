@@ -72,7 +72,7 @@ Excluded: Accounting Reports, automatic posting from operational modules, later 
 | 14 | Posting, Reversal, Traceability, and Failure UX | Completed |
 | 15 | Domain and Application Test Matrix | Completed |
 | 16 | Repository, Migration, Permission, and Desktop Regression Tests | Completed |
-| 17 | Monorepo Validation and Documentation Completion | Not started |
+| 17 | Monorepo Validation and Documentation Completion | In progress |
 | 18 | Final Review, Merge, and Release | Not started |
 
 ## Fixed Execution Sequence
@@ -320,7 +320,9 @@ Evidence:
 - Desktop regression also protects deliberate confirmation and the separation of stable business rejection from expandable technical diagnostics.
 - Added `docs/phases/phase-15-step-16-regression-matrix.md` mapping persistence/migration/permission/desktop requirements to their concrete tests.
 - Preserved the Step 10 test rules: convert `node:sqlite` result rows to plain objects before strict equality and use `sqlite_master.tbl_name` when discovering indexes attached to a table.
-- Step 16 runtime green is not claimed until the focused Accounting, Accounting-Tauri, and Desktop checks are executed locally or through CI.
+- Local Desktop validation initially exposed extensionless relative ESM imports in `@argin/security`; commit `cf8e91b6c3956b9863d0204a4905edf1e12a2365` corrected Security source imports/exports to explicit `.ts` paths and enabled `allowImportingTsExtensions`.
+- Retained regression rule: workspace TypeScript source executed directly by the Node test runner must use the repository's explicit `.ts` relative ESM import/export convention; bundler-only resolution is not sufficient evidence for Node test execution.
+- User confirmed Step 16 local validation is green after the Security ESM correction.
 
 ### Step 17 — Monorepo Validation and Documentation Completion
 
@@ -329,7 +331,14 @@ Evidence:
 
 Exit: validation green with recorded evidence; Phase 16 clearly identified as next target.
 
-Status: Not started
+Status: In progress
+
+Evidence so far:
+
+- Added `docs/phases/phase-15-step-17-validation.md` with the authoritative focused/full validation commands, documentation completion checklist, integrity checks, and the retained Security ESM regression rule.
+- Root validation scripts confirmed as `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- `docs/phases/README.md` now identifies Step 17 as the current in-progress step and Step 18 as next.
+- No Step 17 validation command is claimed green until executed locally or through CI against the current Step 17 HEAD.
 
 ### Step 18 — Final Review, Merge, and Release
 
