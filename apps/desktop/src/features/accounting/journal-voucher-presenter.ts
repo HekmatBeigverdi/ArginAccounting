@@ -2,6 +2,7 @@ import {
   JournalVoucherApplicationError,
   type JournalVoucherDto,
   type JournalVoucherListItemDto,
+  type JournalVoucherStatus,
 } from "@argin/accounting/journal";
 
 const persianDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian-nu-latn", {
@@ -31,8 +32,16 @@ export function formatJournalRials(amount: number): string {
   return `${rialNumber.format(amount)} ریال`;
 }
 
-export function journalVoucherStatusLabel(): string {
-  return "پیش‌نویس";
+export function journalVoucherStatusLabel(
+  status: JournalVoucherStatus = "draft",
+): string {
+  switch (status) {
+    case "draft": return "پیش‌نویس";
+    case "pending_approval": return "در انتظار تأیید";
+    case "approved": return "تأییدشده";
+    case "posted": return "ثبت نهایی";
+    case "reversed": return "برگشت‌شده";
+  }
 }
 
 export function journalVoucherSourceLabel(
