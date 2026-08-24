@@ -140,7 +140,7 @@ describe("sqlite journal lifecycle adapters", () => {
   it("persists final posting state and posting evidence atomically", async () => {
     const db = new FakeDatabase();
     const unit = new SqliteJournalVoucherPostingUnitOfWork(db, () => ({
-      async findById() { return null; },
+      async getApprovalRequest() { return null; },
     }));
 
     await unit.run((session) => session.savePostedVoucher(
