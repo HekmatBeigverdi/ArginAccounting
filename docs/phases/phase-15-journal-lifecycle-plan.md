@@ -89,7 +89,7 @@ Deliver the complete controlled lifecycle for persisted Journal Vouchers introdu
 | 8 | Application Contracts, Commands, and Queries | Completed |
 | 9 | Authorization, Permissions, and Segregation of Duties | Completed |
 | 10 | Migration and Lifecycle Persistence Model | Completed |
-| 11 | SQLite Repository, Unit of Work, Concurrency, and Idempotency | Not started |
+| 11 | SQLite Repository, Unit of Work, Concurrency, and Idempotency | Completed |
 | 12 | Audit, Integration Events, and Notifications | Not started |
 | 13 | Persian RTL Lifecycle Status and Action UI | Not started |
 | 14 | Posting, Reversal, Traceability, and Failure UX | Not started |
@@ -361,7 +361,7 @@ Evidence:
 - Added lifecycle/status, approval-history, posting, amendment-latest, and reversal/replacement indexes for the common read paths required by Step 8 DTO/query contracts.
 - Kept concrete Repository/Unit of Work SQL behavior, expected-version UPDATE predicates, transaction composition, and retry execution in Step 11 rather than embedding adapter behavior into the migration.
 - Added `apps/desktop/tests/journal-lifecycle-migration.test.ts` covering migration registration, Phase 13 Draft upgrade without data loss, allowed/invalid lifecycle-state constraints, and creation of lifecycle evidence tables/protective indexes.
-- Step 10 runtime migration/test success is not claimed until the updated branch is executed locally or through CI.
+- User executed the Step 10 desktop tests locally, corrected two test-only issues, pushed commit `e9bae35ddfde307f752a287199bbe7b22bfcf3f5`, and confirmed the suite is green. The corrections established two testing rules retained for later steps: normalize `node:sqlite` row objects before deep equality (`{ ...row }`) and query `sqlite_master.tbl_name` when discovering indexes belonging to Journal tables.
 
 ### Step 11 — SQLite Repository, Unit of Work, Concurrency, and Idempotency
 
@@ -376,7 +376,24 @@ Exit criteria:
 - Concurrent and retried lifecycle commands preserve a single valid accounting outcome.
 - Failure before commit leaves no partial lifecycle state.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Extended Journal rehydration to restore persisted `JournalVoucherStatus` rather than silently recreating every persisted voucher as `draft`.
+- Updated `SqliteJournalVoucherRepository` so Phase 15 lifecycle reads/writes use `lifecycle_status` while the Phase 13 legacy `status` column remains `draft` for upgrade compatibility.
+- Added optimistic lifecycle CAS through `updateLifecycleState`, which updates `lifecycle_status`, `updated_at`, and `version` only when the persisted version equals the command's expected version; stale writes reuse the shared `assertVersionedUpdate` failure path.
+- Reversal voucher creation now persists the legacy status as `draft` and the authoritative lifecycle state independently, allowing a compensating voucher to be inserted as lifecycle `posted` without violating the Phase 13 CHECK constraint.
+- Added `packages/accounting-tauri/src/sqlite-journal-voucher-lifecycle.ts` with SQLite Unit of Work adapters for Approval, Posting, controlled Amendment, and Reversal plus the composite lifecycle reader required by Step 8.
+- Approval coordination accepts a `JournalVoucherApprovalGatewayFactory` bound to the exact transaction `DatabaseSession`, ensuring Journal state, Approval mutation, and approval-cycle linkage can participate in the same transaction boundary.
+- Approval-cycle persistence is retry/update safe for an existing Approval Request through an UPSERT, preserving the original cycle row while allowing the approved cycle to remain current; rejection/return/cancel close the cycle explicitly.
+- Posting saves the optimistic state transition and immutable posting evidence in one database transaction.
+- Controlled amendment saves the optimistic `approved -> draft` transition, closes the current Approval cycle, and appends amendment evidence in one database transaction.
+- Reversal saves the original `posted -> reversed` CAS transition, creates the separate inverse voucher, and inserts unique reversal lineage in one transaction. Migration uniqueness on original voucher, reversal voucher, and `(company_id, request_id)` prevents duplicate committed reversal outcomes.
+- Added `SqliteJournalVoucherLifecycleReader` for current Approval cycle, posting evidence, latest amendment evidence, and reversal/replacement lineage without reconstructing traceability from text fields.
+- Added focused `packages/accounting-tauri/tests/sqlite-journal-voucher-lifecycle.test.ts` coverage for one-transaction Amendment, one-transaction Reversal, same-session Approval gateway creation, and atomic Posting evidence persistence.
+- Added `@argin/audit` as an explicit `@argin/accounting-tauri` dependency because the SQLite lifecycle adapter exposes typed Approval reader/gateway integration contracts under pnpm's strict dependency model.
+- Step 11 runtime typecheck/test success is not claimed in the connected execution environment; local validation commands are provided for confirmation. Post-commit lifecycle audit/integration event publication remains Step 12 by the frozen plan, so Step 11 guarantees database atomicity and leaves event emission outside the transaction until that step.
 
 ### Step 12 — Audit, Integration Events, and Notifications
 
