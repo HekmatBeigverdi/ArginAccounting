@@ -185,14 +185,14 @@ export function createJournalLifecycleServices(
   };
 
   return Object.freeze({
-    get: (companyId, voucherId) =>
+    get: (companyId: string, voucherId: string) =>
       getJournalVoucherLifecycle({ companyId, voucherId }, lifecycleReader),
-    post: (command) => handlePostJournalVoucherLifecycleCommand(command, {
+    post: (command: PostJournalVoucherLifecycleCommand) => handlePostJournalVoucherLifecycleCommand(command, {
       authorization,
       posting,
       effects,
     }),
-    reverse: (command) => handleReverseJournalVoucherLifecycleCommand(command, {
+    reverse: (command: ReverseJournalVoucherLifecycleCommand) => handleReverseJournalVoucherLifecycleCommand(command, {
       authorization,
       reversal,
       effects,

@@ -125,7 +125,6 @@ test("domain transition table is exhaustive across every lifecycle state/action 
             actorId: "actor-1",
             occurredAt: "2026-08-24T10:05:00.000Z",
           }),
-          undefined,
           `${status} must reject ${action}`,
         );
         continue;
