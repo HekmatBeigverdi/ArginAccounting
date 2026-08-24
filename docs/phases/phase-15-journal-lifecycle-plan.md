@@ -69,7 +69,7 @@ Excluded: Accounting Reports, automatic posting from operational modules, later 
 | 11 | SQLite Repository, Unit of Work, Concurrency, and Idempotency | Completed |
 | 12 | Audit, Integration Events, and Notifications | Completed |
 | 13 | Persian RTL Lifecycle Status and Action UI | Completed |
-| 14 | Posting, Reversal, Traceability, and Failure UX | Not started |
+| 14 | Posting, Reversal, Traceability, and Failure UX | Completed |
 | 15 | Domain and Application Test Matrix | Not started |
 | 16 | Repository, Migration, Permission, and Desktop Regression Tests | Not started |
 | 17 | Monorepo Validation and Documentation Completion | Not started |
@@ -257,8 +257,7 @@ Evidence:
 - Added compact responsive styling aligned with Phase 14 desktop-density conventions and explicit loading, empty, refresh, and error states.
 - Made the existing journal presenter lifecycle-status label aware for compatibility with later detail integration.
 - Added desktop presenter tests covering all five Persian state labels, capability/permission intersection, full-access behavior, terminal reversed state, and confirmation metadata for consequential actions.
-- Execution wiring for high-impact Posting/Reversal actions, detailed lineage navigation, and business-vs-technical failure presentation remains Step 14 as frozen.
-- Step 13 runtime green is not claimed until the updated desktop branch is executed locally or through CI.
+- User confirmed Step 13 local validation is green.
 
 ### Step 14 — Posting, Reversal, Traceability, and Failure UX
 
@@ -268,7 +267,20 @@ Evidence:
 
 Exit: Posting/Reversal history is navigable and business rejections are visually distinct from technical failures.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `create-journal-lifecycle-services.ts` as the desktop composition boundary for real Posting/Reversal execution using canonical Application handlers, Step 11 SQLite UoWs, current Approval evidence, final account/fiscal/dimension validation, Number Series, and Step 12 post-commit effects.
+- `AccountingProvider` now exposes `journalLifecycle` alongside the Phase 13 Journal services without moving SQL or business policy into React.
+- The lifecycle overview executes `post` and `reverse` through canonical commands with expected version, actor, request/correlation ids, occurrence time, optional posting reference, required reversal date, and required reversal reason.
+- High-impact operations use an explicit modal plus final confirmation. Reversal cannot proceed without a traceable reason.
+- Successful commands refresh the persisted lifecycle immediately and surface the new posted/reversed version or generated reversal voucher number.
+- Added expandable traceability for current Approval request, Posting evidence, latest controlled Amendment, and original/reversal/replacement lineage. Approval request ids link to the existing Approval details route.
+- Stable `journal.*` failures are presented as business rejections with Persian recovery guidance and without leaking raw technical detail. Unknown failures are visually separated as technical errors with expandable diagnostics.
+- Added focused presenter coverage for business-vs-technical error classification and explicit irreversible confirmation copy for Post/Reversal.
+- Preserved Step 12 ordering: lifecycle transaction commits before Audit/Integration Event/Notification effects; desktop composition does not nest Audit inside the Posting/Reversal transaction.
+- Runtime green is not claimed until the updated desktop branch is executed locally or through CI.
 
 ### Step 15 — Domain and Application Test Matrix
 
