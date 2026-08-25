@@ -10,6 +10,11 @@ import {
 import { SqliteBranchRepository } from "@argin/company-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
+import {
+  desktopDataTopics,
+  invalidateDesktopData,
+  subscribeDesktopData,
+} from "../../app/data-invalidation";
 import { Feedback } from "../../components/feedback";
 import { Button, Field, Select } from "../../components/forms";
 import { Panel } from "../../components/layout";
@@ -39,7 +44,11 @@ export function UserAccessManagement() {
       setUsers(userList);
       setRoles(roleList);
       setBranches(branchList);
-      setSelectedUserId((current) => current || userList[0]?.id || "");
+      setSelectedUserId((current) =>
+        current && userList.some((user) => user.id === current)
+          ? current
+          : userList[0]?.id ?? "",
+      );
     } catch {
       setErrorMessage("دریافت اطلاعات دسترسی کاربران با خطا مواجه شد.");
     } finally {
@@ -69,6 +78,14 @@ export function UserAccessManagement() {
 
   useEffect(() => { void loadInitialData(); }, [loadInitialData]);
   useEffect(() => { void loadSelectedUserAccess(); }, [loadSelectedUserAccess]);
+  useEffect(
+    () => subscribeDesktopData(desktopDataTopics.securityUsers, () => { void loadInitialData(); }),
+    [loadInitialData],
+  );
+  useEffect(
+    () => subscribeDesktopData(desktopDataTopics.securityUserAccess, () => { void loadSelectedUserAccess(); }),
+    [loadSelectedUserAccess],
+  );
 
   function toggleRole(roleId: string): void {
     setSelectedRoleIds((current) => current.includes(roleId) ? current.filter((id) => id !== roleId) : [...current, roleId]);
@@ -89,6 +106,7 @@ export function UserAccessManagement() {
       await repository.replaceUserRoles(selectedUserId, selectedRoleIds, null);
       await repository.replaceUserBranchAccess(selectedUserId, selectedBranchIds, null);
       setMessage("دسترسی‌های کاربر با موفقیت ذخیره شد.");
+      invalidateDesktopData(desktopDataTopics.securityUserAccess);
     } catch {
       setErrorMessage("ذخیره دسترسی‌های کاربر با خطا مواجه شد.");
     } finally {
