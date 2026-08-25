@@ -138,7 +138,10 @@ function technicalFailureDetails(error: unknown, code?: string): string {
     ? `${error.name}: ${error.message}`
     : String(error);
   const stack = error instanceof Error && error.stack ? `\n${error.stack}` : "";
-  return `${code ? `code=${code}\n` : ""}${message}${stack}`;
+  const cause = error instanceof Error && error.cause
+    ? `\ncause=${error.cause instanceof Error ? `${error.cause.name}: ${error.cause.message}` : String(error.cause)}`
+    : "";
+  return `${code ? `code=${code}\n` : ""}${message}${cause}${stack}`;
 }
 
 function businessFailureTitle(code: string): string {
@@ -155,6 +158,7 @@ function businessFailureTitle(code: string): string {
     case "journal.reversal-validation-failed": return "برگشت سند قابل انجام نیست";
     case "journal.already-reversed": return "سند قبلاً برگشت شده است";
     case "journal.persistence-failed": return "ذخیره اطلاعات چرخه عمر انجام نشد";
+    case "journal.post-commit-effects-failed": return "عملیات انجام شد، ثبت آثار جانبی ناقص ماند";
     default: return "عملیات چرخه عمر پذیرفته نشد";
   }
 }
@@ -185,6 +189,8 @@ function businessFailureMessage(code: string, error: unknown): string {
       return "برای این سند قبلاً سند برگشتی ثبت شده است.";
     case "journal.persistence-failed":
       return "ذخیره‌سازی چرخه عمر سند در پایگاه داده انجام نشد. جزئیات فنی را برای بررسی ارسال کنید.";
+    case "journal.post-commit-effects-failed":
+      return "تغییر اصلی سند در پایگاه داده ثبت شده است، اما ثبت ممیزی، رویداد یا اعلان پس از Commit کامل نشده است. وضعیت سند تازه‌سازی شده؛ جزئیات فنی را برای بررسی ارسال کنید.";
     default:
       return error instanceof Error ? error.message : "عملیات با قواعد چرخه عمر سند سازگار نیست.";
   }
