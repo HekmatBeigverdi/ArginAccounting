@@ -94,6 +94,22 @@ describe("journal lifecycle desktop regression", () => {
     assert.doesNotMatch(overviewSource, /INSERT\s+INTO\s+journal_/iu);
   });
 
+  it("makes edit, delete and submit executable instead of rendering silent actions", () => {
+    assert.match(overviewSource, /action\.action === "edit"/u);
+    assert.match(overviewSource, /openDraftEditor/u);
+    assert.match(overviewSource, /action\.action === "delete"/u);
+    assert.match(overviewSource, /journals\.delete/u);
+    assert.match(overviewSource, /action\.action === "submit_for_approval"/u);
+    assert.match(overviewSource, /onConfirm\("submit"/u);
+  });
+
+  it("uses internal confirmation dialogs for submit and delete instead of native window.confirm", () => {
+    assert.doesNotMatch(overviewSource, /window\.confirm/u);
+    assert.match(overviewSource, /ConfirmationDialog/u);
+    assert.match(overviewSource, /حذف پیش‌نویس قابل بازگردانی نیست/u);
+    assert.match(overviewSource, /پس از ارسال، سند قفل می‌شود/u);
+  });
+
   it("shows resolved company and branch labels instead of raw voucher identifiers", () => {
     assert.match(journalPageSource, /companyName=/u);
     assert.match(journalPageSource, /branchName=/u);
@@ -103,9 +119,9 @@ describe("journal lifecycle desktop regression", () => {
     assert.doesNotMatch(journalPageSource, /<dd>\{voucher\.branchId\s*\?\?\s*"—"\}<\/dd>/u);
   });
 
-  it("keeps deliberate confirmation and exposes technical diagnostics for every failure", () => {
-    assert.match(overviewSource, /window\.confirm/u);
+  it("exposes technical diagnostics for every lifecycle failure", () => {
     assert.match(overviewSource, /جزئیات فنی/u);
+    assert.match(overviewSource, /console\.error/u);
 
     const business = presentJournalVoucherLifecycleFailure(
       Object.assign(new Error("stale"), { code: "journal.version-conflict" }),
