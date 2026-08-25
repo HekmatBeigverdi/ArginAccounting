@@ -28,6 +28,14 @@ const compositionSource = readFileSync(
   new URL("../src/composition/accounting/create-journal-lifecycle-services.ts", import.meta.url),
   "utf8",
 );
+const accountingProviderSource = readFileSync(
+  new URL("../src/composition/accounting/accounting-provider.tsx", import.meta.url),
+  "utf8",
+);
+const lifecycleEffectsSource = readFileSync(
+  new URL("../../../packages/accounting/src/application/journal-voucher-lifecycle-effects.ts", import.meta.url),
+  "utf8",
+);
 
 const lifecyclePermissions = [
   journalVoucherPermissions.submit,
@@ -109,6 +117,33 @@ describe("journal lifecycle desktop regression", () => {
     assert.match(overviewSource, /lifecycle: freshLifecycle/u);
     assert.match(overviewSource, /candidate\.action === action\.action/u);
     assert.match(overviewSource, /setPendingAction\(\{ kind, row: freshRow, action: freshAction \}\)/u);
+  });
+
+  it("auto-invalidates accounting views after create, update, delete and lifecycle mutations", () => {
+    assert.match(accountingProviderSource, /const \[dataRevision, setDataRevision\] = useState\(0\)/u);
+    assert.match(accountingProviderSource, /runAccountingMutation/u);
+    assert.match(accountingProviderSource, /journalServices\.create/u);
+    assert.match(accountingProviderSource, /journalServices\.update/u);
+    assert.match(accountingProviderSource, /journalServices\.delete/u);
+    assert.match(accountingProviderSource, /lifecycleServices\.submit/u);
+    assert.match(accountingProviderSource, /lifecycleServices\.decide/u);
+    assert.match(accountingProviderSource, /lifecycleServices\.post/u);
+    assert.match(accountingProviderSource, /lifecycleServices\.reverse/u);
+    assert.match(accountingProviderSource, /journal\.post-commit-effects-failed/u);
+  });
+
+  it("does not open a second transaction for a single post-commit lifecycle audit insert", () => {
+    assert.match(compositionSource, /createLifecycleAuditUnitOfWork\(auditDatabase\)/u);
+    assert.match(compositionSource, /return work\(\{ audit, approval \}\)/u);
+    assert.doesNotMatch(compositionSource, /function createLifecycleAuditUnitOfWork[\s\S]*database\.transaction/u);
+  });
+
+  it("identifies the exact post-commit effect stage when diagnostics are needed", () => {
+    assert.match(lifecycleEffectsSource, /"audit" \| "event" \| "notification"/u);
+    assert.match(lifecycleEffectsSource, /runPostCommitStage\("audit"/u);
+    assert.match(lifecycleEffectsSource, /runPostCommitStage\("event"/u);
+    assert.match(lifecycleEffectsSource, /runPostCommitStage\("notification"/u);
+    assert.match(lifecycleEffectsSource, /cause: describeCause\(cause\)/u);
   });
 
   it("uses internal confirmation dialogs for submit and delete instead of native window.confirm", () => {
