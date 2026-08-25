@@ -146,7 +146,8 @@ export type JournalVoucherLifecycleApplicationErrorCode =
   | "journal.reversal-validation-failed"
   | "journal.replacement-invalid"
   | "journal.idempotency-conflict"
-  | "journal.persistence-failed";
+  | "journal.persistence-failed"
+  | "journal.post-commit-effects-failed";
 
 export class JournalVoucherLifecycleApplicationError extends Error {
   constructor(
