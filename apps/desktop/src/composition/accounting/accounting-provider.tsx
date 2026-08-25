@@ -134,15 +134,21 @@ export function AccountingProvider({ children }: PropsWithChildren) {
 
     const journals: JournalVoucherDesktopServices = Object.freeze({
       ...journalServices,
-      create: (command) => runAccountingMutation(
+      create: (
+        command: Parameters<JournalVoucherDesktopServices["create"]>[0],
+      ) => runAccountingMutation(
         () => journalServices.create(command),
         invalidateAccountingData,
       ),
-      update: (command) => runAccountingMutation(
+      update: (
+        command: Parameters<JournalVoucherDesktopServices["update"]>[0],
+      ) => runAccountingMutation(
         () => journalServices.update(command),
         invalidateAccountingData,
       ),
-      delete: (command) => runAccountingMutation(
+      delete: (
+        command: Parameters<JournalVoucherDesktopServices["delete"]>[0],
+      ) => runAccountingMutation(
         () => journalServices.delete(command),
         invalidateAccountingData,
       ),
@@ -150,19 +156,27 @@ export function AccountingProvider({ children }: PropsWithChildren) {
 
     const journalLifecycle: JournalLifecycleDesktopServices = Object.freeze({
       ...lifecycleServices,
-      submit: (command) => runAccountingMutation(
+      submit: (
+        command: Parameters<JournalLifecycleDesktopServices["submit"]>[0],
+      ) => runAccountingMutation(
         () => lifecycleServices.submit(command),
         invalidateAccountingData,
       ),
-      decide: (command) => runAccountingMutation(
+      decide: (
+        command: Parameters<JournalLifecycleDesktopServices["decide"]>[0],
+      ) => runAccountingMutation(
         () => lifecycleServices.decide(command),
         invalidateAccountingData,
       ),
-      post: (command) => runAccountingMutation(
+      post: (
+        command: Parameters<JournalLifecycleDesktopServices["post"]>[0],
+      ) => runAccountingMutation(
         () => lifecycleServices.post(command),
         invalidateAccountingData,
       ),
-      reverse: (command) => runAccountingMutation(
+      reverse: (
+        command: Parameters<JournalLifecycleDesktopServices["reverse"]>[0],
+      ) => runAccountingMutation(
         () => lifecycleServices.reverse(command),
         invalidateAccountingData,
       ),
