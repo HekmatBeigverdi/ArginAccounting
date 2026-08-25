@@ -4,6 +4,11 @@ import { createRole, SecurityValidationError, type Role } from "@argin/security"
 import { SqliteRoleRepository, SqliteSecurityUnitOfWork } from "@argin/security-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
+import {
+  desktopDataTopics,
+  invalidateDesktopData,
+  subscribeDesktopData,
+} from "../../app/data-invalidation";
 import { Badge, DataTable } from "../../components/data-display";
 import { Feedback } from "../../components/feedback";
 import { Button, Field, Input, Textarea } from "../../components/forms";
@@ -34,6 +39,10 @@ export function RoleManagement() {
   }, []);
 
   useEffect(() => { void loadRoles(); }, [loadRoles]);
+  useEffect(
+    () => subscribeDesktopData(desktopDataTopics.securityRoles, () => { void loadRoles(); }),
+    [loadRoles],
+  );
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -47,7 +56,7 @@ export function RoleManagement() {
       setTitle("");
       setDescription("");
       setMessage("نقش با موفقیت ایجاد شد.");
-      await loadRoles();
+      invalidateDesktopData(desktopDataTopics.securityRoles);
     } catch (error) {
       setErrors(
         error instanceof SecurityValidationError
