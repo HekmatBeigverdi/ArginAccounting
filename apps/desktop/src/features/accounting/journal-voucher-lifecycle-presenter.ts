@@ -137,11 +137,39 @@ function technicalFailureDetails(error: unknown, code?: string): string {
   const message = error instanceof Error
     ? `${error.name}: ${error.message}`
     : String(error);
-  const stack = error instanceof Error && error.stack ? `\n${error.stack}` : "";
+  const details = lifecycleErrorDetails(error);
+  const detailsText = details ? `\ndetails=${safeJson(details)}` : "";
   const cause = error instanceof Error && error.cause
-    ? `\ncause=${error.cause instanceof Error ? `${error.cause.name}: ${error.cause.message}` : String(error.cause)}`
+    ? `\ncause=${describeTechnicalCause(error.cause)}`
     : "";
-  return `${code ? `code=${code}\n` : ""}${message}${cause}${stack}`;
+  const stack = error instanceof Error && error.stack ? `\n${error.stack}` : "";
+  return `${code ? `code=${code}\n` : ""}${message}${detailsText}${cause}${stack}`;
+}
+
+function lifecycleErrorDetails(error: unknown): Readonly<Record<string, unknown>> | null {
+  if (typeof error !== "object" || error === null || !("details" in error)) return null;
+  const details = (error as { details?: unknown }).details;
+  return typeof details === "object" && details !== null
+    ? details as Readonly<Record<string, unknown>>
+    : null;
+}
+
+function safeJson(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function describeTechnicalCause(cause: unknown): string {
+  if (cause instanceof AggregateError) {
+    return `${cause.name}: ${cause.message}; errors=${cause.errors.map(describeTechnicalCause).join(" | ")}`;
+  }
+  if (cause instanceof Error) {
+    return `${cause.name}: ${cause.message}${cause.stack ? `\n${cause.stack}` : ""}`;
+  }
+  return String(cause);
 }
 
 function businessFailureTitle(code: string): string {
