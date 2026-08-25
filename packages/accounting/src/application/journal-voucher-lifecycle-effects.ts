@@ -232,13 +232,13 @@ function approvalNotification(action: JournalVoucherLifecycleEffectAction): {
 } | null {
   switch (action) {
     case "approve":
-      return { type: "journal-voucher.approved", title: "تأیید سند حسابداری", message: "سند حسابداری شما تأیید شد و آماده ثبت نهایی است.", severity: "success" };
+      return { type: "accounting.journal-voucher.approved", title: "تأیید سند حسابداری", message: "سند حسابداری شما تأیید شد و آماده ثبت نهایی است.", severity: "success" };
     case "reject":
-      return { type: "journal-voucher.rejected", title: "رد سند حسابداری", message: "سند حسابداری شما رد و برای اصلاح به پیش‌نویس بازگردانده شد.", severity: "warning" };
+      return { type: "accounting.journal-voucher.rejected", title: "رد سند حسابداری", message: "سند حسابداری شما رد و برای اصلاح به پیش‌نویس بازگردانده شد.", severity: "warning" };
     case "return_to_draft":
-      return { type: "journal-voucher.returned", title: "بازگشت سند برای اصلاح", message: "سند حسابداری برای اصلاح به پیش‌نویس بازگردانده شد.", severity: "information" };
+      return { type: "accounting.journal-voucher.returned", title: "بازگشت سند برای اصلاح", message: "سند حسابداری برای اصلاح به پیش‌نویس بازگردانده شد.", severity: "information" };
     case "cancel_approval":
-      return { type: "journal-voucher.approval-cancelled", title: "لغو گردش تأیید", message: "گردش تأیید سند حسابداری لغو شد.", severity: "information" };
+      return { type: "accounting.journal-voucher.approval-cancelled", title: "لغو گردش تأیید", message: "گردش تأیید سند حسابداری لغو شد.", severity: "information" };
     default:
       return null;
   }
