@@ -103,7 +103,7 @@ describe("journal lifecycle desktop regression", () => {
     assert.doesNotMatch(journalPageSource, /<dd>\{voucher\.branchId\s*\?\?\s*"—"\}<\/dd>/u);
   });
 
-  it("keeps deliberate confirmation and technical diagnostics separated", () => {
+  it("keeps deliberate confirmation and exposes technical diagnostics for every failure", () => {
     assert.match(overviewSource, /window\.confirm/u);
     assert.match(overviewSource, /جزئیات فنی/u);
 
@@ -111,7 +111,8 @@ describe("journal lifecycle desktop regression", () => {
       Object.assign(new Error("stale"), { code: "journal.version-conflict" }),
     );
     assert.equal(business.kind, "business");
-    assert.equal(business.technical, null);
+    assert.match(business.technical ?? "", /journal\.version-conflict/u);
+    assert.match(business.technical ?? "", /stale/u);
 
     const technical = presentJournalVoucherLifecycleFailure(new Error("disk unavailable"));
     assert.equal(technical.kind, "technical");
