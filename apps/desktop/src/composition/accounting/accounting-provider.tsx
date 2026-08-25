@@ -24,6 +24,10 @@ import {
 } from "@argin/accounting-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
+import {
+  desktopDataTopics,
+  invalidateDesktopData,
+} from "../../app/data-invalidation";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { usePlatform } from "../../platform";
 import { createCodingTemplateServices, type CodingTemplateServices } from "./create-coding-template-services";
@@ -55,6 +59,11 @@ export function AccountingProvider({ children }: PropsWithChildren) {
   const [dataRevision, setDataRevision] = useState(0);
   const invalidateAccountingData = useCallback(() => {
     setDataRevision((current) => current + 1);
+    invalidateDesktopData(
+      desktopDataTopics.journalVouchers,
+      desktopDataTopics.approvalRequests,
+      desktopDataTopics.auditEntries,
+    );
   }, []);
 
   useEffect(() => {
