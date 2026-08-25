@@ -4,6 +4,8 @@ export const desktopDataTopics = Object.freeze({
   auditEntries: "audit.entries",
   securityUsers: "security.users",
   securityUserAccess: "security.user-access",
+  securityRoles: "security.roles",
+  securityRolePermissions: "security.role-permissions",
 });
 
 export type DesktopDataTopic =
