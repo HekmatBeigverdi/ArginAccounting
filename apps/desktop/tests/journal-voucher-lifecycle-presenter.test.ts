@@ -70,15 +70,17 @@ describe("journal voucher lifecycle presenter", () => {
     assert.equal(view.locked, true);
   });
 
-  it("presents stable lifecycle errors as business rejections without technical leakage", () => {
+  it("separates stable lifecycle error diagnostics from the business message", () => {
     const error = Object.assign(new Error("raw persistence detail must not be shown"), {
       code: "journal.version-conflict",
     });
     const presented = presentJournalVoucherLifecycleFailure(error);
 
     assert.equal(presented.kind, "business");
-    assert.equal(presented.technical, null);
     assert.match(presented.message, /تازه‌سازی/);
+    assert.doesNotMatch(presented.message, /raw persistence detail/u);
+    assert.match(presented.technical ?? "", /journal\.version-conflict/u);
+    assert.match(presented.technical ?? "", /raw persistence detail/u);
   });
 
   it("keeps unknown failures in a separate technical diagnostic surface", () => {
