@@ -4,6 +4,11 @@ import { createUser, SecurityValidationError, type UserSummary } from "@argin/se
 import { SqliteSecurityUnitOfWork, SqliteUserRepository, TauriPasswordHasher } from "@argin/security-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
+import {
+  desktopDataTopics,
+  invalidateDesktopData,
+  subscribeDesktopData,
+} from "../../app/data-invalidation";
 import { Badge, DataTable } from "../../components/data-display";
 import { Feedback } from "../../components/feedback";
 import { Button, Field, Input } from "../../components/forms";
@@ -46,6 +51,10 @@ export function UserManagement() {
   }, []);
 
   useEffect(() => { void loadUsers(); }, [loadUsers]);
+  useEffect(
+    () => subscribeDesktopData(desktopDataTopics.securityUsers, () => { void loadUsers(); }),
+    [loadUsers],
+  );
 
   function updateField<K extends keyof UserFormState>(field: K, value: UserFormState[K]): void {
     setForm((current) => ({ ...current, [field]: value }));
@@ -62,7 +71,7 @@ export function UserManagement() {
       await createUser(new SqliteSecurityUnitOfWork(database), new TauriPasswordHasher(), form);
       setForm(initialForm);
       setMessage("کاربر با موفقیت ایجاد شد.");
-      await loadUsers();
+      invalidateDesktopData(desktopDataTopics.securityUsers);
     } catch (error) {
       setErrors(
         error instanceof SecurityValidationError
