@@ -16,6 +16,14 @@ const overviewSource = readFileSync(
   new URL("../src/pages/accounting/journal-voucher-lifecycle-overview.tsx", import.meta.url),
   "utf8",
 );
+const journalPageSource = readFileSync(
+  new URL("../src/pages/accounting/journal-vouchers-page.tsx", import.meta.url),
+  "utf8",
+);
+const approvalDetailsSource = readFileSync(
+  new URL("../src/pages/approval/approval-request-details-page.tsx", import.meta.url),
+  "utf8",
+);
 const compositionSource = readFileSync(
   new URL("../src/composition/accounting/create-journal-lifecycle-services.ts", import.meta.url),
   "utf8",
@@ -72,13 +80,27 @@ describe("journal lifecycle desktop regression", () => {
     assert.deepEqual(view.actions.map((action) => action.action), ["reopen_for_amendment"]);
   });
 
-  it("keeps real Post/Reversal execution behind canonical Application handlers", () => {
+  it("keeps submit, Post, Reversal and approval decisions behind canonical Application handlers", () => {
+    assert.match(compositionSource, /handleSubmitJournalVoucherLifecycleCommand/u);
+    assert.match(compositionSource, /handleDecideJournalVoucherLifecycleApprovalCommand/u);
     assert.match(compositionSource, /handlePostJournalVoucherLifecycleCommand/u);
     assert.match(compositionSource, /handleReverseJournalVoucherLifecycleCommand/u);
+    assert.match(compositionSource, /SqliteJournalVoucherApprovalUnitOfWork/u);
     assert.match(compositionSource, /SqliteJournalVoucherPostingUnitOfWork/u);
     assert.match(compositionSource, /SqliteJournalVoucherReversalUnitOfWork/u);
+    assert.match(overviewSource, /journalLifecycle\.submit/u);
+    assert.match(approvalDetailsSource, /journalLifecycle\.decide/u);
     assert.doesNotMatch(overviewSource, /UPDATE\s+journal_vouchers/iu);
     assert.doesNotMatch(overviewSource, /INSERT\s+INTO\s+journal_/iu);
+  });
+
+  it("shows resolved company and branch labels instead of raw voucher identifiers", () => {
+    assert.match(journalPageSource, /companyName=/u);
+    assert.match(journalPageSource, /branchName=/u);
+    assert.match(journalPageSource, /<dd>\{companyName\}<\/dd>/u);
+    assert.match(journalPageSource, /<dd>\{branchName\}<\/dd>/u);
+    assert.doesNotMatch(journalPageSource, /<dd>\{voucher\.companyId\}<\/dd>/u);
+    assert.doesNotMatch(journalPageSource, /<dd>\{voucher\.branchId\s*\?\?\s*"—"\}<\/dd>/u);
   });
 
   it("keeps deliberate confirmation and technical diagnostics separated", () => {
