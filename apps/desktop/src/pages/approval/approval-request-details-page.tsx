@@ -4,6 +4,10 @@ import { Link, useParams } from "react-router";
 import type { ApprovalAction, ApprovalRequest, ApprovalStatus } from "@argin/audit";
 import { journalVoucherPermissions } from "@argin/accounting/journal";
 
+import {
+  desktopDataTopics,
+  invalidateDesktopData,
+} from "../../app/data-invalidation";
 import { Badge } from "../../components/data-display";
 import { Feedback } from "../../components/feedback";
 import { Button, Field, Textarea } from "../../components/forms";
@@ -172,7 +176,25 @@ export function ApprovalRequestDetailsPage() {
 
       setRequest(updated);
       setComment("");
+      invalidateDesktopData(
+        desktopDataTopics.approvalRequests,
+        desktopDataTopics.auditEntries,
+      );
     } catch (error) {
+      if (isCommittedLifecycleFailure(error)) {
+        try {
+          const refreshed = await services.getApprovalRequest(id);
+          setRequest(refreshed);
+          setComment("");
+        } catch (refreshError) {
+          console.error("Approval details refresh after committed lifecycle failure failed:", refreshError);
+        }
+        invalidateDesktopData(
+          desktopDataTopics.approvalRequests,
+          desktopDataTopics.auditEntries,
+          desktopDataTopics.journalVouchers,
+        );
+      }
       setErrorMessage(error instanceof Error ? error.message : "انجام عملیات با خطا مواجه شد.");
     } finally {
       setIsSubmitting(false);
@@ -345,5 +367,17 @@ function isJournalVoucherApproval(request: ApprovalRequest): boolean {
   return (
     request.requestType === "accounting.journal-voucher" &&
     request.target.entityType === "accounting.journal-voucher"
+  );
+}
+
+function isCommittedLifecycleFailure(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as {
+    code?: unknown;
+    details?: { committed?: unknown };
+  };
+  return (
+    candidate.code === "journal.post-commit-effects-failed" &&
+    candidate.details?.committed === true
   );
 }
