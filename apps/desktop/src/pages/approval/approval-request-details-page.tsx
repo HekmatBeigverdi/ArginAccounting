@@ -186,8 +186,8 @@ export function ApprovalRequestDetailsPage() {
           const refreshed = await services.getApprovalRequest(id);
           setRequest(refreshed);
           setComment("");
-        } catch (refreshError) {
-          console.error("Approval details refresh after committed lifecycle failure failed:", refreshError);
+        } catch {
+          // Preserve the original lifecycle failure when the recovery refresh also fails.
         }
         invalidateDesktopData(
           desktopDataTopics.approvalRequests,
