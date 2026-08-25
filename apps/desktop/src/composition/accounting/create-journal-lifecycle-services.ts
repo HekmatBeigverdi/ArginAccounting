@@ -6,20 +6,25 @@ import type {
 import {
   createJournalVoucherLifecycleAuditRecorder,
   getJournalVoucherLifecycle,
+  handleDecideJournalVoucherLifecycleApprovalCommand,
   handlePostJournalVoucherLifecycleCommand,
   handleReverseJournalVoucherLifecycleCommand,
+  handleSubmitJournalVoucherLifecycleCommand,
+  type DecideJournalVoucherLifecycleApprovalCommand,
   type JournalVoucherAccountReader,
   type JournalVoucherDimensionReader,
   type JournalVoucherFiscalContextReader,
   type JournalVoucherLifecycleDto,
   type PostJournalVoucherLifecycleCommand,
   type ReverseJournalVoucherLifecycleCommand,
+  type SubmitJournalVoucherLifecycleCommand,
 } from "@argin/accounting/journal";
 import {
   SqliteAccountDimensionPolicyRepository,
   SqliteAccountingDimensionMemberRepository,
   SqliteAccountingDimensionTypeRepository,
   SqliteAccountRepository,
+  SqliteJournalVoucherApprovalUnitOfWork,
   SqliteJournalVoucherLifecycleReader,
   SqliteJournalVoucherPostingUnitOfWork,
   SqliteJournalVoucherReversalUnitOfWork,
@@ -50,8 +55,12 @@ import type {
   NumberSeriesRequest,
 } from "@argin/platform";
 
+import { createDesktopJournalApprovalGateway } from "./create-journal-approval-gateway.ts";
+
 export interface JournalLifecycleDesktopServices {
   get(companyId: string, voucherId: string): Promise<JournalVoucherLifecycleDto>;
+  submit(command: SubmitJournalVoucherLifecycleCommand): ReturnType<typeof handleSubmitJournalVoucherLifecycleCommand>;
+  decide(command: DecideJournalVoucherLifecycleApprovalCommand): ReturnType<typeof handleDecideJournalVoucherLifecycleApprovalCommand>;
   post(command: PostJournalVoucherLifecycleCommand): ReturnType<typeof handlePostJournalVoucherLifecycleCommand>;
   reverse(command: ReverseJournalVoucherLifecycleCommand): ReturnType<typeof handleReverseJournalVoucherLifecycleCommand>;
 }
@@ -162,6 +171,16 @@ export function createJournalLifecycleServices(
     notifications: input.notificationService,
   };
 
+  const approval = {
+    unitOfWork: new SqliteJournalVoucherApprovalUnitOfWork(
+      input.database,
+      (session) => createDesktopJournalApprovalGateway(session, {
+        clock: input.clock,
+        idGenerator: input.idGenerator,
+      }),
+    ),
+  };
+
   const posting = {
     accounts,
     fiscalContext,
@@ -187,6 +206,18 @@ export function createJournalLifecycleServices(
   return Object.freeze({
     get: (companyId: string, voucherId: string) =>
       getJournalVoucherLifecycle({ companyId, voucherId }, lifecycleReader),
+    submit: (command: SubmitJournalVoucherLifecycleCommand) =>
+      handleSubmitJournalVoucherLifecycleCommand(command, {
+        authorization,
+        approval,
+        effects,
+      }),
+    decide: (command: DecideJournalVoucherLifecycleApprovalCommand) =>
+      handleDecideJournalVoucherLifecycleApprovalCommand(command, {
+        authorization,
+        approval,
+        effects,
+      }),
     post: (command: PostJournalVoucherLifecycleCommand) => handlePostJournalVoucherLifecycleCommand(command, {
       authorization,
       posting,
