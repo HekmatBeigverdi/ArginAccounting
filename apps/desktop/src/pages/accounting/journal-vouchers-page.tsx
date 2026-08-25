@@ -459,7 +459,7 @@ export function JournalVouchersPage() {
           <PersianDatePicker
             value={dateTo}
             onChange={setDateTo}
-            ariaLabel="تا تاریخ شمسی"
+            ariaLabel="تا تاریخ"
             placeholder="تا تاریخ شمسی"
           />
         </label>

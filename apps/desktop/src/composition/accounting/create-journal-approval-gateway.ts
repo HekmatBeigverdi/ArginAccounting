@@ -56,7 +56,11 @@ export function createDesktopJournalApprovalGateway(
   };
 
   return Object.freeze({
-    async createAndSubmit(request): Promise<ApprovalRequest> {
+    async createAndSubmit(
+      request: Parameters<
+        JournalVoucherApprovalGateway["createAndSubmit"]
+      >[0],
+    ): Promise<ApprovalRequest> {
       const created = await createApprovalRequestService(context, {
         requestType: request.requestType,
         title: request.title,
@@ -74,7 +78,9 @@ export function createDesktopJournalApprovalGateway(
       });
     },
 
-    async applyDecision(request): Promise<ApprovalRequest> {
+    async applyDecision(
+      request: Parameters<JournalVoucherApprovalGateway["applyDecision"]>[0],
+    ): Promise<ApprovalRequest> {
       const current = await approvalRepository.findById(request.approvalRequestId);
       if (!current) {
         throw new Error(`Approval request ${request.approvalRequestId} was not found.`);
