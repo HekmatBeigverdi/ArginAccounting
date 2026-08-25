@@ -80,13 +80,15 @@ export async function emitJournalVoucherLifecycleSuccess(
     effects.events.publish(createIntegrationEvent(evidence)),
   );
 
-  if (effects.notifications && input.approvalRequesterId) {
+  const notifications = effects.notifications;
+  const approvalRequesterId = input.approvalRequesterId;
+  if (notifications && approvalRequesterId) {
     const notification = approvalNotification(input.action);
     if (notification) {
-      await runPostCommitStage("notification", evidence, () =>
-        effects.notifications!.create({
+      await runPostCommitStage("notification", evidence, async () => {
+        await notifications.create({
           notificationType: notification.type,
-          recipient: { recipientType: "user", recipientId: input.approvalRequesterId! },
+          recipient: { recipientType: "user", recipientId: approvalRequesterId },
           title: notification.title,
           message: notification.message,
           severity: notification.severity,
@@ -98,8 +100,8 @@ export async function emitJournalVoucherLifecycleSuccess(
             status: evidence.newStatus,
             approvalRequestId: evidence.approvalRequestId,
           },
-        }).then(() => undefined),
-      );
+        });
+      });
     }
   }
 }
