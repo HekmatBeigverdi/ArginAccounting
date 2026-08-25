@@ -1,6 +1,7 @@
 import {
   createContext,
   type PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -51,6 +52,10 @@ export function AccountingProvider({ children }: PropsWithChildren) {
   const { session } = useAuthSession();
   const [database, setDatabase] = useState<Awaited<ReturnType<typeof getDesktopDatabase>> | null>(null);
   const [failed, setFailed] = useState(false);
+  const [dataRevision, setDataRevision] = useState(0);
+  const invalidateAccountingData = useCallback(() => {
+    setDataRevision((current) => current + 1);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -102,6 +107,58 @@ export function AccountingProvider({ children }: PropsWithChildren) {
       source: "desktop" as const,
     };
 
+    const journalServices = createJournalVoucherServices({
+      database,
+      clock: platform.clock,
+      idGenerator: platform.idGenerator,
+      eventBus: platform.eventBus,
+      authorizer,
+    });
+    const lifecycleServices = createJournalLifecycleServices({
+      database,
+      clock: platform.clock,
+      idGenerator: platform.idGenerator,
+      eventBus: platform.eventBus,
+      notificationService: platform.notificationService,
+      authorizer,
+    });
+
+    const journals: JournalVoucherDesktopServices = Object.freeze({
+      ...journalServices,
+      create: (command) => runAccountingMutation(
+        () => journalServices.create(command),
+        invalidateAccountingData,
+      ),
+      update: (command) => runAccountingMutation(
+        () => journalServices.update(command),
+        invalidateAccountingData,
+      ),
+      delete: (command) => runAccountingMutation(
+        () => journalServices.delete(command),
+        invalidateAccountingData,
+      ),
+    });
+
+    const journalLifecycle: JournalLifecycleDesktopServices = Object.freeze({
+      ...lifecycleServices,
+      submit: (command) => runAccountingMutation(
+        () => lifecycleServices.submit(command),
+        invalidateAccountingData,
+      ),
+      decide: (command) => runAccountingMutation(
+        () => lifecycleServices.decide(command),
+        invalidateAccountingData,
+      ),
+      post: (command) => runAccountingMutation(
+        () => lifecycleServices.post(command),
+        invalidateAccountingData,
+      ),
+      reverse: (command) => runAccountingMutation(
+        () => lifecycleServices.reverse(command),
+        invalidateAccountingData,
+      ),
+    });
+
     return {
       chartOfAccounts: new ChartOfAccountsService(
         unitOfWork,
@@ -130,24 +187,13 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         authorizer,
         actorId: session?.user.id ?? "desktop-local-user",
       }),
-      journals: createJournalVoucherServices({
-        database,
-        clock: platform.clock,
-        idGenerator: platform.idGenerator,
-        eventBus: platform.eventBus,
-        authorizer,
-      }),
-      journalLifecycle: createJournalLifecycleServices({
-        database,
-        clock: platform.clock,
-        idGenerator: platform.idGenerator,
-        eventBus: platform.eventBus,
-        notificationService: platform.notificationService,
-        authorizer,
-      }),
+      journals,
+      journalLifecycle,
     };
   }, [
+    dataRevision,
     database,
+    invalidateAccountingData,
     platform.clock,
     platform.eventBus,
     platform.idGenerator,
@@ -193,4 +239,30 @@ export function useAccountingServices(): AccountingServices {
     throw new Error("useAccountingServices must be used inside AccountingProvider.");
   }
   return services;
+}
+
+async function runAccountingMutation<T>(
+  mutation: () => Promise<T>,
+  invalidate: () => void,
+): Promise<T> {
+  try {
+    const result = await mutation();
+    invalidate();
+    return result;
+  } catch (error) {
+    if (isCommittedLifecycleFailure(error)) invalidate();
+    throw error;
+  }
+}
+
+function isCommittedLifecycleFailure(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as {
+    code?: unknown;
+    details?: { committed?: unknown };
+  };
+  return (
+    candidate.code === "journal.post-commit-effects-failed" &&
+    candidate.details?.committed === true
+  );
 }
