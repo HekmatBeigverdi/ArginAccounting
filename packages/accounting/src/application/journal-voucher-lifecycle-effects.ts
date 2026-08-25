@@ -16,6 +16,8 @@ export type JournalVoucherLifecycleEffectAction =
   | "reverse"
   | "authorization_denied";
 
+export type JournalVoucherLifecycleEffectStage = "audit" | "event" | "notification";
+
 export interface JournalVoucherLifecycleAuditEvidence {
   readonly action: JournalVoucherLifecycleEffectAction;
   readonly voucherId: string;
@@ -72,17 +74,19 @@ export async function emitJournalVoucherLifecycleSuccess(
 ): Promise<void> {
   const evidence = createEvidence(input);
 
-  try {
-    // The business transaction has already committed when the handler calls this function.
-    await effects.audit.record(evidence);
-    await effects.events.publish(createIntegrationEvent(evidence));
+  // The business transaction has already committed when the handler calls this function.
+  await runPostCommitStage("audit", evidence, () => effects.audit.record(evidence));
+  await runPostCommitStage("event", evidence, () =>
+    effects.events.publish(createIntegrationEvent(evidence)),
+  );
 
-    if (effects.notifications && input.approvalRequesterId) {
-      const notification = approvalNotification(input.action);
-      if (notification) {
-        await effects.notifications.create({
+  if (effects.notifications && input.approvalRequesterId) {
+    const notification = approvalNotification(input.action);
+    if (notification) {
+      await runPostCommitStage("notification", evidence, () =>
+        effects.notifications!.create({
           notificationType: notification.type,
-          recipient: { recipientType: "user", recipientId: input.approvalRequesterId },
+          recipient: { recipientType: "user", recipientId: input.approvalRequesterId! },
           title: notification.title,
           message: notification.message,
           severity: notification.severity,
@@ -94,21 +98,9 @@ export async function emitJournalVoucherLifecycleSuccess(
             status: evidence.newStatus,
             approvalRequestId: evidence.approvalRequestId,
           },
-        });
-      }
+        }).then(() => undefined),
+      );
     }
-  } catch (cause) {
-    throw new JournalVoucherLifecycleApplicationError(
-      "journal.post-commit-effects-failed",
-      "عملیات اصلی سند انجام شده است، اما ثبت ممیزی یا آثار جانبی پس از Commit کامل نشد.",
-      Object.freeze({
-        committed: true,
-        action: evidence.action,
-        voucherId: evidence.voucherId,
-        newVersion: evidence.newVersion,
-      }),
-      { cause },
-    );
   }
 }
 
@@ -147,6 +139,40 @@ export async function emitJournalVoucherAuthorizationDenied(
     outcome: "denied",
     reason: `${input.action}: ${input.reason}`,
   }));
+}
+
+async function runPostCommitStage(
+  stage: JournalVoucherLifecycleEffectStage,
+  evidence: JournalVoucherLifecycleAuditEvidence,
+  work: () => Promise<void>,
+): Promise<void> {
+  try {
+    await work();
+  } catch (cause) {
+    throw new JournalVoucherLifecycleApplicationError(
+      "journal.post-commit-effects-failed",
+      `عملیات اصلی سند انجام شده است، اما مرحله ${stage} پس از Commit کامل نشد.`,
+      Object.freeze({
+        committed: true,
+        stage,
+        action: evidence.action,
+        voucherId: evidence.voucherId,
+        newVersion: evidence.newVersion,
+        cause: describeCause(cause),
+      }),
+      { cause },
+    );
+  }
+}
+
+function describeCause(cause: unknown): string {
+  if (cause instanceof AggregateError) {
+    return `${cause.name}: ${cause.message}; errors=${cause.errors.map(describeCause).join(" | ")}`;
+  }
+  if (cause instanceof Error) {
+    return `${cause.name}: ${cause.message}${cause.stack ? `\n${cause.stack}` : ""}`;
+  }
+  return String(cause);
 }
 
 function createEvidence(input: EmitJournalVoucherLifecycleSuccessInput): JournalVoucherLifecycleAuditEvidence {
