@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import type { ApprovalRequestSummary, ApprovalStatus } from "@argin/audit";
 
+import {
+  desktopDataTopics,
+  subscribeDesktopData,
+} from "../../app/data-invalidation";
 import { Badge, DataTable } from "../../components/data-display";
 import { Feedback } from "../../components/feedback";
 import { Button, Field, Input, Select } from "../../components/forms";
@@ -38,7 +42,7 @@ export function ApprovalRequestsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setErrorMessage("");
     try {
@@ -54,9 +58,13 @@ export function ApprovalRequestsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [services, status, text]);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(
+    () => subscribeDesktopData(desktopDataTopics.approvalRequests, () => { void load(); }),
+    [load],
+  );
 
   return (
     <Page className="governance-page">
