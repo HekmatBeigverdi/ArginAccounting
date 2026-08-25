@@ -134,8 +134,13 @@ describe("journal lifecycle desktop regression", () => {
 
   it("does not open a second transaction for a single post-commit lifecycle audit insert", () => {
     assert.match(compositionSource, /createLifecycleAuditUnitOfWork\(auditDatabase\)/u);
-    assert.match(compositionSource, /return work\(\{ audit, approval \}\)/u);
-    assert.doesNotMatch(compositionSource, /function createLifecycleAuditUnitOfWork[\s\S]*database\.transaction/u);
+    const start = compositionSource.indexOf("function createLifecycleAuditUnitOfWork");
+    const end = compositionSource.indexOf("function asAuditDatabase", start);
+    assert.notEqual(start, -1);
+    assert.notEqual(end, -1);
+    const auditUnitOfWorkSource = compositionSource.slice(start, end);
+    assert.match(auditUnitOfWorkSource, /return work\(\{ audit, approval \}\)/u);
+    assert.doesNotMatch(auditUnitOfWorkSource, /database\.transaction/u);
   });
 
   it("identifies the exact post-commit effect stage when diagnostics are needed", () => {
