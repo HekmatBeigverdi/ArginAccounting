@@ -100,18 +100,55 @@ export function JournalVoucherLifecycleOverview() {
     void load();
   }, [load]);
 
-  const openConfirmation = useCallback((
+  const openConfirmation = useCallback(async (
     kind: ConfirmedActionKind,
     row: LifecycleRow,
     action: JournalVoucherLifecycleActionView,
   ) => {
+    setBusy(true);
     setFailure(null);
     setMessage("");
     setPostingReference("");
     setReversalDate(today());
     setReversalReason("");
-    setPendingAction({ kind, row, action });
-  }, []);
+
+    try {
+      const freshLifecycle = await journalLifecycle.get(
+        row.lifecycle.companyId,
+        row.lifecycle.voucherId,
+      );
+      const freshRow: LifecycleRow = Object.freeze({
+        ...row,
+        lifecycle: freshLifecycle,
+      });
+      const freshView = presentJournalVoucherLifecycle(freshLifecycle, permissions);
+      const freshAction = freshView.actions.find(
+        (candidate) => candidate.action === action.action,
+      );
+
+      setRows((current) => Object.freeze(
+        current.map((candidate) =>
+          candidate.voucher.id === row.voucher.id ? freshRow : candidate,
+        ),
+      ));
+
+      if (!freshAction) {
+        setFailure({
+          kind: "business",
+          title: "وضعیت سند تغییر کرده است",
+          message: "عملیات انتخاب‌شده با وضعیت فعلی سند قابل انجام نیست. وضعیت تازه نمایش داده شد.",
+          technical: `journal.lifecycle.action-stale: action=${action.action}; version=${freshLifecycle.version}; status=${freshLifecycle.status}`,
+        });
+        return;
+      }
+
+      setPendingAction({ kind, row: freshRow, action: freshAction });
+    } catch (reason) {
+      showFailure(reason, `refresh before ${kind}`);
+    } finally {
+      setBusy(false);
+    }
+  }, [journalLifecycle, permissions, showFailure]);
 
   const openDraftEditor = useCallback(async (row: LifecycleRow) => {
     setFailure(null);
