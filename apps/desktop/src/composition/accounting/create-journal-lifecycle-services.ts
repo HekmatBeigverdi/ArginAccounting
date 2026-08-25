@@ -3,6 +3,10 @@ import type {
   AccountingDimensionType,
   AccountDimensionPolicy,
 } from "@argin/accounting";
+import type {
+  AuditRepositories,
+  AuditUnitOfWork,
+} from "@argin/audit";
 import {
   createJournalVoucherLifecycleAuditRecorder,
   getJournalVoucherLifecycle,
@@ -32,7 +36,6 @@ import {
 import {
   SqliteApprovalRepository,
   SqliteAuditRepository,
-  SqliteAuditUnitOfWork,
   type SqliteDatabase,
 } from "@argin/audit-tauri";
 import type {
@@ -163,7 +166,7 @@ export function createJournalLifecycleServices(
       idGenerator: { generate: () => input.idGenerator.generate() },
       clock: { now: () => input.clock.now().toISOString() },
       authorizer: { async hasPermission() { return true; } },
-      unitOfWork: new SqliteAuditUnitOfWork(auditDatabase),
+      unitOfWork: createLifecycleAuditUnitOfWork(input.database),
       auditRepository: new SqliteAuditRepository(auditDatabase),
       auditSource: "desktop",
     }),
@@ -229,6 +232,20 @@ export function createJournalLifecycleServices(
       effects,
     }),
   });
+}
+
+function createLifecycleAuditUnitOfWork(database: DatabaseExecutor): AuditUnitOfWork {
+  return {
+    run<T>(work: (repositories: AuditRepositories) => Promise<T>): Promise<T> {
+      return database.transaction(async (session) => {
+        const auditDatabase = asAuditDatabase(session);
+        return work({
+          audit: new SqliteAuditRepository(auditDatabase),
+          approval: new SqliteApprovalRepository(auditDatabase),
+        });
+      });
+    },
+  };
 }
 
 function asAuditDatabase(database: DatabaseExecutor | DatabaseSession): SqliteDatabase {
