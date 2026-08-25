@@ -501,15 +501,16 @@ function LifecycleAction({
   }
 
   if (action.action === "post" || action.action === "reverse") {
+    const confirmedAction = action.action;
     return (
       <button
         type="button"
         className={`journal-lifecycle-action-button ${
-          action.action === "reverse"
+          confirmedAction === "reverse"
             ? "journal-lifecycle-action-button--danger"
             : "journal-lifecycle-action-button--primary"
         }`}
-        onClick={() => onConfirm(action.action, row, action)}
+        onClick={() => onConfirm(confirmedAction, row, action)}
       >
         {action.label}
       </button>
