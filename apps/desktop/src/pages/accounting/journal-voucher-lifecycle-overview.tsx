@@ -91,6 +91,52 @@ export function JournalVoucherLifecycleOverview() {
     void load();
   }, [load]);
 
+  const submitForApproval = useCallback(async (
+    row: LifecycleRow,
+    action: JournalVoucherLifecycleActionView,
+  ) => {
+    if (!session?.user.id) {
+      setFailure({
+        kind: "business",
+        title: "ورود به سامانه لازم است",
+        message: "برای ارسال سند به گردش تأیید باید با کاربر معتبر وارد سامانه شوید.",
+        technical: null,
+      });
+      return;
+    }
+    if (action.confirmation && !window.confirm(action.confirmation)) return;
+
+    setBusy(true);
+    setFailure(null);
+    setMessage("");
+    try {
+      const result = await journalLifecycle.submit({
+        context: {
+          actorId: session.user.id,
+          companyId: row.lifecycle.companyId,
+          requestId: crypto.randomUUID(),
+          correlationId: crypto.randomUUID(),
+          occurredAt: new Date().toISOString(),
+        },
+        voucherId: row.lifecycle.voucherId,
+        expectedVersion: row.lifecycle.version,
+        actor: {
+          type: "user",
+          id: session.user.id,
+          displayName: session.user.displayName,
+        },
+      });
+      setMessage(
+        `سند ${row.voucher.number} برای تأیید ارسال شد. درخواست ${result.approvalRequest.id} ایجاد شد.`,
+      );
+      await load();
+    } catch (reason) {
+      setFailure(presentJournalVoucherLifecycleFailure(reason));
+    } finally {
+      setBusy(false);
+    }
+  }, [journalLifecycle, load, session]);
+
   const openHighImpactAction = useCallback((
     row: LifecycleRow,
     action: JournalVoucherLifecycleActionView,
@@ -176,8 +222,8 @@ export function JournalVoucherLifecycleOverview() {
       <div className="journal-lifecycle-overview__header">
         <div>
           <p className="journal-lifecycle-overview__eyebrow">چرخه عمر سند</p>
-          <h2 id="journal-lifecycle-title">وضعیت، ثبت نهایی و رهگیری</h2>
-          <p>ثبت نهایی و برگشت از Application اجرا می‌شوند؛ وضعیت و شواهد پس از هر عملیات دوباره از پایگاه داده خوانده می‌شوند.</p>
+          <h2 id="journal-lifecycle-title">وضعیت، تأیید، ثبت نهایی و رهگیری</h2>
+          <p>ارسال برای تأیید، ثبت نهایی و برگشت از Application اجرا می‌شوند؛ وضعیت و شواهد پس از هر عملیات دوباره از پایگاه داده خوانده می‌شوند.</p>
         </div>
         <div className="journal-lifecycle-overview__filters">
           <label>
@@ -236,6 +282,7 @@ export function JournalVoucherLifecycleOverview() {
                   view={view}
                   expanded={isExpanded}
                   onToggleTrace={() => setExpandedVoucherId(isExpanded ? null : voucher.id)}
+                  onSubmitForApproval={submitForApproval}
                   onHighImpactAction={openHighImpactAction}
                 />
               );
@@ -312,12 +359,14 @@ function LifecycleTableRows({
   view,
   expanded,
   onToggleTrace,
+  onSubmitForApproval,
   onHighImpactAction,
 }: {
   row: LifecycleRow;
   view: ReturnType<typeof presentJournalVoucherLifecycle>;
   expanded: boolean;
   onToggleTrace: () => void;
+  onSubmitForApproval: (row: LifecycleRow, action: JournalVoucherLifecycleActionView) => void;
   onHighImpactAction: (row: LifecycleRow, action: JournalVoucherLifecycleActionView) => void;
 }) {
   return (
@@ -340,6 +389,7 @@ function LifecycleTableRows({
                 key={action.action}
                 row={row}
                 action={action}
+                onSubmitForApproval={onSubmitForApproval}
                 onHighImpactAction={onHighImpactAction}
               />
             ))}
@@ -364,12 +414,26 @@ function LifecycleTableRows({
 function LifecycleAction({
   row,
   action,
+  onSubmitForApproval,
   onHighImpactAction,
 }: {
   row: LifecycleRow;
   action: JournalVoucherLifecycleActionView;
+  onSubmitForApproval: (row: LifecycleRow, action: JournalVoucherLifecycleActionView) => void;
   onHighImpactAction: (row: LifecycleRow, action: JournalVoucherLifecycleActionView) => void;
 }) {
+  if (action.action === "submit_for_approval") {
+    return (
+      <button
+        type="button"
+        className="journal-lifecycle-action-button journal-lifecycle-action-button--primary"
+        onClick={() => onSubmitForApproval(row, action)}
+      >
+        {action.label}
+      </button>
+    );
+  }
+
   if (action.action === "post" || action.action === "reverse") {
     return (
       <button
