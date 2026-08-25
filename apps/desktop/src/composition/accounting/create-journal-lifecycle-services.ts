@@ -166,7 +166,7 @@ export function createJournalLifecycleServices(
       idGenerator: { generate: () => input.idGenerator.generate() },
       clock: { now: () => input.clock.now().toISOString() },
       authorizer: { async hasPermission() { return true; } },
-      unitOfWork: createLifecycleAuditUnitOfWork(input.database),
+      unitOfWork: createLifecycleAuditUnitOfWork(auditDatabase),
       auditRepository: new SqliteAuditRepository(auditDatabase),
       auditSource: "desktop",
     }),
@@ -234,16 +234,15 @@ export function createJournalLifecycleServices(
   });
 }
 
-function createLifecycleAuditUnitOfWork(database: DatabaseExecutor): AuditUnitOfWork {
+function createLifecycleAuditUnitOfWork(database: SqliteDatabase): AuditUnitOfWork {
+  const audit = new SqliteAuditRepository(database);
+  const approval = new SqliteApprovalRepository(database);
   return {
     run<T>(work: (repositories: AuditRepositories) => Promise<T>): Promise<T> {
-      return database.transaction(async (session) => {
-        const auditDatabase = asAuditDatabase(session);
-        return work({
-          audit: new SqliteAuditRepository(auditDatabase),
-          approval: new SqliteApprovalRepository(auditDatabase),
-        });
-      });
+      // Lifecycle audit is a single SQLite INSERT after the business transaction has committed.
+      // A single statement is atomic in SQLite; opening another transaction here caused the
+      // post-commit transaction/rollback failures observed in the Tauri runtime.
+      return work({ audit, approval });
     },
   };
 }
