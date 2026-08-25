@@ -103,6 +103,14 @@ describe("journal lifecycle desktop regression", () => {
     assert.match(overviewSource, /onConfirm\("submit"/u);
   });
 
+  it("refreshes the lifecycle snapshot before opening a confirmation dialog", () => {
+    assert.match(overviewSource, /const openConfirmation = useCallback\(async/u);
+    assert.match(overviewSource, /const freshLifecycle = await journalLifecycle\.get/u);
+    assert.match(overviewSource, /lifecycle: freshLifecycle/u);
+    assert.match(overviewSource, /candidate\.action === action\.action/u);
+    assert.match(overviewSource, /setPendingAction\(\{ kind, row: freshRow, action: freshAction \}\)/u);
+  });
+
   it("uses internal confirmation dialogs for submit and delete instead of native window.confirm", () => {
     assert.doesNotMatch(overviewSource, /window\.confirm/u);
     assert.match(overviewSource, /ConfirmationDialog/u);
