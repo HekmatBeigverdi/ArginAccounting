@@ -71,18 +71,15 @@ export function presentJournalVoucherLifecycleFailure(
       kind: "business",
       title: businessFailureTitle(code),
       message: businessFailureMessage(code, error),
-      technical: null,
+      technical: technicalFailureDetails(error, code),
     });
   }
 
-  const technical = error instanceof Error
-    ? `${error.name}: ${error.message}`
-    : String(error);
   return Object.freeze({
     kind: "technical",
     title: "خطای فنی",
     message: "عملیات چرخه عمر سند انجام نشد. جزئیات فنی برای بررسی نگه‌داری شده است.",
-    technical,
+    technical: technicalFailureDetails(error),
   });
 }
 
@@ -136,16 +133,28 @@ function lifecycleErrorCode(error: unknown): string | null {
   return typeof code === "string" && code.startsWith("journal.") ? code : null;
 }
 
+function technicalFailureDetails(error: unknown, code?: string): string {
+  const message = error instanceof Error
+    ? `${error.name}: ${error.message}`
+    : String(error);
+  const stack = error instanceof Error && error.stack ? `\n${error.stack}` : "";
+  return `${code ? `code=${code}\n` : ""}${message}${stack}`;
+}
+
 function businessFailureTitle(code: string): string {
   switch (code) {
     case "journal.version-conflict": return "سند توسط کاربر دیگری تغییر کرده است";
     case "journal.unauthorized": return "دسترسی مجاز نیست";
     case "journal.segregation-of-duties-violation": return "تفکیک وظایف اجازه این عملیات را نمی‌دهد";
+    case "journal.approval-cycle-exists": return "گردش تأیید فعال وجود دارد";
+    case "journal.approval-cycle-missing": return "تأیید معتبر پیدا نشد";
+    case "journal.approval-status-mismatch": return "وضعیت گردش تأیید معتبر نیست";
+    case "journal.approval-version-conflict": return "درخواست تأیید تغییر کرده است";
+    case "journal.approval-content-version-mismatch": return "سند پس از تأیید تغییر کرده است";
     case "journal.posting-validation-failed": return "سند آماده ثبت نهایی نیست";
     case "journal.reversal-validation-failed": return "برگشت سند قابل انجام نیست";
-    case "journal.approval-cycle-missing": return "تأیید معتبر پیدا نشد";
-    case "journal.approval-content-version-mismatch": return "سند پس از تأیید تغییر کرده است";
     case "journal.already-reversed": return "سند قبلاً برگشت شده است";
+    case "journal.persistence-failed": return "ذخیره اطلاعات چرخه عمر انجام نشد";
     default: return "عملیات چرخه عمر پذیرفته نشد";
   }
 }
@@ -158,16 +167,24 @@ function businessFailureMessage(code: string, error: unknown): string {
       return "مجوز لازم برای انجام این عملیات به کاربر جاری اختصاص داده نشده است.";
     case "journal.segregation-of-duties-violation":
       return "کاربری که سند را برای تأیید ارسال کرده است نمی‌تواند همان چرخه را تأیید کند.";
+    case "journal.approval-cycle-exists":
+      return "برای این سند یک چرخه تأیید جاری وجود دارد. وضعیت سند و درخواست تأیید را تازه‌سازی کنید.";
+    case "journal.approval-cycle-missing":
+      return "چرخه تأیید جاری و معتبر برای این سند وجود ندارد.";
+    case "journal.approval-status-mismatch":
+      return "وضعیت درخواست تأیید با وضعیت مورد انتظار سند هماهنگ نیست.";
+    case "journal.approval-version-conflict":
+      return "درخواست تأیید از زمان نمایش تغییر کرده است. صفحه را تازه‌سازی و دوباره اقدام کنید.";
+    case "journal.approval-content-version-mismatch":
+      return "محتوای سند با نسخه‌ای که تأیید شده مطابقت ندارد و باید دوباره وارد گردش تأیید شود.";
     case "journal.posting-validation-failed":
       return "اعتبارسنجی نهایی حساب‌ها، ابعاد، تراز یا دوره مالی موفق نبود. سند را بررسی و دوباره تلاش کنید.";
     case "journal.reversal-validation-failed":
       return "شرایط حسابداری یا دوره مالی برای ایجاد سند برگشتی معتبر نیست.";
-    case "journal.approval-cycle-missing":
-      return "چرخه تأیید جاری و معتبر برای این سند وجود ندارد.";
-    case "journal.approval-content-version-mismatch":
-      return "محتوای سند با نسخه‌ای که تأیید شده مطابقت ندارد و باید دوباره وارد گردش تأیید شود.";
     case "journal.already-reversed":
       return "برای این سند قبلاً سند برگشتی ثبت شده است.";
+    case "journal.persistence-failed":
+      return "ذخیره‌سازی چرخه عمر سند در پایگاه داده انجام نشد. جزئیات فنی را برای بررسی ارسال کنید.";
     default:
       return error instanceof Error ? error.message : "عملیات با قواعد چرخه عمر سند سازگار نیست.";
   }
