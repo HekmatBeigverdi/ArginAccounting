@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import {
+  DefaultNotificationService,
+  InMemoryNotificationStore,
+} from "@argin/platform";
+
 import type { JournalVoucher } from "../src/domain/journal-voucher.ts";
 import {
   emitJournalVoucherAuthorizationDenied,
@@ -116,9 +121,47 @@ describe("journal voucher lifecycle effects", () => {
 
     assert.deepEqual(h.order, ["audit", "event", "notification"]);
     assert.deepEqual(h.notifications, [{
-      notificationType: "journal-voucher.rejected",
+      notificationType: "accounting.journal-voucher.rejected",
       recipientId: "requester-1",
     }]);
+  });
+
+  it("uses notification types accepted by the real platform notification service", async () => {
+    const store = new InMemoryNotificationStore();
+    const notifications = new DefaultNotificationService(store, {
+      clock: { now: () => new Date("2026-08-24T10:05:00.000Z") },
+      idGenerator: { generate: () => "notification-1" },
+    });
+    const effects: JournalVoucherLifecycleEffects = {
+      audit: { async record() {} },
+      events: { async publish() {} },
+      notifications,
+    };
+
+    await emitJournalVoucherLifecycleSuccess(effects, {
+      action: "approve",
+      context: {
+        actorId: "approver-1",
+        companyId: "company-1",
+        requestId: "request-approve-1",
+        correlationId: "corr-approve-1",
+        causationId: null,
+        occurredAt: "2026-08-24T10:05:00.000Z",
+      },
+      voucher: voucher("approved", 4),
+      previousStatus: "pending_approval",
+      previousVersion: 3,
+      approvalRequestId: "approval-1",
+      approvalRequesterId: "requester-1",
+    });
+
+    const saved = await notifications.list({
+      recipientType: "user",
+      recipientId: "requester-1",
+    });
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0]?.notificationType, "accounting.journal-voucher.approved");
+    assert.equal(saved[0]?.sourceModule, "accounting");
   });
 
   it("records authorization denial without publishing an integration event", async () => {
