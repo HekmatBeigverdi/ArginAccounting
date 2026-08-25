@@ -8,6 +8,11 @@ import {
 } from "@argin/security-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
+import {
+  desktopDataTopics,
+  invalidateDesktopData,
+  subscribeDesktopData,
+} from "../../app/data-invalidation";
 import { Feedback } from "../../components/feedback";
 import { Button, Field, Select } from "../../components/forms";
 import { Panel } from "../../components/layout";
@@ -39,7 +44,11 @@ export function RolePermissionManagement() {
       ]);
       setRoles(roleList);
       setPermissions(permissionList);
-      setSelectedRoleId((current) => current || roleList[0]?.id || "");
+      setSelectedRoleId((current) =>
+        current && roleList.some((role) => role.id === current)
+          ? current
+          : roleList[0]?.id ?? "",
+      );
     } catch {
       setErrorMessage("دریافت نقش‌ها و مجوزها با خطا مواجه شد.");
     } finally {
@@ -64,6 +73,14 @@ export function RolePermissionManagement() {
 
   useEffect(() => { void loadInitialData(); }, [loadInitialData]);
   useEffect(() => { void loadRolePermissions(); }, [loadRolePermissions]);
+  useEffect(
+    () => subscribeDesktopData(desktopDataTopics.securityRoles, () => { void loadInitialData(); }),
+    [loadInitialData],
+  );
+  useEffect(
+    () => subscribeDesktopData(desktopDataTopics.securityRolePermissions, () => { void loadRolePermissions(); }),
+    [loadRolePermissions],
+  );
 
   function togglePermission(permissionId: string): void {
     if (isSystemAdministrator) return;
@@ -87,6 +104,7 @@ export function RolePermissionManagement() {
         null,
       );
       setMessage("مجوزهای نقش با موفقیت ذخیره شد.");
+      invalidateDesktopData(desktopDataTopics.securityRolePermissions);
     } catch {
       setErrorMessage("ذخیره مجوزهای نقش با خطا مواجه شد.");
     } finally {
