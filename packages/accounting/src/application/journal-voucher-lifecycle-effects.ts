@@ -1,6 +1,9 @@
 import type { DomainEvent, NotificationService } from "@argin/platform";
 import type { JournalVoucher } from "../domain/journal-voucher.ts";
-import type { JournalVoucherLifecycleCommandContext } from "./journal-voucher-lifecycle-contracts.ts";
+import {
+  JournalVoucherLifecycleApplicationError,
+  type JournalVoucherLifecycleCommandContext,
+} from "./journal-voucher-lifecycle-contracts.ts";
 
 export type JournalVoucherLifecycleEffectAction =
   | "submit_for_approval"
@@ -69,29 +72,43 @@ export async function emitJournalVoucherLifecycleSuccess(
 ): Promise<void> {
   const evidence = createEvidence(input);
 
-  // The business transaction has already committed when the handler calls this function.
-  await effects.audit.record(evidence);
-  await effects.events.publish(createIntegrationEvent(evidence));
+  try {
+    // The business transaction has already committed when the handler calls this function.
+    await effects.audit.record(evidence);
+    await effects.events.publish(createIntegrationEvent(evidence));
 
-  if (effects.notifications && input.approvalRequesterId) {
-    const notification = approvalNotification(input.action);
-    if (notification) {
-      await effects.notifications.create({
-        notificationType: notification.type,
-        recipient: { recipientType: "user", recipientId: input.approvalRequesterId },
-        title: notification.title,
-        message: notification.message,
-        severity: notification.severity,
-        channels: ["in-app"],
-        ...(evidence.correlationId ? { correlationId: evidence.correlationId } : {}),
-        sourceModule: "accounting",
-        data: {
-          voucherId: evidence.voucherId,
-          status: evidence.newStatus,
-          approvalRequestId: evidence.approvalRequestId,
-        },
-      });
+    if (effects.notifications && input.approvalRequesterId) {
+      const notification = approvalNotification(input.action);
+      if (notification) {
+        await effects.notifications.create({
+          notificationType: notification.type,
+          recipient: { recipientType: "user", recipientId: input.approvalRequesterId },
+          title: notification.title,
+          message: notification.message,
+          severity: notification.severity,
+          channels: ["in-app"],
+          ...(evidence.correlationId ? { correlationId: evidence.correlationId } : {}),
+          sourceModule: "accounting",
+          data: {
+            voucherId: evidence.voucherId,
+            status: evidence.newStatus,
+            approvalRequestId: evidence.approvalRequestId,
+          },
+        });
+      }
     }
+  } catch (cause) {
+    throw new JournalVoucherLifecycleApplicationError(
+      "journal.post-commit-effects-failed",
+      "عملیات اصلی سند انجام شده است، اما ثبت ممیزی یا آثار جانبی پس از Commit کامل نشد.",
+      Object.freeze({
+        committed: true,
+        action: evidence.action,
+        voucherId: evidence.voucherId,
+        newVersion: evidence.newVersion,
+      }),
+      { cause },
+    );
   }
 }
 
