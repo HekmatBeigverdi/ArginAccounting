@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved baseline and implementation preparation started. This document is the canonical execution checklist for Phase 15.
+Implementation, validation, final review, and merge preparation are complete. Phase 15 has been merged into `develop`; final semantic tag and GitHub Release publication remain the repository owner's manual release action.
 
 ## Governance Rule
 
@@ -72,8 +72,8 @@ Excluded: Accounting Reports, automatic posting from operational modules, later 
 | 14 | Posting, Reversal, Traceability, and Failure UX | Completed |
 | 15 | Domain and Application Test Matrix | Completed |
 | 16 | Repository, Migration, Permission, and Desktop Regression Tests | Completed |
-| 17 | Monorepo Validation and Documentation Completion | In progress |
-| 18 | Final Review, Merge, and Release | Not started |
+| 17 | Monorepo Validation and Documentation Completion | Completed |
+| 18 | Final Review, Merge, and Release | Release publication pending |
 
 ## Fixed Execution Sequence
 
@@ -235,7 +235,9 @@ Evidence:
 - Approval requester receives in-app notifications for approved/rejected/returned/cancelled outcomes; Posting/Reversal avoid redundant self-notification.
 - Added focused `journal-voucher-lifecycle-effects.test.ts` coverage for audit-before-event ordering, Approval notification, and audit-only denial.
 - Preserved `exactOptionalPropertyTypes` compatibility by conditionally omitting absent event/notification properties.
-- User confirmed Step 12 local validation is green.
+- Step 18 runtime review exposed two post-commit integration defects and both were corrected without weakening business transaction semantics: lifecycle Audit now avoids an unnecessary nested post-commit transaction, and lifecycle notification types use the required `accounting.` module prefix.
+- Added real `DefaultNotificationService` coverage so source-module/type-prefix validation cannot be bypassed by a mock.
+- User confirmed the final approval runtime path no longer reports the notification post-commit failure.
 
 ### Step 13 — Persian RTL Lifecycle Status and Action UI
 
@@ -277,10 +279,11 @@ Evidence:
 - High-impact operations use an explicit modal plus final confirmation. Reversal cannot proceed without a traceable reason.
 - Successful commands refresh the persisted lifecycle immediately and surface the new posted/reversed version or generated reversal voucher number.
 - Added expandable traceability for current Approval request, Posting evidence, latest controlled Amendment, and original/reversal/replacement lineage. Approval request ids link to the existing Approval details route.
-- Stable `journal.*` failures are presented as business rejections with Persian recovery guidance and without leaking raw technical detail. Unknown failures are visually separated as technical errors with expandable diagnostics.
+- Stable `journal.*` failures are presented as business rejections with Persian recovery guidance and expandable technical diagnostics during final review.
 - Added focused presenter coverage for business-vs-technical error classification and explicit irreversible confirmation copy for Post/Reversal.
 - Preserved Step 12 ordering: lifecycle transaction commits before Audit/Integration Event/Notification effects; desktop composition does not nest Audit inside the Posting/Reversal transaction.
-- User confirmed Step 14 local validation is green.
+- Final review connected previously silent Draft edit/delete/submit actions to executable handlers, replaced native confirmation with internal modals, refreshed the latest lifecycle snapshot before consequential actions, resolved Company/Branch labels, and introduced mutation-driven auto-refresh for Journal, Approval, Audit, User, Role, and related sibling views.
+- User confirmed the submit/approval desktop acceptance path after these corrections.
 
 ### Step 15 — Domain and Application Test Matrix
 
@@ -316,8 +319,8 @@ Evidence:
 - Added `apps/desktop/tests/journal-lifecycle-constraints.test.ts` using real in-memory SQLite to prove one-current-Approval-cycle uniqueness, one Posting evidence row, Amendment version integrity, reversal original/reversal/request uniqueness, and invalid self-lineage rejection.
 - Added `packages/accounting-tauri/tests/sqlite-journal-voucher-lifecycle-concurrency.test.ts` to prove `updateLifecycleState` stale expected-version CAS fails when no row is affected and does not issue a follow-up write.
 - Existing `sqlite-journal-voucher-lifecycle.test.ts` remains the focused evidence for one-transaction Posting, Amendment, Reversal/lineage, and exact-session Approval gateway composition.
-- Added `apps/desktop/tests/journal-lifecycle-desktop-regression.test.ts` to ensure all eight lifecycle permissions remain in the default Security registry, Post is not exposed without its explicit permission, and real Post/Reversal execution remains routed through canonical Application handlers/UoWs rather than direct React SQL.
-- Desktop regression also protects deliberate confirmation and the separation of stable business rejection from expandable technical diagnostics.
+- Added `apps/desktop/tests/journal-lifecycle-desktop-regression.test.ts` to ensure all eight lifecycle permissions remain in the default Security registry, Post is not exposed without its explicit permission, and real lifecycle execution remains routed through canonical Application handlers/UoWs rather than direct React SQL.
+- Desktop regression protects deliberate confirmation, executable Draft actions, stale-snapshot refresh, auto-invalidation, post-commit audit composition, stage-aware diagnostics, and the separation of stable business rejection from technical detail.
 - Added `docs/phases/phase-15-step-16-regression-matrix.md` mapping persistence/migration/permission/desktop requirements to their concrete tests.
 - Preserved the Step 10 test rules: convert `node:sqlite` result rows to plain objects before strict equality and use `sqlite_master.tbl_name` when discovering indexes attached to a table.
 - Local Desktop validation initially exposed extensionless relative ESM imports in `@argin/security`; commit `cf8e91b6c3956b9863d0204a4905edf1e12a2365` corrected Security source imports/exports to explicit `.ts` paths and enabled `allowImportingTsExtensions`.
@@ -331,14 +334,15 @@ Evidence:
 
 Exit: validation green with recorded evidence; Phase 16 clearly identified as next target.
 
-Status: In progress
+Status: Completed
 
-Evidence so far:
+Evidence:
 
-- Added `docs/phases/phase-15-step-17-validation.md` with the authoritative focused/full validation commands, documentation completion checklist, integrity checks, and the retained Security ESM regression rule.
-- Root validation scripts confirmed as `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
-- `docs/phases/README.md` now identifies Step 17 as the current in-progress step and Step 18 as next.
-- No Step 17 validation command is claimed green until executed locally or through CI against the current Step 17 HEAD.
+- Added `docs/phases/phase-15-step-17-validation.md` with the authoritative focused/full validation commands, documentation completion checklist, integrity checks, and retained regression rules.
+- Root validation scripts remain `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build`.
+- Step 17 validation is recorded as user-confirmed local execution; connector sessions do not claim independent execution of those local `pnpm` commands.
+- Final Step 18 runtime corrections were added on top of the validated baseline and protected by focused regression tests; the repository owner confirmed the corrected Desktop approval flow after the final Notification fix.
+- Phase 16 — Accounting Reports remains the next implementation target.
 
 ### Step 18 — Final Review, Merge, and Release
 
@@ -348,7 +352,18 @@ Evidence so far:
 
 Exit: Phase 15 merged/released with consistent evidence and no silent lifecycle-critical issue.
 
-Status: Not started
+Status: Release publication pending
+
+Evidence:
+
+- Final runtime review exercised real Draft creation, Submit for Approval, separate-user Approval, lifecycle status/version behavior, confirmation UX, Approval/Audit integration paths, and automatic UI refresh behavior.
+- Runtime defects discovered during acceptance were corrected rather than deferred: raw Company/Branch identifiers, silent Draft actions, stale lifecycle snapshot version conflicts, post-commit Audit transaction failure, ambiguous post-commit diagnostics, sibling-view stale data, and invalid Notification type prefixes.
+- Lifecycle business commits remain authoritative and are distinguished from post-commit effects; Audit/Event/Notification stage failures no longer misrepresent a committed business mutation as rolled back.
+- Final Notification validation is covered through the real `DefaultNotificationService`, not only a mock.
+- The repository owner's final local runtime confirmation states that the approval path is operating correctly after the Notification correction.
+- Phase branch `phase/15-journal-lifecycle` was merged into `develop` through PR #10 using merge commit `e43f8eb5e50dfe7fcce12f70ef28b79a85ffdb62` while preserving the parallel Phase 14 documentation ancestry.
+- Final semantic tag `v0.15.0` and GitHub Release publication are intentionally left as the repository owner's manual final release action.
+- Phase 16 — Accounting Reports is the next target after release publication.
 
 ## Change Requests
 
