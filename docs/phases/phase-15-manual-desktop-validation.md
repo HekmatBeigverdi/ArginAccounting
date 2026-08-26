@@ -60,27 +60,20 @@ Expected:
 - status is `پیش‌نویس`;
 - voucher is editable;
 - version is shown;
-- Submit for Approval is available when the user has permission.
-
-Record:
-
-- voucher number;
-- voucher id if visible;
-- initial version;
-- screenshot of the Draft row/details.
+- Submit for Approval is available when the user has permission;
+- list and lifecycle tables refresh automatically after the mutation.
 
 ### 2. Submit for Approval
 
-As User A, select **ارسال برای تأیید** and confirm.
+As User A, select **ارسال برای تأیید** and confirm through the internal modal.
 
 Expected:
 
 - status becomes `در انتظار تأیید`;
 - ordinary editing is locked;
 - an Approval Request is created;
-- lifecycle version increments.
-
-Record the Approval Request id from traceability when available.
+- lifecycle version increments;
+- lifecycle/list state refreshes without changing route or manually reloading the page.
 
 ### 3. Approval Decision
 
@@ -91,133 +84,77 @@ Open the request linked to the test Journal Voucher and approve it.
 Expected:
 
 - Approval Request becomes approved;
-- returning to **اسناد حسابداری** and refreshing shows `تأییدشده`;
+- Journal status becomes `تأییدشده`;
+- related Approval/Journal/Audit views invalidate and reload without manual page navigation solely to force refresh;
 - the voucher remains locked against ordinary editing;
-- Posting becomes available only with the Post permission.
+- Posting becomes available only with the Post permission;
+- the requester notification persists with a valid `accounting.journal-voucher.*` notification type.
 
 Optional negative check: User A must not be able to approve the same current cycle; the application should reject self-approval through the segregation-of-duties rule.
 
 ### 4. Final Posting
 
-Using a user with `accounting.journal-vouchers.post`, return to the voucher and choose **ثبت نهایی**.
-
-Confirm the high-impact operation.
+Using a user with `accounting.journal-vouchers.post`, choose **ثبت نهایی**.
 
 Expected:
 
-- final posting succeeds only if the fiscal period, accounts, dimensions, balance, and current Approval evidence remain valid;
+- final posting succeeds only if fiscal/account/dimension/balance/current Approval evidence remain valid;
 - status becomes `ثبت نهایی`;
 - version increments;
-- Posting evidence becomes visible in traceability;
+- Posting evidence becomes visible;
 - ordinary edit/delete is unavailable.
-
-Record:
-
-- posted version;
-- posting timestamp;
-- posting actor;
-- posting reference if entered.
 
 ### 5. Reversal
 
-For full Phase 15 end-to-end validation, select **برگشت سند** on the posted voucher.
-
-Use:
-
-- reversal date inside an open fiscal period;
-- reason: `آزمون برگشت سند فاز ۱۵`.
-
-Confirm the operation.
+For a full manual end-to-end pass, select **برگشت سند** on a posted voucher, use an open-period date and a traceable reason, and confirm.
 
 Expected:
 
 - original voucher becomes `برگشت‌شده`;
-- a separate posted reversal voucher is created;
-- reversal lines are the exact accounting inverse of the original lines;
+- a separate posted inverse voucher is created;
 - original/reversal lineage is visible;
-- the original accounting facts are not edited in place;
-- attempting a second reversal does not create another accounting outcome.
-
-Record:
-
-- reversal voucher number/id;
-- original voucher final version;
-- screenshot of Reversal traceability.
+- original accounting facts are not edited in place;
+- a second reversal cannot produce another outcome.
 
 ## Traceability and Audit Review
 
-### Journal traceability
-
-Use **اسناد حسابداری** (`/accounting/journal-vouchers`) and expand the lifecycle traceability surface.
-
-Verify the relevant evidence appears for the tested path:
-
-- Approval Request;
-- Posting evidence;
-- Amendment evidence if tested;
-- Reversal/Replacement lineage.
-
-### Approval history
-
-Use **گردش تأیید** (`/approval/requests`) and open the linked request (`/approval/requests/:id`).
-
-Verify requester, decision actor, status, timestamps, and decision history.
-
-### Audit evidence
-
-Use **گزارش ممیزی** (`/audit/entries`).
-
-Search/filter around the test voucher, actor, or correlation where available and verify lifecycle actions are reconstructable from immutable Audit entries.
-
-## Optional Controlled-Amendment Scenario
-
-Create a second voucher or repeat the workflow only up to `تأییدشده`.
-
-Choose **بازگشایی برای اصلاح**, provide a reason, and confirm.
-
-Expected:
-
-- `approved -> draft`;
-- the current Approval cycle closes;
-- Amendment evidence records actor, reason, previous/reopened versions and timestamp;
-- changed content cannot reuse the previous Approval and must be submitted again.
+Use **اسناد حسابداری**, **گردش تأیید**, and **گزارش ممیزی** to verify Approval linkage, decision history, lifecycle Audit evidence, Posting evidence when posted, and Reversal/Replacement lineage when exercised.
 
 ## Failure UX Checks
 
-At least one safe negative case should be observed, for example:
+Final review intentionally exercised real failure paths. The acceptance cycle found and corrected:
 
-- stale version after refreshing from another session;
-- missing permission;
-- self-approval attempt;
-- invalid Posting condition.
+- raw Company/Branch identifiers in Journal detail;
+- silent Draft Edit/Delete/Submit actions;
+- stale lifecycle version snapshots before confirmed actions;
+- post-commit Audit transaction failure;
+- ambiguous post-commit error reporting after a committed business mutation;
+- stale sibling/list UI after mutations;
+- invalid Notification type prefix for `sourceModule: accounting`.
 
-Expected:
-
-- stable `journal.*` rejection is shown as a Persian business error;
-- unknown technical failure is visually separate and exposes technical diagnostics only in its dedicated details area.
-
-## Manual Evidence Record
-
-For the Phase 15 final review, record the following values in the validation result section below or in the Step 18 release evidence:
-
-- branch HEAD tested;
-- tester/date;
-- company and fiscal year used;
-- User A and User B roles (do not record passwords or secrets);
-- original voucher number;
-- Approval Request id;
-- posted version;
-- reversal voucher number;
-- Audit evidence observed: Yes/No;
-- result: PASS/FAIL;
-- screenshots or issue references for any failure.
+Each discovered failure was corrected before merge and relevant regression coverage was added or strengthened.
 
 ## Validation Result
 
-Status: **Pending manual execution**
+Status: **PASS for the runtime acceptance path exercised during Step 18**
 
-Tested HEAD: _not recorded yet_
+Tested branch: `phase/15-journal-lifecycle`
 
-Result: _not recorded yet_
+Runtime acceptance confirmed by repository owner: **Yes**
 
-Notes: _not recorded yet_
+Observed manual path:
+
+- Journal Voucher create/save: PASS
+- Draft action execution and confirmation modal: PASS after correction
+- Submit for Approval: PASS after correction
+- Separate-user Approval: PASS after correction
+- Lifecycle version/status update: PASS
+- Approval/Audit post-commit path: PASS after Audit correction
+- Approval requester Notification: PASS after `accounting.` prefix correction
+- Automatic mutation-driven UI refresh: implemented and accepted in final review
+
+Posting/Reversal remain protected by the focused Domain/Application/SQLite/Desktop suites documented in Steps 14–16. This final acceptance conversation did not record a new manual Posting/Reversal voucher-number pair, so no such manual evidence is claimed here.
+
+Final runtime code HEAD before merge included repository-owner correction `68de3737f6e82057b0880d5be0fcc7b88fc23ff6` and the preceding Notification compatibility fix/test commits.
+
+Result: **PASS for the manually exercised release-blocking path; no unresolved runtime defect from the acceptance session remains.**
