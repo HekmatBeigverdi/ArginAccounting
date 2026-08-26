@@ -1,6 +1,6 @@
 import type {
   SecurityValidationIssue
-} from "./security-validation-error";
+} from "./security-validation-error.ts";
 
 export interface PasswordPolicyOptions {
   minimumLength: number;

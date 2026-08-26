@@ -21,6 +21,7 @@ interface JournalVoucherRow {
   fiscal_period_id: string;
   description: string | null;
   status: "draft";
+  lifecycle_status: JournalVoucher["status"];
   currency_code: string;
   source_type: JournalVoucher["source"]["type"];
   source_id: string | null;
@@ -85,24 +86,15 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
     return row ? this.rehydrate(row) : null;
   }
 
-  async findByRequestId(
-    companyId: string,
-    requestId: string,
-  ): Promise<JournalVoucher | null> {
+  async findByRequestId(companyId: string, requestId: string): Promise<JournalVoucher | null> {
     const row = await this.database.queryOne<JournalVoucherRow>(
-      `SELECT * FROM journal_vouchers
-       WHERE company_id = ? AND request_id = ?`,
+      `SELECT * FROM journal_vouchers WHERE company_id = ? AND request_id = ?`,
       [companyId, requestId],
     );
     return row ? this.rehydrate(row) : null;
   }
 
-  async findByNumber(
-    companyId: string,
-    fiscalYearId: string,
-    branchId: string | null,
-    number: string,
-  ): Promise<JournalVoucher | null> {
+  async findByNumber(companyId: string, fiscalYearId: string, branchId: string | null, number: string): Promise<JournalVoucher | null> {
     const row = await this.database.queryOne<JournalVoucherRow>(
       `SELECT * FROM journal_vouchers
        WHERE company_id = ? AND fiscal_year_id = ?
@@ -134,11 +126,11 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
     const result = await this.database.execute(
       `UPDATE journal_vouchers SET
         branch_id = ?, voucher_number = ?, reference = ?, voucher_date = ?,
-        fiscal_year_id = ?, fiscal_period_id = ?, description = ?, status = ?,
+        fiscal_year_id = ?, fiscal_period_id = ?, description = ?, lifecycle_status = ?,
         currency_code = ?, source_type = ?, source_id = ?, request_id = ?,
         correlation_id = ?, causation_id = ?, total_debit = ?, total_credit = ?,
         updated_at = ?, version = ?
-       WHERE id = ? AND company_id = ? AND version = ?`,
+       WHERE id = ? AND company_id = ? AND lifecycle_status = 'draft' AND version = ?`,
       [
         voucher.branchId, voucher.number, voucher.reference, voucher.voucherDate,
         voucher.fiscalYearId, voucher.fiscalPeriodId, voucher.description,
@@ -150,43 +142,42 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
         expectedVersion,
       ],
     );
-    assertVersionedUpdate(result, {
-      entityType: "JournalVoucher",
-      entityId: voucher.id,
-      expectedVersion,
-    });
-    await this.database.execute(
-      "DELETE FROM journal_lines WHERE voucher_id = ?",
-      [voucher.id],
-    );
+    assertVersionedUpdate(result, { entityType: "JournalVoucher", entityId: voucher.id, expectedVersion });
+    await this.database.execute("DELETE FROM journal_lines WHERE voucher_id = ?", [voucher.id]);
     await this.insertLines(voucher);
+  }
+
+  async updateLifecycleState(voucher: JournalVoucher, expectedVersion: number): Promise<void> {
+    const result = await this.database.execute(
+      `UPDATE journal_vouchers
+       SET lifecycle_status = ?, updated_at = ?, version = ?
+       WHERE id = ? AND company_id = ? AND version = ?`,
+      [voucher.status, voucher.updatedAt, voucher.version, voucher.id, voucher.companyId, expectedVersion],
+    );
+    assertVersionedUpdate(result, { entityType: "JournalVoucher", entityId: voucher.id, expectedVersion });
   }
 
   async deleteDraft(id: string, companyId: string, expectedVersion: number): Promise<void> {
     const result = await this.database.execute(
       `DELETE FROM journal_vouchers
-       WHERE id = ? AND company_id = ? AND status = 'draft' AND version = ?`,
+       WHERE id = ? AND company_id = ? AND lifecycle_status = 'draft' AND version = ?`,
       [id, companyId, expectedVersion],
     );
-    assertVersionedUpdate(result, {
-      entityType: "JournalVoucher",
-      entityId: id,
-      expectedVersion,
-    });
+    assertVersionedUpdate(result, { entityType: "JournalVoucher", entityId: id, expectedVersion });
   }
 
   private async insertVoucher(voucher: JournalVoucher): Promise<void> {
     await this.database.execute(
       `INSERT INTO journal_vouchers (
         id, company_id, branch_id, voucher_number, reference, voucher_date,
-        fiscal_year_id, fiscal_period_id, description, status, currency_code,
+        fiscal_year_id, fiscal_period_id, description, status, lifecycle_status, currency_code,
         source_type, source_id, request_id, correlation_id, causation_id,
         total_debit, total_credit, created_at, updated_at, version
-      ) VALUES (${Array.from({ length: 21 }, () => "?").join(", ")})`,
+      ) VALUES (${Array.from({ length: 22 }, () => "?").join(", ")})`,
       [
         voucher.id, voucher.companyId, voucher.branchId, voucher.number,
         voucher.reference, voucher.voucherDate, voucher.fiscalYearId,
-        voucher.fiscalPeriodId, voucher.description, voucher.status,
+        voucher.fiscalPeriodId, voucher.description, "draft", voucher.status,
         voucher.currency, voucher.source.type, voucher.source.sourceId,
         voucher.source.requestId, voucher.source.correlationId,
         voucher.source.causationId, voucher.totalDebit.amount,
@@ -203,10 +194,7 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
           id, voucher_id, company_id, line_order, account_id, description,
           debit_amount, credit_amount, currency_code
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          line.id, voucher.id, voucher.companyId, line.order, line.accountId,
-          line.description, line.debit.amount, line.credit.amount, voucher.currency,
-        ],
+        [line.id, voucher.id, voucher.companyId, line.order, line.accountId, line.description, line.debit.amount, line.credit.amount, voucher.currency],
       );
       for (const assignment of line.dimensionAssignments) {
         for (const memberId of assignment.memberIds) {
@@ -223,20 +211,16 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
 
   private async rehydrate(row: JournalVoucherRow): Promise<JournalVoucher> {
     const lineRows = await this.database.query<JournalLineRow>(
-      `SELECT id, voucher_id, line_order, account_id, description,
-              debit_amount, credit_amount
+      `SELECT id, voucher_id, line_order, account_id, description, debit_amount, credit_amount
        FROM journal_lines WHERE voucher_id = ? ORDER BY line_order, id`,
       [row.id],
     );
-    const dimensionRows = lineRows.length === 0
-      ? []
-      : await this.database.query<JournalDimensionRow>(
-          `SELECT line_id, dimension_type_id, member_id
-           FROM journal_line_dimension_assignments
-           WHERE voucher_id = ?
-           ORDER BY line_id, dimension_type_id, member_id`,
-          [row.id],
-        );
+    const dimensionRows = lineRows.length === 0 ? [] : await this.database.query<JournalDimensionRow>(
+      `SELECT line_id, dimension_type_id, member_id
+       FROM journal_line_dimension_assignments
+       WHERE voucher_id = ? ORDER BY line_id, dimension_type_id, member_id`,
+      [row.id],
+    );
     const byLine = new Map<string, Map<string, string[]>>();
     for (const dimension of dimensionRows) {
       const byType = byLine.get(dimension.line_id) ?? new Map<string, string[]>();
@@ -255,6 +239,7 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
       fiscalYearId: row.fiscal_year_id,
       fiscalPeriodId: row.fiscal_period_id,
       description: row.description,
+      status: row.lifecycle_status,
       currency: row.currency_code as JournalVoucher["currency"],
       source: {
         type: row.source_type,
@@ -270,32 +255,22 @@ export class SqliteJournalVoucherRepository implements JournalVoucherRepository 
         description: line.description,
         debit: line.debit_amount,
         credit: line.credit_amount,
-        dimensionAssignments: [...(byLine.get(line.id) ?? new Map())].map(
-          ([dimensionTypeId, memberIds]) => ({
-            dimensionTypeId,
-            memberIds: Object.freeze([...memberIds]),
-          }),
-        ),
+        dimensionAssignments: [...(byLine.get(line.id) ?? new Map())].map(([dimensionTypeId, memberIds]) => ({
+          dimensionTypeId,
+          memberIds: Object.freeze([...memberIds]),
+        })),
       })),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       version: row.version,
     });
-    if (
-      voucher.totalDebit.amount !== row.total_debit ||
-      voucher.totalCredit.amount !== row.total_credit
-    ) {
-      throw new Error(
-        `Persisted JournalVoucher totals do not match its lines: ${row.id}`,
-      );
+    if (voucher.totalDebit.amount !== row.total_debit || voucher.totalCredit.amount !== row.total_credit) {
+      throw new Error(`Persisted JournalVoucher totals do not match its lines: ${row.id}`);
     }
     return voucher;
   }
 
-  private searchWhere(query: NormalizedJournalVoucherSearchQuery): {
-    where: string;
-    parameters: DatabaseValue[];
-  } {
+  private searchWhere(query: NormalizedJournalVoucherSearchQuery): { where: string; parameters: DatabaseValue[] } {
     const clauses = ["v.company_id = ?"];
     const parameters: DatabaseValue[] = [query.companyId];
     if (query.branchId !== undefined) {

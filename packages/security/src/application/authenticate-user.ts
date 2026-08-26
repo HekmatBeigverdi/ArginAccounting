@@ -1,34 +1,34 @@
 import type {
   PasswordHasher
-} from "../contracts/password-hasher";
+} from "../contracts/password-hasher.ts";
 
 import type {
   PermissionRepository
-} from "../contracts/permission-repository";
+} from "../contracts/permission-repository.ts";
 
 import type {
   RoleRepository
-} from "../contracts/role-repository";
+} from "../contracts/role-repository.ts";
 
 import type {
   SecurityAssignmentRepository
-} from "../contracts/security-assignment-repository";
+} from "../contracts/security-assignment-repository.ts";
 
 import type {
   UserRepository
-} from "../contracts/user-repository";
+} from "../contracts/user-repository.ts";
 
 import type {
   AuthSession
-} from "../domain/auth-session";
+} from "../domain/auth-session.ts";
 
 import {
   SecurityValidationError
-} from "../validation/security-validation-error";
+} from "../validation/security-validation-error.ts";
 
 import {
   normalizeUsername
-} from "../validation/security-normalization";
+} from "../validation/security-normalization.ts";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_MINUTES = 15;

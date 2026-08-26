@@ -23,7 +23,12 @@ import {
 } from "./journal-voucher-text.ts";
 import { JournalVoucherValidationError } from "./journal-voucher-validation-error.ts";
 
-export type JournalVoucherStatus = "draft";
+export type JournalVoucherStatus =
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "posted"
+  | "reversed";
 
 export type JournalVoucherSourceType =
   | "manual"

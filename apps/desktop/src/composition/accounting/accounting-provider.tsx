@@ -1,6 +1,7 @@
 import {
   createContext,
   type PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -23,9 +24,17 @@ import {
 } from "@argin/accounting-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 
+import {
+  desktopDataTopics,
+  invalidateDesktopData,
+} from "../../app/data-invalidation";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { usePlatform } from "../../platform";
 import { createCodingTemplateServices, type CodingTemplateServices } from "./create-coding-template-services";
+import {
+  createJournalLifecycleServices,
+  type JournalLifecycleDesktopServices,
+} from "./create-journal-lifecycle-services";
 import {
   createJournalVoucherServices,
   type JournalVoucherDesktopServices,
@@ -37,19 +46,25 @@ interface AccountingServices {
   readonly dimensionSelector: AccountingDimensionSelectorService;
   readonly codingTemplates: CodingTemplateServices;
   readonly journals: JournalVoucherDesktopServices;
+  readonly journalLifecycle: JournalLifecycleDesktopServices;
 }
 
-const AccountingContext = createContext<AccountingServices | undefined>(
-  undefined,
-);
+const AccountingContext = createContext<AccountingServices | undefined>(undefined);
 
 export function AccountingProvider({ children }: PropsWithChildren) {
   const platform = usePlatform();
   const { session } = useAuthSession();
-  const [database, setDatabase] = useState<Awaited<
-    ReturnType<typeof getDesktopDatabase>
-  > | null>(null);
+  const [database, setDatabase] = useState<Awaited<ReturnType<typeof getDesktopDatabase>> | null>(null);
   const [failed, setFailed] = useState(false);
+  const [dataRevision, setDataRevision] = useState(0);
+  const invalidateAccountingData = useCallback(() => {
+    setDataRevision((current) => current + 1);
+    invalidateDesktopData(
+      desktopDataTopics.journalVouchers,
+      desktopDataTopics.approvalRequests,
+      desktopDataTopics.auditEntries,
+    );
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -101,6 +116,72 @@ export function AccountingProvider({ children }: PropsWithChildren) {
       source: "desktop" as const,
     };
 
+    const journalServices = createJournalVoucherServices({
+      database,
+      clock: platform.clock,
+      idGenerator: platform.idGenerator,
+      eventBus: platform.eventBus,
+      authorizer,
+    });
+    const lifecycleServices = createJournalLifecycleServices({
+      database,
+      clock: platform.clock,
+      idGenerator: platform.idGenerator,
+      eventBus: platform.eventBus,
+      notificationService: platform.notificationService,
+      authorizer,
+    });
+
+    const journals: JournalVoucherDesktopServices = Object.freeze({
+      ...journalServices,
+      create: (
+        command: Parameters<JournalVoucherDesktopServices["create"]>[0],
+      ) => runAccountingMutation(
+        () => journalServices.create(command),
+        invalidateAccountingData,
+      ),
+      update: (
+        command: Parameters<JournalVoucherDesktopServices["update"]>[0],
+      ) => runAccountingMutation(
+        () => journalServices.update(command),
+        invalidateAccountingData,
+      ),
+      delete: (
+        command: Parameters<JournalVoucherDesktopServices["delete"]>[0],
+      ) => runAccountingMutation(
+        () => journalServices.delete(command),
+        invalidateAccountingData,
+      ),
+    });
+
+    const journalLifecycle: JournalLifecycleDesktopServices = Object.freeze({
+      ...lifecycleServices,
+      submit: (
+        command: Parameters<JournalLifecycleDesktopServices["submit"]>[0],
+      ) => runAccountingMutation(
+        () => lifecycleServices.submit(command),
+        invalidateAccountingData,
+      ),
+      decide: (
+        command: Parameters<JournalLifecycleDesktopServices["decide"]>[0],
+      ) => runAccountingMutation(
+        () => lifecycleServices.decide(command),
+        invalidateAccountingData,
+      ),
+      post: (
+        command: Parameters<JournalLifecycleDesktopServices["post"]>[0],
+      ) => runAccountingMutation(
+        () => lifecycleServices.post(command),
+        invalidateAccountingData,
+      ),
+      reverse: (
+        command: Parameters<JournalLifecycleDesktopServices["reverse"]>[0],
+      ) => runAccountingMutation(
+        () => lifecycleServices.reverse(command),
+        invalidateAccountingData,
+      ),
+    });
+
     return {
       chartOfAccounts: new ChartOfAccountsService(
         unitOfWork,
@@ -120,9 +201,7 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         platform.eventBus,
         context,
       ),
-      dimensionSelector: new SqliteAccountingDimensionSelectorService(
-        database,
-      ),
+      dimensionSelector: new SqliteAccountingDimensionSelectorService(database),
       codingTemplates: createCodingTemplateServices({
         database,
         clock: platform.clock,
@@ -131,19 +210,17 @@ export function AccountingProvider({ children }: PropsWithChildren) {
         authorizer,
         actorId: session?.user.id ?? "desktop-local-user",
       }),
-      journals: createJournalVoucherServices({
-        database,
-        clock: platform.clock,
-        idGenerator: platform.idGenerator,
-        eventBus: platform.eventBus,
-        authorizer,
-      }),
+      journals,
+      journalLifecycle,
     };
   }, [
+    dataRevision,
     database,
+    invalidateAccountingData,
     platform.clock,
     platform.eventBus,
     platform.idGenerator,
+    platform.notificationService,
     session,
   ]);
 
@@ -182,9 +259,33 @@ export function AccountingProvider({ children }: PropsWithChildren) {
 export function useAccountingServices(): AccountingServices {
   const services = useContext(AccountingContext);
   if (services === undefined) {
-    throw new Error(
-      "useAccountingServices must be used inside AccountingProvider.",
-    );
+    throw new Error("useAccountingServices must be used inside AccountingProvider.");
   }
   return services;
+}
+
+async function runAccountingMutation<T>(
+  mutation: () => Promise<T>,
+  invalidate: () => void,
+): Promise<T> {
+  try {
+    const result = await mutation();
+    invalidate();
+    return result;
+  } catch (error) {
+    if (isCommittedLifecycleFailure(error)) invalidate();
+    throw error;
+  }
+}
+
+function isCommittedLifecycleFailure(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const candidate = error as {
+    code?: unknown;
+    details?: { committed?: unknown };
+  };
+  return (
+    candidate.code === "journal.post-commit-effects-failed" &&
+    candidate.details?.committed === true
+  );
 }

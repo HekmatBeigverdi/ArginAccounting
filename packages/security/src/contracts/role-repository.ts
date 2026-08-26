@@ -1,7 +1,7 @@
 import type {
   CreateRoleInput,
   Role
-} from "../domain/role";
+} from "../domain/role.ts";
 
 export interface RoleRepository {
   create(input: CreateRoleInput): Promise<Role>;

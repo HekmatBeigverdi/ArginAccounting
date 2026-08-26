@@ -63,3 +63,15 @@ export {
 export {
   SqliteJournalVoucherUnitOfWork,
 } from "./sqlite-journal-voucher-unit-of-work.ts";
+
+export type {
+  JournalVoucherApprovalGatewayFactory,
+  JournalVoucherApprovalRequestReaderFactory,
+} from "./sqlite-journal-voucher-lifecycle.ts";
+export {
+  SqliteJournalVoucherApprovalUnitOfWork,
+  SqliteJournalVoucherPostingUnitOfWork,
+  SqliteJournalVoucherAmendmentUnitOfWork,
+  SqliteJournalVoucherReversalUnitOfWork,
+  SqliteJournalVoucherLifecycleReader,
+} from "./sqlite-journal-voucher-lifecycle.ts";

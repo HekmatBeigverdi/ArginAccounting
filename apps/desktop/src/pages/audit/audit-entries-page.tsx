@@ -1,8 +1,12 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import type { AuditAction, AuditEntrySummary, AuditOutcome } from "@argin/audit";
 
+import {
+  desktopDataTopics,
+  subscribeDesktopData,
+} from "../../app/data-invalidation";
 import { Badge, DataTable } from "../../components/data-display";
 import { Feedback } from "../../components/feedback";
 import { Button, Field, Input, Select } from "../../components/forms";
@@ -61,7 +65,7 @@ export function AuditEntriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
-  async function load(): Promise<void> {
+  const load = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setErrorMessage("");
     try {
@@ -80,9 +84,13 @@ export function AuditEntriesPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [action, entityType, outcome, searchAuditEntries, text]);
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(
+    () => subscribeDesktopData(desktopDataTopics.auditEntries, () => { void load(); }),
+    [load],
+  );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();

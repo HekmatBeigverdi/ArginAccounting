@@ -1,0 +1,183 @@
+.journal-lifecycle-overview {
+  margin-block-end: var(--space-3, 12px);
+  border: 1px solid var(--color-border, #d9dee7);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--color-surface, #fff);
+  overflow: hidden;
+}
+
+.journal-lifecycle-overview__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-block-end: 1px solid var(--color-border, #d9dee7);
+}
+
+.journal-lifecycle-overview__header h2,
+.journal-lifecycle-overview__header p { margin: 0; }
+.journal-lifecycle-overview__header h2 { font-size: 1rem; }
+.journal-lifecycle-overview__header p:not(.journal-lifecycle-overview__eyebrow) {
+  margin-block-start: 3px;
+  font-size: .78rem;
+  color: var(--color-text-muted, #667085);
+}
+
+.journal-lifecycle-overview__eyebrow {
+  margin-block-end: 2px !important;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--color-text-muted, #667085);
+}
+
+.journal-lifecycle-overview__filters {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+.journal-lifecycle-overview__filters label { display: grid; gap: 3px; font-size: .75rem; }
+.journal-lifecycle-overview__filters select,
+.journal-lifecycle-overview__filters button { min-height: 30px; }
+
+.journal-lifecycle-overview__table-wrap { overflow-x: auto; }
+.journal-lifecycle-overview__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+.journal-lifecycle-overview__table th,
+.journal-lifecycle-overview__table td {
+  padding: 6px 9px;
+  text-align: right;
+  border-block-end: 1px solid var(--color-border-subtle, #edf0f4);
+  vertical-align: middle;
+}
+.journal-lifecycle-overview__table th {
+  font-size: .72rem;
+  color: var(--color-text-muted, #667085);
+  background: var(--color-surface-subtle, #f8fafc);
+}
+.journal-lifecycle-overview__table td:nth-child(3) { min-width: 230px; white-space: normal; }
+.journal-lifecycle-overview__table td:nth-child(3) small {
+  display: block;
+  margin-block-start: 3px;
+  line-height: 1.4;
+  color: var(--color-text-muted, #667085);
+}
+
+.journal-lifecycle-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-weight: 700;
+}
+.journal-lifecycle-status--neutral { color: #475467; background: #f8fafc; }
+.journal-lifecycle-status--warning { color: #8a4b08; background: #fff7e6; }
+.journal-lifecycle-status--positive { color: #166534; background: #f0fdf4; }
+.journal-lifecycle-status--final { color: #1d4ed8; background: #eff6ff; }
+.journal-lifecycle-status--muted { color: #6b7280; background: #f3f4f6; }
+
+.journal-lifecycle-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.journal-lifecycle-action,
+.journal-lifecycle-action-button,
+.journal-lifecycle-trace-toggle {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding-inline: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #d9dee7);
+  background: var(--color-surface-subtle, #f8fafc);
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.journal-lifecycle-action--link { text-decoration: underline; text-underline-offset: 2px; }
+.journal-lifecycle-action-button--primary { font-weight: 700; border-color: #93c5fd; background: #eff6ff; color: #1d4ed8; }
+.journal-lifecycle-action-button--danger { font-weight: 700; border-color: #fecaca; background: #fef2f2; color: #b42318; }
+.journal-lifecycle-action--none,
+.journal-lifecycle-overview__empty { color: var(--color-text-muted, #667085); }
+
+.journal-lifecycle-failure,
+.journal-lifecycle-success {
+  margin: 8px 12px;
+  padding: 9px 11px;
+  border-radius: 8px;
+}
+.journal-lifecycle-failure p,
+.journal-lifecycle-success { margin-block: 3px; }
+.journal-lifecycle-failure--business { background: #fff7e6; color: #8a4b08; border: 1px solid #fed7aa; }
+.journal-lifecycle-failure--technical { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.journal-lifecycle-failure code { display: block; margin-block-start: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.journal-lifecycle-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+.journal-lifecycle-trace-row td { padding: 0 !important; background: #fbfcfe; }
+.journal-lifecycle-trace {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(190px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  white-space: normal;
+}
+.journal-lifecycle-trace article {
+  border: 1px solid var(--color-border, #d9dee7);
+  border-radius: 8px;
+  padding: 9px;
+  background: var(--color-surface, #fff);
+}
+.journal-lifecycle-trace h4 { margin: 0 0 6px; font-size: .8rem; }
+.journal-lifecycle-trace p { margin: 0; color: var(--color-text-muted, #667085); }
+.journal-lifecycle-trace dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 8px;
+  margin: 0;
+}
+.journal-lifecycle-trace dt { color: var(--color-text-muted, #667085); }
+.journal-lifecycle-trace dd { margin: 0; overflow-wrap: anywhere; }
+
+.journal-lifecycle-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgb(15 23 42 / 42%);
+}
+.journal-lifecycle-dialog {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--color-border, #d9dee7);
+  border-radius: 12px;
+  background: var(--color-surface, #fff);
+  box-shadow: 0 18px 55px rgb(15 23 42 / 22%);
+}
+.journal-lifecycle-dialog h3,
+.journal-lifecycle-dialog p { margin: 0; }
+.journal-lifecycle-dialog label { display: grid; gap: 5px; font-size: .8rem; font-weight: 600; }
+.journal-lifecycle-dialog input,
+.journal-lifecycle-dialog textarea { width: 100%; box-sizing: border-box; }
+.journal-lifecycle-dialog__actions { display: flex; justify-content: flex-end; gap: 8px; }
+.journal-lifecycle-dialog__actions button { min-height: 34px; }
+
+@media (max-width: 1100px) {
+  .journal-lifecycle-trace { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+}
+
+@media (max-width: 900px) {
+  .journal-lifecycle-overview__header { align-items: stretch; flex-direction: column; }
+  .journal-lifecycle-overview__filters { flex-wrap: wrap; }
+}
+
+@media (max-width: 640px) {
+  .journal-lifecycle-trace { grid-template-columns: 1fr; }
+}

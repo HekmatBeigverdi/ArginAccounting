@@ -522,6 +522,18 @@ export function JournalVouchersPage() {
           {selected ? (
             <VoucherDetail
               voucher={selected}
+              companyName={
+                companies.find((company) => company.id === selected.companyId)?.legalName ??
+                selected.companyId
+              }
+              branchName={
+                selected.branchId
+                  ? (() => {
+                      const branch = branches.find((item) => item.id === selected.branchId);
+                      return branch ? `${branch.code} — ${branch.name}` : selected.branchId;
+                    })()
+                  : "بدون شعبه"
+              }
               accounts={accounts}
               canEdit={can(journalVoucherPermissions.updateDraft)}
               canDelete={can(journalVoucherPermissions.deleteDraft)}
@@ -907,6 +919,8 @@ function DimensionField({
 }
 function VoucherDetail({
   voucher,
+  companyName,
+  branchName,
   accounts,
   canEdit,
   canDelete,
@@ -915,6 +929,8 @@ function VoucherDetail({
   onClose,
 }: {
   voucher: JournalVoucherDto;
+  companyName: string;
+  branchName: string;
   accounts: readonly JournalAccountOption[];
   canEdit: boolean;
   canDelete: boolean;
@@ -965,11 +981,11 @@ function VoucherDetail({
         </div>
         <div>
           <dt>شرکت</dt>
-          <dd>{voucher.companyId}</dd>
+          <dd>{companyName}</dd>
         </div>
         <div>
           <dt>شعبه</dt>
-          <dd>{voucher.branchId ?? "—"}</dd>
+          <dd>{branchName}</dd>
         </div>
         <div>
           <dt>منبع</dt>

@@ -1,6 +1,9 @@
 import type { CurrencyCode, MoneyValue, PagedResult } from "@argin/platform";
 import type { AccountingDimensionAssignment } from "../domain/accounting-dimension-assignment.ts";
-import type { JournalVoucherSourceType } from "../domain/journal-voucher.ts";
+import type {
+  JournalVoucherSourceType,
+  JournalVoucherStatus,
+} from "../domain/journal-voucher.ts";
 import type { JournalVoucherSearchQuery } from "../contracts/journal-voucher-repository.ts";
 
 export interface JournalVoucherCommandContext {
@@ -76,7 +79,7 @@ export interface JournalVoucherDto {
   readonly fiscalYearId: string;
   readonly fiscalPeriodId: string;
   readonly description: string | null;
-  readonly status: "draft";
+  readonly status: JournalVoucherStatus;
   readonly currency: CurrencyCode;
   readonly sourceType: JournalVoucherSourceType;
   readonly sourceId: string | null;
@@ -95,6 +98,7 @@ export interface JournalVoucherListItemDto {
   readonly reference: string | null;
   readonly voucherDate: string;
   readonly description: string | null;
+  readonly status: JournalVoucherStatus;
   readonly totalDebit: MoneyValue;
   readonly totalCredit: MoneyValue;
   readonly version: number;

@@ -62,19 +62,36 @@ Template lifecycle and company application/import commands are authorized at the
 
 ### Journal Vouchers
 
+Base Journal permissions:
+
 - `accounting.journal-vouchers.view`
 - `accounting.journal-vouchers.create`
 - `accounting.journal-vouchers.update-draft`
 - `accounting.journal-vouchers.delete-draft`
 - `accounting.journal-vouchers.view-history`
 
+Lifecycle permissions:
+
+- `accounting.journal-vouchers.submit`
+- `accounting.journal-vouchers.approve`
+- `accounting.journal-vouchers.reject`
+- `accounting.journal-vouchers.return-to-draft`
+- `accounting.journal-vouchers.cancel-approval`
+- `accounting.journal-vouchers.post`
+- `accounting.journal-vouchers.reopen-for-amendment`
+- `accounting.journal-vouchers.reverse`
+
 Journal read and mutation operations are authorized at the Application boundary. UI permission gates are convenience only and cannot bypass application authorization. Cross-company mutation attempts are hidden as not-found behavior rather than exposing another company's aggregate.
+
+Every lifecycle command handler checks its dedicated permission before invoking Approval, Posting, Amendment, or Reversal services. Approval outcomes do not share one broad permission: approve, reject, return-to-draft, and cancel-approval are independently assignable.
+
+The default Journal segregation-of-duties policy prohibits self-approval for the current approval cycle: the user recorded as `requestedBy` on the active Approval Request cannot approve that same request. No project-wide rule currently requires the poster or reverser to be a different user; those operations are instead protected by separate granular permissions and actor evidence. A stricter organization-specific policy can be introduced without changing the lifecycle state machine.
+
+Authorization failures use stable Application error codes. `journal.unauthorized` represents missing permission and `journal.segregation-of-duties-violation` represents actor-policy failure. Durable denied-operation audit publication is completed with the Phase 15 lifecycle audit/event integration work.
 
 Successful create/update/delete-draft events are emitted only after the Journal Unit of Work commits. Authorization denial emits `accounting.journal-voucher.authorization-denied` as security audit evidence with `audit=true`, `security=true`, and `integration=false`. Validation, rollback, stale-version failure, and idempotent replay do not emit duplicate success events.
 
 Create retries use a durable request identity. A previously committed `(companyId, requestId)` returns the existing voucher and does not allocate a second committed voucher or publish a duplicate created event.
-
-Phase 13 permissions do not grant posting, approval, locking, reversal, replacement, or controlled amendment. Those capabilities belong to the Phase 14 Journal Lifecycle security design.
 
 ## Audit and Approval
 

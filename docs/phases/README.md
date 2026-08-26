@@ -23,7 +23,16 @@ All phase records live in this directory and follow the permanent [phase templat
 
 ## Current Target
 
-Phase 15 — Journal Lifecycle.
+15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — in progress
+   - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
+   - [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md)
+   - [Step 15 Domain and Application Test Matrix](phase-15-step-15-test-matrix.md)
+   - [Step 16 Persistence and Desktop Regression Matrix](phase-15-step-16-regression-matrix.md)
+   - [Step 17 Monorepo Validation and Documentation Completion](phase-15-step-17-validation.md)
+   - [Manual Desktop Lifecycle Validation](phase-15-manual-desktop-validation.md)
+   - Step 16 — Repository, Migration, Permission, and Desktop Regression Tests — Completed and locally validated
+   - Step 17 — Monorepo Validation and Documentation Completion — Completed
+   - Current step: Step 18 — Final Review, Merge, and Release — Not started
 
 ## Renumbering Rule
 
