@@ -53,8 +53,8 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 ## Accounting Core — Continued
 
-15. 🚧 Journal Lifecycle
-16. ⏳ Accounting Reports
+15. ✅ Journal Lifecycle
+16. 🚧 Accounting Reports
 
 ## Master Data
 
@@ -138,8 +138,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 15 — Journal Lifecycle.
+Phase 16 — Accounting Reports.
 
 ## Latest Completed Accounting Milestone
 
-Phase 14 — UI Foundation Consolidation, merged and released as `v0.14.0`.
+Phase 15 — Journal Lifecycle, implementation/final review completed and merged; semantic release `v0.15.0` is prepared for final publication.
