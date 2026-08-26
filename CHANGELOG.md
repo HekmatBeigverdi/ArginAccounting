@@ -6,6 +6,57 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.15.0] - 2026-08-26
+
+### Added
+
+- Controlled five-state Journal Voucher lifecycle: Draft, Pending Approval, Approved, Posted, and Reversed
+- Reusable Approval integration with explicit submit, approve, reject, return-to-draft, and cancel coordination
+- Final posting policy with current account, dimension, fiscal, balance, content-version, and Approval evidence revalidation
+- Controlled amendment and immutable reversal/replacement lineage
+- Granular lifecycle permissions with default self-approval segregation of duties
+- Migration `0014_journal_lifecycle.sql` with authoritative lifecycle status and durable Approval, Posting, Amendment, and Reversal evidence
+- SQLite lifecycle Unit of Work adapters with optimistic concurrency, atomic multi-write persistence, and request-id idempotency
+- Lifecycle Audit evidence, post-commit Integration Events, and operational in-app notifications
+- Persian RTL lifecycle status, confirmations, traceability, business failure guidance, and expandable technical diagnostics
+- Shared Desktop data invalidation so Journal, Approval, Audit, User, Role, and sibling management views refresh after successful mutations without navigation/reload
+
+### Changed
+
+- Journal ordinary update/delete remains Draft-only; non-Draft records are locked by Application policy
+- Approval and posting remain separate decisions; approval never auto-posts a Journal Voucher
+- Posted/reversed accounting facts are immutable in place; correction uses separate inverse vouchers and lineage
+- Lifecycle actions reload the latest persisted snapshot before consequential confirmation to preserve optimistic concurrency without stale UI versions
+- Company and Branch references in Journal detail/lifecycle presentation resolve to user-facing labels instead of raw identifiers
+- Desktop Draft edit/delete/submit actions are executable and use internal confirmation modals instead of native `window.confirm`
+- Post-commit effect failures are stage-aware (`audit`, `event`, `notification`) and cannot falsely report a committed business transaction as rolled back
+- Lifecycle Audit persistence avoids an unnecessary nested post-commit transaction
+- Lifecycle Notification types use the required `accounting.` source-module prefix
+
+### Tests and Validation
+
+- Added exhaustive Domain/Application lifecycle state-action matrix coverage
+- Added focused Approval, Posting, Amendment, Reversal, authorization/SoD, idempotency, stale-version, and post-commit effect tests
+- Added real SQLite migration/constraint and optimistic-concurrency regression coverage
+- Added Desktop regression contracts for permissions, executable actions, confirmation UX, stale-snapshot refresh, auto-invalidation, post-commit diagnostics, and canonical handler/UoW wiring
+- Added real `DefaultNotificationService` validation so notification source-module/type-prefix compatibility is tested instead of hidden by mocks
+- Step 17 focused/full validation is recorded as user-confirmed local execution
+- Step 18 manual runtime acceptance exercised real Journal creation, submit-for-approval, separate-user approval, lifecycle version/status updates, Approval/Audit integration behavior, and automatic UI refresh; runtime defects found during acceptance were corrected before merge
+
+### Merge and Release
+
+- Phase branch merged into `develop` through PR #10 with merge commit `e43f8eb5e50dfe7fcce12f70ef28b79a85ffdb62`
+- Final semantic tag and GitHub Release: `v0.15.0`
+- Phase 16 — Accounting Reports is the next implementation target
+
+### Deferred
+
+- Trial Balance, General Ledger, Subsidiary Ledger, and other Accounting Reports: Phase 16
+- Automatic posting from future operational modules: later owning phases
+- PostgreSQL/.NET synchronization adapters: future Argin Bridge delivery
+
+---
+
 ## [0.14.0] - 2026-08-22
 
 ### Added
