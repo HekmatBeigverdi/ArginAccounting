@@ -43,10 +43,11 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Latest completed phase: [Phase 14 — UI Foundation Consolidation](phases/phase-14-ui-foundation-consolidation.md)
-- Latest released version: `v0.14.0`
-- Phase 14 architecture decision: [ADR-0014 — UI Foundation and Global Display Density](adr/ADR-0014-ui-foundation-and-global-density.md)
-- Current delivery target: Phase 15 — Journal Lifecycle
+- Latest completed implementation: [Phase 15 — Journal Lifecycle](phases/phase-15-journal-lifecycle.md)
+- Latest published version: `v0.14.0`
+- Prepared release: `v0.15.0` — final semantic tag/GitHub Release publication pending
+- Phase 15 architecture decision: [ADR-0015 — Journal Lifecycle Architecture](adr/ADR-0015-journal-lifecycle.md)
+- Current delivery target: Phase 16 — Accounting Reports
 - Canonical roadmap: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Source-of-Truth Policy
