@@ -20,19 +20,19 @@ All phase records live in this directory and follow the permanent [phase templat
 14. [Phase 14 — UI Foundation Consolidation](phase-14-ui-foundation-consolidation.md) — completed, merged, and released as `v0.14.0`
    - [Fixed Implementation Plan](phase-14-ui-foundation-consolidation-plan.md)
    - [ADR-0014 — UI Foundation and Global Display Density](../adr/ADR-0014-ui-foundation-and-global-density.md)
-
-## Current Target
-
-15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — in progress
+15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — implementation and final review complete; merged to `develop`; final `v0.15.0` release publication pending
    - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
    - [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md)
    - [Step 15 Domain and Application Test Matrix](phase-15-step-15-test-matrix.md)
    - [Step 16 Persistence and Desktop Regression Matrix](phase-15-step-16-regression-matrix.md)
    - [Step 17 Monorepo Validation and Documentation Completion](phase-15-step-17-validation.md)
    - [Manual Desktop Lifecycle Validation](phase-15-manual-desktop-validation.md)
-   - Step 16 — Repository, Migration, Permission, and Desktop Regression Tests — Completed and locally validated
-   - Step 17 — Monorepo Validation and Documentation Completion — Completed
-   - Current step: Step 18 — Final Review, Merge, and Release — Not started
+   - Step 17 — Completed by user-confirmed local validation
+   - Step 18 — Final review and merge preparation complete; semantic tag/GitHub Release pending manual publication
+
+## Next Target
+
+16. Phase 16 — Accounting Reports
 
 ## Renumbering Rule
 
