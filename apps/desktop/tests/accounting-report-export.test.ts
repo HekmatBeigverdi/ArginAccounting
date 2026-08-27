@@ -85,7 +85,7 @@ test("SpreadsheetML export is Excel-compatible UTF-8 and right-to-left", () => {
   assert.match(xml, /ss:Type="Number">250</);
 });
 
-test("print document is Persian RTL A4", () => {
+test("print document is Persian RTL A4 and keeps preview bottom breathing room", () => {
   const document = createAccountingReportExportDocument({
     kind: "trial",
     data: trialBalance,
@@ -99,16 +99,23 @@ test("print document is Persian RTL A4", () => {
 
   assert.match(html, /lang="fa" dir="rtl"/);
   assert.match(html, /@page\{size:A4 landscape/);
+  assert.match(html, /padding:8mm 8mm 24mm/);
   assert.match(html, /شرکت آرگین/);
 });
 
-test("desktop print preview is in-webview and does not depend on popup windows", async () => {
+test("desktop preview is fullscreen, locks background scroll, and prints from main webview", async () => {
   const source = await readFile(exportPath, "utf8");
 
   assert.doesNotMatch(source, /window\.open\(/);
+  assert.doesNotMatch(source, /contentWindow.*print|target\.print\(\)/s);
+  assert.match(source, /height: "100dvh"/);
+  assert.match(source, /document\.body\.style\.overflow = "hidden"/);
+  assert.match(source, /document\.body\.style\.overflow = previousOverflow/);
   assert.match(source, /createElement\("iframe"\)/);
-  assert.match(source, /frame\.srcdoc = createAccountingReportPrintHtml/);
-  assert.match(source, /target\.print\(\)/);
+  assert.match(source, /body\.style\.paddingBottom = "24mm"/);
+  assert.match(source, /printAccountingReportFromMainWebview/);
+  assert.match(source, /globalThis\.print\(\)/);
+  assert.match(source, /body > \*:not\(#\$\{printHostId\}\)/);
   assert.match(source, /چاپ \/ ذخیره PDF/);
 });
 
