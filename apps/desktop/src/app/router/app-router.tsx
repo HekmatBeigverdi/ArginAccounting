@@ -17,6 +17,7 @@ import { AuditEntriesPage } from "../../pages/audit/audit-entries-page";
 import { AuditEntryDetailsPage } from "../../pages/audit/audit-entry-details-page";
 import { ChartOfAccountsPage } from "../../pages/accounting/chart-of-accounts-page";
 import { AccountingDimensionsPage } from "../../pages/accounting/accounting-dimensions-page";
+import { AccountingReportsPage } from "../../pages/accounting/accounting-reports-page";
 import { CodingTemplatesPage } from "../../pages/accounting/coding-templates-page";
 import { JournalVouchersLifecyclePage } from "../../pages/accounting/journal-vouchers-lifecycle-page";
 
@@ -40,6 +41,7 @@ export function AppRouter() {
           <Route path="/audit/entries" element={<AuditEntriesPage />} />
           <Route path="/audit/entries/:id" element={<AuditEntryDetailsPage />} />
           <Route path="/accounting/journal-vouchers" element={<JournalVouchersLifecyclePage />} />
+          <Route path="/accounting/reports" element={<AccountingReportsPage />} />
           <Route path="/accounting/chart-of-accounts" element={<ChartOfAccountsPage />} />
           <Route path="/accounting/dimensions" element={<AccountingDimensionsPage />} />
           <Route path="/accounting/coding-templates" element={<CodingTemplatesPage />} />
