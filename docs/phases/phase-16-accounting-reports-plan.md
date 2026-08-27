@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–13 are complete; Step 14 is next.
+Phase 16 is active. Steps 1–14 are complete; Step 15 is next.
 
 ## Governance Rule
 
@@ -74,7 +74,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 11 | SQLite Reporting Repository and Query Optimization | Completed |
 | 12 | Reporting Permissions, Company/Branch Scope, and Security | Completed |
 | 13 | Persian RTL Accounting Reports Center UI | Completed |
-| 14 | Filters, Drill-down, and Journal Traceability UI | Not started |
+| 14 | Filters, Drill-down, and Journal Traceability UI | Completed |
 | 15 | Print, Preview, Excel, and PDF Export | Not started |
 | 16 | Domain and Application Report Test Matrix | Not started |
 | 17 | SQLite/Desktop/Performance and Monorepo Validation | Not started |
@@ -233,12 +233,12 @@ Evidence:
 - Added `apps/desktop/src/pages/accounting/accounting-reports-page.tsx` as one Persian RTL workspace for Trial Balance, General Ledger, Subsidiary Ledger, Journal Report, and Accounting Dimension Reports.
 - The page consumes the secured Application query service and does not calculate accounting balances in React.
 - Added `apps/desktop/src/composition/accounting/create-accounting-report-services.ts`, composing `SqliteAccountingReportDataReader` → `DefaultAccountingReportQueryService` → `SecuredAccountingReportQueryService`; desktop branch scope derives from authenticated `branchIds` and `system.full-access`.
-- Added `apps/desktop/src/pages/accounting/accounting-reports-page.css` using Phase 14 density tokens, sticky compact tables, tabular numeric rendering, constrained scroll surfaces, and responsive desktop/mobile fallbacks.
-- Gregorian persisted report dates remain query inputs; detailed report dates are rendered through the Persian calendar (`fa-IR-u-ca-persian`).
+- Added `apps/desktop/src/pages/accounting/accounting-reports-page.css` using Phase 14 density tokens, sticky compact tables, tabular numeric rendering, constrained scroll surfaces, and responsive fallbacks.
+- Gregorian persisted report dates remain query inputs; displayed dates use the Persian calendar.
 - Loading, initial, empty, authorization/scope error, and data states are explicit; report tabs are permission-aware.
-- Added `/accounting/reports` route and Accounting navigation entry. Navigation now supports `requiredAnyPermissions` so users with any granular report permission can discover the Reports Center without weakening Application security.
+- Added `/accounting/reports` route and permission-aware Accounting navigation entry.
 - Added `apps/desktop/tests/accounting-reports-ui-contract.test.ts` covering route/navigation visibility, RTL/Solar Hijri/density contracts, state messaging, and secured SQLite composition.
-- Step 13 implementation is committed; local Desktop typecheck/test validation is pending user execution.
+- User confirmed Step 13 local Desktop/accounting validation is green.
 
 ### Step 14 — Filters, Drill-down, and Journal Traceability UI
 - Add reusable report filters and deliberate refresh/query execution.
@@ -247,7 +247,21 @@ Evidence:
 
 Exit: users can move from reported totals to their accounting source without ambiguous navigation.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added reusable `apps/desktop/src/features/accounting/accounting-report-filters.tsx` with Persian date range, authorized branch scope, account/descendant selection, generic dimension member filtering, zero-balance visibility, explicit Run, and Reset controls.
+- Draft filter state is separated from `ExecutedReport`; editing controls never mutates an already-rendered report until the user deliberately executes again.
+- Reports build the shared `AccountingReportQuery` vocabulary and continue to delegate all balance, turnover, hierarchy, dimension, reversal, and scope semantics to the secured Application service.
+- UI branch selectors are restricted to authenticated `branchIds`; the all-branches option appears only when every active company branch is in scope or `system.full-access` is granted.
+- Trial Balance and Subsidiary rows drill to General Ledger by deriving a new query from the exact executed query and adding an exact account filter; date, company, branch, fiscal-year, dimension, zero-balance, and other existing context is preserved.
+- Accounting Dimension rows drill to the Journal Report using the same executed query plus the selected dimension-member filter.
+- General Ledger and Journal rows expose `Voucher ID`/`Journal Line ID` source actions; navigation carries durable source identifiers rather than presentation text or row positions.
+- Added `apps/desktop/src/pages/accounting/journal-voucher-trace-page.tsx` as a read-only source trace view. It requires `accounting.journal-vouchers.view`, loads the exact voucher, highlights the traced Journal Line, and displays both durable identifiers.
+- Added `apps/desktop/src/pages/accounting/journal-vouchers-route.tsx` so report-originated trace URLs open the read-only source view while the normal Journal Voucher workspace remains unchanged for ordinary navigation.
+- Added drill-down/trace styling in `accounting-reports-page.css` and `journal-voucher-trace-page.css` while retaining Phase 14 density/RTL contracts.
+- Added `apps/desktop/tests/accounting-report-drilldown-contract.test.ts` covering reusable filters, explicit execution state, query-context preservation, durable source identities, route adaptation, and source-line highlighting.
+- Step 14 implementation is committed; local Desktop typecheck/test validation is pending user execution.
 
 ### Step 15 — Print, Preview, Excel, and PDF Export
 - Add print preview and accounting-friendly A4 output.
