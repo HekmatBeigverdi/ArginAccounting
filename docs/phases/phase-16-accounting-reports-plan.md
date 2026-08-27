@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–14 are complete; Step 15 is next.
+Phase 16 is active. Steps 1–15 are complete; Step 16 is next.
 
 ## Governance Rule
 
@@ -75,7 +75,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 12 | Reporting Permissions, Company/Branch Scope, and Security | Completed |
 | 13 | Persian RTL Accounting Reports Center UI | Completed |
 | 14 | Filters, Drill-down, and Journal Traceability UI | Completed |
-| 15 | Print, Preview, Excel, and PDF Export | Not started |
+| 15 | Print, Preview, Excel, and PDF Export | Completed |
 | 16 | Domain and Application Report Test Matrix | Not started |
 | 17 | SQLite/Desktop/Performance and Monorepo Validation | Not started |
 | 18 | Documentation, Final Review, Merge, and Release | Not started |
@@ -128,7 +128,8 @@ Evidence: `packages/accounting/src/reporting-balance.ts`; user confirmed local t
 
 ### Step 5 — Trial Balance
 - Implement Trial Balance projections over the canonical balance engine.
-- Support justified column variants and hierarchy/zero-balance presentation.
+- Support the column variants justified by the accepted ADR and accounting model.
+- Support account-level/hierarchy presentation and optional zero-balance rows.
 
 Exit: Trial Balance totals reconcile deterministically with posted Journal facts.
 
@@ -184,10 +185,7 @@ Exit: report semantics are consumable without React, Tauri, SQLite, or HTTP depe
 
 Status: Completed
 
-Evidence:
-- `packages/accounting/src/reporting-application.ts` defines reader/snapshot/query-service contracts, paging and trace identities, and stable Application errors.
-- Default query services orchestrate Steps 5–9 without duplicating report math.
-- User confirmed Step 10 local Accounting typecheck/tests are green.
+Evidence: `packages/accounting/src/reporting-application.ts`; persistence-neutral reader/query contracts and canonical report orchestration; user confirmed local validation green.
 
 ### Step 11 — SQLite Reporting Repository and Query Optimization
 - Implement SQLite adapters for Phase 16 queries.
@@ -198,11 +196,7 @@ Exit: SQLite results match Application semantics and remain practical on realist
 
 Status: Completed
 
-Evidence:
-- `packages/accounting-tauri/src/sqlite-accounting-report-data-reader.ts` implements the Step 10 reader with set-based Journal projections and generic dimension filtering.
-- `apps/desktop/src-tauri/migrations/0015_accounting_report_indexes.sql` adds focused report-scope and dimension indexes.
-- `packages/accounting-tauri/tests/sqlite-accounting-report-data-reader.test.ts` covers posted/reversed scope, branch/fiscal/date constraints, dimensions, opening semantics, metadata, and Journal projection.
-- User confirmed Step 11 local Accounting and Accounting Tauri validation is green.
+Evidence: `packages/accounting-tauri/src/sqlite-accounting-report-data-reader.ts`, migration `0015_accounting_report_indexes.sql`, and focused SQLite tests; user confirmed local validation green.
 
 ### Step 12 — Reporting Permissions, Company/Branch Scope, and Security
 - Add granular reporting permissions and export permissions.
@@ -213,13 +207,7 @@ Exit: UI visibility is not the security authority and unauthorized reporting acc
 
 Status: Completed
 
-Evidence:
-- `packages/accounting/src/application/accounting-report-permissions.ts` defines granular report-view and export permissions.
-- `packages/accounting/src/reporting-security.ts` enforces permission and company/branch scope before the inner query service/SQLite reader executes.
-- Cross-scope denial uses stable non-leaking errors; all-branches scope requires explicit authorization.
-- Report permissions are registered in `packages/security/src/application/default-permissions.ts`.
-- `packages/accounting/tests/reporting-security.test.ts` covers permission, branch/company scope, all-branches, leakage prevention, and export authorization.
-- User confirmed Step 12 local `@argin/accounting` tests and `@argin/security` typecheck are green. `pnpm --filter @argin/security test` currently executes the package placeholder `echo "Security tests are not configured yet"` and exits successfully; it is not a failing test runner and is recorded as such.
+Evidence: granular view/export permissions, `SecuredAccountingReportQueryService`, non-leaking scope denial, and `reporting-security.test.ts`; user confirmed local Accounting/Security validation. `@argin/security test` remains a successful placeholder rather than a configured test runner.
 
 ### Step 13 — Persian RTL Accounting Reports Center UI
 - Add the Accounting Reports workspace using the Phase 14 design system.
@@ -229,16 +217,7 @@ Exit: the canonical Phase 16 reports are usable from one coherent Persian RTL re
 
 Status: Completed
 
-Evidence:
-- Added `apps/desktop/src/pages/accounting/accounting-reports-page.tsx` as one Persian RTL workspace for Trial Balance, General Ledger, Subsidiary Ledger, Journal Report, and Accounting Dimension Reports.
-- The page consumes the secured Application query service and does not calculate accounting balances in React.
-- Added `apps/desktop/src/composition/accounting/create-accounting-report-services.ts`, composing `SqliteAccountingReportDataReader` → `DefaultAccountingReportQueryService` → `SecuredAccountingReportQueryService`; desktop branch scope derives from authenticated `branchIds` and `system.full-access`.
-- Added `apps/desktop/src/pages/accounting/accounting-reports-page.css` using Phase 14 density tokens, sticky compact tables, tabular numeric rendering, constrained scroll surfaces, and responsive fallbacks.
-- Gregorian persisted report dates remain query inputs; displayed dates use the Persian calendar.
-- Loading, initial, empty, authorization/scope error, and data states are explicit; report tabs are permission-aware.
-- Added `/accounting/reports` route and permission-aware Accounting navigation entry.
-- Added `apps/desktop/tests/accounting-reports-ui-contract.test.ts` covering route/navigation visibility, RTL/Solar Hijri/density contracts, state messaging, and secured SQLite composition.
-- User confirmed Step 13 local Desktop/accounting validation is green.
+Evidence: `/accounting/reports`, secured Desktop composition, Persian RTL/Solar Hijri report surfaces, density-aware compact tables, permission-aware navigation, and Desktop UI contract tests; user confirmed local validation green.
 
 ### Step 14 — Filters, Drill-down, and Journal Traceability UI
 - Add reusable report filters and deliberate refresh/query execution.
@@ -250,18 +229,12 @@ Exit: users can move from reported totals to their accounting source without amb
 Status: Completed
 
 Evidence:
-- Added reusable `apps/desktop/src/features/accounting/accounting-report-filters.tsx` with Persian date range, authorized branch scope, account/descendant selection, generic dimension member filtering, zero-balance visibility, explicit Run, and Reset controls.
-- Draft filter state is separated from `ExecutedReport`; editing controls never mutates an already-rendered report until the user deliberately executes again.
-- Reports build the shared `AccountingReportQuery` vocabulary and continue to delegate all balance, turnover, hierarchy, dimension, reversal, and scope semantics to the secured Application service.
-- UI branch selectors are restricted to authenticated `branchIds`; the all-branches option appears only when every active company branch is in scope or `system.full-access` is granted.
-- Trial Balance and Subsidiary rows drill to General Ledger by deriving a new query from the exact executed query and adding an exact account filter; date, company, branch, fiscal-year, dimension, zero-balance, and other existing context is preserved.
-- Accounting Dimension rows drill to the Journal Report using the same executed query plus the selected dimension-member filter.
-- General Ledger and Journal rows expose `Voucher ID`/`Journal Line ID` source actions; navigation carries durable source identifiers rather than presentation text or row positions.
-- Added `apps/desktop/src/pages/accounting/journal-voucher-trace-page.tsx` as a read-only source trace view. It requires `accounting.journal-vouchers.view`, loads the exact voucher, highlights the traced Journal Line, and displays both durable identifiers.
-- Added `apps/desktop/src/pages/accounting/journal-vouchers-route.tsx` so report-originated trace URLs open the read-only source view while the normal Journal Voucher workspace remains unchanged for ordinary navigation.
-- Added drill-down/trace styling in `accounting-reports-page.css` and `journal-voucher-trace-page.css` while retaining Phase 14 density/RTL contracts.
-- Added `apps/desktop/tests/accounting-report-drilldown-contract.test.ts` covering reusable filters, explicit execution state, query-context preservation, durable source identities, route adaptation, and source-line highlighting.
-- Step 14 implementation is committed; local Desktop typecheck/test validation is pending user execution.
+- `apps/desktop/src/features/accounting/accounting-report-filters.tsx` provides reusable Persian date, branch, account, descendant, dimension, zero-balance, Run, and Reset filters.
+- Draft filters remain separate from the exact executed query.
+- Trial Balance/Subsidiary drill to General Ledger; Dimension rows drill to Journal; General Ledger/Journal rows trace by stable Voucher ID and Journal Line ID.
+- `journal-voucher-trace-page.tsx` and `journal-vouchers-route.tsx` preserve read-only source traceability without changing the ordinary voucher workspace.
+- `accounting-report-drilldown-contract.test.ts` covers the filter/drill-down/trace contract.
+- User confirmed Step 14 local Desktop typecheck/tests/build are green.
 
 ### Step 15 — Print, Preview, Excel, and PDF Export
 - Add print preview and accounting-friendly A4 output.
@@ -270,7 +243,18 @@ Evidence:
 
 Exit: supported reports can be printed/exported without recalculating accounting logic in UI/export adapters.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added `apps/desktop/src/features/accounting/accounting-report-export.ts` as a presentation-only export projection over canonical Trial Balance, General Ledger, Subsidiary Ledger, Journal, and Dimension DTO results; it performs no accounting recomputation.
+- Export documents preserve report title, company, fiscal year, authorized branch scope, Gregorian-query/Persian-display period, generation timestamp, report rows, and canonical totals/ending values supplied by Application results.
+- Excel output uses UTF-8 SpreadsheetML (`.xls`) with numeric cells, Persian headings, RTL worksheet display, and no new runtime dependency or lockfile change.
+- Print Preview creates dedicated Persian RTL, A4 landscape, repeating-table-header HTML with print-safe pagination and company/fiscal/branch/period metadata.
+- The PDF action opens the same canonical A4 preview and invokes the operating-system print dialog for `Save as PDF`, preserving browser/Tauri Persian shaping and fonts rather than introducing a separate PDF calculation/rendering path.
+- `AccountingReportDesktopServices.authorizeExport` delegates to `assertAccountingReportExportAuthorized`; every Preview, Excel, and PDF action rechecks the independent `accounting.reports.export` permission and exact company/branch scope before producing output.
+- Reports Center shows export controls only for users with export permission, while Application authorization remains the authority.
+- Added `apps/desktop/tests/accounting-report-export.test.ts` covering canonical value projection, RTL SpreadsheetML, A4/PDF print contract, and secured export composition.
+- Step 15 implementation is committed; local Desktop/accounting validation is pending user execution.
 
 ### Step 16 — Domain and Application Report Test Matrix
 - Cover opening/period/ending balances, debit/credit balances, zero balances, hierarchy aggregation, reversals, fiscal/date boundaries, branch/company scope, dimensions, unposted exclusion, sorting/pagination invariants, and stable error behavior.
