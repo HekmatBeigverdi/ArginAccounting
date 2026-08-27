@@ -64,6 +64,10 @@ export {
   SqliteJournalVoucherUnitOfWork,
 } from "./sqlite-journal-voucher-unit-of-work.ts";
 
+export {
+  SqliteAccountingReportDataReader,
+} from "./sqlite-accounting-report-data-reader.ts";
+
 export type {
   JournalVoucherApprovalGatewayFactory,
   JournalVoucherApprovalRequestReaderFactory,
