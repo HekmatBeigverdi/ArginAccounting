@@ -38,6 +38,12 @@ export const navigationItems: NavigationItem[] = [
     requiredPermission: "accounting.journal-vouchers.view",
   },
   {
+    label: "گزارش‌های حسابداری",
+    path: "/accounting/reports",
+    group: "حسابداری",
+    requiredPermission: "accounting.reports.trial-balance.view",
+  },
+  {
     label: "کدینگ حساب‌ها",
     path: "/accounting/chart-of-accounts",
     group: "حسابداری",
