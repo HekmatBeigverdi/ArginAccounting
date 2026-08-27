@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./journal": "./src/journal.ts",
     "./reporting": "./src/reporting.ts",
-    "./trial-balance": "./src/trial-balance.ts"
+    "./trial-balance": "./src/trial-balance.ts",
+    "./general-ledger": "./src/general-ledger.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
