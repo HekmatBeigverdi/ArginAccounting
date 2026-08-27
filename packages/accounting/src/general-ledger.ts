@@ -97,6 +97,11 @@ export function createGeneralLedger(
       }
 
       const postingSet = new Set(balance.postingAccountIds);
+      const contributingPostingAccountIds = query.includeZeroBalances
+        ? balance.postingAccountIds
+        : balance.postingAccountIds.filter((accountId) =>
+          facts.some((fact) =>
+            fact.accountId === accountId && accountingReportFactMatchesBaseScope(fact, query)));
       const periodFacts = facts
         .filter((fact) =>
           postingSet.has(fact.accountId) &&
@@ -159,7 +164,7 @@ export function createGeneralLedger(
         accountCode: String(account.code),
         accountName: String(account.name),
         level: account.level,
-        postingAccountIds: balance.postingAccountIds,
+        postingAccountIds: Object.freeze(contributingPostingAccountIds),
         openingNet: balance.openingNet,
         openingBalance: balance.opening,
         periodDebit,
@@ -199,6 +204,10 @@ function compareVoucherNumber(left: string, right: string): number {
   const rightTrimmed = right.trim();
   const leftNumber = /^\d+$/.test(leftTrimmed) ? Number(leftTrimmed) : undefined;
   const rightNumber = /^\d+$/.test(rightTrimmed) ? Number(rightTrimmed) : undefined;
+
+  if ((leftNumber === undefined) !== (rightNumber === undefined)) {
+    return leftNumber === undefined ? -1 : 1;
+  }
 
   if (
     leftNumber !== undefined &&
