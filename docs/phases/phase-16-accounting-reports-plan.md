@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–9 are complete; Step 10 is next.
+Phase 16 is active. Steps 1–10 are complete; Step 11 is next.
 
 ## Governance Rule
 
@@ -70,7 +70,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 7 | Subsidiary Ledger and Account Turnover | Completed |
 | 8 | Journal Report | Completed |
 | 9 | Accounting Dimension Reports | Completed |
-| 10 | Application Contracts, DTOs, and Query Services | Not started |
+| 10 | Application Contracts, DTOs, and Query Services | Completed |
 | 11 | SQLite Reporting Repository and Query Optimization | Not started |
 | 12 | Reporting Permissions, Company/Branch Scope, and Security | Not started |
 | 13 | Persian RTL Accounting Reports Center UI | Not started |
@@ -249,6 +249,7 @@ Evidence:
 - Dimension type/member IDs are authoritative aggregation keys; code/name metadata is presentation-only and invalid/mismatched metadata fails deterministically.
 - Added `packages/accounting/tests/dimension-reports.test.ts` covering member/account-member aggregation, opening/period/ending math, hierarchy/posted scope, and invalid dimension metadata.
 - Added `@argin/accounting/dimension-reports` package export.
+- User confirmed Step 9 local Accounting typecheck/tests are green.
 
 ### Step 10 — Application Contracts, DTOs, and Query Services
 
@@ -257,7 +258,21 @@ Evidence:
 
 Exit: report semantics are consumable without React, Tauri, SQLite, or HTTP dependencies.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/reporting-application.ts` as the persistence-neutral Application boundary for Phase 16 reporting.
+- Added `AccountingReportDataReader` and `AccountingReportDataSnapshot`; infrastructure adapters supply accounts, report facts, and Phase 11 dimension metadata without leaking SQLite/Tauri/HTTP concerns into Application code.
+- Added `AccountingReportQueryService` and `DefaultAccountingReportQueryService` orchestration for Trial Balance, General Ledger, Subsidiary Ledger, Journal Report, and Accounting Dimension Reports, reusing the canonical engines from Steps 5–9 rather than duplicating report math.
+- Report requests reuse the Step 3 `AccountingReportQuery` vocabulary and are normalized once at the Application boundary before reader execution.
+- Added stable `AccountingReportKind` execution context so Step 11 adapters can select efficient projections per report family while preserving one Application contract.
+- Added generic immutable `AccountingReportPage<T>` DTO with page/page-size/total-items/total-pages/previous/next metadata; Journal Report paging currently projects the canonical result while Step 11 can push paging down to SQLite without changing consumer contracts.
+- Added durable `AccountingReportTraceIdentity` plus normalization helper for Voucher ID and optional Journal Line ID.
+- Added stable `AccountingReportApplicationError` codes for reader failure and invalid/cross-company snapshots; Application wraps infrastructure read failures without exposing adapter-specific errors.
+- Snapshot validation rejects cross-company account/dimension metadata before report execution, preserving company isolation at the Application boundary.
+- Added `packages/accounting/tests/reporting-application.test.ts` covering query-service orchestration, normalized execution context, paging metadata, stable reader-error wrapping, cross-company snapshot rejection, and immutable trace identity.
+- Added `@argin/accounting/reporting-application` package export.
 
 ### Step 11 — SQLite Reporting Repository and Query Optimization
 
