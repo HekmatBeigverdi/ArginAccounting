@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–2 are complete; Step 3 is next.
+Phase 16 is active. Steps 1–3 are complete; Step 4 is next.
 
 ## Governance Rule
 
@@ -63,7 +63,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | Reporting Domain Analysis and ADR | Completed |
-| 3 | Common Report Query, Filter, and Period Model | Not started |
+| 3 | Common Report Query, Filter, and Period Model | Completed |
 | 4 | Account Balance and Turnover Engine | Not started |
 | 5 | Trial Balance | Not started |
 | 6 | General Ledger | Not started |
@@ -131,7 +131,17 @@ Evidence:
 
 Exit: all Phase 16 reports share one stable filter/query vocabulary instead of duplicating semantics.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added public `@argin/accounting/reporting` contracts in `packages/accounting/src/reporting.ts`.
+- Added one normalized query vocabulary covering company scope, explicit all/single-branch scope, inclusive ISO report period, optional fiscal year/period, account root-or-list selection, generic Phase 11 dimension-member filters, zero-balance inclusion, sort, paging/offset, and voucher/line trace context.
+- Defaults are deterministic: all branches, descendants enabled for a selected root account, zero-balance rows excluded, page 1, platform default page size, ascending sort direction when supplied without direction.
+- Validation rejects invalid ISO/range dates, fiscal period without fiscal year, empty branch identifiers, ambiguous root-account plus account-list filters, duplicate dimension types, empty dimension-member filters, duplicate sort fields, invalid paging, and line trace without voucher trace.
+- IDs/text are trimmed, duplicate account/member IDs are normalized, and normalized results are frozen to protect query semantics from mutation.
+- Added focused `accounting-report-query.test.ts` coverage for defaults, explicit filters, period validation, account/dimension ambiguity, and trace identity rules.
+- Added the `./reporting` package export without coupling the contract to React, Tauri, SQLite, HTTP, or .NET.
 
 ### Step 4 — Account Balance and Turnover Engine
 
