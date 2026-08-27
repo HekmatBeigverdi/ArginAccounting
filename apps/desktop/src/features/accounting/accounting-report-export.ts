@@ -105,16 +105,95 @@ export function openAccountingReportPrintPreview(
   document: AccountingReportExportDocument,
   autoPrint = false,
 ): void {
-  const preview = window.open("", "_blank", "noopener,noreferrer");
-  if (!preview) throw new Error("مرورگر اجازه بازکردن پیش‌نمایش چاپ را نداد.");
-  preview.document.open();
-  preview.document.write(createAccountingReportPrintHtml(document, autoPrint));
-  preview.document.close();
+  const existing = globalThis.document.getElementById("accounting-report-print-preview");
+  existing?.remove();
+
+  const overlay = globalThis.document.createElement("div");
+  overlay.id = "accounting-report-print-preview";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-label", `پیش‌نمایش ${document.title}`);
+  overlay.dir = "rtl";
+  Object.assign(overlay.style, {
+    position: "fixed",
+    inset: "0",
+    zIndex: "10000",
+    display: "grid",
+    gridTemplateRows: "auto minmax(0, 1fr)",
+    background: "rgba(15, 23, 42, 0.55)",
+    padding: "16px",
+  });
+
+  const toolbar = globalThis.document.createElement("div");
+  Object.assign(toolbar.style, {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "10px 12px",
+    borderRadius: "10px 10px 0 0",
+    background: "#ffffff",
+    color: "#111827",
+    fontFamily: "Vazirmatn, Tahoma, Arial, sans-serif",
+  });
+
+  const title = globalThis.document.createElement("strong");
+  title.textContent = `پیش‌نمایش چاپ — ${document.title}`;
+  title.style.marginInlineEnd = "auto";
+
+  const printButton = globalThis.document.createElement("button");
+  printButton.type = "button";
+  printButton.textContent = "چاپ / ذخیره PDF";
+
+  const closeButton = globalThis.document.createElement("button");
+  closeButton.type = "button";
+  closeButton.textContent = "بستن";
+
+  for (const button of [printButton, closeButton]) {
+    Object.assign(button.style, {
+      border: "1px solid #94a3b8",
+      borderRadius: "6px",
+      background: "#ffffff",
+      padding: "6px 12px",
+      font: "inherit",
+      cursor: "pointer",
+    });
+  }
+
+  const frame = globalThis.document.createElement("iframe");
+  frame.title = `پیش‌نمایش ${document.title}`;
+  frame.srcdoc = createAccountingReportPrintHtml(document);
+  Object.assign(frame.style, {
+    width: "100%",
+    height: "100%",
+    border: "0",
+    borderRadius: "0 0 10px 10px",
+    background: "#ffffff",
+  });
+
+  const print = () => {
+    const target = frame.contentWindow;
+    if (!target) throw new Error("پیش‌نمایش چاپ هنوز آماده نشده است.");
+    target.focus();
+    target.print();
+  };
+
+  printButton.addEventListener("click", print);
+  closeButton.addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") overlay.remove();
+  });
+  frame.addEventListener("load", () => {
+    if (autoPrint) globalThis.setTimeout(print, 50);
+  });
+
+  toolbar.append(title, printButton, closeButton);
+  overlay.append(toolbar, frame);
+  globalThis.document.body.appendChild(overlay);
+  closeButton.focus();
 }
 
 export function createAccountingReportPrintHtml(
   document: AccountingReportExportDocument,
-  autoPrint = false,
 ): string {
   const sections = document.sections.map((section) => {
     const heading = section.title ? `<h2>${escapeHtml(section.title)}</h2>` : "";
@@ -124,8 +203,8 @@ export function createAccountingReportPrintHtml(
     const foot = section.footer ? `<tfoot><tr>${section.footer.map((cell, index) => `<th${section.columns[index]?.numeric ? ' class="num"' : ""}>${formatPrintCell(cell)}</th>`).join("")}</tr></tfoot>` : "";
     return `<section>${heading}${note}<table><thead>${head}</thead><tbody>${body}</tbody>${foot}</table></section>`;
   }).join("");
-  const autoPrintScript = autoPrint ? "<script>window.addEventListener('load',()=>window.print());<\/script>" : "";
-  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>${escapeHtml(document.title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{margin:0;color:#111827;background:#fff;font-family:Vazirmatn,Tahoma,Arial,sans-serif;font-size:9pt;direction:rtl}header{display:grid;gap:3mm;margin-bottom:5mm;padding-bottom:4mm;border-bottom:1px solid #94a3b8}h1,h2,p{margin:0}h1{font-size:16pt}h2{margin:5mm 0 2mm;font-size:11pt}.meta{display:flex;flex-wrap:wrap;gap:2mm 6mm;color:#475569;font-size:8pt}.section-note{margin-bottom:2mm;color:#64748b}table{width:100%;border-collapse:collapse;page-break-inside:auto}thead{display:table-header-group}tr{page-break-inside:avoid;page-break-after:auto}th,td{padding:1.6mm 2mm;border:1px solid #cbd5e1;text-align:right;vertical-align:top}th{background:#f1f5f9;font-weight:700}tfoot th{background:#f8fafc}.num{direction:ltr;text-align:left;font-variant-numeric:tabular-nums;white-space:nowrap}.actions{display:flex;gap:2mm;margin-bottom:4mm}.actions button{padding:2mm 4mm;border:1px solid #64748b;background:#fff;border-radius:2mm;font:inherit;cursor:pointer}@media print{.actions{display:none}body{font-size:8.5pt}}</style></head><body><div class="actions"><button onclick="window.print()">چاپ / ذخیره PDF</button><button onclick="window.close()">بستن</button></div><header><h1>${escapeHtml(document.title)}</h1><div class="meta"><span>شرکت: ${escapeHtml(document.companyName)}</span><span>سال مالی: ${escapeHtml(document.fiscalYearTitle)}</span><span>شعبه: ${escapeHtml(document.branchLabel)}</span><span>دوره: ${escapeHtml(document.periodLabel)}</span><span>تاریخ تهیه: ${escapeHtml(document.generatedAtLabel)}</span></div></header>${sections}${autoPrintScript}</body></html>`;
+
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>${escapeHtml(document.title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{margin:0;padding:8mm;color:#111827;background:#fff;font-family:Vazirmatn,Tahoma,Arial,sans-serif;font-size:9pt;direction:rtl}header{display:grid;gap:3mm;margin-bottom:5mm;padding-bottom:4mm;border-bottom:1px solid #94a3b8}h1,h2,p{margin:0}h1{font-size:16pt}h2{margin:5mm 0 2mm;font-size:11pt}.meta{display:flex;flex-wrap:wrap;gap:2mm 6mm;color:#475569;font-size:8pt}.section-note{margin-bottom:2mm;color:#64748b}table{width:100%;border-collapse:collapse;page-break-inside:auto}thead{display:table-header-group}tr{page-break-inside:avoid;page-break-after:auto}th,td{padding:1.6mm 2mm;border:1px solid #cbd5e1;text-align:right;vertical-align:top}th{background:#f1f5f9;font-weight:700}tfoot th{background:#f8fafc}.num{direction:ltr;text-align:left;font-variant-numeric:tabular-nums;white-space:nowrap}@media print{body{padding:0;font-size:8.5pt}}</style></head><body><header><h1>${escapeHtml(document.title)}</h1><div class="meta"><span>شرکت: ${escapeHtml(document.companyName)}</span><span>سال مالی: ${escapeHtml(document.fiscalYearTitle)}</span><span>شعبه: ${escapeHtml(document.branchLabel)}</span><span>دوره: ${escapeHtml(document.periodLabel)}</span><span>تاریخ تهیه: ${escapeHtml(document.generatedAtLabel)}</span></div></header>${sections}</body></html>`;
 }
 
 function buildSections(
@@ -200,14 +279,14 @@ function xmlRow(cells: readonly AccountingReportExportCell[], style?: string): s
 
 function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
+  const anchor = globalThis.document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
   anchor.style.display = "none";
-  document.body.appendChild(anchor);
+  globalThis.document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  globalThis.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function formatPrintCell(value: AccountingReportExportCell): string {
