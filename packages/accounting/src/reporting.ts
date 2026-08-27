@@ -313,3 +313,14 @@ function requireIsoDate(value: string, field: string): string {
   }
   return normalized;
 }
+
+export type {
+  AccountingReportAccountBalanceRow,
+  AccountingReportBalanceErrorCode,
+  AccountingReportBalanceSide,
+  AccountingReportJournalLineFact,
+} from "./reporting-balance.ts";
+export {
+  AccountingReportBalanceError,
+  calculateAccountBalanceTurnover,
+} from "./reporting-balance.ts";
