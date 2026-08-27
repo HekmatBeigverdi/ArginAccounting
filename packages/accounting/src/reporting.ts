@@ -1,6 +1,9 @@
 import {
+  IRR,
   QUERY_PAGE_SIZE_DEFAULT,
   QUERY_PAGE_SIZE_MAXIMUM,
+  normalizeCurrencyCode,
+  type CurrencyCode,
 } from "@argin/platform";
 
 export type AccountingReportBranchScope =
@@ -45,6 +48,7 @@ export interface AccountingReportTraceContext {
 
 export interface AccountingReportQuery {
   readonly companyId: string;
+  readonly currency?: string;
   readonly branch?: AccountingReportBranchScope;
   readonly period: AccountingReportPeriod;
   readonly accounts?: AccountingReportAccountFilter;
@@ -57,6 +61,7 @@ export interface AccountingReportQuery {
 
 export interface NormalizedAccountingReportQuery {
   readonly companyId: string;
+  readonly currency: CurrencyCode;
   readonly branch: AccountingReportBranchScope;
   readonly period: Readonly<Required<Pick<AccountingReportPeriod, "fromDate" | "toDate">> & {
     fiscalYearId?: string;
@@ -86,6 +91,7 @@ export interface NormalizedAccountingReportQuery {
 
 export type AccountingReportQueryErrorCode =
   | "report.invalid-query"
+  | "report.invalid-currency"
   | "report.invalid-period"
   | "report.invalid-branch"
   | "report.invalid-account-filter"
@@ -113,6 +119,7 @@ export function normalizeAccountingReportQuery(
   query: AccountingReportQuery,
 ): NormalizedAccountingReportQuery {
   const companyId = requireText(query.companyId, "companyId");
+  const currency = normalizeCurrency(query.currency);
   const fromDate = requireIsoDate(query.period.fromDate, "fromDate");
   const toDate = requireIsoDate(query.period.toDate, "toDate");
   if (fromDate > toDate) {
@@ -142,6 +149,7 @@ export function normalizeAccountingReportQuery(
 
   return Object.freeze({
     companyId,
+    currency,
     branch,
     period: Object.freeze({
       fromDate,
@@ -156,6 +164,18 @@ export function normalizeAccountingReportQuery(
     paging,
     ...(trace ? { trace } : {}),
   });
+}
+
+function normalizeCurrency(value: string | undefined): CurrencyCode {
+  try {
+    return normalizeCurrencyCode(value ?? IRR.code);
+  } catch {
+    throw new AccountingReportQueryError(
+      "report.invalid-currency",
+      "کد ارز گزارش معتبر نیست.",
+      { currency: value },
+    );
+  }
 }
 
 function normalizeBranch(
