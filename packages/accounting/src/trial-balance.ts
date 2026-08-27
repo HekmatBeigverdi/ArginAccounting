@@ -13,6 +13,7 @@ export interface TrialBalanceRow {
   readonly accountCode: string;
   readonly accountName: string;
   readonly level: AccountLevel;
+  readonly postingAllowed: boolean;
   readonly openingDebit: number;
   readonly openingCredit: number;
   readonly periodDebit: number;
@@ -50,7 +51,8 @@ export function createTrialBalance(
     .filter((row) => shouldIncludeRow(row, query.includeZeroBalances))
     .map((row) => projectRow(row, accountById));
 
-  const totals = rows.reduce<TrialBalanceTotals>((sum, row) => ({
+  const postingRows = rows.filter((row) => row.postingAllowed);
+  const totals = postingRows.reduce<TrialBalanceTotals>((sum, row) => ({
     openingDebit: safeAdd(sum.openingDebit, row.openingDebit),
     openingCredit: safeAdd(sum.openingCredit, row.openingCredit),
     periodDebit: safeAdd(sum.periodDebit, row.periodDebit),
@@ -93,6 +95,7 @@ function projectRow(
     accountCode: String(account.code),
     accountName: String(account.name),
     level: account.level,
+    postingAllowed: account.postingAllowed,
     openingDebit: row.opening.debit,
     openingCredit: row.opening.credit,
     periodDebit: row.period.debit,
