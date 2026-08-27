@@ -99,8 +99,8 @@ test("returns stable journal paging metadata without changing canonical totals",
     report: { ...report, paging: { page: 1, pageSize: 1 } },
   });
 
-  assert.equal(response.result.totalDebit, 100);
-  assert.equal(response.result.totalCredit, 100);
+  assert.equal(response.result.totals.debit, 100);
+  assert.equal(response.result.totals.credit, 100);
   assert.equal(response.page.totalItems, 2);
   assert.equal(response.page.totalPages, 2);
   assert.equal(response.page.items.length, 1);
