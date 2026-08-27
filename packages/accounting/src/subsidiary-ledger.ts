@@ -48,14 +48,15 @@ export function createSubsidiaryLedger(
   accounts: readonly Account[],
   facts: readonly GeneralLedgerJournalLineFact[],
 ): SubsidiaryLedgerResult {
-  const postingAccounts = accounts.filter((account) =>
-    account.companyId === query.companyId && account.postingAllowed);
+  const postingAccountIds = new Set(
+    accounts
+      .filter((account) => account.companyId === query.companyId && account.postingAllowed)
+      .map((account) => account.id),
+  );
 
-  const postingAccountIds = new Set(postingAccounts.map((account) => account.id));
-  const restrictedQuery = restrictQueryToPostingAccounts(query, postingAccountIds);
-  const ledger = createGeneralLedger(restrictedQuery, accounts, facts);
-
+  const ledger = createGeneralLedger(query, accounts, facts);
   const dimensionsByLine = new Map<string, readonly SubsidiaryLedgerDimensionAssignment[]>();
+
   for (const fact of facts) {
     const dimensions = Object.freeze(
       [...(fact.dimensions ?? [])]
@@ -101,31 +102,6 @@ export function createSubsidiaryLedger(
     });
 
   return Object.freeze({ accounts: Object.freeze(sections) });
-}
-
-function restrictQueryToPostingAccounts(
-  query: NormalizedAccountingReportQuery,
-  postingAccountIds: ReadonlySet<string>,
-): NormalizedAccountingReportQuery {
-  let accountIds: readonly string[];
-
-  if (query.accounts.accountIds.length > 0) {
-    accountIds = query.accounts.accountIds.filter((accountId) => postingAccountIds.has(accountId));
-  } else if (query.accounts.accountId) {
-    accountIds = Object.freeze([]);
-  } else {
-    accountIds = Object.freeze([...postingAccountIds]);
-  }
-
-  if (query.accounts.accountId) return query;
-
-  return Object.freeze({
-    ...query,
-    accounts: Object.freeze({
-      includeDescendants: false,
-      accountIds: Object.freeze([...accountIds]),
-    }),
-  });
 }
 
 function compareDimensions(
