@@ -3,34 +3,15 @@ export interface NavigationItem {
   path: string;
   group: string;
   requiredPermission?: string;
+  requiredAnyPermissions?: readonly string[];
 }
 
 export const navigationItems: NavigationItem[] = [
-  {
-    label: "داشبورد",
-    path: "/dashboard",
-    group: "اصلی",
-  },
-  {
-    label: "گردش تأیید",
-    path: "/approval/requests",
-    group: "اصلی",
-  },
-  {
-    label: "گزارش ممیزی",
-    path: "/audit/entries",
-    group: "اصلی",
-  },
-  {
-    label: "شرکت‌ها و شعب",
-    path: "/company/setup",
-    group: "اطلاعات پایه",
-  },
-  {
-    label: "سال‌های مالی",
-    path: "/fiscal/years",
-    group: "مدیریت مالی",
-  },
+  { label: "داشبورد", path: "/dashboard", group: "اصلی" },
+  { label: "گردش تأیید", path: "/approval/requests", group: "اصلی" },
+  { label: "گزارش ممیزی", path: "/audit/entries", group: "اصلی" },
+  { label: "شرکت‌ها و شعب", path: "/company/setup", group: "اطلاعات پایه" },
+  { label: "سال‌های مالی", path: "/fiscal/years", group: "مدیریت مالی" },
   {
     label: "اسناد حسابداری",
     path: "/accounting/journal-vouchers",
@@ -41,7 +22,13 @@ export const navigationItems: NavigationItem[] = [
     label: "گزارش‌های حسابداری",
     path: "/accounting/reports",
     group: "حسابداری",
-    requiredPermission: "accounting.reports.trial-balance.view",
+    requiredAnyPermissions: [
+      "accounting.reports.trial-balance.view",
+      "accounting.reports.general-ledger.view",
+      "accounting.reports.subsidiary-ledger.view",
+      "accounting.reports.journal.view",
+      "accounting.reports.dimensions.view",
+    ],
   },
   {
     label: "کدینگ حساب‌ها",
@@ -61,29 +48,9 @@ export const navigationItems: NavigationItem[] = [
     group: "حسابداری",
     requiredPermission: "accounting.coding-templates.view",
   },
-  {
-    label: "ورود به سیستم",
-    path: "/login",
-    group: "مدیریت سیستم",
-  },
-  {
-    label: "وضعیت سیستم",
-    path: "/system/diagnostics",
-    group: "مدیریت سیستم",
-  },
-  {
-    label: "کاربران",
-    path: "/security/users",
-    group: "مدیریت سیستم",
-  },
-  {
-    label: "نقش‌ها",
-    path: "/security/roles",
-    group: "مدیریت سیستم",
-  },
-  {
-    label: "مجوزها",
-    path: "/security/permissions",
-    group: "مدیریت سیستم",
-  },
+  { label: "ورود به سیستم", path: "/login", group: "مدیریت سیستم" },
+  { label: "وضعیت سیستم", path: "/system/diagnostics", group: "مدیریت سیستم" },
+  { label: "کاربران", path: "/security/users", group: "مدیریت سیستم" },
+  { label: "نقش‌ها", path: "/security/roles", group: "مدیریت سیستم" },
+  { label: "مجوزها", path: "/security/permissions", group: "مدیریت سیستم" },
 ];
