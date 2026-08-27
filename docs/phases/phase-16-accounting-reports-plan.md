@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–5 are complete; Step 6 is next.
+Phase 16 is active. Steps 1–6 are complete; Step 7 is next.
 
 ## Governance Rule
 
@@ -46,16 +46,16 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 
 - Posted accounting facts are the reporting source of truth.
 - Draft, pending-approval, and approved-but-unposted Journal Vouchers never affect final accounting balances.
-- Reversal semantics must preserve append-only audit history and produce deterministic net accounting effects.
+- Reversal semantics preserve append-only history and deterministic net effects.
 - Domain/Application owns accounting/report semantics; React never owns balance logic.
 - SQLite is an adapter and optimization boundary, not the source of business rules.
 - Company and Branch scope isolation is mandatory at the Application boundary.
 - Account hierarchy aggregation must not double-count child balances.
 - Date and fiscal boundaries are explicit and deterministic.
 - Durable dates remain Gregorian internally; Persian UI presents Solar Hijri.
-- Report results must support traceability back to the underlying Journal Voucher/lines.
-- Large datasets must be queried through projections/aggregation/pagination rather than loading the entire journal into memory.
-- Export and print reuse canonical report results instead of reimplementing calculations in presentation code.
+- Report results support traceability to underlying Journal Voucher/lines.
+- Large datasets use projections/aggregation/pagination rather than loading the entire journal.
+- Export and print reuse canonical report results.
 
 ## Step Status
 
@@ -66,7 +66,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 3 | Common Report Query, Filter, and Period Model | Completed |
 | 4 | Account Balance and Turnover Engine | Completed |
 | 5 | Trial Balance | Completed |
-| 6 | General Ledger | Not started |
+| 6 | General Ledger | Completed |
 | 7 | Subsidiary Ledger and Account Turnover | Not started |
 | 8 | Journal Report | Not started |
 | 9 | Accounting Dimension Reports | Not started |
@@ -99,12 +99,12 @@ Evidence:
 - Phase 15 GitHub Release `v0.15.0 — Phase 15 Journal Lifecycle` confirmed published.
 - `main` head confirmed as `4990501cba89bca0cbe2a342d45ad89a40311b77` at kickoff.
 - Branch `phase/16-accounting-reports` created from that exact commit.
-- This fixed plan created on the phase branch.
+- Fixed plan created on the phase branch.
 
 ### Step 2 — Reporting Domain Analysis and ADR
 
 - Reconcile Journal Voucher, lifecycle, Chart of Accounts, accounting dimensions, fiscal management, scope, and shared query infrastructure.
-- Define authoritative report source data, posting/reversal semantics, date/fiscal boundaries, parent/child aggregation, opening/period/ending balance semantics, branch behavior, zero-balance policy, drill-down identity, and rejected alternatives.
+- Define source data, posting/reversal semantics, fiscal/date boundaries, hierarchy aggregation, balance semantics, branch behavior, zero-balance policy, drill-down identity, and rejected alternatives.
 
 Exit: reporting architecture and accounting semantics are unambiguous before implementation.
 
@@ -112,17 +112,10 @@ Status: Completed
 
 Evidence:
 
-- Added `docs/adr/ADR-0016-accounting-reports.md` with accepted reporting architecture.
-- Final accounting reports use posted Journal accounting facts as the single source of truth; Draft/Pending/Approved-unposted facts are excluded.
-- A reversed original remains a reportable immutable posted fact, while its separate posted inverse voucher is also included; the two net through additive accounting rather than destructive filtering.
-- Canonical computation fixes `net = debit - credit`, inclusive report dates, explicit fiscal scope, derived opening/period/ending balances, and deterministic detailed-row ordering.
-- Account hierarchy aggregation uses persisted Phase 10 parent/child relationships and distinct posting descendants, never code-prefix inference or parent-plus-child double counting.
-- Company scope is mandatory; specific-branch reporting does not silently include branchless facts; fiscal closure affects mutation eligibility, not historical read visibility.
-- Zero-balance inclusion is an explicit query option; zero-ending accounts with period turnover remain visible.
-- Trial Balance column variants are projections over one canonical balance model rather than separate calculation engines.
-- Dimension reports reuse Phase 11 generic line assignments and the same posted Journal facts.
-- Drill-down identity is fixed around stable company/branch/fiscal/date/account/dimension context plus Journal Voucher ID and Journal Line ID for detailed movement.
-- SQLite remains an optimization adapter, React remains presentation-only, and export/print consume canonical report results.
+- Added `docs/adr/ADR-0016-accounting-reports.md`.
+- Posted Journal facts are the canonical source; unposted facts are excluded.
+- Reversed originals and separate posted inverse vouchers remain additive facts.
+- Canonical `debit-credit` net, inclusive periods, hierarchy aggregation, scope, zero-balance, dimensions, traceability, and adapter boundaries were fixed.
 
 ### Step 3 — Common Report Query, Filter, and Period Model
 
@@ -135,12 +128,10 @@ Status: Completed
 
 Evidence:
 
-- Added public `@argin/accounting/reporting` contracts in `packages/accounting/src/reporting.ts`.
-- Added one normalized query vocabulary covering company scope, explicit all/single-branch scope, inclusive ISO report period, optional fiscal year/period, account root-or-list selection, generic Phase 11 dimension-member filters, zero-balance inclusion, sort, paging/offset, and voucher/line trace context.
-- Defaults are deterministic and normalized results are immutable.
-- Focused query validation tests were added.
+- Added `packages/accounting/src/reporting.ts` and `@argin/accounting/reporting`.
+- Query normalization covers company, currency, branch, inclusive dates, fiscal scope, accounts, dimensions, zero-balance, sort, paging, and trace context.
+- Invalid/ambiguous filters fail deterministically.
 - User confirmed Step 3 local Accounting typecheck/tests are green.
-- Currency was made explicit with IRR default to prevent cross-currency summation.
 
 ### Step 4 — Account Balance and Turnover Engine
 
@@ -154,18 +145,14 @@ Status: Completed
 
 Evidence:
 
-- Added `packages/accounting/src/reporting-balance.ts` as a persistence-neutral balance/turnover engine over canonical posted Journal Line facts.
-- Canonical opening/period/ending math and debit/credit side projection are implemented.
-- Parent/general/group rows aggregate only distinct posting-enabled descendants.
-- Company, branch, fiscal, dimension, currency, posted-fact, and date scope are enforced.
-- Reversal netting, malformed facts, overflow, account selection, and currency isolation are covered by focused tests.
+- Added `packages/accounting/src/reporting-balance.ts` as the persistence-neutral canonical balance engine.
+- Opening/period/ending math, debit/credit side projection, hierarchy aggregation, branch/fiscal/dimension/currency scope, reversal netting, malformed facts, and overflow are covered.
 - User confirmed Step 4 local Accounting typecheck/tests are green.
 
 ### Step 5 — Trial Balance
 
 - Implement Trial Balance projections over the canonical balance engine.
-- Support the column variants justified by the accepted ADR and accounting model.
-- Support account-level/hierarchy presentation and optional zero-balance rows.
+- Support justified column variants and hierarchy/zero-balance presentation.
 
 Exit: Trial Balance totals reconcile deterministically with posted Journal facts.
 
@@ -173,14 +160,11 @@ Status: Completed
 
 Evidence:
 
-- Added `packages/accounting/src/trial-balance.ts` as a projection over the canonical Step 4 balance engine; no duplicate accounting math was introduced.
-- Trial Balance rows expose account identity/code/name/level plus opening debit/credit, period debit/credit, and ending debit/credit.
-- Supported presentation modes are fixed as 2, 4, 6, and 8 columns over the same canonical values rather than separate engines.
-- Account hierarchy rows remain available for presentation, but grand totals are computed only from posting-enabled accounts to prevent parent/child double counting.
-- Zero-balance rows are excluded by default and included only when `includeZeroBalances` is explicit.
-- `isBalanced` verifies opening, period, and ending debit/credit reconciliation independently.
-- Added `packages/accounting/tests/trial-balance.test.ts` covering canonical projection, hierarchy-safe totals, zero-balance behavior, and all 2/4/6/8 modes.
-- Added `@argin/accounting/trial-balance` package export.
+- Added `packages/accounting/src/trial-balance.ts` and `@argin/accounting/trial-balance`.
+- 2/4/6/8-column modes are projections over the same canonical values.
+- Parent rows remain visible while grand totals use posting-enabled accounts only, preventing hierarchy double counting.
+- Added focused `trial-balance.test.ts` reconciliation/zero-balance/mode coverage.
+- User confirmed Step 5 local Accounting typecheck/tests are green.
 
 ### Step 6 — General Ledger
 
@@ -189,7 +173,21 @@ Evidence:
 
 Exit: General Ledger can reconstruct the posted movement of an account for a deterministic period.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/general-ledger.ts` as a persistence-neutral General Ledger engine over the canonical balance/report fact model.
+- Added `GeneralLedgerJournalLineFact` detail contract with voucher number, line order, voucher/line description, and durable Voucher/Journal Line identity.
+- Opening balance is sourced from the Step 4 canonical balance engine; General Ledger does not reimplement opening-balance semantics.
+- In-period movements are ordered deterministically by voucher date, voucher number, line order, voucher ID, then Journal Line ID.
+- Running balance is computed from canonical `debit-credit` movement beginning at the canonical opening net.
+- Parent/general ledgers aggregate posting descendants while every detailed movement retains its actual posting account identity/code/name; no synthetic parent movement is created.
+- Common posted/company/branch/fiscal/currency/dimension scope filtering was exposed from the balance engine and reused instead of duplicated.
+- Period debit/credit and final running net are reconciled against the canonical balance engine and fail deterministically on mismatch.
+- Reversal original/inverse movements remain separate traceable facts and net through the running balance.
+- Added `packages/accounting/tests/general-ledger.test.ts` covering opening/running balance, deterministic ordering, parent aggregation, scope filtering, reversal traceability, descriptions, and invalid detail identity.
+- Added `@argin/accounting/general-ledger` package export.
 
 ### Step 7 — Subsidiary Ledger and Account Turnover
 
