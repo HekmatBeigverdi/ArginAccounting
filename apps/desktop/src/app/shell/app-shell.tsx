@@ -38,8 +38,10 @@ export function AppShell() {
 
   const visibleItems = useMemo(
     () => navigationItems.filter((item) => {
-      if (!item.requiredPermission) return true;
-      return permissions.has("system.full-access") || permissions.has(item.requiredPermission);
+      if (permissions.has("system.full-access")) return true;
+      if (item.requiredPermission && !permissions.has(item.requiredPermission)) return false;
+      if (item.requiredAnyPermissions && !item.requiredAnyPermissions.some((permission) => permissions.has(permission))) return false;
+      return true;
     }),
     [permissions]
   );
