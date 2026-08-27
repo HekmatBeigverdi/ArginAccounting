@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–3 are complete; Step 4 is next.
+Phase 16 is active. Steps 1–4 are complete; Step 5 is next.
 
 ## Governance Rule
 
@@ -64,7 +64,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | Reporting Domain Analysis and ADR | Completed |
 | 3 | Common Report Query, Filter, and Period Model | Completed |
-| 4 | Account Balance and Turnover Engine | Not started |
+| 4 | Account Balance and Turnover Engine | Completed |
 | 5 | Trial Balance | Not started |
 | 6 | General Ledger | Not started |
 | 7 | Subsidiary Ledger and Account Turnover | Not started |
@@ -142,6 +142,8 @@ Evidence:
 - IDs/text are trimmed, duplicate account/member IDs are normalized, and normalized results are frozen to protect query semantics from mutation.
 - Added focused `accounting-report-query.test.ts` coverage for defaults, explicit filters, period validation, account/dimension ambiguity, and trace identity rules.
 - Added the `./reporting` package export without coupling the contract to React, Tauri, SQLite, HTTP, or .NET.
+- User confirmed Step 3 local Accounting typecheck/tests are green.
+- Step 4 integration exposed that currency must be explicit to prevent cross-currency summation; the shared query now normalizes currency with IRR as the current default and rejects invalid currency codes. Focused currency tests were added.
 
 ### Step 4 — Account Balance and Turnover Engine
 
@@ -151,7 +153,22 @@ Evidence:
 
 Exit: focused Domain/Application tests prove the reusable accounting math independently of SQLite/UI.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/reporting-balance.ts` as a persistence-neutral balance/turnover engine over canonical posted Journal Line facts.
+- Canonical math is implemented as `openingNet = Σ(debit-credit before fromDate)`, period debit/credit over the inclusive selected period, and `endingNet = openingNet + periodDebit - periodCredit`.
+- Debit/credit presentation sides are derived from the sign of canonical net values; zero ending balance remains distinguishable from zero activity through movement flags.
+- Parent/general/group rows aggregate only distinct posting-enabled descendants derived from persisted account parent relationships; no code-prefix inference or synthetic parent Journal facts are used.
+- Company, explicit branch, fiscal-year, selected fiscal-period movement, dimension, currency, posted-fact, and report-date scope are enforced before arithmetic.
+- When a fiscal period is selected, prior periods in the same selected fiscal year remain eligible for opening balance while period movement is constrained to the selected period.
+- Specific-branch reports exclude branchless and other-branch facts; report currency prevents cross-currency addition.
+- Reversed originals and their separate posted inverse vouchers both remain reportable and net naturally through additive accounting facts.
+- Safe-integer overflow and malformed debit/credit facts fail deterministically instead of corrupting report totals.
+- Added focused `accounting-report-balance.test.ts` coverage for opening/period/ending math, parent aggregation, reversal netting, branch/unposted/currency exclusion, fiscal-period opening semantics, dimensions, account-root selection, and invalid facts.
+- Added `accounting-report-currency.test.ts` for IRR default, explicit currency normalization, and invalid currency rejection.
+- Balance engine types/functions are exported through the existing `@argin/accounting/reporting` boundary.
 
 ### Step 5 — Trial Balance
 
