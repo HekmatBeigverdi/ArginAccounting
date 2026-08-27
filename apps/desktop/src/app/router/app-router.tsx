@@ -19,7 +19,7 @@ import { ChartOfAccountsPage } from "../../pages/accounting/chart-of-accounts-pa
 import { AccountingDimensionsPage } from "../../pages/accounting/accounting-dimensions-page";
 import { AccountingReportsPage } from "../../pages/accounting/accounting-reports-page";
 import { CodingTemplatesPage } from "../../pages/accounting/coding-templates-page";
-import { JournalVouchersLifecyclePage } from "../../pages/accounting/journal-vouchers-lifecycle-page";
+import { JournalVouchersRoute } from "../../pages/accounting/journal-vouchers-route";
 
 export function AppRouter() {
   return (
@@ -40,7 +40,7 @@ export function AppRouter() {
           <Route path="/approval/requests/:id" element={<ApprovalRequestDetailsPage />} />
           <Route path="/audit/entries" element={<AuditEntriesPage />} />
           <Route path="/audit/entries/:id" element={<AuditEntryDetailsPage />} />
-          <Route path="/accounting/journal-vouchers" element={<JournalVouchersLifecyclePage />} />
+          <Route path="/accounting/journal-vouchers" element={<JournalVouchersRoute />} />
           <Route path="/accounting/reports" element={<AccountingReportsPage />} />
           <Route path="/accounting/chart-of-accounts" element={<ChartOfAccountsPage />} />
           <Route path="/accounting/dimensions" element={<AccountingDimensionsPage />} />
