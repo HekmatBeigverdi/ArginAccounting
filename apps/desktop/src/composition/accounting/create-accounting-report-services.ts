@@ -2,10 +2,13 @@ import {
   DefaultAccountingReportQueryService,
   type AccountingReportQueryService,
 } from "@argin/accounting/reporting-application";
+import type { AccountingReportQuery } from "@argin/accounting/reporting";
 import {
+  assertAccountingReportExportAuthorized,
   SecuredAccountingReportQueryService,
   type AccountingReportAuthorizer,
   type AccountingReportScopeAuthorizer,
+  type AccountingReportSecurityDependencies,
 } from "@argin/accounting/reporting-security";
 import { SqliteAccountingReportDataReader } from "@argin/accounting-tauri";
 import { SqliteBranchRepository } from "@argin/company-tauri";
@@ -14,6 +17,7 @@ import type { AuthSession } from "@argin/security";
 
 export interface AccountingReportDesktopServices {
   readonly queries: AccountingReportQueryService;
+  authorizeExport(report: AccountingReportQuery): Promise<void>;
 }
 
 export function createAccountingReportServices(input: {
@@ -51,10 +55,15 @@ export function createAccountingReportServices(input: {
     },
   };
 
+  const security: AccountingReportSecurityDependencies = Object.freeze({
+    authorizer,
+    scope,
+  });
   const reader = new SqliteAccountingReportDataReader(input.database);
   const core = new DefaultAccountingReportQueryService(reader);
 
   return Object.freeze({
-    queries: new SecuredAccountingReportQueryService(core, { authorizer, scope }),
+    queries: new SecuredAccountingReportQueryService(core, security),
+    authorizeExport: (report) => assertAccountingReportExportAuthorized(report, security),
   });
 }
