@@ -1,4 +1,4 @@
-import type { Account, AccountingDimensionMember, AccountingDimensionType } from "@argin/accounting";
+import type { AccountingDimensionMember, AccountingDimensionType } from "@argin/accounting";
 import type {
   AccountingReportDataReader,
   AccountingReportDataSnapshot,

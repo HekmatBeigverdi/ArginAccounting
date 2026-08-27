@@ -76,6 +76,7 @@
 
 .reports-table td,
 .reports-table th {
+  height: var(--ui-density-row-height);
   border-bottom: 1px solid var(--ui-border);
   text-align: right;
 }
