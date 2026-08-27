@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–10 are complete; Step 11 is next.
+Phase 16 is active. Steps 1–11 are complete; Step 12 is next.
 
 ## Governance Rule
 
@@ -71,7 +71,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 8 | Journal Report | Completed |
 | 9 | Accounting Dimension Reports | Completed |
 | 10 | Application Contracts, DTOs, and Query Services | Completed |
-| 11 | SQLite Reporting Repository and Query Optimization | Not started |
+| 11 | SQLite Reporting Repository and Query Optimization | Completed |
 | 12 | Reporting Permissions, Company/Branch Scope, and Security | Not started |
 | 13 | Persian RTL Accounting Reports Center UI | Not started |
 | 14 | Filters, Drill-down, and Journal Traceability UI | Not started |
@@ -83,7 +83,6 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 ## Fixed Execution Sequence
 
 ### Step 1 — Baseline, Branch, and Plan Freeze
-
 - Confirm Phase 15 release baseline.
 - Confirm current `main` head.
 - Create `phase/16-accounting-reports` from current `main`.
@@ -94,15 +93,9 @@ Exit: branch and fixed plan exist; no reporting behavior introduced.
 
 Status: Completed
 
-Evidence:
-
-- Phase 15 GitHub Release `v0.15.0 — Phase 15 Journal Lifecycle` confirmed published.
-- `main` head confirmed as `4990501cba89bca0cbe2a342d45ad89a40311b77` at kickoff.
-- Branch `phase/16-accounting-reports` created from that exact commit.
-- Fixed plan created on the phase branch.
+Evidence: Phase 15 release and kickoff SHA were confirmed; phase branch and fixed plan were created.
 
 ### Step 2 — Reporting Domain Analysis and ADR
-
 - Reconcile Journal Voucher, lifecycle, Chart of Accounts, accounting dimensions, fiscal management, scope, and shared query infrastructure.
 - Define source data, posting/reversal semantics, fiscal/date boundaries, hierarchy aggregation, balance semantics, branch behavior, zero-balance policy, drill-down identity, and rejected alternatives.
 
@@ -110,15 +103,9 @@ Exit: reporting architecture and accounting semantics are unambiguous before imp
 
 Status: Completed
 
-Evidence:
-
-- Added `docs/adr/ADR-0016-accounting-reports.md`.
-- Posted Journal facts are the canonical source; unposted facts are excluded.
-- Reversed originals and separate posted inverse vouchers remain additive facts.
-- Canonical `debit-credit` net, inclusive periods, hierarchy aggregation, scope, zero-balance, dimensions, traceability, and adapter boundaries were fixed.
+Evidence: `docs/adr/ADR-0016-accounting-reports.md` fixes posted-fact, reversal, hierarchy, period, scope, dimension, traceability, adapter, and currency semantics.
 
 ### Step 3 — Common Report Query, Filter, and Period Model
-
 - Define persistence-neutral report period and common filter contracts.
 - Cover company, branch, fiscal year/period, date range, account range/hierarchy, dimensions, zero-balance inclusion, sorting, pagination, and traceability context.
 
@@ -126,15 +113,9 @@ Exit: all Phase 16 reports share one stable filter/query vocabulary instead of d
 
 Status: Completed
 
-Evidence:
-
-- Added `packages/accounting/src/reporting.ts` and `@argin/accounting/reporting`.
-- Query normalization covers company, currency, branch, inclusive dates, fiscal scope, accounts, dimensions, zero-balance, sort, paging, and trace context.
-- Invalid/ambiguous filters fail deterministically.
-- User confirmed Step 3 local Accounting typecheck/tests are green.
+Evidence: `packages/accounting/src/reporting.ts`; user confirmed local typecheck/tests green.
 
 ### Step 4 — Account Balance and Turnover Engine
-
 - Implement deterministic opening balance, period debit, period credit, and ending balance computation.
 - Support account hierarchy aggregation without double counting.
 - Enforce company/branch/fiscal/date scope semantics.
@@ -143,31 +124,20 @@ Exit: focused Domain/Application tests prove the reusable accounting math indepe
 
 Status: Completed
 
-Evidence:
-
-- Added `packages/accounting/src/reporting-balance.ts` as the persistence-neutral canonical balance engine.
-- Opening/period/ending math, debit/credit side projection, hierarchy aggregation, branch/fiscal/dimension/currency scope, reversal netting, malformed facts, and overflow are covered.
-- User confirmed Step 4 local Accounting typecheck/tests are green.
+Evidence: `packages/accounting/src/reporting-balance.ts`; user confirmed local typecheck/tests green.
 
 ### Step 5 — Trial Balance
-
 - Implement Trial Balance projections over the canonical balance engine.
-- Support justified column variants and hierarchy/zero-balance presentation.
+- Support the column variants justified by the accepted ADR and accounting model.
+- Support account-level/hierarchy presentation and optional zero-balance rows.
 
 Exit: Trial Balance totals reconcile deterministically with posted Journal facts.
 
 Status: Completed
 
-Evidence:
-
-- Added `packages/accounting/src/trial-balance.ts` and `@argin/accounting/trial-balance`.
-- 2/4/6/8-column modes are projections over the same canonical values.
-- Parent rows remain visible while grand totals use posting-enabled accounts only, preventing hierarchy double counting.
-- Added focused `trial-balance.test.ts` reconciliation/zero-balance/mode coverage.
-- User confirmed Step 5 local Accounting typecheck/tests are green.
+Evidence: `packages/accounting/src/trial-balance.ts`; hierarchy-safe totals and 2/4/6/8 projection tests; user confirmed local tests green.
 
 ### Step 6 — General Ledger
-
 - Implement account-ledger reporting with date, voucher number, description, debit, credit, and running balance.
 - Preserve stable ordering and traceability to Journal Voucher/line identifiers.
 
@@ -175,18 +145,9 @@ Exit: General Ledger can reconstruct the posted movement of an account for a det
 
 Status: Completed
 
-Evidence:
-
-- Added `packages/accounting/src/general-ledger.ts` and `@argin/accounting/general-ledger`.
-- Opening balance comes from the canonical balance engine; movements preserve voucher/line identity, posting account identity, deterministic ordering, debit/credit, descriptions, and running balance.
-- Parent/general ledgers aggregate actual posting descendants without synthetic parent movement.
-- Detailed totals and ending running balance reconcile back to the canonical balance engine.
-- Added focused `general-ledger.test.ts` coverage.
-- User reported an initial local `pnpm --filter @argin/accounting test` failure, fixed and pushed commit `99979ff1df76ddbc8034eddadb9f392f02cc4971`; local Step 6 tests are now confirmed green.
-- The user fix preserves only contributing posting-account IDs when zero balances are excluded and stabilizes mixed voucher-number ordering.
+Evidence: `packages/accounting/src/general-ledger.ts`; user fix `99979ff1df76ddbc8034eddadb9f392f02cc4971` is retained; local tests confirmed green.
 
 ### Step 7 — Subsidiary Ledger and Account Turnover
-
 - Implement detailed account/subsidiary movement reporting.
 - Include opening balance, detailed movement, running balance, and dimension-aware projections where applicable.
 
@@ -194,21 +155,9 @@ Exit: users can inspect one account's detailed movement and reconcile it to aggr
 
 Status: Completed
 
-Evidence:
-
-- Added `packages/accounting/src/subsidiary-ledger.ts` as a posting-account-only projection over the corrected Step 6 General Ledger, avoiding a second movement/running-balance engine.
-- Each posting account exposes an `AccountTurnoverSummary` with opening balance/net, period debit/credit, ending balance/net, and movement count.
-- Detailed subsidiary movements reuse General Ledger ordering, debit/credit, running balance, posting-account identity, Voucher ID, and Journal Line ID.
-- Existing generic accounting-dimension assignments are preserved and deterministically ordered on each movement for later drill-down/projection, without introducing Step 9 dimension aggregation early.
-- Parent/root account selection with descendants is supported by the shared query/General Ledger selection, while only posting-enabled account sections are emitted.
-- Explicit account-list selection and zero-balance visibility remain intact; a non-posting-only account list cannot accidentally widen into all posting accounts.
-- Posted/company/branch/fiscal/currency/dimension filtering is inherited from the canonical General Ledger/report fact scope.
-- Added `packages/accounting/tests/subsidiary-ledger.test.ts` covering opening/period/ending turnover, running balance, dimensions, parent expansion, zero-balance selection, scope filtering, and the non-posting-list widening edge case.
-- Added `@argin/accounting/subsidiary-ledger` package export.
-- User confirmed Step 7 local Accounting typecheck/tests are green.
+Evidence: `packages/accounting/src/subsidiary-ledger.ts`; posting-account turnover, running balance, generic dimensions, selection edge cases; user confirmed local tests green.
 
 ### Step 8 — Journal Report
-
 - Implement chronological Journal reporting over posted accounting facts.
 - Include voucher/date/description/account/dimension/debit/credit fields needed for professional accounting review.
 
@@ -216,21 +165,9 @@ Exit: report ordering and totals are deterministic and traceable to source vouch
 
 Status: Completed
 
-Evidence:
-
-- Added `packages/accounting/src/journal-report.ts` as a persistence-neutral chronological Journal Report over canonical posted report facts.
-- Added `JournalReportJournalLineFact` detail contract with voucher number, line order, optional reference, voucher/line descriptions, stable Voucher ID, and Journal Line ID.
-- Rows expose voucher/date/reference, account identity/code/name, normalized description, generic dimension assignments, debit, credit, and durable drill-down identities.
-- In-period rows reuse canonical posted/company/branch/fiscal/currency/dimension scope filtering and canonical account-hierarchy selection; opening facts are not emitted into the Journal Report period.
-- Stable ordering is voucher date, voucher number, line order, Voucher ID, then Journal Line ID.
-- Debit and credit totals use the shared safe-integer reporting arithmetic; `isBalanced` describes the selected query result rather than imposing Trial Balance semantics on filtered analytical subsets.
-- Reversed originals and their posted inverse vouchers remain separate chronological traceable facts.
-- Added `packages/accounting/tests/journal-report.test.ts` covering deterministic ordering, balanced full-journal totals, account/description/reference/dimension traceability, scope/account hierarchy filtering, and reversal history.
-- Added `@argin/accounting/journal-report` package export.
-- User confirmed Step 8 local Accounting typecheck/tests are green.
+Evidence: `packages/accounting/src/journal-report.ts`; deterministic chronology, totals, traceability, account/dimension scope; user confirmed local tests green.
 
 ### Step 9 — Accounting Dimension Reports
-
 - Build dimension-member/account-dimension turnover and balance reports on Phase 11 contracts.
 - Support filtering/grouping by configured accounting dimensions without hard-coding future dimension types.
 
@@ -238,21 +175,9 @@ Exit: dimension-based accounting balances reconcile with the same canonical Jour
 
 Status: Completed
 
-Evidence:
-
-- Added `packages/accounting/src/dimension-reports.ts` using Phase 11 `AccountingDimensionType` and `AccountingDimensionMember` metadata without hard-coded dimension categories.
-- Added canonical `byMember` aggregation for dimension-member opening balance, period debit/credit, and ending balance.
-- Added canonical `byAccountMember` aggregation for Account × Dimension Member balances and turnover.
-- Opening facts use dates before `fromDate`; period movement uses the inclusive report period and selected fiscal-period semantics; ending balance uses the shared canonical `debit-credit` net convention.
-- Company, branch, fiscal year, currency, date, posted-fact, dimension-filter, and posting-account selection reuse the shared reporting scope.
-- Parent account selection expands to posting descendants without synthetic parent facts.
-- Dimension type/member IDs are authoritative aggregation keys; code/name metadata is presentation-only and invalid/mismatched metadata fails deterministically.
-- Added `packages/accounting/tests/dimension-reports.test.ts` covering member/account-member aggregation, opening/period/ending math, hierarchy/posted scope, and invalid dimension metadata.
-- Added `@argin/accounting/dimension-reports` package export.
-- User confirmed Step 9 local Accounting typecheck/tests are green.
+Evidence: `packages/accounting/src/dimension-reports.ts`; generic member and Account×Member balances; user confirmed local tests green.
 
 ### Step 10 — Application Contracts, DTOs, and Query Services
-
 - Define persistence-neutral report commands/queries, DTOs, readers/services, stable errors, paging/sorting contracts, and traceability identifiers.
 - Keep future PostgreSQL/API adapters compatible with the same Application boundary.
 
@@ -261,31 +186,33 @@ Exit: report semantics are consumable without React, Tauri, SQLite, or HTTP depe
 Status: Completed
 
 Evidence:
-
-- Added `packages/accounting/src/reporting-application.ts` as the persistence-neutral Application boundary for Phase 16 reporting.
-- Added `AccountingReportDataReader` and `AccountingReportDataSnapshot`; infrastructure adapters supply accounts, report facts, and Phase 11 dimension metadata without leaking SQLite/Tauri/HTTP concerns into Application code.
-- Added `AccountingReportQueryService` and `DefaultAccountingReportQueryService` orchestration for Trial Balance, General Ledger, Subsidiary Ledger, Journal Report, and Accounting Dimension Reports, reusing the canonical engines from Steps 5–9 rather than duplicating report math.
-- Report requests reuse the Step 3 `AccountingReportQuery` vocabulary and are normalized once at the Application boundary before reader execution.
-- Added stable `AccountingReportKind` execution context so Step 11 adapters can select efficient projections per report family while preserving one Application contract.
-- Added generic immutable `AccountingReportPage<T>` DTO with page/page-size/total-items/total-pages/previous/next metadata; Journal Report paging currently projects the canonical result while Step 11 can push paging down to SQLite without changing consumer contracts.
-- Added durable `AccountingReportTraceIdentity` plus normalization helper for Voucher ID and optional Journal Line ID.
-- Added stable `AccountingReportApplicationError` codes for reader failure and invalid/cross-company snapshots; Application wraps infrastructure read failures without exposing adapter-specific errors.
-- Snapshot validation rejects cross-company account/dimension metadata before report execution, preserving company isolation at the Application boundary.
-- Added `packages/accounting/tests/reporting-application.test.ts` covering query-service orchestration, normalized execution context, paging metadata, stable reader-error wrapping, cross-company snapshot rejection, and immutable trace identity.
-- Added `@argin/accounting/reporting-application` package export.
+- `packages/accounting/src/reporting-application.ts` defines `AccountingReportDataReader`, snapshot/DTO/query-service contracts, paging and trace identities, and stable Application errors.
+- Default query services orchestrate Steps 5–9 without duplicating report math.
+- User confirmed Step 10 local Accounting typecheck/tests are green.
 
 ### Step 11 — SQLite Reporting Repository and Query Optimization
-
 - Implement SQLite adapters for Phase 16 queries.
 - Add/adjust indexes only where supported by measured/query-plan need.
 - Use SQL aggregation/projection/pagination and prevent N+1/full-journal loading.
 
 Exit: SQLite results match Application semantics and remain practical on realistic desktop datasets.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added `packages/accounting-tauri/src/sqlite-accounting-report-data-reader.ts` implementing the Step 10 `AccountingReportDataReader` boundary.
+- SQLite fact retrieval is set-based and projects only report-required Journal Voucher/Line columns; account metadata reuses the existing set-based `SqliteAccountRepository` company query.
+- Canonical SQL scope includes company, explicit currency, `lifecycle_status IN ('posted', 'reversed')`, upper date boundary, optional exact branch, optional fiscal year, and generic dimension `EXISTS` filters.
+- `fiscalPeriodId` is deliberately not applied as a global SQL predicate because opening balance must retain earlier periods in the selected fiscal year; Application engines apply fiscal-period restriction only to period movement.
+- Reversed originals remain reportable persisted facts and separate posted reversal vouchers remain reportable; the adapter never derives reportability from `status = 'posted'` only.
+- Dimension assignments are loaded with one set-based query and grouped by Journal Line in the adapter, avoiding per-line N+1 queries; dimension type/member metadata is loaded only for the Dimension Report family.
+- Ledger and Journal detail projections are materialized only for report kinds that consume them; unrelated detail arrays stay empty.
+- Added migration `apps/desktop/src-tauri/migrations/0015_accounting_report_indexes.sql` with a reporting-scope index over company/currency/lifecycle/date/branch/fiscal fields and a generic dimension-type/member reporting index.
+- Added `packages/accounting-tauri/tests/sqlite-accounting-report-data-reader.test.ts` covering posted/reversed SQL scope, branch/fiscal-year/date constraints, generic dimension filtering, preservation of opening-period semantics, dimension metadata loading, and Journal detail projection.
+- Exported `SqliteAccountingReportDataReader` from `@argin/accounting-tauri`.
+- User confirmed Step 10 local validation before Step 11 implementation. Step 11 local validation is pending user execution.
 
 ### Step 12 — Reporting Permissions, Company/Branch Scope, and Security
-
 - Add granular reporting permissions and export permissions.
 - Enforce company and branch scope at the Application boundary.
 - Ensure not-found/denied behavior does not leak cross-scope accounting data.
@@ -295,7 +222,6 @@ Exit: UI visibility is not the security authority and unauthorized reporting acc
 Status: Not started
 
 ### Step 13 — Persian RTL Accounting Reports Center UI
-
 - Add the Accounting Reports workspace using the Phase 14 design system.
 - Provide compact desktop tables, loading/empty/error states, keyboard accessibility, density support, RTL, and Solar Hijri presentation.
 
@@ -304,7 +230,6 @@ Exit: the canonical Phase 16 reports are usable from one coherent Persian RTL re
 Status: Not started
 
 ### Step 14 — Filters, Drill-down, and Journal Traceability UI
-
 - Add reusable report filters and deliberate refresh/query execution.
 - Support drill-down from aggregate report values to account movement and source Journal Voucher details.
 - Keep presentation state separate from report business semantics.
@@ -314,7 +239,6 @@ Exit: users can move from reported totals to their accounting source without amb
 Status: Not started
 
 ### Step 15 — Print, Preview, Excel, and PDF Export
-
 - Add print preview and accounting-friendly A4 output.
 - Add Excel and PDF export using canonical report data/contracts.
 - Preserve Persian RTL, company/fiscal context, headings, and page metadata.
@@ -324,7 +248,6 @@ Exit: supported reports can be printed/exported without recalculating accounting
 Status: Not started
 
 ### Step 16 — Domain and Application Report Test Matrix
-
 - Cover opening/period/ending balances, debit/credit balances, zero balances, hierarchy aggregation, reversals, fiscal/date boundaries, branch/company scope, dimensions, unposted exclusion, sorting/pagination invariants, and stable error behavior.
 
 Exit: report semantics are comprehensively covered independent of SQLite/Desktop.
@@ -332,7 +255,6 @@ Exit: report semantics are comprehensively covered independent of SQLite/Desktop
 Status: Not started
 
 ### Step 17 — SQLite/Desktop/Performance and Monorepo Validation
-
 - Add repository/query correctness tests and Desktop regression coverage.
 - Validate query plans/performance on representative larger datasets.
 - Validate permissions, drill-down, print/export composition, and UI state behavior.
@@ -343,7 +265,6 @@ Exit: focused and monorepo validation is green with evidence recorded.
 Status: Not started
 
 ### Step 18 — Documentation, Final Review, Merge, and Release
-
 - Complete phase document, ADR links, README/ROADMAP/CHANGELOG/architecture/security/database/glossary updates as applicable.
 - Reconcile Step Status with actual completion evidence.
 - Perform final code/documentation review and branch comparison.
