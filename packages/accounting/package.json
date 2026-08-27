@@ -11,7 +11,8 @@
     "./reporting": "./src/reporting.ts",
     "./trial-balance": "./src/trial-balance.ts",
     "./general-ledger": "./src/general-ledger.ts",
-    "./subsidiary-ledger": "./src/subsidiary-ledger.ts"
+    "./subsidiary-ledger": "./src/subsidiary-ledger.ts",
+    "./journal-report": "./src/journal-report.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
