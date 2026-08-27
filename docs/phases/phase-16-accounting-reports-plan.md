@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–4 are complete; Step 5 is next.
+Phase 16 is active. Steps 1–5 are complete; Step 6 is next.
 
 ## Governance Rule
 
@@ -65,7 +65,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 2 | Reporting Domain Analysis and ADR | Completed |
 | 3 | Common Report Query, Filter, and Period Model | Completed |
 | 4 | Account Balance and Turnover Engine | Completed |
-| 5 | Trial Balance | Not started |
+| 5 | Trial Balance | Completed |
 | 6 | General Ledger | Not started |
 | 7 | Subsidiary Ledger and Account Turnover | Not started |
 | 8 | Journal Report | Not started |
@@ -137,13 +137,10 @@ Evidence:
 
 - Added public `@argin/accounting/reporting` contracts in `packages/accounting/src/reporting.ts`.
 - Added one normalized query vocabulary covering company scope, explicit all/single-branch scope, inclusive ISO report period, optional fiscal year/period, account root-or-list selection, generic Phase 11 dimension-member filters, zero-balance inclusion, sort, paging/offset, and voucher/line trace context.
-- Defaults are deterministic: all branches, descendants enabled for a selected root account, zero-balance rows excluded, page 1, platform default page size, ascending sort direction when supplied without direction.
-- Validation rejects invalid ISO/range dates, fiscal period without fiscal year, empty branch identifiers, ambiguous root-account plus account-list filters, duplicate dimension types, empty dimension-member filters, duplicate sort fields, invalid paging, and line trace without voucher trace.
-- IDs/text are trimmed, duplicate account/member IDs are normalized, and normalized results are frozen to protect query semantics from mutation.
-- Added focused `accounting-report-query.test.ts` coverage for defaults, explicit filters, period validation, account/dimension ambiguity, and trace identity rules.
-- Added the `./reporting` package export without coupling the contract to React, Tauri, SQLite, HTTP, or .NET.
+- Defaults are deterministic and normalized results are immutable.
+- Focused query validation tests were added.
 - User confirmed Step 3 local Accounting typecheck/tests are green.
-- Step 4 integration exposed that currency must be explicit to prevent cross-currency summation; the shared query now normalizes currency with IRR as the current default and rejects invalid currency codes. Focused currency tests were added.
+- Currency was made explicit with IRR default to prevent cross-currency summation.
 
 ### Step 4 — Account Balance and Turnover Engine
 
@@ -158,17 +155,11 @@ Status: Completed
 Evidence:
 
 - Added `packages/accounting/src/reporting-balance.ts` as a persistence-neutral balance/turnover engine over canonical posted Journal Line facts.
-- Canonical math is implemented as `openingNet = Σ(debit-credit before fromDate)`, period debit/credit over the inclusive selected period, and `endingNet = openingNet + periodDebit - periodCredit`.
-- Debit/credit presentation sides are derived from the sign of canonical net values; zero ending balance remains distinguishable from zero activity through movement flags.
-- Parent/general/group rows aggregate only distinct posting-enabled descendants derived from persisted account parent relationships; no code-prefix inference or synthetic parent Journal facts are used.
-- Company, explicit branch, fiscal-year, selected fiscal-period movement, dimension, currency, posted-fact, and report-date scope are enforced before arithmetic.
-- When a fiscal period is selected, prior periods in the same selected fiscal year remain eligible for opening balance while period movement is constrained to the selected period.
-- Specific-branch reports exclude branchless and other-branch facts; report currency prevents cross-currency addition.
-- Reversed originals and their separate posted inverse vouchers both remain reportable and net naturally through additive accounting facts.
-- Safe-integer overflow and malformed debit/credit facts fail deterministically instead of corrupting report totals.
-- Added focused `accounting-report-balance.test.ts` coverage for opening/period/ending math, parent aggregation, reversal netting, branch/unposted/currency exclusion, fiscal-period opening semantics, dimensions, account-root selection, and invalid facts.
-- Added `accounting-report-currency.test.ts` for IRR default, explicit currency normalization, and invalid currency rejection.
-- Balance engine types/functions are exported through the existing `@argin/accounting/reporting` boundary.
+- Canonical opening/period/ending math and debit/credit side projection are implemented.
+- Parent/general/group rows aggregate only distinct posting-enabled descendants.
+- Company, branch, fiscal, dimension, currency, posted-fact, and date scope are enforced.
+- Reversal netting, malformed facts, overflow, account selection, and currency isolation are covered by focused tests.
+- User confirmed Step 4 local Accounting typecheck/tests are green.
 
 ### Step 5 — Trial Balance
 
@@ -178,7 +169,18 @@ Evidence:
 
 Exit: Trial Balance totals reconcile deterministically with posted Journal facts.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/trial-balance.ts` as a projection over the canonical Step 4 balance engine; no duplicate accounting math was introduced.
+- Trial Balance rows expose account identity/code/name/level plus opening debit/credit, period debit/credit, and ending debit/credit.
+- Supported presentation modes are fixed as 2, 4, 6, and 8 columns over the same canonical values rather than separate engines.
+- Account hierarchy rows remain available for presentation, but grand totals are computed only from posting-enabled accounts to prevent parent/child double counting.
+- Zero-balance rows are excluded by default and included only when `includeZeroBalances` is explicit.
+- `isBalanced` verifies opening, period, and ending debit/credit reconciliation independently.
+- Added `packages/accounting/tests/trial-balance.test.ts` covering canonical projection, hierarchy-safe totals, zero-balance behavior, and all 2/4/6/8 modes.
+- Added `@argin/accounting/trial-balance` package export.
 
 ### Step 6 — General Ledger
 
