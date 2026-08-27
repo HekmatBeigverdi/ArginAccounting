@@ -67,7 +67,7 @@ export function calculateAccountBalanceTurnover(
   const accountById = new Map(companyAccounts.map((account) => [account.id, account] as const));
   validateAccountTree(companyAccounts, accountById);
   const selectedAccounts = selectAccounts(query, companyAccounts, accountById);
-  const relevantFacts = facts.filter((fact) => factMatchesBaseScope(fact, query));
+  const relevantFacts = facts.filter((fact) => accountingReportFactMatchesBaseScope(fact, query));
 
   return Object.freeze(selectedAccounts.map((account) => {
     const postingAccountIds = collectPostingAccountIds(account.id, companyAccounts, accountById);
@@ -78,7 +78,7 @@ export function calculateAccountBalanceTurnover(
 
     for (const fact of relevantFacts) {
       if (!postingSet.has(fact.accountId)) continue;
-      validateFact(fact);
+      validateAccountingReportFact(fact);
       if (fact.voucherDate < query.period.fromDate) {
         openingNet = safeAdd(openingNet, safeSubtract(fact.debit, fact.credit));
         continue;
@@ -96,9 +96,9 @@ export function calculateAccountBalanceTurnover(
     return Object.freeze({
       accountId: account.id,
       postingAccountIds: Object.freeze(postingAccountIds),
-      opening: splitNet(openingNet),
+      opening: splitAccountingReportNet(openingNet),
       period: Object.freeze({ debit: periodDebit, credit: periodCredit }),
-      ending: splitNet(endingNet),
+      ending: splitAccountingReportNet(endingNet),
       openingNet,
       endingNet,
       hasOpeningBalance: openingNet !== 0,
@@ -150,7 +150,10 @@ function collectDescendantIds(accountId: string, accounts: readonly Account[]): 
   return result;
 }
 
-function factMatchesBaseScope(fact: AccountingReportJournalLineFact, query: NormalizedAccountingReportQuery): boolean {
+export function accountingReportFactMatchesBaseScope(
+  fact: AccountingReportJournalLineFact,
+  query: NormalizedAccountingReportQuery,
+): boolean {
   if (!fact.isPostedFact || fact.companyId !== query.companyId || fact.currency !== query.currency) return false;
   if (query.branch.mode === "branch" && fact.branchId !== query.branch.branchId) return false;
   if (query.period.fiscalYearId && fact.fiscalYearId !== query.period.fiscalYearId) return false;
@@ -182,14 +185,20 @@ function validateAccountTree(accounts: readonly Account[], accountById: Readonly
   }
 }
 
-function validateFact(fact: AccountingReportJournalLineFact): void {
+export function validateAccountingReportFact(fact: AccountingReportJournalLineFact): void {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fact.voucherDate) || !Number.isSafeInteger(fact.debit) || !Number.isSafeInteger(fact.credit) || fact.debit < 0 || fact.credit < 0 || (fact.debit > 0) === (fact.credit > 0)) {
     throw new AccountingReportBalanceError("report.balance.invalid-fact", "ردیف گزارش حسابداری معتبر نیست.", { voucherId: fact.voucherId, journalLineId: fact.journalLineId });
   }
 }
 
-function splitNet(net: number): AccountingReportBalanceSide {
+export function splitAccountingReportNet(net: number): AccountingReportBalanceSide {
   return Object.freeze(net >= 0 ? { debit: net, credit: 0 } : { debit: 0, credit: Math.abs(net) });
+}
+
+export function safeAccountingReportAdd(left: number, right: number): number {
+  const result = left + right;
+  assertSafe(result);
+  return result;
 }
 
 function safeSubtract(left: number, right: number): number {
@@ -199,9 +208,7 @@ function safeSubtract(left: number, right: number): number {
 }
 
 function safeAdd(left: number, right: number): number {
-  const result = left + right;
-  assertSafe(result);
-  return result;
+  return safeAccountingReportAdd(left, right);
 }
 
 function assertSafe(value: number): void {
