@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Step 1 baseline, branch creation, and plan freeze are complete.
+Phase 16 is active. Steps 1–2 are complete; Step 3 is next.
 
 ## Governance Rule
 
@@ -62,7 +62,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
-| 2 | Reporting Domain Analysis and ADR | Not started |
+| 2 | Reporting Domain Analysis and ADR | Completed |
 | 3 | Common Report Query, Filter, and Period Model | Not started |
 | 4 | Account Balance and Turnover Engine | Not started |
 | 5 | Trial Balance | Not started |
@@ -108,7 +108,21 @@ Evidence:
 
 Exit: reporting architecture and accounting semantics are unambiguous before implementation.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `docs/adr/ADR-0016-accounting-reports.md` with accepted reporting architecture.
+- Final accounting reports use posted Journal accounting facts as the single source of truth; Draft/Pending/Approved-unposted facts are excluded.
+- A reversed original remains a reportable immutable posted fact, while its separate posted inverse voucher is also included; the two net through additive accounting rather than destructive filtering.
+- Canonical computation fixes `net = debit - credit`, inclusive report dates, explicit fiscal scope, derived opening/period/ending balances, and deterministic detailed-row ordering.
+- Account hierarchy aggregation uses persisted Phase 10 parent/child relationships and distinct posting descendants, never code-prefix inference or parent-plus-child double counting.
+- Company scope is mandatory; specific-branch reporting does not silently include branchless facts; fiscal closure affects mutation eligibility, not historical read visibility.
+- Zero-balance inclusion is an explicit query option; zero-ending accounts with period turnover remain visible.
+- Trial Balance column variants are projections over one canonical balance model rather than separate calculation engines.
+- Dimension reports reuse Phase 11 generic line assignments and the same posted Journal facts.
+- Drill-down identity is fixed around stable company/branch/fiscal/date/account/dimension context plus Journal Voucher ID and Journal Line ID for detailed movement.
+- SQLite remains an optimization adapter, React remains presentation-only, and export/print consume canonical report results.
 
 ### Step 3 — Common Report Query, Filter, and Period Model
 
