@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–6 are complete; Step 7 is next.
+Phase 16 is active. Steps 1–7 are complete; Step 8 is next.
 
 ## Governance Rule
 
@@ -67,7 +67,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 4 | Account Balance and Turnover Engine | Completed |
 | 5 | Trial Balance | Completed |
 | 6 | General Ledger | Completed |
-| 7 | Subsidiary Ledger and Account Turnover | Not started |
+| 7 | Subsidiary Ledger and Account Turnover | Completed |
 | 8 | Journal Report | Not started |
 | 9 | Accounting Dimension Reports | Not started |
 | 10 | Application Contracts, DTOs, and Query Services | Not started |
@@ -177,17 +177,13 @@ Status: Completed
 
 Evidence:
 
-- Added `packages/accounting/src/general-ledger.ts` as a persistence-neutral General Ledger engine over the canonical balance/report fact model.
-- Added `GeneralLedgerJournalLineFact` detail contract with voucher number, line order, voucher/line description, and durable Voucher/Journal Line identity.
-- Opening balance is sourced from the Step 4 canonical balance engine; General Ledger does not reimplement opening-balance semantics.
-- In-period movements are ordered deterministically by voucher date, voucher number, line order, voucher ID, then Journal Line ID.
-- Running balance is computed from canonical `debit-credit` movement beginning at the canonical opening net.
-- Parent/general ledgers aggregate posting descendants while every detailed movement retains its actual posting account identity/code/name; no synthetic parent movement is created.
-- Common posted/company/branch/fiscal/currency/dimension scope filtering was exposed from the balance engine and reused instead of duplicated.
-- Period debit/credit and final running net are reconciled against the canonical balance engine and fail deterministically on mismatch.
-- Reversal original/inverse movements remain separate traceable facts and net through the running balance.
-- Added `packages/accounting/tests/general-ledger.test.ts` covering opening/running balance, deterministic ordering, parent aggregation, scope filtering, reversal traceability, descriptions, and invalid detail identity.
-- Added `@argin/accounting/general-ledger` package export.
+- Added `packages/accounting/src/general-ledger.ts` and `@argin/accounting/general-ledger`.
+- Opening balance comes from the canonical balance engine; movements preserve voucher/line identity, posting account identity, deterministic ordering, debit/credit, descriptions, and running balance.
+- Parent/general ledgers aggregate actual posting descendants without synthetic parent movement.
+- Detailed totals and ending running balance reconcile back to the canonical balance engine.
+- Added focused `general-ledger.test.ts` coverage.
+- User reported an initial local `pnpm --filter @argin/accounting test` failure, fixed and pushed commit `99979ff1df76ddbc8034eddadb9f392f02cc4971`; local Step 6 tests are now confirmed green.
+- The user fix preserves only contributing posting-account IDs when zero balances are excluded and stabilizes mixed voucher-number ordering.
 
 ### Step 7 — Subsidiary Ledger and Account Turnover
 
@@ -196,7 +192,19 @@ Evidence:
 
 Exit: users can inspect one account's detailed movement and reconcile it to aggregate balances.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/subsidiary-ledger.ts` as a posting-account-only projection over the corrected Step 6 General Ledger, avoiding a second movement/running-balance engine.
+- Each posting account exposes an `AccountTurnoverSummary` with opening balance/net, period debit/credit, ending balance/net, and movement count.
+- Detailed subsidiary movements reuse General Ledger ordering, debit/credit, running balance, posting-account identity, Voucher ID, and Journal Line ID.
+- Existing generic accounting-dimension assignments are preserved and deterministically ordered on each movement for later drill-down/projection, without introducing Step 9 dimension aggregation early.
+- Parent/root account selection with descendants is supported by the shared query/General Ledger selection, while only posting-enabled account sections are emitted.
+- Explicit account-list selection and zero-balance visibility remain intact; a non-posting-only account list cannot accidentally widen into all posting accounts.
+- Posted/company/branch/fiscal/currency/dimension filtering is inherited from the canonical General Ledger/report fact scope.
+- Added `packages/accounting/tests/subsidiary-ledger.test.ts` covering opening/period/ending turnover, running balance, dimensions, parent expansion, zero-balance selection, scope filtering, and the non-posting-list widening edge case.
+- Added `@argin/accounting/subsidiary-ledger` package export.
 
 ### Step 8 — Journal Report
 
