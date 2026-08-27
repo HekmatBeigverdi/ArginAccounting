@@ -144,6 +144,21 @@ test("respects explicit posting account list and zero-balance visibility", () =>
   assert.equal(result.accounts[1]!.turnover.endingNet, 0);
 });
 
+test("does not widen an explicit non-posting account list into all subsidiary accounts", () => {
+  const selected = normalizeAccountingReportQuery({
+    companyId: "company-1",
+    period: { fromDate: "2026-04-01", toDate: "2026-04-30" },
+    accounts: { accountIds: ["general"] },
+  });
+
+  const result = createSubsidiaryLedger(selected, accounts, [
+    fact("1", "cash", "2026-04-05", 100, 0),
+    fact("2", "bank", "2026-04-06", 50, 0),
+  ]);
+
+  assert.deepEqual(result.accounts, []);
+});
+
 test("inherits posted, branch and dimension filtering from the canonical ledger scope", () => {
   const selected = normalizeAccountingReportQuery({
     companyId: "company-1",
