@@ -6,6 +6,7 @@ import type {
 
 export interface AccountingReportJournalLineFact {
   readonly companyId: string;
+  readonly currency: string;
   readonly branchId: string | null;
   readonly fiscalYearId: string;
   readonly fiscalPeriodId: string;
@@ -29,13 +30,9 @@ export interface AccountingReportBalanceSide {
 
 export interface AccountingReportAccountBalanceRow {
   readonly accountId: string;
-  readonly directPostingAccountIds: readonly string[];
   readonly postingAccountIds: readonly string[];
   readonly opening: AccountingReportBalanceSide;
-  readonly period: Readonly<{
-    debit: number;
-    credit: number;
-  }>;
+  readonly period: Readonly<{ debit: number; credit: number }>;
   readonly ending: AccountingReportBalanceSide;
   readonly openingNet: number;
   readonly endingNet: number;
@@ -53,11 +50,7 @@ export class AccountingReportBalanceError extends Error {
   readonly code: AccountingReportBalanceErrorCode;
   readonly details: Readonly<Record<string, unknown>>;
 
-  constructor(
-    code: AccountingReportBalanceErrorCode,
-    message: string,
-    details: Record<string, unknown> = {},
-  ) {
+  constructor(code: AccountingReportBalanceErrorCode, message: string, details: Record<string, unknown> = {}) {
     super(message);
     this.name = "AccountingReportBalanceError";
     this.code = code;
@@ -73,9 +66,8 @@ export function calculateAccountBalanceTurnover(
   const companyAccounts = accounts.filter((account) => account.companyId === query.companyId);
   const accountById = new Map(companyAccounts.map((account) => [account.id, account] as const));
   validateAccountTree(companyAccounts, accountById);
-
   const selectedAccounts = selectAccounts(query, companyAccounts, accountById);
-  const relevantFacts = facts.filter((fact) => factMatchesCommonQuery(fact, query));
+  const relevantFacts = facts.filter((fact) => factMatchesBaseScope(fact, query));
 
   return Object.freeze(selectedAccounts.map((account) => {
     const postingAccountIds = collectPostingAccountIds(account.id, companyAccounts, accountById);
@@ -87,28 +79,26 @@ export function calculateAccountBalanceTurnover(
     for (const fact of relevantFacts) {
       if (!postingSet.has(fact.accountId)) continue;
       validateFact(fact);
-
       if (fact.voucherDate < query.period.fromDate) {
         openingNet = safeAdd(openingNet, safeSubtract(fact.debit, fact.credit));
         continue;
       }
-      if (fact.voucherDate <= query.period.toDate) {
+      if (
+        fact.voucherDate <= query.period.toDate &&
+        (!query.period.fiscalPeriodId || fact.fiscalPeriodId === query.period.fiscalPeriodId)
+      ) {
         periodDebit = safeAdd(periodDebit, fact.debit);
         periodCredit = safeAdd(periodCredit, fact.credit);
       }
     }
 
     const endingNet = safeAdd(openingNet, safeSubtract(periodDebit, periodCredit));
-    const opening = splitNet(openingNet);
-    const ending = splitNet(endingNet);
-
     return Object.freeze({
       accountId: account.id,
-      directPostingAccountIds: Object.freeze(account.postingAllowed ? [account.id] : []),
       postingAccountIds: Object.freeze(postingAccountIds),
-      opening,
+      opening: splitNet(openingNet),
       period: Object.freeze({ debit: periodDebit, credit: periodCredit }),
-      ending,
+      ending: splitNet(endingNet),
       openingNet,
       endingNet,
       hasOpeningBalance: openingNet !== 0,
@@ -127,26 +117,19 @@ function selectAccounts(
     const selected = new Set(query.accounts.accountIds);
     return accounts.filter((account) => selected.has(account.id));
   }
-
   if (query.accounts.accountId) {
     const root = accountById.get(query.accounts.accountId);
     if (!root) return [];
     if (!query.accounts.includeDescendants) return [root];
-    const descendants = collectDescendantIds(root.id, accounts);
-    const selected = new Set([root.id, ...descendants]);
+    const selected = new Set([root.id, ...collectDescendantIds(root.id, accounts)]);
     return accounts.filter((account) => selected.has(account.id));
   }
-
   return accounts;
 }
 
-function collectPostingAccountIds(
-  accountId: string,
-  accounts: readonly Account[],
-  accountById: ReadonlyMap<string, Account>,
-): string[] {
-  const ids = [accountId, ...collectDescendantIds(accountId, accounts)];
-  return ids.filter((id) => accountById.get(id)?.postingAllowed === true);
+function collectPostingAccountIds(accountId: string, accounts: readonly Account[], accountById: ReadonlyMap<string, Account>): string[] {
+  return [accountId, ...collectDescendantIds(accountId, accounts)]
+    .filter((id) => accountById.get(id)?.postingAllowed === true);
 }
 
 function collectDescendantIds(accountId: string, accounts: readonly Account[]): string[] {
@@ -157,64 +140,41 @@ function collectDescendantIds(accountId: string, accounts: readonly Account[]): 
     list.push(account.id);
     children.set(account.parentId, list);
   }
-
   const result: string[] = [];
-  const stack = [...(children.get(accountId) ?? [])];
-  while (stack.length > 0) {
-    const current = stack.shift()!;
+  const queue = [...(children.get(accountId) ?? [])];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
     result.push(current);
-    stack.unshift(...(children.get(current) ?? []));
+    queue.push(...(children.get(current) ?? []));
   }
   return result;
 }
 
-function factMatchesCommonQuery(
-  fact: AccountingReportJournalLineFact,
-  query: NormalizedAccountingReportQuery,
-): boolean {
-  if (!fact.isPostedFact || fact.companyId !== query.companyId) return false;
+function factMatchesBaseScope(fact: AccountingReportJournalLineFact, query: NormalizedAccountingReportQuery): boolean {
+  if (!fact.isPostedFact || fact.companyId !== query.companyId || fact.currency !== query.currency) return false;
   if (query.branch.mode === "branch" && fact.branchId !== query.branch.branchId) return false;
   if (query.period.fiscalYearId && fact.fiscalYearId !== query.period.fiscalYearId) return false;
-  if (query.period.fiscalPeriodId && fact.fiscalPeriodId !== query.period.fiscalPeriodId) return false;
   if (fact.voucherDate > query.period.toDate) return false;
   return dimensionsMatch(fact, query.dimensions);
 }
 
-function dimensionsMatch(
-  fact: AccountingReportJournalLineFact,
-  filters: readonly AccountingReportDimensionFilter[],
-): boolean {
+function dimensionsMatch(fact: AccountingReportJournalLineFact, filters: readonly AccountingReportDimensionFilter[]): boolean {
   if (filters.length === 0) return true;
   const assignments = fact.dimensions ?? [];
-  return filters.every((filter) => assignments.some(
-    (assignment) =>
-      assignment.dimensionTypeId === filter.dimensionTypeId &&
-      filter.memberIds.includes(assignment.memberId),
-  ));
+  return filters.every((filter) => assignments.some((assignment) =>
+    assignment.dimensionTypeId === filter.dimensionTypeId && filter.memberIds.includes(assignment.memberId)));
 }
 
-function validateAccountTree(
-  accounts: readonly Account[],
-  accountById: ReadonlyMap<string, Account>,
-): void {
+function validateAccountTree(accounts: readonly Account[], accountById: ReadonlyMap<string, Account>): void {
   for (const account of accounts) {
     if (account.parentId && !accountById.has(account.parentId)) {
-      throw new AccountingReportBalanceError(
-        "report.balance.invalid-account-tree",
-        "درخت حساب برای محاسبه گزارش ناقص است.",
-        { accountId: account.id, parentId: account.parentId },
-      );
+      throw new AccountingReportBalanceError("report.balance.invalid-account-tree", "درخت حساب برای محاسبه گزارش ناقص است.", { accountId: account.id, parentId: account.parentId });
     }
-
     const visited = new Set<string>();
     let current: Account | undefined = account;
     while (current?.parentId) {
       if (visited.has(current.id)) {
-        throw new AccountingReportBalanceError(
-          "report.balance.invalid-account-tree",
-          "درخت حساب دارای چرخه است.",
-          { accountId: account.id },
-        );
+        throw new AccountingReportBalanceError("report.balance.invalid-account-tree", "درخت حساب دارای چرخه است.", { accountId: account.id });
       }
       visited.add(current.id);
       current = accountById.get(current.parentId);
@@ -223,25 +183,13 @@ function validateAccountTree(
 }
 
 function validateFact(fact: AccountingReportJournalLineFact): void {
-  if (
-    !Number.isSafeInteger(fact.debit) ||
-    !Number.isSafeInteger(fact.credit) ||
-    fact.debit < 0 ||
-    fact.credit < 0 ||
-    (fact.debit > 0) === (fact.credit > 0)
-  ) {
-    throw new AccountingReportBalanceError(
-      "report.balance.invalid-fact",
-      "مبلغ ردیف گزارش حسابداری معتبر نیست.",
-      { voucherId: fact.voucherId, journalLineId: fact.journalLineId },
-    );
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fact.voucherDate) || !Number.isSafeInteger(fact.debit) || !Number.isSafeInteger(fact.credit) || fact.debit < 0 || fact.credit < 0 || (fact.debit > 0) === (fact.credit > 0)) {
+    throw new AccountingReportBalanceError("report.balance.invalid-fact", "ردیف گزارش حسابداری معتبر نیست.", { voucherId: fact.voucherId, journalLineId: fact.journalLineId });
   }
 }
 
 function splitNet(net: number): AccountingReportBalanceSide {
-  return Object.freeze(net >= 0
-    ? { debit: net, credit: 0 }
-    : { debit: 0, credit: Math.abs(net) });
+  return Object.freeze(net >= 0 ? { debit: net, credit: 0 } : { debit: 0, credit: Math.abs(net) });
 }
 
 function safeSubtract(left: number, right: number): number {
@@ -258,9 +206,6 @@ function safeAdd(left: number, right: number): number {
 
 function assertSafe(value: number): void {
   if (!Number.isSafeInteger(value)) {
-    throw new AccountingReportBalanceError(
-      "report.balance.overflow",
-      "جمع مبالغ گزارش از محدوده عدد صحیح امن خارج شد.",
-    );
+    throw new AccountingReportBalanceError("report.balance.overflow", "جمع مبالغ گزارش از محدوده عدد صحیح امن خارج شد.");
   }
 }
