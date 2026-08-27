@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–8 are complete; Step 9 is next.
+Phase 16 is active. Steps 1–9 are complete; Step 10 is next.
 
 ## Governance Rule
 
@@ -69,7 +69,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 6 | General Ledger | Completed |
 | 7 | Subsidiary Ledger and Account Turnover | Completed |
 | 8 | Journal Report | Completed |
-| 9 | Accounting Dimension Reports | Not started |
+| 9 | Accounting Dimension Reports | Completed |
 | 10 | Application Contracts, DTOs, and Query Services | Not started |
 | 11 | SQLite Reporting Repository and Query Optimization | Not started |
 | 12 | Reporting Permissions, Company/Branch Scope, and Security | Not started |
@@ -227,6 +227,7 @@ Evidence:
 - Reversed originals and their posted inverse vouchers remain separate chronological traceable facts.
 - Added `packages/accounting/tests/journal-report.test.ts` covering deterministic ordering, balanced full-journal totals, account/description/reference/dimension traceability, scope/account hierarchy filtering, and reversal history.
 - Added `@argin/accounting/journal-report` package export.
+- User confirmed Step 8 local Accounting typecheck/tests are green.
 
 ### Step 9 — Accounting Dimension Reports
 
@@ -235,7 +236,19 @@ Evidence:
 
 Exit: dimension-based accounting balances reconcile with the same canonical Journal facts.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/dimension-reports.ts` using Phase 11 `AccountingDimensionType` and `AccountingDimensionMember` metadata without hard-coded dimension categories.
+- Added canonical `byMember` aggregation for dimension-member opening balance, period debit/credit, and ending balance.
+- Added canonical `byAccountMember` aggregation for Account × Dimension Member balances and turnover.
+- Opening facts use dates before `fromDate`; period movement uses the inclusive report period and selected fiscal-period semantics; ending balance uses the shared canonical `debit-credit` net convention.
+- Company, branch, fiscal year, currency, date, posted-fact, dimension-filter, and posting-account selection reuse the shared reporting scope.
+- Parent account selection expands to posting descendants without synthetic parent facts.
+- Dimension type/member IDs are authoritative aggregation keys; code/name metadata is presentation-only and invalid/mismatched metadata fails deterministically.
+- Added `packages/accounting/tests/dimension-reports.test.ts` covering member/account-member aggregation, opening/period/ending math, hierarchy/posted scope, and invalid dimension metadata.
+- Added `@argin/accounting/dimension-reports` package export.
 
 ### Step 10 — Application Contracts, DTOs, and Query Services
 
