@@ -6,6 +6,11 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+#[tauri::command]
+fn print_current_webview(webview: tauri::WebviewWindow) -> Result<(), String> {
+    webview.print().map_err(|error| error.to_string())
+}
+
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 const DATABASE_URL: &str = "sqlite:argin-accounting.db";
@@ -105,6 +110,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            print_current_webview,
             password_commands::hash_password,
             password_commands::verify_password,
         ])
