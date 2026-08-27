@@ -79,10 +79,10 @@ test("projects trial balance from the canonical balance engine", () => {
   assert.deepEqual(result.totals, {
     openingDebit: 0,
     openingCredit: 0,
-    periodDebit: 2000,
-    periodCredit: 2000,
-    endingDebit: 2000,
-    endingCredit: 2000,
+    periodDebit: 1000,
+    periodCredit: 1000,
+    endingDebit: 1000,
+    endingCredit: 1000,
   });
   assert.equal(result.rows.some((row) => row.accountId === "unused"), false);
 });
@@ -104,5 +104,7 @@ test("supports 2, 4, 6 and 8-column projection modes over the same values", () =
     ], mode);
     assert.equal(result.mode, mode);
     assert.equal(result.isBalanced, true);
+    assert.equal(result.totals.periodDebit, 500);
+    assert.equal(result.totals.periodCredit, 500);
   }
 });
