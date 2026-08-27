@@ -45,6 +45,10 @@ export interface AccountingReportExportDocument {
   readonly sections: readonly AccountingReportExportSection[];
 }
 
+const previewId = "accounting-report-print-preview";
+const printHostId = "accounting-report-print-host";
+const printStyleId = "accounting-report-print-style";
+
 export function createAccountingReportExportDocument(input: {
   readonly kind: AccountingReportExportKind;
   readonly data: AccountingReportExportData;
@@ -102,94 +106,179 @@ export function downloadAccountingReportExcel(
 }
 
 export function openAccountingReportPrintPreview(
-  document: AccountingReportExportDocument,
+  report: AccountingReportExportDocument,
   autoPrint = false,
 ): void {
-  const existing = globalThis.document.getElementById("accounting-report-print-preview");
-  existing?.remove();
+  const document = globalThis.document;
+  document.getElementById(previewId)?.remove();
+  removePrintArtifacts(document);
 
-  const overlay = globalThis.document.createElement("div");
-  overlay.id = "accounting-report-print-preview";
+  const previousOverflow = document.body.style.overflow;
+  document.body.style.overflow = "hidden";
+
+  const overlay = document.createElement("div");
+  overlay.id = previewId;
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
-  overlay.setAttribute("aria-label", `پیش‌نمایش ${document.title}`);
+  overlay.setAttribute("aria-label", `پیش‌نمایش ${report.title}`);
+  overlay.tabIndex = -1;
   overlay.dir = "rtl";
   Object.assign(overlay.style, {
     position: "fixed",
     inset: "0",
-    zIndex: "10000",
+    width: "100vw",
+    height: "100dvh",
+    zIndex: "2147483647",
     display: "grid",
-    gridTemplateRows: "auto minmax(0, 1fr)",
-    background: "rgba(15, 23, 42, 0.55)",
-    padding: "16px",
+    gridTemplateRows: "56px minmax(0, 1fr)",
+    overflow: "hidden",
+    background: "#e2e8f0",
   });
 
-  const toolbar = globalThis.document.createElement("div");
+  const toolbar = document.createElement("div");
   Object.assign(toolbar.style, {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    padding: "10px 12px",
-    borderRadius: "10px 10px 0 0",
+    padding: "8px 16px",
+    borderBottom: "1px solid #cbd5e1",
     background: "#ffffff",
     color: "#111827",
     fontFamily: "Vazirmatn, Tahoma, Arial, sans-serif",
+    boxShadow: "0 1px 4px rgb(15 23 42 / 0.08)",
   });
 
-  const title = globalThis.document.createElement("strong");
-  title.textContent = `پیش‌نمایش چاپ — ${document.title}`;
+  const title = document.createElement("strong");
+  title.textContent = `پیش‌نمایش چاپ — ${report.title}`;
   title.style.marginInlineEnd = "auto";
 
-  const printButton = globalThis.document.createElement("button");
-  printButton.type = "button";
-  printButton.textContent = "چاپ / ذخیره PDF";
+  const printButton = createToolbarButton(document, "چاپ / ذخیره PDF");
+  const closeButton = createToolbarButton(document, "بستن");
 
-  const closeButton = globalThis.document.createElement("button");
-  closeButton.type = "button";
-  closeButton.textContent = "بستن";
+  const viewport = document.createElement("div");
+  Object.assign(viewport.style, {
+    minWidth: "0",
+    minHeight: "0",
+    overflow: "hidden",
+    paddingBottom: "20px",
+    background: "#e2e8f0",
+  });
 
-  for (const button of [printButton, closeButton]) {
-    Object.assign(button.style, {
-      border: "1px solid #94a3b8",
-      borderRadius: "6px",
-      background: "#ffffff",
-      padding: "6px 12px",
-      font: "inherit",
-      cursor: "pointer",
-    });
-  }
-
-  const frame = globalThis.document.createElement("iframe");
-  frame.title = `پیش‌نمایش ${document.title}`;
-  frame.srcdoc = createAccountingReportPrintHtml(document);
+  const frame = document.createElement("iframe");
+  frame.title = `پیش‌نمایش ${report.title}`;
+  frame.srcdoc = createAccountingReportPrintHtml(report);
   Object.assign(frame.style, {
+    display: "block",
     width: "100%",
     height: "100%",
     border: "0",
-    borderRadius: "0 0 10px 10px",
     background: "#ffffff",
   });
 
-  const print = () => {
-    const target = frame.contentWindow;
-    if (!target) throw new Error("پیش‌نمایش چاپ هنوز آماده نشده است.");
-    target.focus();
-    target.print();
+  const close = () => {
+    removePrintArtifacts(document);
+    overlay.remove();
+    document.body.style.overflow = previousOverflow;
   };
 
+  const print = () => printAccountingReportFromMainWebview(report);
+
   printButton.addEventListener("click", print);
-  closeButton.addEventListener("click", () => overlay.remove());
+  closeButton.addEventListener("click", close);
   overlay.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") overlay.remove();
+    if (event.key === "Escape") close();
   });
+
   frame.addEventListener("load", () => {
-    if (autoPrint) globalThis.setTimeout(print, 50);
+    const frameDocument = frame.contentDocument;
+    if (frameDocument) {
+      frameDocument.documentElement.style.minHeight = "100%";
+      frameDocument.body.style.minHeight = "100%";
+      frameDocument.body.style.paddingBottom = "24mm";
+      frameDocument.body.style.scrollPaddingBottom = "24mm";
+    }
+    if (autoPrint) globalThis.setTimeout(print, 100);
   });
 
   toolbar.append(title, printButton, closeButton);
-  overlay.append(toolbar, frame);
-  globalThis.document.body.appendChild(overlay);
-  closeButton.focus();
+  viewport.appendChild(frame);
+  overlay.append(toolbar, viewport);
+  document.body.appendChild(overlay);
+  overlay.focus();
+}
+
+export function printAccountingReportFromMainWebview(
+  report: AccountingReportExportDocument,
+): void {
+  const document = globalThis.document;
+  removePrintArtifacts(document);
+
+  const source = new DOMParser().parseFromString(
+    createAccountingReportPrintHtml(report),
+    "text/html",
+  );
+
+  const host = document.createElement("div");
+  host.id = printHostId;
+  host.dir = "rtl";
+  host.lang = "fa";
+  host.innerHTML = source.body.innerHTML;
+
+  const style = document.createElement("style");
+  style.id = printStyleId;
+  style.textContent = `
+    #${printHostId} { display: none; }
+    @page { size: A4 landscape; margin: 10mm; }
+    @media print {
+      html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+      body > *:not(#${printHostId}) { display: none !important; }
+      body > #${printHostId} {
+        display: block !important;
+        color: #111827;
+        background: #fff;
+        font-family: Vazirmatn, Tahoma, Arial, sans-serif;
+        font-size: 8.5pt;
+        direction: rtl;
+      }
+      #${printHostId} header {
+        display: grid;
+        gap: 3mm;
+        margin-bottom: 5mm;
+        padding-bottom: 4mm;
+        border-bottom: 1px solid #94a3b8;
+      }
+      #${printHostId} h1, #${printHostId} h2, #${printHostId} p { margin: 0; }
+      #${printHostId} h1 { font-size: 16pt; }
+      #${printHostId} h2 { margin: 5mm 0 2mm; font-size: 11pt; }
+      #${printHostId} .meta { display: flex; flex-wrap: wrap; gap: 2mm 6mm; color: #475569; font-size: 8pt; }
+      #${printHostId} .section-note { margin-bottom: 2mm; color: #64748b; }
+      #${printHostId} table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+      #${printHostId} thead { display: table-header-group; }
+      #${printHostId} tr { page-break-inside: avoid; page-break-after: auto; }
+      #${printHostId} th, #${printHostId} td {
+        padding: 1.6mm 2mm;
+        border: 1px solid #cbd5e1;
+        text-align: right;
+        vertical-align: top;
+      }
+      #${printHostId} th { background: #f1f5f9; font-weight: 700; }
+      #${printHostId} tfoot th { background: #f8fafc; }
+      #${printHostId} .num {
+        direction: ltr;
+        text-align: left;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+  document.body.appendChild(host);
+
+  const cleanup = () => removePrintArtifacts(document);
+  globalThis.addEventListener("afterprint", cleanup, { once: true });
+  globalThis.focus();
+  globalThis.print();
 }
 
 export function createAccountingReportPrintHtml(
@@ -204,7 +293,7 @@ export function createAccountingReportPrintHtml(
     return `<section>${heading}${note}<table><thead>${head}</thead><tbody>${body}</tbody>${foot}</table></section>`;
   }).join("");
 
-  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>${escapeHtml(document.title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{margin:0;padding:8mm;color:#111827;background:#fff;font-family:Vazirmatn,Tahoma,Arial,sans-serif;font-size:9pt;direction:rtl}header{display:grid;gap:3mm;margin-bottom:5mm;padding-bottom:4mm;border-bottom:1px solid #94a3b8}h1,h2,p{margin:0}h1{font-size:16pt}h2{margin:5mm 0 2mm;font-size:11pt}.meta{display:flex;flex-wrap:wrap;gap:2mm 6mm;color:#475569;font-size:8pt}.section-note{margin-bottom:2mm;color:#64748b}table{width:100%;border-collapse:collapse;page-break-inside:auto}thead{display:table-header-group}tr{page-break-inside:avoid;page-break-after:auto}th,td{padding:1.6mm 2mm;border:1px solid #cbd5e1;text-align:right;vertical-align:top}th{background:#f1f5f9;font-weight:700}tfoot th{background:#f8fafc}.num{direction:ltr;text-align:left;font-variant-numeric:tabular-nums;white-space:nowrap}@media print{body{padding:0;font-size:8.5pt}}</style></head><body><header><h1>${escapeHtml(document.title)}</h1><div class="meta"><span>شرکت: ${escapeHtml(document.companyName)}</span><span>سال مالی: ${escapeHtml(document.fiscalYearTitle)}</span><span>شعبه: ${escapeHtml(document.branchLabel)}</span><span>دوره: ${escapeHtml(document.periodLabel)}</span><span>تاریخ تهیه: ${escapeHtml(document.generatedAtLabel)}</span></div></header>${sections}</body></html>`;
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>${escapeHtml(document.title)}</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}html{min-height:100%}body{min-height:100%;margin:0;padding:8mm 8mm 24mm;color:#111827;background:#fff;font-family:Vazirmatn,Tahoma,Arial,sans-serif;font-size:9pt;direction:rtl}header{display:grid;gap:3mm;margin-bottom:5mm;padding-bottom:4mm;border-bottom:1px solid #94a3b8}h1,h2,p{margin:0}h1{font-size:16pt}h2{margin:5mm 0 2mm;font-size:11pt}.meta{display:flex;flex-wrap:wrap;gap:2mm 6mm;color:#475569;font-size:8pt}.section-note{margin-bottom:2mm;color:#64748b}table{width:100%;border-collapse:collapse;page-break-inside:auto}thead{display:table-header-group}tr{page-break-inside:avoid;page-break-after:auto}th,td{padding:1.6mm 2mm;border:1px solid #cbd5e1;text-align:right;vertical-align:top}th{background:#f1f5f9;font-weight:700}tfoot th{background:#f8fafc}.num{direction:ltr;text-align:left;font-variant-numeric:tabular-nums;white-space:nowrap}@media print{body{min-height:auto;padding:0;font-size:8.5pt}}</style></head><body><header><h1>${escapeHtml(document.title)}</h1><div class="meta"><span>شرکت: ${escapeHtml(document.companyName)}</span><span>سال مالی: ${escapeHtml(document.fiscalYearTitle)}</span><span>شعبه: ${escapeHtml(document.branchLabel)}</span><span>دوره: ${escapeHtml(document.periodLabel)}</span><span>تاریخ تهیه: ${escapeHtml(document.generatedAtLabel)}</span></div></header>${sections}</body></html>`;
 }
 
 function buildSections(
@@ -287,6 +376,28 @@ function downloadBlob(blob: Blob, filename: string): void {
   anchor.click();
   anchor.remove();
   globalThis.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function removePrintArtifacts(document: Document): void {
+  document.getElementById(printHostId)?.remove();
+  document.getElementById(printStyleId)?.remove();
+}
+
+function createToolbarButton(document: Document, label: string): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = label;
+  Object.assign(button.style, {
+    minHeight: "36px",
+    border: "1px solid #94a3b8",
+    borderRadius: "6px",
+    background: "#ffffff",
+    color: "#111827",
+    padding: "6px 14px",
+    font: "inherit",
+    cursor: "pointer",
+  });
+  return button;
 }
 
 function formatPrintCell(value: AccountingReportExportCell): string {
