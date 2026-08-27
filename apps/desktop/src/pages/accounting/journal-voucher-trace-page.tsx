@@ -19,8 +19,9 @@ import "./journal-voucher-trace-page.css";
 
 export function JournalVoucherTracePage() {
   const navigate = useNavigate();
-  const { voucherId = "" } = useParams();
+  const { voucherId: pathVoucherId = "" } = useParams();
   const [searchParams] = useSearchParams();
+  const voucherId = pathVoucherId || searchParams.get("voucherId")?.trim() || "";
   const companyId = searchParams.get("companyId")?.trim() ?? "";
   const journalLineId = searchParams.get("journalLineId")?.trim() ?? "";
   const { journals } = useAccountingServices();
@@ -88,22 +89,10 @@ export function JournalVoucherTracePage() {
       {!busy && !error && voucher && (
         <section className="journal-trace-card">
           <div className="journal-trace-card__heading">
-            <div>
-              <span>شماره سند</span>
-              <strong>{voucher.number}</strong>
-            </div>
-            <div>
-              <span>تاریخ</span>
-              <strong>{formatJournalVoucherDate(voucher.voucherDate)}</strong>
-            </div>
-            <div>
-              <span>منبع</span>
-              <strong>{journalVoucherSourceLabel(voucher.sourceType)}</strong>
-            </div>
-            <div>
-              <span>Voucher ID</span>
-              <code dir="ltr">{voucher.id}</code>
-            </div>
+            <div><span>شماره سند</span><strong>{voucher.number}</strong></div>
+            <div><span>تاریخ</span><strong>{formatJournalVoucherDate(voucher.voucherDate)}</strong></div>
+            <div><span>منبع</span><strong>{journalVoucherSourceLabel(voucher.sourceType)}</strong></div>
+            <div><span>Voucher ID</span><code dir="ltr">{voucher.id}</code></div>
           </div>
 
           <p className="journal-trace-card__description">
@@ -114,12 +103,7 @@ export function JournalVoucherTracePage() {
             <table className="ui-table journal-trace-table">
               <thead>
                 <tr>
-                  <th>ردیف</th>
-                  <th>حساب</th>
-                  <th>شرح</th>
-                  <th>بدهکار</th>
-                  <th>بستانکار</th>
-                  <th>Journal Line ID</th>
+                  <th>ردیف</th><th>حساب</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>Journal Line ID</th>
                 </tr>
               </thead>
               <tbody>
