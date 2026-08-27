@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–7 are complete; Step 8 is next.
+Phase 16 is active. Steps 1–8 are complete; Step 9 is next.
 
 ## Governance Rule
 
@@ -68,7 +68,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 5 | Trial Balance | Completed |
 | 6 | General Ledger | Completed |
 | 7 | Subsidiary Ledger and Account Turnover | Completed |
-| 8 | Journal Report | Not started |
+| 8 | Journal Report | Completed |
 | 9 | Accounting Dimension Reports | Not started |
 | 10 | Application Contracts, DTOs, and Query Services | Not started |
 | 11 | SQLite Reporting Repository and Query Optimization | Not started |
@@ -205,6 +205,7 @@ Evidence:
 - Posted/company/branch/fiscal/currency/dimension filtering is inherited from the canonical General Ledger/report fact scope.
 - Added `packages/accounting/tests/subsidiary-ledger.test.ts` covering opening/period/ending turnover, running balance, dimensions, parent expansion, zero-balance selection, scope filtering, and the non-posting-list widening edge case.
 - Added `@argin/accounting/subsidiary-ledger` package export.
+- User confirmed Step 7 local Accounting typecheck/tests are green.
 
 ### Step 8 — Journal Report
 
@@ -213,7 +214,19 @@ Evidence:
 
 Exit: report ordering and totals are deterministic and traceable to source vouchers.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/accounting/src/journal-report.ts` as a persistence-neutral chronological Journal Report over canonical posted report facts.
+- Added `JournalReportJournalLineFact` detail contract with voucher number, line order, optional reference, voucher/line descriptions, stable Voucher ID, and Journal Line ID.
+- Rows expose voucher/date/reference, account identity/code/name, normalized description, generic dimension assignments, debit, credit, and durable drill-down identities.
+- In-period rows reuse canonical posted/company/branch/fiscal/currency/dimension scope filtering and canonical account-hierarchy selection; opening facts are not emitted into the Journal Report period.
+- Stable ordering is voucher date, voucher number, line order, Voucher ID, then Journal Line ID.
+- Debit and credit totals use the shared safe-integer reporting arithmetic; `isBalanced` describes the selected query result rather than imposing Trial Balance semantics on filtered analytical subsets.
+- Reversed originals and their posted inverse vouchers remain separate chronological traceable facts.
+- Added `packages/accounting/tests/journal-report.test.ts` covering deterministic ordering, balanced full-journal totals, account/description/reference/dimension traceability, scope/account hierarchy filtering, and reversal history.
+- Added `@argin/accounting/journal-report` package export.
 
 ### Step 9 — Accounting Dimension Reports
 
