@@ -1,8 +1,10 @@
 import {
   DefaultAccountingReportQueryService,
+  type AccountingReportQueryService,
+} from "@argin/accounting/reporting-application";
+import {
   SecuredAccountingReportQueryService,
   type AccountingReportAuthorizer,
-  type AccountingReportQueryService,
   type AccountingReportScopeAuthorizer,
 } from "@argin/accounting/reporting-security";
 import { SqliteAccountingReportDataReader } from "@argin/accounting-tauri";
