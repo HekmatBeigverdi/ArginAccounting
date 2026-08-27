@@ -16,6 +16,10 @@ const pagePath = new URL(
   "../src/pages/accounting/accounting-reports-page.tsx",
   import.meta.url,
 );
+const exportPath = new URL(
+  "../src/features/accounting/accounting-report-export.ts",
+  import.meta.url,
+);
 
 const trialBalance = Object.freeze({
   mode: 6 as const,
@@ -81,7 +85,7 @@ test("SpreadsheetML export is Excel-compatible UTF-8 and right-to-left", () => {
   assert.match(xml, /ss:Type="Number">250</);
 });
 
-test("print preview is Persian RTL A4 and exposes system PDF printing", () => {
+test("print document is Persian RTL A4", () => {
   const document = createAccountingReportExportDocument({
     kind: "trial",
     data: trialBalance,
@@ -91,12 +95,21 @@ test("print preview is Persian RTL A4 and exposes system PDF printing", () => {
     fromDate: "2026-03-21",
     toDate: "2027-03-20",
   });
-  const html = createAccountingReportPrintHtml(document, true);
+  const html = createAccountingReportPrintHtml(document);
 
   assert.match(html, /lang="fa" dir="rtl"/);
   assert.match(html, /@page\{size:A4 landscape/);
-  assert.match(html, /چاپ \/ ذخیره PDF/);
-  assert.match(html, /window\.print\(\)/);
+  assert.match(html, /شرکت آرگین/);
+});
+
+test("desktop print preview is in-webview and does not depend on popup windows", async () => {
+  const source = await readFile(exportPath, "utf8");
+
+  assert.doesNotMatch(source, /window\.open\(/);
+  assert.match(source, /createElement\("iframe"\)/);
+  assert.match(source, /frame\.srcdoc = createAccountingReportPrintHtml/);
+  assert.match(source, /target\.print\(\)/);
+  assert.match(source, /چاپ \/ ذخیره PDF/);
 });
 
 test("desktop export stays behind application export authorization", async () => {
