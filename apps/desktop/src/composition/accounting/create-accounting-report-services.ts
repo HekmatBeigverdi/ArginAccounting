@@ -64,6 +64,6 @@ export function createAccountingReportServices(input: {
 
   return Object.freeze({
     queries: new SecuredAccountingReportQueryService(core, security),
-    authorizeExport: (report) => assertAccountingReportExportAuthorized(report, security),
+    authorizeExport: (report: AccountingReportQuery) => assertAccountingReportExportAuthorized(report, security),
   });
 }

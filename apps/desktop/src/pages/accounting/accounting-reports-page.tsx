@@ -51,6 +51,14 @@ interface ExecutedReport {
   readonly query: AccountingReportQuery;
 }
 
+interface ReportSurfaceProps {
+  readonly view: ReportView;
+  readonly data: ReportData;
+  readonly onAccountDrill: (accountId: string) => void;
+  readonly onDimensionDrill: (dimensionTypeId: string, memberId: string) => void;
+  readonly onSource: (voucherId: string, journalLineId?: string) => void;
+}
+
 const tabs: readonly [ReportView, string, string][] = [
   ["trial", "تراز آزمایشی", accountingReportPermissions.viewTrialBalance],
   ["general", "دفتر کل", accountingReportPermissions.viewGeneralLedger],
@@ -217,11 +225,21 @@ export function AccountingReportsPage() {
     try {
       let nextData: ReportData;
       switch (nextView) {
-        case "trial": nextData = await desktopServices.queries.trialBalance({ report: query, mode: 6 }); break;
-        case "general": nextData = await desktopServices.queries.generalLedger({ report: query }); break;
-        case "subsidiary": nextData = await desktopServices.queries.subsidiaryLedger({ report: query }); break;
-        case "journal": nextData = (await desktopServices.queries.journal({ report: query })).result; break;
-        case "dimensions": nextData = await desktopServices.queries.dimensions({ report: query }); break;
+        case "trial":
+          nextData = await desktopServices.queries.trialBalance({ report: query, mode: 6 });
+          break;
+        case "general":
+          nextData = await desktopServices.queries.generalLedger({ report: query });
+          break;
+        case "subsidiary":
+          nextData = await desktopServices.queries.subsidiaryLedger({ report: query });
+          break;
+        case "journal":
+          nextData = (await desktopServices.queries.journal({ report: query })).result;
+          break;
+        case "dimensions":
+          nextData = await desktopServices.queries.dimensions({ report: query });
+          break;
       }
       setView(nextView);
       setData(nextData);
@@ -239,11 +257,12 @@ export function AccountingReportsPage() {
 
   async function drillToAccount(accountId: string, parentReport: string): Promise<void> {
     if (!executed) return;
-    await executeReport("general", Object.freeze({
+    const query = Object.freeze({
       ...executed.query,
       accounts: Object.freeze({ accountId, includeDescendants: false }),
       trace: Object.freeze({ parentReport }),
-    }));
+    });
+    await executeReport("general", query);
   }
 
   async function drillToDimension(dimensionTypeId: string, memberId: string): Promise<void> {
@@ -251,14 +270,15 @@ export function AccountingReportsPage() {
     const otherDimensions = (executed.query.dimensions ?? []).filter(
       (filter) => filter.dimensionTypeId !== dimensionTypeId,
     );
-    await executeReport("journal", Object.freeze({
+    const query = Object.freeze({
       ...executed.query,
       dimensions: Object.freeze([
         ...otherDimensions,
         Object.freeze({ dimensionTypeId, memberIds: Object.freeze([memberId]) }),
       ]),
       trace: Object.freeze({ parentReport: "dimensions" }),
-    }));
+    });
+    await executeReport("journal", query);
   }
 
   function openJournalSource(voucherId: string, journalLineId?: string): void {
@@ -278,8 +298,9 @@ export function AccountingReportsPage() {
     setError("");
     try {
       await desktopServices.authorizeExport(executed.query);
-      const branchLabel = executed.query.branch?.mode === "branch"
-        ? allowedBranches.find((branch) => branch.id === executed.query.branch?.branchId)?.name ?? "شعبه انتخاب‌شده"
+      const branchScope = executed.query.branch;
+      const branchLabel = branchScope?.mode === "branch"
+        ? allowedBranches.find((branch) => branch.id === branchScope.branchId)?.name ?? "شعبه انتخاب‌شده"
         : "همه شعب مجاز";
       const document = createAccountingReportExportDocument({
         kind: executed.view,
@@ -321,7 +342,11 @@ export function AccountingReportsPage() {
   const canExport = can(accountingReportPermissions.export);
 
   if (visibleTabs.length === 0) {
-    return <Page className="accounting-workspace reports-page" lang="fa" dir="rtl"><Feedback tone="error">شما مجوز مشاهده گزارش‌های حسابداری را ندارید.</Feedback></Page>;
+    return (
+      <Page className="accounting-workspace reports-page" lang="fa" dir="rtl">
+        <Feedback tone="error">شما مجوز مشاهده گزارش‌های حسابداری را ندارید.</Feedback>
+      </Page>
+    );
   }
 
   return (
@@ -340,7 +365,14 @@ export function AccountingReportsPage() {
 
       <nav className="accounting-workspace__tabs" aria-label="انواع گزارش حسابداری">
         {visibleTabs.map(([id, label]) => (
-          <button key={id} type="button" aria-current={view === id ? "page" : undefined} onClick={() => selectView(id)}>{label}</button>
+          <button
+            key={id}
+            type="button"
+            aria-current={view === id ? "page" : undefined}
+            onClick={() => selectView(id)}
+          >
+            {label}
+          </button>
         ))}
       </nav>
 
@@ -392,45 +424,258 @@ export function AccountingReportsPage() {
   );
 }
 
-function ReportSurface({ view, data, onAccountDrill, onDimensionDrill, onSource }: {
-  view: ReportView;
-  data: ReportData;
-  onAccountDrill(accountId: string): void;
-  onDimensionDrill(dimensionTypeId: string, memberId: string): void;
-  onSource(voucherId: string, journalLineId?: string): void;
-}) {
+function ReportSurface({
+  view,
+  data,
+  onAccountDrill,
+  onDimensionDrill,
+  onSource,
+}: ReportSurfaceProps) {
   switch (view) {
-    case "trial": return <TrialBalanceTable result={data as TrialBalanceResult} onDrill={onAccountDrill} />;
-    case "general": return <GeneralLedgerTable result={data as GeneralLedgerResult} onSource={onSource} />;
-    case "subsidiary": return <SubsidiaryTable result={data as SubsidiaryLedgerResult} onDrill={onAccountDrill} />;
-    case "journal": return <JournalTable result={data as JournalReportResult} onSource={onSource} />;
-    case "dimensions": return <DimensionTable result={data as AccountingDimensionReportsResult} onDrill={onDimensionDrill} />;
+    case "trial":
+      return <TrialBalanceTable result={data as TrialBalanceResult} onDrill={onAccountDrill} />;
+    case "general":
+      return <GeneralLedgerTable result={data as GeneralLedgerResult} onSource={onSource} />;
+    case "subsidiary":
+      return <SubsidiaryTable result={data as SubsidiaryLedgerResult} onDrill={onAccountDrill} />;
+    case "journal":
+      return <JournalTable result={data as JournalReportResult} onSource={onSource} />;
+    case "dimensions":
+      return (
+        <DimensionTable
+          result={data as AccountingDimensionReportsResult}
+          onDrill={onDimensionDrill}
+        />
+      );
   }
 }
 
 function TrialBalanceTable({ result, onDrill }: { result: TrialBalanceResult; onDrill(accountId: string): void }) {
   if (result.rows.length === 0) return <EmptyReport />;
-  return <div className="accounting-workspace__data-surface"><table className="ui-table reports-table"><thead><tr><th>کد</th><th>حساب</th><th>افتتاحیه بدهکار</th><th>افتتاحیه بستانکار</th><th>گردش بدهکار</th><th>گردش بستانکار</th><th>مانده بدهکار</th><th>مانده بستانکار</th><th>عملیات</th></tr></thead><tbody>{result.rows.map((row) => <tr key={row.accountId}><td>{row.accountCode}</td><td>{row.accountName}</td><Amount value={row.openingDebit} /><Amount value={row.openingCredit} /><Amount value={row.periodDebit} /><Amount value={row.periodCredit} /><Amount value={row.endingDebit} /><Amount value={row.endingCredit} /><td><TraceButton onClick={() => onDrill(row.accountId)}>گردش حساب</TraceButton></td></tr>)}</tbody><tfoot><tr><th colSpan={2}>جمع</th><Amount value={result.totals.openingDebit} tag="th" /><Amount value={result.totals.openingCredit} tag="th" /><Amount value={result.totals.periodDebit} tag="th" /><Amount value={result.totals.periodCredit} tag="th" /><Amount value={result.totals.endingDebit} tag="th" /><Amount value={result.totals.endingCredit} tag="th" /><th /></tr></tfoot></table></div>;
+  return (
+    <div className="accounting-workspace__data-surface">
+      <table className="ui-table reports-table">
+        <thead>
+          <tr>
+            <th>کد</th>
+            <th>حساب</th>
+            <th>افتتاحیه بدهکار</th>
+            <th>افتتاحیه بستانکار</th>
+            <th>گردش بدهکار</th>
+            <th>گردش بستانکار</th>
+            <th>مانده بدهکار</th>
+            <th>مانده بستانکار</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {result.rows.map((row) => (
+            <tr key={row.accountId}>
+              <td>{row.accountCode}</td>
+              <td>{row.accountName}</td>
+              <Amount value={row.openingDebit} />
+              <Amount value={row.openingCredit} />
+              <Amount value={row.periodDebit} />
+              <Amount value={row.periodCredit} />
+              <Amount value={row.endingDebit} />
+              <Amount value={row.endingCredit} />
+              <td>
+                <TraceButton onClick={() => onDrill(row.accountId)}>گردش حساب</TraceButton>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colSpan={2}>جمع</th>
+            <Amount value={result.totals.openingDebit} tag="th" />
+            <Amount value={result.totals.openingCredit} tag="th" />
+            <Amount value={result.totals.periodDebit} tag="th" />
+            <Amount value={result.totals.periodCredit} tag="th" />
+            <Amount value={result.totals.endingDebit} tag="th" />
+            <Amount value={result.totals.endingCredit} tag="th" />
+            <th />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
 }
 
 function GeneralLedgerTable({ result, onSource }: { result: GeneralLedgerResult; onSource(voucherId: string, journalLineId?: string): void }) {
   if (result.sections.length === 0) return <EmptyReport />;
-  return <div className="reports-stack">{result.sections.map((section) => <section className="reports-section" key={section.accountId}><header><strong>{section.accountCode} — {section.accountName}</strong><span>مانده پایان: {formatSigned(section.endingNet)}</span></header><div className="accounting-workspace__data-surface"><table className="ui-table reports-table"><thead><tr><th>تاریخ</th><th>سند</th><th>شرح</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>منبع</th></tr></thead><tbody>{section.movements.map((row) => <tr key={`${row.voucherId}:${row.journalLineId}`}><td>{toSolar(row.voucherDate)}</td><td>{row.voucherNumber}</td><td>{row.description ?? "—"}</td><Amount value={row.debit} /><Amount value={row.credit} /><td className="reports-number">{formatSigned(row.runningNet)}</td><td><TraceButton onClick={() => onSource(row.voucherId, row.journalLineId)}>مشاهده سند</TraceButton></td></tr>)}</tbody></table></div></section>)}</div>;
+  return (
+    <div className="reports-stack">
+      {result.sections.map((section) => (
+        <section className="reports-section" key={section.accountId}>
+          <header>
+            <strong>{section.accountCode} — {section.accountName}</strong>
+            <span>مانده پایان: {formatSigned(section.endingNet)}</span>
+          </header>
+          <div className="accounting-workspace__data-surface">
+            <table className="ui-table reports-table">
+              <thead>
+                <tr>
+                  <th>تاریخ</th>
+                  <th>سند</th>
+                  <th>شرح</th>
+                  <th>بدهکار</th>
+                  <th>بستانکار</th>
+                  <th>مانده</th>
+                  <th>منبع</th>
+                </tr>
+              </thead>
+              <tbody>
+                {section.movements.map((row) => (
+                  <tr key={`${row.voucherId}:${row.journalLineId}`}>
+                    <td>{toSolar(row.voucherDate)}</td>
+                    <td>{row.voucherNumber}</td>
+                    <td>{row.description ?? "—"}</td>
+                    <Amount value={row.debit} />
+                    <Amount value={row.credit} />
+                    <td className="reports-number">{formatSigned(row.runningNet)}</td>
+                    <td>
+                      <TraceButton onClick={() => onSource(row.voucherId, row.journalLineId)}>
+                        مشاهده سند
+                      </TraceButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
+    </div>
+  );
 }
 
 function SubsidiaryTable({ result, onDrill }: { result: SubsidiaryLedgerResult; onDrill(accountId: string): void }) {
   if (result.accounts.length === 0) return <EmptyReport />;
-  return <div className="accounting-workspace__data-surface"><table className="ui-table reports-table"><thead><tr><th>کد</th><th>حساب معین</th><th>افتتاحیه</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>تعداد ردیف</th><th>عملیات</th></tr></thead><tbody>{result.accounts.map((section) => <tr key={section.accountId}><td>{section.accountCode}</td><td>{section.accountName}</td><td className="reports-number">{formatSigned(section.turnover.openingNet)}</td><Amount value={section.turnover.periodDebit} /><Amount value={section.turnover.periodCredit} /><td className="reports-number">{formatSigned(section.turnover.endingNet)}</td><td>{formatNumber(section.turnover.movementCount)}</td><td><TraceButton onClick={() => onDrill(section.accountId)}>گردش تفصیلی</TraceButton></td></tr>)}</tbody></table></div>;
+  return (
+    <div className="accounting-workspace__data-surface">
+      <table className="ui-table reports-table">
+        <thead>
+          <tr>
+            <th>کد</th>
+            <th>حساب معین</th>
+            <th>افتتاحیه</th>
+            <th>بدهکار</th>
+            <th>بستانکار</th>
+            <th>مانده</th>
+            <th>تعداد ردیف</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {result.accounts.map((section) => (
+            <tr key={section.accountId}>
+              <td>{section.accountCode}</td>
+              <td>{section.accountName}</td>
+              <td className="reports-number">{formatSigned(section.turnover.openingNet)}</td>
+              <Amount value={section.turnover.periodDebit} />
+              <Amount value={section.turnover.periodCredit} />
+              <td className="reports-number">{formatSigned(section.turnover.endingNet)}</td>
+              <td>{formatNumber(section.turnover.movementCount)}</td>
+              <td>
+                <TraceButton onClick={() => onDrill(section.accountId)}>گردش تفصیلی</TraceButton>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function JournalTable({ result, onSource }: { result: JournalReportResult; onSource(voucherId: string, journalLineId?: string): void }) {
   if (result.rows.length === 0) return <EmptyReport />;
-  return <div className="accounting-workspace__data-surface"><table className="ui-table reports-table"><thead><tr><th>تاریخ</th><th>شماره سند</th><th>کد حساب</th><th>حساب</th><th>شرح</th><th>ابعاد</th><th>بدهکار</th><th>بستانکار</th><th>منبع</th></tr></thead><tbody>{result.rows.map((row) => <tr key={`${row.voucherId}:${row.journalLineId}`}><td>{toSolar(row.voucherDate)}</td><td>{row.voucherNumber}</td><td>{row.accountCode}</td><td>{row.accountName}</td><td>{row.description ?? "—"}</td><td>{formatDimensions(row.dimensions)}</td><Amount value={row.debit} /><Amount value={row.credit} /><td><TraceButton onClick={() => onSource(row.voucherId, row.journalLineId)}>مشاهده سند</TraceButton></td></tr>)}</tbody><tfoot><tr><th colSpan={6}>جمع</th><Amount value={result.totals.debit} tag="th" /><Amount value={result.totals.credit} tag="th" /><th /></tr></tfoot></table></div>;
+  return (
+    <div className="accounting-workspace__data-surface">
+      <table className="ui-table reports-table">
+        <thead>
+          <tr>
+            <th>تاریخ</th>
+            <th>شماره سند</th>
+            <th>کد حساب</th>
+            <th>حساب</th>
+            <th>شرح</th>
+            <th>ابعاد</th>
+            <th>بدهکار</th>
+            <th>بستانکار</th>
+            <th>منبع</th>
+          </tr>
+        </thead>
+        <tbody>
+          {result.rows.map((row) => (
+            <tr key={`${row.voucherId}:${row.journalLineId}`}>
+              <td>{toSolar(row.voucherDate)}</td>
+              <td>{row.voucherNumber}</td>
+              <td>{row.accountCode}</td>
+              <td>{row.accountName}</td>
+              <td>{row.description ?? "—"}</td>
+              <td>{formatDimensions(row.dimensions)}</td>
+              <Amount value={row.debit} />
+              <Amount value={row.credit} />
+              <td>
+                <TraceButton onClick={() => onSource(row.voucherId, row.journalLineId)}>
+                  مشاهده سند
+                </TraceButton>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colSpan={6}>جمع</th>
+            <Amount value={result.totals.debit} tag="th" />
+            <Amount value={result.totals.credit} tag="th" />
+            <th />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
 }
 
 function DimensionTable({ result, onDrill }: { result: AccountingDimensionReportsResult; onDrill(dimensionTypeId: string, memberId: string): void }) {
   if (result.byMember.length === 0) return <EmptyReport />;
-  return <div className="accounting-workspace__data-surface"><table className="ui-table reports-table"><thead><tr><th>نوع بُعد</th><th>کد عضو</th><th>عضو</th><th>افتتاحیه</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th><th>عملیات</th></tr></thead><tbody>{result.byMember.map((row) => <tr key={`${row.dimensionTypeId}:${row.memberId}`}><td>{row.dimensionTypeName}</td><td>{row.memberCode}</td><td>{row.memberName}</td><td className="reports-number">{formatSigned(row.openingNet)}</td><Amount value={row.periodDebit} /><Amount value={row.periodCredit} /><td className="reports-number">{formatSigned(row.endingNet)}</td><td><TraceButton onClick={() => onDrill(row.dimensionTypeId, row.memberId)}>اسناد مرتبط</TraceButton></td></tr>)}</tbody></table></div>;
+  return (
+    <div className="accounting-workspace__data-surface">
+      <table className="ui-table reports-table">
+        <thead>
+          <tr>
+            <th>نوع بُعد</th>
+            <th>کد عضو</th>
+            <th>عضو</th>
+            <th>افتتاحیه</th>
+            <th>بدهکار</th>
+            <th>بستانکار</th>
+            <th>مانده</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {result.byMember.map((row) => (
+            <tr key={`${row.dimensionTypeId}:${row.memberId}`}>
+              <td>{row.dimensionTypeName}</td>
+              <td>{row.memberCode}</td>
+              <td>{row.memberName}</td>
+              <td className="reports-number">{formatSigned(row.openingNet)}</td>
+              <Amount value={row.periodDebit} />
+              <Amount value={row.periodCredit} />
+              <td className="reports-number">{formatSigned(row.endingNet)}</td>
+              <td>
+                <TraceButton onClick={() => onDrill(row.dimensionTypeId, row.memberId)}>
+                  اسناد مرتبط
+                </TraceButton>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function TraceButton({ children, onClick }: { children: string; onClick(): void }) {
