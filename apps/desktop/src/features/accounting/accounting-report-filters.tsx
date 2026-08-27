@@ -1,5 +1,7 @@
 import type { Branch } from "@argin/company";
 
+import { PersianDatePicker } from "../../components/forms";
+
 export interface AccountingReportFilterAccountOption {
   readonly id: string;
   readonly code: string;
@@ -68,18 +70,20 @@ export function AccountingReportFilters({
     <section className="reports-filterbar" aria-label="فیلترهای گزارش حسابداری">
       <label>
         از تاریخ
-        <input
-          type="date"
+        <PersianDatePicker
           value={value.fromDate}
-          onChange={(event) => patch({ fromDate: event.target.value })}
+          onChange={(fromDate) => patch({ fromDate })}
+          ariaLabel="از تاریخ گزارش"
+          placeholder="از تاریخ شمسی"
         />
       </label>
       <label>
         تا تاریخ
-        <input
-          type="date"
+        <PersianDatePicker
           value={value.toDate}
-          onChange={(event) => patch({ toDate: event.target.value })}
+          onChange={(toDate) => patch({ toDate })}
+          ariaLabel="تا تاریخ گزارش"
+          placeholder="تا تاریخ شمسی"
         />
       </label>
       <label>
