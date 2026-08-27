@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–11 are complete; Step 12 is next.
+Phase 16 is active. Steps 1–12 are complete; Step 13 is next.
 
 ## Governance Rule
 
@@ -72,7 +72,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 9 | Accounting Dimension Reports | Completed |
 | 10 | Application Contracts, DTOs, and Query Services | Completed |
 | 11 | SQLite Reporting Repository and Query Optimization | Completed |
-| 12 | Reporting Permissions, Company/Branch Scope, and Security | Not started |
+| 12 | Reporting Permissions, Company/Branch Scope, and Security | Completed |
 | 13 | Persian RTL Accounting Reports Center UI | Not started |
 | 14 | Filters, Drill-down, and Journal Traceability UI | Not started |
 | 15 | Print, Preview, Excel, and PDF Export | Not started |
@@ -210,7 +210,7 @@ Evidence:
 - Added migration `apps/desktop/src-tauri/migrations/0015_accounting_report_indexes.sql` with a reporting-scope index over company/currency/lifecycle/date/branch/fiscal fields and a generic dimension-type/member reporting index.
 - Added `packages/accounting-tauri/tests/sqlite-accounting-report-data-reader.test.ts` covering posted/reversed SQL scope, branch/fiscal-year/date constraints, generic dimension filtering, preservation of opening-period semantics, dimension metadata loading, and Journal detail projection.
 - Exported `SqliteAccountingReportDataReader` from `@argin/accounting-tauri`.
-- User confirmed Step 10 local validation before Step 11 implementation. Step 11 local validation is pending user execution.
+- User confirmed Step 11 local Accounting and Accounting Tauri validation is green.
 
 ### Step 12 — Reporting Permissions, Company/Branch Scope, and Security
 - Add granular reporting permissions and export permissions.
@@ -219,7 +219,19 @@ Evidence:
 
 Exit: UI visibility is not the security authority and unauthorized reporting access is deterministically rejected.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added `packages/accounting/src/application/accounting-report-permissions.ts` with distinct view permissions for Trial Balance, General Ledger, Subsidiary Ledger, Journal Report, Accounting Dimension Reports, plus an independent report-export permission.
+- Added `packages/accounting/src/reporting-security.ts` with `SecuredAccountingReportQueryService`; permission and scope checks run before the inner Application query service and therefore before infrastructure/SQLite reads.
+- Company scope is mandatory; exact-branch queries require explicit access to that branch in the requested company.
+- Company-wide/all-branches queries require explicit `canAccessAllBranches` authorization and never widen from access to one branch.
+- Scope denial uses stable `report.scope-denied` behavior without returning requested company/branch identifiers in error details; missing permissions use stable `report.unauthorized` behavior.
+- Added `assertAccountingReportExportAuthorized` so export adapters enforce a separate export permission and the same company/branch scope.
+- Registered Phase 16 report permissions in `packages/security/src/application/default-permissions.ts`.
+- Added `packages/accounting/tests/reporting-security.test.ts` covering permission denial before execution, exact-branch authorization, cross-branch denial without scope leakage, all-branches enforcement, and export authorization.
+- Added public `@argin/accounting/reporting-security` and `@argin/accounting/accounting-report-permissions` exports.
+- Detailed implementation evidence is recorded in `docs/phases/phase-16-step-12-security-evidence.md`; Step 12 local validation is pending user execution.
 
 ### Step 13 — Persian RTL Accounting Reports Center UI
 - Add the Accounting Reports workspace using the Phase 14 design system.
