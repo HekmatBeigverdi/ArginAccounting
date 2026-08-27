@@ -14,7 +14,9 @@
     "./subsidiary-ledger": "./src/subsidiary-ledger.ts",
     "./journal-report": "./src/journal-report.ts",
     "./dimension-reports": "./src/dimension-reports.ts",
-    "./reporting-application": "./src/reporting-application.ts"
+    "./reporting-application": "./src/reporting-application.ts",
+    "./reporting-security": "./src/reporting-security.ts",
+    "./accounting-report-permissions": "./src/application/accounting-report-permissions.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
