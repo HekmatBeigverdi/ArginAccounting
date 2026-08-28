@@ -176,7 +176,7 @@ test("representative larger snapshot uses fixed set-based query count rather tha
 
   assert.equal(snapshot.balanceFacts.length, 5_000);
   assert.equal(snapshot.journalFacts.length, 5_000);
-  assert.equal(snapshot.balanceFacts[4_999]!.dimensions[0]?.memberId, "p-1");
+  assert.equal(snapshot.balanceFacts[4_999]!.dimensions?.[0]?.memberId, "p-1");
 
   const factReads = database.calls.filter((call) =>
     call.sql.includes("FROM journal_vouchers v") && call.sql.includes("JOIN journal_lines l") && !call.sql.includes("journal_line_dimension_assignments a"));

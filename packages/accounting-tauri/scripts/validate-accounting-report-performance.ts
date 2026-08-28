@@ -203,7 +203,7 @@ function bindSql(sql: string, parameters: readonly DatabaseValue[]): string {
     if (index >= parameters.length) {
       throw new Error("Not enough parameters while binding accounting report SQL.");
     }
-    return quoteSqlValue(parameters[index++]);
+    return quoteSqlValue(parameters[index++]!);
   });
   if (index !== parameters.length) {
     throw new Error("Unused parameters remain after binding accounting report SQL.");
