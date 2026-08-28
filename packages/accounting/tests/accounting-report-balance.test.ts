@@ -187,3 +187,42 @@ test("rejects malformed amount facts before they can corrupt balances", () => {
     (error: unknown) => error instanceof AccountingReportBalanceError && error.code === "report.balance.invalid-fact",
   );
 });
+
+test("treats from/to dates as inclusive period boundaries and excludes facts after toDate", () => {
+  const rows = calculateAccountBalanceTurnover(baseQuery(), accounts, [
+    fact({ journalLineId: "opening", voucherDate: "2026-03-31", accountId: "cash", debit: 40, credit: 0 }),
+    fact({ journalLineId: "from", voucherDate: "2026-04-01", accountId: "cash", debit: 60, credit: 0 }),
+    fact({ journalLineId: "to", voucherDate: "2026-04-30", accountId: "cash", debit: 0, credit: 25 }),
+    fact({ journalLineId: "after", voucherDate: "2026-05-01", accountId: "cash", debit: 999, credit: 0 }),
+  ]);
+  const cash = rows.find((row) => row.accountId === "cash")!;
+  assert.deepEqual(cash.opening, { debit: 40, credit: 0 });
+  assert.deepEqual(cash.period, { debit: 60, credit: 25 });
+  assert.deepEqual(cash.ending, { debit: 75, credit: 0 });
+});
+
+test("isolates company and fiscal-year facts before opening and movement computation", () => {
+  const query = normalizeAccountingReportQuery({
+    companyId: "company-1",
+    period: { fromDate: "2026-04-01", toDate: "2026-04-30", fiscalYearId: "fy-1" },
+  });
+  const rows = calculateAccountBalanceTurnover(query, accounts, [
+    fact({ journalLineId: "match", voucherDate: "2026-04-05", accountId: "cash", debit: 100, credit: 0 }),
+    fact({ journalLineId: "foreign-company", voucherDate: "2026-04-05", accountId: "cash", debit: 500, credit: 0, companyId: "company-2" }),
+    fact({ journalLineId: "foreign-year", voucherDate: "2026-04-05", accountId: "cash", debit: 700, credit: 0, fiscalYearId: "fy-2" }),
+  ]);
+  const cash = rows.find((row) => row.accountId === "cash")!;
+  assert.deepEqual(cash.period, { debit: 100, credit: 0 });
+});
+
+test("represents negative opening and ending net amounts on the credit side", () => {
+  const rows = calculateAccountBalanceTurnover(baseQuery(), accounts, [
+    fact({ journalLineId: "opening-credit", voucherDate: "2026-03-20", accountId: "cash", debit: 0, credit: 300 }),
+    fact({ journalLineId: "movement-debit", voucherDate: "2026-04-10", accountId: "cash", debit: 50, credit: 0 }),
+  ]);
+  const cash = rows.find((row) => row.accountId === "cash")!;
+  assert.equal(cash.openingNet, -300);
+  assert.deepEqual(cash.opening, { debit: 0, credit: 300 });
+  assert.equal(cash.endingNet, -250);
+  assert.deepEqual(cash.ending, { debit: 0, credit: 250 });
+});
