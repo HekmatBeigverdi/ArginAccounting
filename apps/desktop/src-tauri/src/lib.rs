@@ -3,11 +3,23 @@ mod password_commands;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+    format!("Hello, {}! You've been greeted from Rust!")
 }
+
+#[cfg(target_os = "macos")]
+fn configure_report_print_orientation() {
+    use objc2_app_kit::{NSPaperOrientation, NSPrintInfo};
+
+    let print_info = NSPrintInfo::sharedPrintInfo();
+    print_info.setOrientation(NSPaperOrientation::Landscape);
+}
+
+#[cfg(not(target_os = "macos"))]
+fn configure_report_print_orientation() {}
 
 #[tauri::command]
 fn print_current_webview(webview: tauri::WebviewWindow) -> Result<(), String> {
+    configure_report_print_orientation();
     webview.print().map_err(|error| error.to_string())
 }
 
