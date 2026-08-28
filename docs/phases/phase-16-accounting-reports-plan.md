@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–16 are complete; Step 17 is next.
+Phase 16 is active. Steps 1–17 are complete; Step 18 is next.
 
 ## Governance Rule
 
@@ -77,7 +77,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 14 | Filters, Drill-down, and Journal Traceability UI | Completed |
 | 15 | Print, Preview, Excel, and PDF Export | Completed |
 | 16 | Domain and Application Report Test Matrix | Completed |
-| 17 | SQLite/Desktop/Performance and Monorepo Validation | Not started |
+| 17 | SQLite/Desktop/Performance and Monorepo Validation | Completed |
 | 18 | Documentation, Final Review, Merge, and Release | Not started |
 
 ## Fixed Execution Sequence
@@ -268,7 +268,7 @@ Evidence:
 - Extended `reporting-application.test.ts` to prove deterministic Journal ordering persists across later pages while canonical totals and paging metadata remain stable.
 - Existing General Ledger, Journal, security, query-validation, reversal, and report error tests complete hierarchy, traceability, unposted exclusion, stable ordering, and stable-error coverage.
 - Multi-member dimension allocation is deliberately not invented: Phase 16 has no allocation-weight semantic, and the matrix records that summing independently grouped multiple members is not asserted as ledger reconciliation without a future explicit accounting decision.
-- Step 16 implementation is committed; local `@argin/accounting` typecheck/test validation is pending user execution.
+- Repository owner confirmed local `@argin/accounting` typecheck/test validation green before Step 17 started.
 
 ### Step 17 — SQLite/Desktop/Performance and Monorepo Validation
 - Add repository/query correctness tests and Desktop regression coverage.
@@ -278,7 +278,16 @@ Evidence:
 
 Exit: focused and monorepo validation is green with evidence recorded.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- `SqliteAccountingReportDataReader` now exposes the exact runtime fact/assignment SQL builders so correctness tests and the performance validator cannot drift onto a benchmark-only query.
+- `sqlite-accounting-report-data-reader.test.ts` covers exact/all-branch scope, identical fact/assignment scope parameters, deterministic ordering, and a 5,000-line representative snapshot with one fact read plus one set-based assignment read rather than N+1 queries.
+- Added `packages/accounting-tauri/scripts/validate-accounting-report-performance.ts`; it builds 40,000 representative vouchers / 80,000 journal lines in temporary SQLite, applies production report indexes, validates the real query with `EXPLAIN QUERY PLAN`, requires both report/dimension indexes, and verifies exactly 40,000 in-scope lines.
+- Added `apps/desktop/tests/accounting-reports-phase16-regression.test.ts` to guard secured query composition, independent export authorization, executed-filter isolation, drill-down traceability, and canonical Excel/Preview/PDF composition.
+- Added `pnpm validate:phase16` as the single focused-plus-monorepo validation path covering Accounting, Accounting Tauri, SQLite query-plan validation, Desktop typecheck/test/build, and root typecheck/test/build.
+- Detailed evidence and commands are recorded in `docs/phases/phase-16-step-17-validation-evidence.md`.
+- Step 17 implementation is committed; local unified `pnpm validate:phase16` execution is pending repository-owner confirmation before Step 18 release work.
 
 ### Step 18 — Documentation, Final Review, Merge, and Release
 - Complete phase document, ADR links, README/ROADMAP/CHANGELOG/architecture/security/database/glossary updates as applicable.
