@@ -20,19 +20,24 @@ All phase records live in this directory and follow the permanent [phase templat
 14. [Phase 14 — UI Foundation Consolidation](phase-14-ui-foundation-consolidation.md) — completed, merged, and released as `v0.14.0`
    - [Fixed Implementation Plan](phase-14-ui-foundation-consolidation-plan.md)
    - [ADR-0014 — UI Foundation and Global Display Density](../adr/ADR-0014-ui-foundation-and-global-density.md)
-15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — implementation and final review complete; merged to `develop`; final `v0.15.0` release publication pending
+15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — completed and integrated; semantic release `v0.15.0`
    - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
    - [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md)
    - [Step 15 Domain and Application Test Matrix](phase-15-step-15-test-matrix.md)
    - [Step 16 Persistence and Desktop Regression Matrix](phase-15-step-16-regression-matrix.md)
    - [Step 17 Monorepo Validation and Documentation Completion](phase-15-step-17-validation.md)
    - [Manual Desktop Lifecycle Validation](phase-15-manual-desktop-validation.md)
-   - Step 17 — Completed by user-confirmed local validation
-   - Step 18 — Final review and merge preparation complete; semantic tag/GitHub Release pending manual publication
+16. [Phase 16 — Accounting Reports](phase-16-accounting-reports.md) — implementation/final review complete; prepared semantic release `v0.16.0`
+   - [Fixed Implementation Plan](phase-16-accounting-reports-plan.md)
+   - [ADR-0016 — Accounting Reports](../adr/ADR-0016-accounting-reports.md)
+   - [Step 16 Domain and Application Report Test Matrix](phase-16-step-16-report-test-matrix.md)
+   - [Step 17 SQLite/Desktop/Performance and Monorepo Validation](phase-16-step-17-validation.md)
+   - Step 16 and Step 17 local validation confirmed by repository owner
+   - Semantic tag/GitHub Release publication remains the manual repository-owner action
 
 ## Next Target
 
-16. Phase 16 — Accounting Reports
+17. Phase 17 — Parties
 
 ## Renumbering Rule
 
@@ -40,4 +45,4 @@ The insertion of Platform Infrastructure as Phase 09 shifted Chart of Accounts a
 
 ## Historical Refactor Policy
 
-Phase 01–14 documents retain their implementation history and historical phase numbers. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
+Phase 01–16 documents retain their implementation history and historical phase numbers. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
