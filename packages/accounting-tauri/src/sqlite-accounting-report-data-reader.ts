@@ -71,6 +71,11 @@ interface DimensionMemberRow {
   version: number;
 }
 
+export interface AccountingReportSqlQuery {
+  readonly sql: string;
+  readonly parameters: readonly DatabaseValue[];
+}
+
 export class SqliteAccountingReportDataReader implements AccountingReportDataReader {
   private readonly accountRepository: SqliteAccountRepository;
 
@@ -81,20 +86,11 @@ export class SqliteAccountingReportDataReader implements AccountingReportDataRea
   async read(context: AccountingReportExecutionContext): Promise<AccountingReportDataSnapshot> {
     const { query, kind } = context;
     const accounts = await this.accountRepository.findByCompanyId(query.companyId);
-    const { where, parameters } = createFactWhere(context);
+    const factQuery = createAccountingReportFactSqlQuery(context);
 
     const factRows = await this.database.query<FactRow>(
-      `SELECT
-         v.company_id, v.currency_code, v.branch_id, v.fiscal_year_id, v.fiscal_period_id,
-         v.id AS voucher_id, l.id AS journal_line_id, v.voucher_date, v.voucher_number,
-         v.reference AS voucher_reference, v.description AS voucher_description,
-         l.line_order, l.account_id, l.description AS line_description,
-         l.debit_amount, l.credit_amount
-       FROM journal_vouchers v
-       JOIN journal_lines l ON l.voucher_id = v.id AND l.company_id = v.company_id
-       ${where}
-       ORDER BY v.voucher_date, v.voucher_number, v.id, l.line_order, l.id`,
-      parameters,
+      factQuery.sql,
+      factQuery.parameters,
     );
 
     const dimensionsByLine = await this.readAssignments(context);
@@ -126,15 +122,10 @@ export class SqliteAccountingReportDataReader implements AccountingReportDataRea
   private async readAssignments(
     context: AccountingReportExecutionContext,
   ): Promise<ReadonlyMap<string, readonly Readonly<{ dimensionTypeId: string; memberId: string }>[]>> {
-    const { where, parameters } = createFactWhere(context);
+    const assignmentQuery = createAccountingReportAssignmentSqlQuery(context);
     const rows = await this.database.query<DimensionAssignmentRow>(
-      `SELECT a.line_id, a.dimension_type_id, a.member_id
-       FROM journal_line_dimension_assignments a
-       JOIN journal_lines l ON l.id = a.line_id AND l.company_id = a.company_id
-       JOIN journal_vouchers v ON v.id = l.voucher_id AND v.company_id = l.company_id
-       ${where}
-       ORDER BY a.line_id, a.dimension_type_id, a.member_id`,
-      parameters,
+      assignmentQuery.sql,
+      assignmentQuery.parameters,
     );
     const result = new Map<string, Readonly<{ dimensionTypeId: string; memberId: string }>[]>();
     for (const row of rows) {
@@ -194,6 +185,40 @@ export class SqliteAccountingReportDataReader implements AccountingReportDataRea
       version: row.version,
     }));
   }
+}
+
+export function createAccountingReportFactSqlQuery(
+  context: AccountingReportExecutionContext,
+): AccountingReportSqlQuery {
+  const { where, parameters } = createFactWhere(context);
+  return Object.freeze({
+    sql: `SELECT
+         v.company_id, v.currency_code, v.branch_id, v.fiscal_year_id, v.fiscal_period_id,
+         v.id AS voucher_id, l.id AS journal_line_id, v.voucher_date, v.voucher_number,
+         v.reference AS voucher_reference, v.description AS voucher_description,
+         l.line_order, l.account_id, l.description AS line_description,
+         l.debit_amount, l.credit_amount
+       FROM journal_vouchers v
+       JOIN journal_lines l ON l.voucher_id = v.id AND l.company_id = v.company_id
+       ${where}
+       ORDER BY v.voucher_date, v.voucher_number, v.id, l.line_order, l.id`,
+    parameters: Object.freeze([...parameters]),
+  });
+}
+
+export function createAccountingReportAssignmentSqlQuery(
+  context: AccountingReportExecutionContext,
+): AccountingReportSqlQuery {
+  const { where, parameters } = createFactWhere(context);
+  return Object.freeze({
+    sql: `SELECT a.line_id, a.dimension_type_id, a.member_id
+       FROM journal_line_dimension_assignments a
+       JOIN journal_lines l ON l.id = a.line_id AND l.company_id = a.company_id
+       JOIN journal_vouchers v ON v.id = l.voucher_id AND v.company_id = l.company_id
+       ${where}
+       ORDER BY a.line_id, a.dimension_type_id, a.member_id`,
+    parameters: Object.freeze([...parameters]),
+  });
 }
 
 function createFactWhere(context: AccountingReportExecutionContext): {
