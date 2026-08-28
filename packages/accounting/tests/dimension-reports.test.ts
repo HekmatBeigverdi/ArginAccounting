@@ -170,6 +170,49 @@ test("inherits posted scope and account hierarchy selection", () => {
   assert.equal(result.byAccountMember.length, 1);
 });
 
+test("applies branch, fiscal-year and dimension-member filters together", () => {
+  const secondMember: AccountingDimensionMember = {
+    ...dimensionMembers[0]!,
+    id: "p2",
+    code: "P2",
+    name: "Project 2",
+  };
+  const query = normalizeAccountingReportQuery({
+    companyId: COMPANY_ID,
+    branch: { mode: "branch", branchId: "b1" },
+    period: {
+      fromDate: "2026-04-01",
+      toDate: "2026-04-30",
+      fiscalYearId: "fy",
+    },
+    dimensions: [{ dimensionTypeId: PROJECT_DIMENSION_TYPE_ID, memberIds: [PROJECT_MEMBER_ID] }],
+  });
+  const matching = fact("match", "cash", "2026-04-05", 70, 0);
+  const result = createAccountingDimensionReports(
+    query,
+    accounts,
+    dimensionTypes,
+    [...dimensionMembers, secondMember],
+    [
+      matching,
+      { ...matching, voucherId: "v-branch", journalLineId: "branch", debit: 200, branchId: "b2" },
+      { ...matching, voucherId: "v-year", journalLineId: "year", debit: 300, fiscalYearId: "fy-2" },
+      {
+        ...matching,
+        voucherId: "v-member",
+        journalLineId: "member",
+        debit: 400,
+        dimensions: [{ dimensionTypeId: PROJECT_DIMENSION_TYPE_ID, memberId: "p2" }],
+      },
+    ],
+  );
+
+  assert.equal(result.byMember.length, 1);
+  assert.equal(result.byMember[0]!.memberId, PROJECT_MEMBER_ID);
+  assert.equal(result.byMember[0]!.periodDebit, 70);
+  assert.equal(result.byAccountMember.length, 1);
+});
+
 test("rejects mismatched dimension metadata", () => {
   const mismatchedFact: AccountingReportJournalLineFact = {
     ...fact("1", "cash", "2026-04-05", 10, 0),
