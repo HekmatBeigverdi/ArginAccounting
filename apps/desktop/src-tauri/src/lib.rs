@@ -3,7 +3,7 @@ mod password_commands;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!")
+    format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
 #[cfg(target_os = "macos")]
