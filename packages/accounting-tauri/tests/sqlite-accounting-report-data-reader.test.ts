@@ -4,10 +4,16 @@ import test from "node:test";
 import { normalizeAccountingReportQuery } from "@argin/accounting/reporting";
 import type { AccountingReportExecutionContext } from "@argin/accounting/reporting-application";
 import type { DatabaseExecuteResult, DatabaseSession, DatabaseValue } from "@argin/database";
-import { SqliteAccountingReportDataReader } from "../src/sqlite-accounting-report-data-reader.ts";
+import {
+  createAccountingReportAssignmentSqlQuery,
+  createAccountingReportFactSqlQuery,
+  SqliteAccountingReportDataReader,
+} from "../src/sqlite-accounting-report-data-reader.ts";
 
 class FakeDatabase implements DatabaseSession {
   readonly calls: Array<{ sql: string; parameters: readonly DatabaseValue[] }> = [];
+
+  constructor(private readonly factCount = 1) {}
 
   async execute(): Promise<DatabaseExecuteResult> {
     return { rowsAffected: 0 } as DatabaseExecuteResult;
@@ -36,17 +42,21 @@ class FakeDatabase implements DatabaseSession {
     if (sql.includes("FROM account_management_tags")) return [];
 
     if (sql.includes("SELECT a.line_id")) {
-      return [{ line_id: "line-1", dimension_type_id: "project", member_id: "p-1" }] as T[];
+      return Array.from({ length: this.factCount }, (_, index) => ({
+        line_id: `line-${index + 1}`,
+        dimension_type_id: "project",
+        member_id: "p-1",
+      })) as T[];
     }
 
     if (sql.includes("FROM journal_vouchers v") && sql.includes("JOIN journal_lines l")) {
-      return [{
+      return Array.from({ length: this.factCount }, (_, index) => ({
         company_id: "company-1", currency_code: "IRR", branch_id: "branch-1",
         fiscal_year_id: "fy-1", fiscal_period_id: "fp-1",
-        voucher_id: "voucher-1", journal_line_id: "line-1", voucher_date: "2026-04-10",
-        voucher_number: "10", voucher_reference: "REF-10", voucher_description: "Voucher",
+        voucher_id: `voucher-${index + 1}`, journal_line_id: `line-${index + 1}`, voucher_date: "2026-04-10",
+        voucher_number: String(index + 1), voucher_reference: `REF-${index + 1}`, voucher_description: "Voucher",
         line_order: 1, account_id: "cash", line_description: "Line", debit_amount: 100, credit_amount: 0,
-      }] as T[];
+      })) as T[];
     }
 
     if (sql.includes("FROM accounting_dimension_types")) {
@@ -71,13 +81,16 @@ class FakeDatabase implements DatabaseSession {
   }
 }
 
-function context(kind: AccountingReportExecutionContext["kind"]): AccountingReportExecutionContext {
+function context(
+  kind: AccountingReportExecutionContext["kind"],
+  branch: { mode: "branch"; branchId: string } | { mode: "all" } = { mode: "branch", branchId: "branch-1" },
+): AccountingReportExecutionContext {
   return Object.freeze({
     kind,
     query: normalizeAccountingReportQuery({
       companyId: "company-1",
       currency: "IRR",
-      branch: { mode: "branch", branchId: "branch-1" },
+      branch,
       period: { fromDate: "2026-04-01", toDate: "2026-04-30", fiscalYearId: "fy-1", fiscalPeriodId: "fp-1" },
       dimensions: [{ dimensionTypeId: "project", memberIds: ["p-1"] }],
     }),
@@ -130,7 +143,44 @@ test("maps journal detail fields without loading unrelated detail projections", 
   assert.equal(snapshot.balanceFacts.length, 1);
   assert.equal(snapshot.ledgerFacts.length, 0);
   assert.equal(snapshot.journalFacts.length, 1);
-  assert.equal(snapshot.journalFacts[0]!.voucherReference, "REF-10");
-  assert.equal(snapshot.journalFacts[0]!.voucherNumber, "10");
+  assert.equal(snapshot.journalFacts[0]!.voucherReference, "REF-1");
+  assert.equal(snapshot.journalFacts[0]!.voucherNumber, "1");
   assert.equal(snapshot.journalFacts[0]!.lineOrder, 1);
+});
+
+test("all-branches SQL does not accidentally narrow to a branch while exact branch does", () => {
+  const allBranches = createAccountingReportFactSqlQuery(context("trial-balance", { mode: "all" }));
+  const exactBranch = createAccountingReportFactSqlQuery(context("trial-balance"));
+
+  assert.doesNotMatch(allBranches.sql, /v\.branch_id = \?/);
+  assert.equal(allBranches.parameters.includes("branch-1"), false);
+  assert.match(exactBranch.sql, /v\.branch_id = \?/);
+  assert.equal(exactBranch.parameters.includes("branch-1"), true);
+});
+
+test("fact and assignment queries preserve identical report scope parameters", () => {
+  const reportContext = context("journal");
+  const factQuery = createAccountingReportFactSqlQuery(reportContext);
+  const assignmentQuery = createAccountingReportAssignmentSqlQuery(reportContext);
+
+  assert.deepEqual(assignmentQuery.parameters, factQuery.parameters);
+  assert.match(factQuery.sql, /ORDER BY v\.voucher_date, v\.voucher_number, v\.id, l\.line_order, l\.id/);
+  assert.match(assignmentQuery.sql, /ORDER BY a\.line_id, a\.dimension_type_id, a\.member_id/);
+});
+
+test("representative larger snapshot uses fixed set-based query count rather than per-line N+1", async () => {
+  const database = new FakeDatabase(5_000);
+  const reader = new SqliteAccountingReportDataReader(database);
+
+  const snapshot = await reader.read(context("journal"));
+
+  assert.equal(snapshot.balanceFacts.length, 5_000);
+  assert.equal(snapshot.journalFacts.length, 5_000);
+  assert.equal(snapshot.balanceFacts[4_999]!.dimensions[0]?.memberId, "p-1");
+
+  const factReads = database.calls.filter((call) =>
+    call.sql.includes("FROM journal_vouchers v") && call.sql.includes("JOIN journal_lines l") && !call.sql.includes("journal_line_dimension_assignments a"));
+  const assignmentReads = database.calls.filter((call) => call.sql.includes("SELECT a.line_id"));
+  assert.equal(factReads.length, 1);
+  assert.equal(assignmentReads.length, 1);
 });
