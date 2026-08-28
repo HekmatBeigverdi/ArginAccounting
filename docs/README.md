@@ -43,11 +43,10 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Latest completed implementation: [Phase 15 — Journal Lifecycle](phases/phase-15-journal-lifecycle.md)
-- Latest published version: `v0.14.0`
-- Prepared release: `v0.15.0` — final semantic tag/GitHub Release publication pending
-- Phase 15 architecture decision: [ADR-0015 — Journal Lifecycle Architecture](adr/ADR-0015-journal-lifecycle.md)
-- Current delivery target: Phase 16 — Accounting Reports
+- Latest completed implementation: [Phase 16 — Accounting Reports](phases/phase-16-accounting-reports.md)
+- Prepared release: `v0.16.0` — semantic tag/GitHub Release publication pending repository-owner action
+- Phase 16 architecture decision: [ADR-0016 — Accounting Reports](adr/ADR-0016-accounting-reports.md)
+- Current delivery target: Phase 17 — Parties
 - Canonical roadmap: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Source-of-Truth Policy
