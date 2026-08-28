@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–17 are complete; Step 18 is next.
+Phase 16 implementation, validation, documentation, and final review are complete. Step 18 merge promotion is authorized in this session; semantic tag/GitHub Release publication remains the repository owner's manual action.
 
 ## Governance Rule
 
@@ -78,7 +78,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 15 | Print, Preview, Excel, and PDF Export | Completed |
 | 16 | Domain and Application Report Test Matrix | Completed |
 | 17 | SQLite/Desktop/Performance and Monorepo Validation | Completed |
-| 18 | Documentation, Final Review, Merge, and Release | Not started |
+| 18 | Documentation, Final Review, Merge, and Release | Completed — release publication manual |
 
 ## Fixed Execution Sequence
 
@@ -196,7 +196,7 @@ Exit: SQLite results match Application semantics and remain practical on realist
 
 Status: Completed
 
-Evidence: `packages/accounting-tauri/src/sqlite-accounting-report-data-reader.ts`, migration `0015_accounting_report_indexes.sql`, and focused SQLite tests; user confirmed local validation green.
+Evidence: `packages/accounting-tauri/src/sqlite-accounting-report-data-reader.ts`, migration `0015_accounting_report_indexes.sql`, and focused SQLite tests; user confirmed local validation green. Step 17 later added measured query-plan/index evidence on a representative dataset.
 
 ### Step 12 — Reporting Permissions, Company/Branch Scope, and Security
 - Add granular reporting permissions and export permissions.
@@ -281,13 +281,13 @@ Exit: focused and monorepo validation is green with evidence recorded.
 Status: Completed
 
 Evidence:
-- `SqliteAccountingReportDataReader` now exposes the exact runtime fact/assignment SQL builders so correctness tests and the performance validator cannot drift onto a benchmark-only query.
+- `SqliteAccountingReportDataReader` exposes the exact runtime fact/assignment SQL builders so correctness tests and the performance validator cannot drift onto a benchmark-only query.
 - `sqlite-accounting-report-data-reader.test.ts` covers exact/all-branch scope, identical fact/assignment scope parameters, deterministic ordering, and a 5,000-line representative snapshot with one fact read plus one set-based assignment read rather than N+1 queries.
-- Added `packages/accounting-tauri/scripts/validate-accounting-report-performance.ts`; it builds 40,000 representative vouchers / 80,000 journal lines in temporary SQLite, applies production report indexes, validates the real query with `EXPLAIN QUERY PLAN`, requires both report/dimension indexes, and verifies exactly 40,000 in-scope lines.
-- Added `apps/desktop/tests/accounting-reports-phase16-regression.test.ts` to guard secured query composition, independent export authorization, executed-filter isolation, drill-down traceability, and canonical Excel/Preview/PDF composition.
-- Added `pnpm validate:phase16` as the single focused-plus-monorepo validation path covering Accounting, Accounting Tauri, SQLite query-plan validation, Desktop typecheck/test/build, and root typecheck/test/build.
-- Detailed evidence and commands are recorded in `docs/phases/phase-16-step-17-validation-evidence.md`.
-- Step 17 implementation is committed; local unified `pnpm validate:phase16` execution is pending repository-owner confirmation before Step 18 release work.
+- `packages/accounting-tauri/scripts/validate-accounting-report-performance.ts` builds 40,000 representative vouchers / 80,000 Journal Lines in temporary SQLite, applies production report indexes, validates the real query with `EXPLAIN QUERY PLAN`, requires both report/dimension indexes, and verifies exactly 40,000 in-scope lines.
+- `apps/desktop/tests/accounting-reports-phase16-regression.test.ts` guards secured query composition, independent export authorization, executed-filter isolation, drill-down traceability, and canonical Excel/Preview/PDF composition.
+- `pnpm validate:phase16` is the single focused-plus-monorepo validation path covering Accounting, Accounting Tauri, SQLite query-plan validation, Desktop typecheck/test/build, and root typecheck/test/build.
+- Detailed evidence is recorded in `docs/phases/phase-16-step-17-validation-evidence.md`.
+- Repository owner explicitly confirmed Step 17 local validation green before Step 18 began.
 
 ### Step 18 — Documentation, Final Review, Merge, and Release
 - Complete phase document, ADR links, README/ROADMAP/CHANGELOG/architecture/security/database/glossary updates as applicable.
@@ -295,9 +295,17 @@ Evidence:
 - Perform final code/documentation review and branch comparison.
 - Merge according to repository workflow and publish semantic release `v0.16.0` when acceptance criteria are met.
 
-Exit: Phase 16 is documented, validated, merged, and released with no stale Step Status entries.
+Exit: Phase 16 is documented, validated, merged, and release-ready with no stale Step Status entries. Semantic tag/GitHub Release publication is intentionally delegated to the repository owner in this session.
 
-Status: Not started
+Status: Completed — release publication manual
+
+Evidence:
+- Added `docs/phases/phase-16-accounting-reports.md` as the canonical implementation record.
+- Reconciled `README.md`, `ROADMAP.md`, `CHANGELOG.md`, `ARCHITECTURE.md`, `RELEASE_CHECKLIST.md`, documentation hub/index references, Accounting Convention, Database Design, Security Model, Domain Glossary, and phase index for Phase 16.
+- ADR-0016 remains the architectural rationale source; canonical documents describe the current rules and the phase record describes what changed.
+- Step 16 and Step 17 local validation are explicitly repository-owner-confirmed; no connector-only command is represented as locally executed.
+- Final branch comparison and promotion to `develop`/`main` are performed after this documentation checkpoint without force-push or history rewriting.
+- Prepared semantic version is `v0.16.0`; tag and GitHub Release publication are intentionally left for the repository owner as requested.
 
 ## Change Requests
 
