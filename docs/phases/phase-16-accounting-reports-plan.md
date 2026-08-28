@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 16 is active. Steps 1–15 are complete; Step 16 is next.
+Phase 16 is active. Steps 1–16 are complete; Step 17 is next.
 
 ## Governance Rule
 
@@ -76,7 +76,7 @@ Excluded: arbitrary drag-and-drop report designer, OLAP/data warehouse, consolid
 | 13 | Persian RTL Accounting Reports Center UI | Completed |
 | 14 | Filters, Drill-down, and Journal Traceability UI | Completed |
 | 15 | Print, Preview, Excel, and PDF Export | Completed |
-| 16 | Domain and Application Report Test Matrix | Not started |
+| 16 | Domain and Application Report Test Matrix | Completed |
 | 17 | SQLite/Desktop/Performance and Monorepo Validation | Not started |
 | 18 | Documentation, Final Review, Merge, and Release | Not started |
 
@@ -246,22 +246,29 @@ Exit: supported reports can be printed/exported without recalculating accounting
 Status: Completed
 
 Evidence:
-- Added `apps/desktop/src/features/accounting/accounting-report-export.ts` as a presentation-only export projection over canonical Trial Balance, General Ledger, Subsidiary Ledger, Journal, and Dimension DTO results; it performs no accounting recomputation.
-- Export documents preserve report title, company, fiscal year, authorized branch scope, Gregorian-query/Persian-display period, generation timestamp, report rows, and canonical totals/ending values supplied by Application results.
-- Excel output uses UTF-8 SpreadsheetML (`.xls`) with numeric cells, Persian headings, RTL worksheet display, and no new runtime dependency or lockfile change.
-- Print Preview creates dedicated Persian RTL, A4 landscape, repeating-table-header HTML with print-safe pagination and company/fiscal/branch/period metadata.
-- The PDF action opens the same canonical A4 preview and invokes the operating-system print dialog for `Save as PDF`, preserving browser/Tauri Persian shaping and fonts rather than introducing a separate PDF calculation/rendering path.
-- `AccountingReportDesktopServices.authorizeExport` delegates to `assertAccountingReportExportAuthorized`; every Preview, Excel, and PDF action rechecks the independent `accounting.reports.export` permission and exact company/branch scope before producing output.
-- Reports Center shows export controls only for users with export permission, while Application authorization remains the authority.
-- Added `apps/desktop/tests/accounting-report-export.test.ts` covering canonical value projection, RTL SpreadsheetML, A4/PDF print contract, and secured export composition.
-- Step 15 implementation is committed; local Desktop/accounting validation is pending user execution.
+- `apps/desktop/src/features/accounting/accounting-report-export.ts` projects canonical Trial Balance, General Ledger, Subsidiary Ledger, Journal, and Dimension DTO results without accounting recomputation.
+- Excel uses UTF-8 RTL SpreadsheetML; Preview is full-screen Persian RTL A4; PDF/print uses the native Tauri WebView print bridge on macOS.
+- Native macOS print orientation is explicitly configured to match the Phase 16 landscape A4 preview before opening the system Print/Save-as-PDF dialog.
+- Export authorization is independently rechecked through `assertAccountingReportExportAuthorized` for permission and exact company/branch scope.
+- `apps/desktop/tests/accounting-report-export.test.ts` and native-print bridge tests cover the export composition.
+- User confirmed Step 15 locally and functionally: Excel download, full-screen preview, native Print/Save as PDF, and landscape output are working.
 
 ### Step 16 — Domain and Application Report Test Matrix
 - Cover opening/period/ending balances, debit/credit balances, zero balances, hierarchy aggregation, reversals, fiscal/date boundaries, branch/company scope, dimensions, unposted exclusion, sorting/pagination invariants, and stable error behavior.
 
 Exit: report semantics are comprehensively covered independent of SQLite/Desktop.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added `docs/phases/phase-16-step-16-report-test-matrix.md`, mapping every Step 16 acceptance axis to executable Domain/Application tests and explicitly excluding SQLite/Desktop/performance work reserved for Step 17.
+- Extended `accounting-report-balance.test.ts` with inclusive `fromDate`/`toDate` boundaries, post-`toDate` exclusion, company/fiscal-year isolation, and debit/credit-side projection for negative opening/ending net balances.
+- Extended `trial-balance.test.ts` to prove an account with real period turnover remains visible when its ending balance returns to zero, while unused zero rows remain governed by `includeZeroBalances`.
+- Extended `dimension-reports.test.ts` to prove generic member filters compose with exact branch and fiscal-year scope.
+- Extended `reporting-application.test.ts` to prove deterministic Journal ordering persists across later pages while canonical totals and paging metadata remain stable.
+- Existing General Ledger, Journal, security, query-validation, reversal, and report error tests complete hierarchy, traceability, unposted exclusion, stable ordering, and stable-error coverage.
+- Multi-member dimension allocation is deliberately not invented: Phase 16 has no allocation-weight semantic, and the matrix records that summing independently grouped multiple members is not asserted as ledger reconciliation without a future explicit accounting decision.
+- Step 16 implementation is committed; local `@argin/accounting` typecheck/test validation is pending user execution.
 
 ### Step 17 — SQLite/Desktop/Performance and Monorepo Validation
 - Add repository/query correctness tests and Desktop regression coverage.
