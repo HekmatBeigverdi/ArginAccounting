@@ -13,6 +13,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "validate:phase16": "pnpm --filter @argin/accounting typecheck && pnpm --filter @argin/accounting test && pnpm --filter @argin/accounting-tauri typecheck && pnpm --filter @argin/accounting-tauri test && pnpm --filter @argin/accounting-tauri validate:reports-performance && pnpm --filter @argin/desktop typecheck && pnpm --filter @argin/desktop test && pnpm --filter @argin/desktop build && pnpm typecheck && pnpm test && pnpm build",
     "clean": "turbo clean && rimraf node_modules"
   },
   "devDependencies": {
