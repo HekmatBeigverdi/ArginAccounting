@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo \"Accounting Tauri lint is not configured yet\"",
     "test": "node --import tsx --test tests/*.test.ts",
+    "validate:reports-performance": "tsx scripts/validate-accounting-report-performance.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {
