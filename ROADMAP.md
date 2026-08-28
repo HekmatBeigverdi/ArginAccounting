@@ -54,11 +54,16 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 ## Accounting Core — Continued
 
 15. ✅ Journal Lifecycle
-16. 🚧 Accounting Reports
+16. ✅ Accounting Reports
+   - Shared report query/filter/period model
+   - Trial Balance, General Ledger, Subsidiary Ledger, Journal, and Accounting Dimension reports
+   - Company/Branch/Fiscal/Dimension scope and report permissions
+   - Persian RTL Reports Center with drill-down and Journal traceability
+   - Excel, native Print/PDF, and SQLite query-plan/performance validation
 
 ## Master Data
 
-17. ⏳ Parties
+17. 🚧 Parties
 18. ⏳ Products and Services
 19. ⏳ Warehouses
 
@@ -138,8 +143,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 16 — Accounting Reports.
+Phase 17 — Parties.
 
 ## Latest Completed Accounting Milestone
 
-Phase 15 — Journal Lifecycle, implementation/final review completed and merged; semantic release `v0.15.0` is prepared for final publication.
+Phase 16 — Accounting Reports, implementation/final review completed and prepared for semantic release `v0.16.0`.
