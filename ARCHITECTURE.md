@@ -8,11 +8,11 @@ Detailed documents are indexed in [`docs/architecture/README.md`](docs/architect
 
 ### Domain
 
-Entities, value objects, invariants, state transitions, and domain errors. No dependency on React, Tauri, SQLite, PostgreSQL, HTTP, or file-system APIs.
+Entities, value objects, invariants, state transitions, accounting/reporting semantics, and domain errors. No dependency on React, Tauri, SQLite, PostgreSQL, HTTP, or file-system APIs.
 
 ### Application
 
-Use cases, permissions, orchestration, transactions, repositories, clocks, IDs, concurrency handling, and structured application errors. Depends on contracts, not concrete infrastructure.
+Use cases, permissions, orchestration, report-query services, transactions, repositories, clocks, IDs, concurrency handling, and structured application errors. Depends on contracts, not concrete infrastructure.
 
 ### Infrastructure
 
@@ -20,7 +20,7 @@ Runtime and persistence adapters: SQL, row mapping, migrations, transactions, pa
 
 ### Presentation
 
-Persian RTL desktop or future web UI. Presentation calls application services and contains no accounting, authorization, transaction, or SQL rules.
+Persian RTL desktop or future web UI. Presentation calls application services and contains no accounting, reporting-balance, authorization, transaction, or SQL rules.
 
 ## Dependency Direction
 
@@ -33,20 +33,7 @@ Dependencies always point inward. Modules expose public contracts and do not acc
 
 ## Shared Platform Layer — Phase 09
 
-Before Accounting Core, Phase 09 establishes:
-
-- Event Bus
-- Money
-- Query Framework
-- Number Series Engine
-- Metadata Engine
-- Notification
-- Plugin Contracts
-- Shared Data Access
-- Optimistic Concurrency
-- Background Jobs
-
-These capabilities remain domain-neutral and portable. Business modules depend on the platform; the platform never depends on business modules. See [ADR-0009](docs/adr/ADR-0009-platform-infrastructure-first.md).
+Before Accounting Core, Phase 09 establishes Event Bus, Money, Query Framework, Number Series, Metadata, Notification, Plugin Contracts, Shared Data Access, Optimistic Concurrency, and Background Jobs. These capabilities remain domain-neutral and portable. See [ADR-0009](docs/adr/ADR-0009-platform-infrastructure-first.md).
 
 ## Persistence and Transactions
 
@@ -60,9 +47,29 @@ Authorization is enforced in application services. Audit entries are append-only
 
 See [Security Model](docs/security/security-model.md), [Phase 08](docs/phases/phase-08-audit-approval.md), [ADR-0007](docs/adr/ADR-0007-immutable-audit-trail.md), and [ADR-0008](docs/adr/ADR-0008-approval-optimistic-concurrency.md).
 
-## Accounting and Posting
+## Accounting, Lifecycle, and Reporting
 
-The accounting engine owns double-entry invariants, voucher lifecycle, posting eligibility, reversal, and traceability. Operational modules do not write arbitrary journal entries. They submit deterministic, idempotent posting requests to the Posting Engine.
+The accounting engine owns double-entry invariants, Journal Voucher lifecycle, posting eligibility, reversal, and traceability. Posted/reversed accounting facts are immutable in place; correction is append-only through separate inverse/replacement records.
+
+Phase 16 reporting reads the persisted Journal Line source of truth through database-neutral Application contracts. Canonical report engines own opening/period/ending balance semantics, account-hierarchy aggregation, deterministic ledger/journal ordering, dimension grouping, and traceability. SQLite is a set-based retrieval/indexing adapter; React is a presentation adapter.
+
+Reporting dependency direction:
+
+```text
+Reports UI
+   ↓
+Secured report service
+   ↓
+Canonical Application/Domain report engines
+   ↓
+AccountingReportDataReader contract
+   ↑
+SQLite report adapter
+```
+
+Export and print project canonical report DTOs rather than recalculating accounting values. See [Phase 16](docs/phases/phase-16-accounting-reports.md) and [ADR-0016](docs/adr/ADR-0016-accounting-reports.md).
+
+Operational modules do not write arbitrary journal entries. They submit deterministic, idempotent posting requests to the Posting Engine.
 
 See [Accounting Engine](docs/accounting/accounting-engine.md) and [Posting Engine](docs/accounting/posting-engine.md).
 
@@ -86,7 +93,7 @@ Shared Application and Domain Contracts
 PostgreSQL Infrastructure
 ```
 
-Hybrid synchronization must preserve identity, scope, versions, audit evidence, idempotency, and conflict information.
+Hybrid synchronization must preserve identity, scope, versions, audit evidence, idempotency, report semantics, and conflict information.
 
 ## Non-Negotiable Boundaries
 
@@ -95,8 +102,9 @@ Hybrid synchronization must preserve identity, scope, versions, audit evidence, 
 3. Cross-module writes use public contracts.
 4. Financial and workflow multi-writes are atomic.
 5. Posted records and audit history are not silently edited or deleted.
-6. Permissions are enforced at the application boundary.
+6. Permissions and report scope are enforced at the application boundary.
 7. All schema changes use migrations.
-8. Documentation changes follow [Documentation Governance](docs/development/documentation-governance.md).
-9. Repository contracts and technical documentation use English.
-10. End-user desktop text uses Persian and RTL.
+8. Reporting UI/export never becomes a second accounting calculation engine.
+9. Documentation changes follow [Documentation Governance](docs/development/documentation-governance.md).
+10. Repository contracts and technical documentation use English.
+11. End-user desktop text uses Persian and RTL.
