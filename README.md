@@ -20,14 +20,13 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 
 ## Current Status
 
-- Phase 01–15: implementation completed and merged into the integration flow
-- Latest published release: Phase 14 — UI Foundation Consolidation (`v0.14.0`)
-- Prepared release: Phase 15 — Journal Lifecycle (`v0.15.0`), final tag/GitHub Release publication pending
-- Current target: Phase 16 — Accounting Reports
+- Phase 01–16: implementation completed and integrated
+- Prepared release: Phase 16 — Accounting Reports (`v0.16.0`), semantic tag/GitHub Release publication pending repository-owner action
+- Current target: Phase 17 — Parties
 
-Phase 15 adds the controlled Journal Voucher lifecycle over the Phase 13 Draft engine: explicit Approval, final Posting, locking, controlled amendment, immutable reversal/replacement lineage, granular authorization, optimistic concurrency, durable lifecycle evidence, post-commit Audit/Events/Notifications, and Persian RTL lifecycle/traceability UX.
+Phase 16 adds the first production-grade reporting layer over posted Journal facts: common report queries, balance/turnover semantics, Trial Balance, General Ledger, Subsidiary Ledger, Journal and Accounting Dimension reports, granular report/export permissions, optimized SQLite reads, Persian RTL report UX, drill-down/Journal traceability, Excel export, native Print/PDF, and query-plan/performance validation.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 15 implementation record](docs/phases/phase-15-journal-lifecycle.md), [Phase 15 fixed implementation plan](docs/phases/phase-15-journal-lifecycle-plan.md), and [ADR-0015](docs/adr/ADR-0015-journal-lifecycle.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 16 implementation record](docs/phases/phase-16-accounting-reports.md), [Phase 16 fixed implementation plan](docs/phases/phase-16-accounting-reports-plan.md), and [ADR-0016](docs/adr/ADR-0016-accounting-reports.md).
 
 ## Main Modules
 
@@ -52,12 +51,12 @@ packages/
   security-tauri/      Security SQLite/Tauri infrastructure
   audit/               Audit and approval domain/application
   audit-tauri/         Audit and approval SQLite infrastructure
-  accounting/          Accounting domain/application, including Journal contracts
-  accounting-tauri/    SQLite accounting infrastructure
+  accounting/          Accounting domain/application, including Journal and Reporting contracts
+  accounting-tauri/    SQLite accounting/reporting infrastructure
 
 docs/
   adr/                  Architecture decisions
-  accounting/           Accounting and posting semantics
+  accounting/           Accounting and posting/reporting semantics
   architecture/         System architecture
   database/             Data architecture
   development/          Engineering handbook and governance
@@ -96,6 +95,8 @@ cd apps/desktop/src-tauri
 cargo check
 ```
 
+For the Phase 16 release gate, `pnpm validate:phase16` runs focused Accounting/SQLite/Desktop validation plus monorepo validation and the representative SQLite report query-plan check.
+
 Validation commands are requirements, not proof of success. Phase and release documents must record commands actually executed and their outcomes.
 
 ## Architecture Principles
@@ -108,6 +109,7 @@ Validation commands are requirements, not proof of success. Phase and release do
 - Atomic financial and workflow operations
 - Optimistic concurrency
 - Immutable posted documents and audit history
+- Canonical report semantics over posted accounting facts
 - Testability and future runtime portability
 
 ## Branch Strategy
@@ -126,9 +128,9 @@ Validation commands are requirements, not proof of success. Phase and release do
 - [Product Vision](docs/vision/product-vision.md)
 - [Architecture](ARCHITECTURE.md)
 - [Roadmap](ROADMAP.md)
-- [Phase 15 — Journal Lifecycle](docs/phases/phase-15-journal-lifecycle.md)
-- [Phase 15 Fixed Implementation Plan](docs/phases/phase-15-journal-lifecycle-plan.md)
-- [ADR-0015 — Journal Lifecycle Architecture](docs/adr/ADR-0015-journal-lifecycle.md)
+- [Phase 16 — Accounting Reports](docs/phases/phase-16-accounting-reports.md)
+- [Phase 16 Fixed Implementation Plan](docs/phases/phase-16-accounting-reports-plan.md)
+- [ADR-0016 — Accounting Reports](docs/adr/ADR-0016-accounting-reports.md)
 - [ADR Registry](docs/adr/README.md)
 - [Database Design](docs/database/database-design.md)
 - [Accounting Engine](docs/accounting/accounting-engine.md)
