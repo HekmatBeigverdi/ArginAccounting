@@ -107,6 +107,41 @@ test("returns stable journal paging metadata without changing canonical totals",
   assert.equal(response.page.hasNextPage, true);
 });
 
+test("keeps canonical journal ordering stable across later pages", async () => {
+  const value = snapshot();
+  const common = {
+    companyId: "company-1",
+    currency: "IRR",
+    branchId: "branch-1",
+    fiscalYearId: "fy-1",
+    fiscalPeriodId: "fp-1",
+    voucherDate: "2026-04-10",
+    accountId: "cash",
+    debit: 10,
+    credit: 0,
+    isPostedFact: true,
+  } as const;
+  const service = new DefaultAccountingReportQueryService(new Reader({
+    ...value,
+    journalFacts: [
+      { ...common, voucherId: "v10", journalLineId: "l10", voucherNumber: "10", lineOrder: 1 },
+      { ...common, voucherId: "v2b", journalLineId: "l2b", voucherNumber: "2", lineOrder: 2 },
+      { ...common, voucherId: "v2a", journalLineId: "l2a", voucherNumber: "2", lineOrder: 1 },
+    ],
+  }));
+
+  const first = await service.journal({ report: { ...report, paging: { page: 1, pageSize: 2 } } });
+  const second = await service.journal({ report: { ...report, paging: { page: 2, pageSize: 2 } } });
+
+  assert.deepEqual(first.page.items.map((row) => row.journalLineId), ["l2a", "l2b"]);
+  assert.deepEqual(second.page.items.map((row) => row.journalLineId), ["l10"]);
+  assert.equal(first.page.hasNextPage, true);
+  assert.equal(second.page.hasNextPage, false);
+  assert.equal(second.page.totalItems, 3);
+  assert.equal(second.page.totalPages, 2);
+  assert.equal(second.result.totals.debit, 30);
+});
+
 test("wraps reader failures in stable application error", async () => {
   const service = new DefaultAccountingReportQueryService({
     async read(): Promise<AccountingReportDataSnapshot> {
