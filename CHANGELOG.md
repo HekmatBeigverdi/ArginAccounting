@@ -6,6 +6,66 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.16.0] - 2026-08-28
+
+### Added
+
+- Shared persistence-neutral Accounting Report query/filter/period model with Company, Branch, Fiscal Year/Period, date, account hierarchy, dimension, zero-balance, sorting, paging, currency, and traceability context
+- Canonical account balance/turnover engine with opening, period debit/credit, and ending balances
+- Trial Balance with hierarchy-safe totals and 2/4/6/8 display projections
+- General Ledger with deterministic movement ordering, running balances, descriptions, and Voucher/Journal Line trace identities
+- Subsidiary Ledger and account-turnover reporting over posting-enabled accounts
+- Chronological Journal Report with account, dimension, reference, debit/credit, totals, and source traceability
+- Generic Accounting Dimension reports by Member and Account × Member
+- Persistence-neutral report Application services and stable report errors
+- Granular report view permissions and independent `accounting.reports.export` authorization
+- Persian RTL Accounting Reports Center with reusable filters, deliberate Run semantics, Solar Hijri presentation, compact tables, drill-down, and Journal source traceability
+- Excel SpreadsheetML export, full-screen print preview, native Tauri Print/Save-as-PDF bridge, and landscape A4 output
+
+### Database and Performance
+
+- Added migration `0015_accounting_report_indexes.sql`
+- Added `ix_journal_vouchers_reporting_scope` and `ix_journal_line_dimensions_reporting`
+- Added set-based SQLite report data reader with generic dimension `EXISTS` filtering and no per-line N+1 dimension loading
+- Added representative SQLite query-plan validation using 40,000 vouchers / 80,000 Journal Lines and `EXPLAIN QUERY PLAN`
+
+### Security
+
+- Added granular permissions for Trial Balance, General Ledger, Subsidiary Ledger, Journal, Accounting Dimension reports, and export
+- Enforced Company/Branch scope at the Application boundary through `SecuredAccountingReportQueryService`
+- Rechecked export authorization before Preview, Excel, Print, and PDF operations
+- Preserved non-leaking scope-denied behavior
+
+### Tests and Validation
+
+- Added Domain/Application report matrix covering opening/period/ending semantics, debit/credit sides, zero rows, hierarchy aggregation, reversals, fiscal/date boundaries, Company/Branch scope, dimensions, unposted exclusion, deterministic sorting/paging, and stable errors
+- Added SQLite adapter/query-shape, representative dataset, and query-plan/index validation
+- Added Desktop regression coverage for permission-aware navigation, filters, drill-down, Journal traceability, export authorization, RTL Preview, Excel, and native printing
+- Repository owner confirmed Step 16 focused Accounting validation and Step 17 `pnpm validate:phase16` validation as successful
+- Functional Desktop acceptance confirmed Excel download, full-screen Preview, native Print/Save-as-PDF, and landscape PDF/print output
+
+### Architecture
+
+- Reporting semantics remain in Domain/Application; React and SQLite do not own accounting balance rules
+- Posted Journal facts remain the source of truth; a reversed original remains historical reportable fact and its separate posted inverse produces the deterministic net effect
+- Export/print reuse canonical report DTOs and do not recalculate accounting values
+- Multi-member dimension allocation weights are intentionally not invented in Phase 16
+
+### Merge and Release
+
+- Phase 16 is prepared for promotion to `develop` and `main`
+- Prepared semantic tag and GitHub Release: `v0.16.0`
+- Phase 17 — Parties is the next implementation target
+
+### Deferred
+
+- Arbitrary report designer, BI/OLAP/data warehouse, and complex dashboards: Phase 44 or later
+- Multi-company consolidation and advanced Cash Flow: future reporting phases
+- Complete statutory P&L/Balance Sheet dependent on future operational modules: later owning phases
+- PostgreSQL/Web reporting adapter: future online/synchronization runtime
+
+---
+
 ## [0.15.0] - 2026-08-26
 
 ### Added
