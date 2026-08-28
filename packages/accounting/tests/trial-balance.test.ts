@@ -108,3 +108,17 @@ test("supports 2, 4, 6 and 8-column projection modes over the same values", () =
     assert.equal(result.totals.periodCredit, 500);
   }
 });
+
+test("keeps accounts with period turnover even when ending balance returns to zero", () => {
+  const result = createTrialBalance(query(false), accounts, [
+    fact("cash-debit", "cash", 250, 0),
+    fact("cash-credit", "cash", 0, 250),
+  ], 6);
+  const cash = result.rows.find((row) => row.accountId === "cash");
+
+  assert.ok(cash);
+  assert.equal(cash.periodDebit, 250);
+  assert.equal(cash.periodCredit, 250);
+  assert.equal(cash.endingDebit, 0);
+  assert.equal(cash.endingCredit, 0);
+});
