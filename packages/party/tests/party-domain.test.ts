@@ -50,11 +50,17 @@ test("creates a company-scoped natural-person party with normalized name and act
     firstName: "علی",
     lastName: "رضایی",
     displayName: "علی رضایی",
+    identity: {
+      nationalCode: null,
+      economicNumber: null,
+      taxFileNumber: null
+    },
     createdAt: "2026-08-29T07:00:00.000Z",
     updatedAt: "2026-08-29T07:00:00.000Z"
   });
   assert.equal(Object.isFrozen(party), true);
   assert.equal(Object.isFrozen(party.roles), true);
+  assert.equal(Object.isFrozen(party.identity), true);
 });
 
 test("creates one legal Party with multiple commercial roles instead of duplicate masters", () => {
@@ -75,6 +81,13 @@ test("creates one legal Party with multiple commercial roles instead of duplicat
   assert.equal(party.legalName, "شرکت نمونه آرگین");
   assert.equal(party.tradeName, "آرگین نمونه");
   assert.equal(party.displayName, "آرگین نمونه");
+  assert.deepEqual(party.identity, {
+    nationalId: null,
+    registrationNumber: null,
+    economicNumber: null,
+    legacyEconomicCode: null,
+    taxFileNumber: null
+  });
 });
 
 test("legal entity falls back to legal name when trade name is blank", () => {

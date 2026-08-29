@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–3 are completed. Steps 4–20 are not started.
+Phase 17 is active. Steps 1–4 are completed. Steps 5–20 are not started.
 
 ## Governance Rule
 
@@ -81,7 +81,7 @@ Full synchronization remains Phase 45.
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | Party Domain Model and Classification | Completed |
 | 3 | Party Roles and Lifecycle | Completed |
-| 4 | Identity, Registration, and Tax Information | Not started |
+| 4 | Identity, Registration, and Tax Information | Completed |
 | 5 | Contacts and Addresses | Not started |
 | 6 | Application and Repository Contracts | Not started |
 | 7 | Application Services and Duplicate Detection | Not started |
@@ -162,7 +162,18 @@ Evidence:
 
 Exit: identity/tax attributes and validations are deterministic and type-aware.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added `party-identity.ts` as a persistence-neutral Domain value-object boundary for Iranian identity, registration, and tax master data.
+- Natural-person identity supports national code, current economic number, and tax file number; legal-entity identity supports national identifier, registration number, current economic number, legacy 12-digit economic code, and tax file number.
+- Persian and Arabic-Indic digits are normalized to Latin digits and common spaces/hyphens are removed before validation.
+- Iranian natural-person national code validation includes exact 10-digit format, repeated-digit rejection, and modulo-11 checksum validation.
+- Iranian legal-entity national identifier validation includes exact 11-digit format, repeated-digit rejection, and the legal-identifier checksum calculation.
+- Current economic-number rules are type-aware: natural-person values are 14 digits and must begin with the national code when known; legal-entity values are 11 digits and must equal the national identifier when known. Legacy 12-digit economic codes are retained separately to prevent semantic mixing.
+- Identity profiles are attached to the natural/legal Party discriminated union while remaining optional at Party creation; absent identity data is represented deterministically with null fields rather than undefined persistence semantics.
+- Added stable identity error codes and focused tests for normalization, valid/invalid checksums, current/legacy economic numbers, registration/tax formats, mismatch detection, frozen identity snapshots, and aggregate integration.
+- Contact/address modeling remains Step 5; duplicate detection, SQLite uniqueness/indexes, Taxpayer System submission DTOs, and synchronization behavior remain deferred to their fixed later steps.
 
 ### Step 5 — Contacts and Addresses
 - Define phone, mobile, email, website, contact-person, and address value/child models.
@@ -344,3 +355,14 @@ pnpm --filter @argin/party test
 ```
 
 Step 3 remains Domain-only and intentionally introduces no SQLite, Tauri, React, network, tax-identity, or synchronization dependencies. Full monorepo validation remains mandatory in Step 18.
+
+## Step 4 Validation
+
+Focused validation commands for Iranian identity, registration, and tax master data:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+```
+
+Step 4 remains Domain-only. It does not add persistence uniqueness constraints, Taxpayer System submission contracts, contacts/addresses, or synchronization behavior; those remain assigned to later fixed steps.

@@ -22,3 +22,17 @@ export {
   type PartyRole,
   type PartyStatus
 } from "./domain/party.ts";
+
+export {
+  PartyIdentityError,
+  createLegalEntityIdentity,
+  createNaturalPersonIdentity,
+  isValidIranianLegalEntityNationalId,
+  isValidIranianNationalCode,
+  normalizeIranianIdentifier,
+  type LegalEntityIdentity,
+  type LegalEntityIdentityInput,
+  type NaturalPersonIdentity,
+  type NaturalPersonIdentityInput,
+  type PartyIdentityErrorCode
+} from "./domain/party-identity.ts";

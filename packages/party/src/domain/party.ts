@@ -1,3 +1,12 @@
+import {
+  createLegalEntityIdentity,
+  createNaturalPersonIdentity,
+  type LegalEntityIdentity,
+  type LegalEntityIdentityInput,
+  type NaturalPersonIdentity,
+  type NaturalPersonIdentityInput
+} from "./party-identity.ts";
+
 export const partyClassifications = [
   "natural-person",
   "legal-entity"
@@ -30,6 +39,7 @@ export interface NaturalPersonParty extends PartyBase {
   readonly firstName: string;
   readonly lastName: string;
   readonly displayName: string;
+  readonly identity: NaturalPersonIdentity;
 }
 
 export interface LegalEntityParty extends PartyBase {
@@ -37,6 +47,7 @@ export interface LegalEntityParty extends PartyBase {
   readonly legalName: string;
   readonly tradeName: string | null;
   readonly displayName: string;
+  readonly identity: LegalEntityIdentity;
 }
 
 export type Party = NaturalPersonParty | LegalEntityParty;
@@ -50,6 +61,7 @@ export interface CreateNaturalPersonPartyInput {
   readonly lastName: string;
   readonly createdAt: string;
   readonly roles?: readonly PartyRole[];
+  readonly identity?: NaturalPersonIdentityInput;
 }
 
 export interface CreateLegalEntityPartyInput {
@@ -61,6 +73,7 @@ export interface CreateLegalEntityPartyInput {
   readonly tradeName?: string | null;
   readonly createdAt: string;
   readonly roles?: readonly PartyRole[];
+  readonly identity?: LegalEntityIdentityInput;
 }
 
 export type CreatePartyInput =
@@ -104,6 +117,13 @@ export function isPartyRole(value: unknown): value is PartyRole {
     partyRoles.includes(value as PartyRole);
 }
 
+export function createParty(
+  input: CreateNaturalPersonPartyInput
+): NaturalPersonParty;
+export function createParty(
+  input: CreateLegalEntityPartyInput
+): LegalEntityParty;
+export function createParty(input: CreatePartyInput): Party;
 export function createParty(input: CreatePartyInput): Party {
   const id = requireText(input.id, "party.id.required", "Party id is required.");
   const companyId = requireText(
@@ -141,6 +161,7 @@ export function createParty(input: CreatePartyInput): Party {
       firstName,
       lastName,
       displayName: `${firstName} ${lastName}`,
+      identity: createNaturalPersonIdentity(input.identity),
       createdAt,
       updatedAt: createdAt
     });
@@ -163,6 +184,7 @@ export function createParty(input: CreatePartyInput): Party {
     legalName,
     tradeName,
     displayName: tradeName ?? legalName,
+    identity: createLegalEntityIdentity(input.identity),
     createdAt,
     updatedAt: createdAt
   });
