@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–5 are completed. Steps 6–20 are not started.
+Phase 17 is active. Steps 1–6 are completed. Steps 7–20 are not started.
 
 ## Governance Rule
 
@@ -83,7 +83,7 @@ Full synchronization remains Phase 45.
 | 3 | Party Roles and Lifecycle | Completed |
 | 4 | Identity, Registration, and Tax Information | Completed |
 | 5 | Contacts and Addresses | Completed |
-| 6 | Application and Repository Contracts | Not started |
+| 6 | Application and Repository Contracts | Completed |
 | 7 | Application Services and Duplicate Detection | Not started |
 | 8 | Migration, Schema, and Indexing | Not started |
 | 9 | SQLite Repository and Atomic Transactions | Not started |
@@ -203,7 +203,18 @@ Evidence:
 
 Exit: Party capabilities are consumable without React, Tauri, SQLite, or HTTP dependencies.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added persistence-neutral command contracts for natural/legal create/update operations, status changes, and role add/remove operations with explicit company/actor/correlation/request context.
+- Added company-scoped query contracts for detail lookup, paged list/search/filter/sort, and bounded selector lookup; no `findAll()` contract was introduced.
+- Added summary/detail/selector DTO contracts and a generic page result so presentation/API adapters are not forced to consume the Domain aggregate directly.
+- Split query reads (`PartyReader`) from aggregate writes (`PartyRepository`) to preserve CQRS-friendly adapter boundaries and efficient future SQLite/PostgreSQL query implementations.
+- Added a `PartyUnitOfWork` contract matching the repository's existing transaction pattern while remaining storage-neutral.
+- Added stable `PartyApplicationError` codes for not-found, code/identity conflicts, concurrency, permission denial, and invalid-query boundaries.
+- Mutation command contracts expose optional expected-version fields so optimistic concurrency can be enforced by later Application/SQLite implementations without changing the public command shape.
+- Added focused contract tests proving company-scoped paging shape, stable Application errors, and adapter-neutral Reader/Repository/Unit-of-Work assignability.
+- No Application service implementation, duplicate-detection algorithm, authorization enforcement, SQLite adapter, Tauri/React code, HTTP transport, or bridge implementation was added in this step.
 
 ### Step 7 — Application Services and Duplicate Detection
 - Implement create/update/activate/deactivate and role-management use cases.
@@ -389,3 +400,14 @@ pnpm --filter @argin/party test
 ```
 
 Step 5 remains Domain-only. It introduces no SQLite persistence, Application CRUD services, React/Tauri UI, or synchronization implementation; those remain assigned to later fixed steps.
+
+## Step 6 Validation
+
+Focused validation commands for Application and Repository contracts:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+```
+
+Step 6 defines interfaces/types and focused contract tests only. SQLite/PostgreSQL repositories, Application services, duplicate detection, authorization, transport adapters, and UI implementation remain assigned to later fixed steps.
