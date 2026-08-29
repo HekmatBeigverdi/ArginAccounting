@@ -91,7 +91,7 @@ export function updatePartyProfile(
         companyId: party.companyId,
         code: party.code,
         legalName: input.legalName,
-        tradeName: input.tradeName,
+        tradeName: input.tradeName ?? null,
         roles: party.roles,
         identity: input.identity,
         contacts: input.contacts,
