@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–7 are completed. Steps 8–20 are not started.
+Phase 17 is active. Steps 1–8 are completed. Steps 9–20 are not started.
 
 ## Governance Rule
 
@@ -85,7 +85,7 @@ Full synchronization remains Phase 45.
 | 5 | Contacts and Addresses | Completed |
 | 6 | Application and Repository Contracts | Completed |
 | 7 | Application Services and Duplicate Detection | Completed |
-| 8 | Migration, Schema, and Indexing | Not started |
+| 8 | Migration, Schema, and Indexing | Completed |
 | 9 | SQLite Repository and Atomic Transactions | Not started |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
 | 11 | Permissions, Audit, and Approval Integration | Not started |
@@ -245,7 +245,18 @@ Evidence:
 
 Exit: schema and migrations faithfully represent the accepted model and can be upgraded deterministically.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added `apps/desktop/src-tauri/migrations/0016_parties.sql` using the repository's existing numbered Tauri SQLite migration convention.
+- Added `parties`, `party_roles`, `party_contacts`, and `party_addresses` tables with stable TEXT identifiers, company-scoped ownership, Domain-aligned classification/status/role/contact/address checks, Iranian identity/tax field shape, Gregorian created/updated metadata, and `version >= 1` optimistic-concurrency storage.
+- Enforced company-scoped hard duplicate boundaries for Party code, national code, legal national identifier, and economic number while leaving display-name similarity advisory as defined by Step 7.
+- Added same-company composite foreign keys for Party child records and cascade deletion of child rows without introducing a Party deletion/tombstone business operation before Step 10.
+- Added partial unique indexes matching Domain primary-contact (`type + purpose`) and primary-address (`purpose`) invariants.
+- Added bounded reader/selector/duplicate-query indexes for company/status/name, classification/name, updated ordering, roles, contact lookup, and postal lookup.
+- Registered migration version 16 in the desktop Tauri migration registry.
+- Also registered the pre-existing Phase 16 `0015_accounting_report_indexes.sql`, which existed on disk but was missing from `database_migrations()`; this restores deterministic sequential registration without changing report behavior.
+- SQLite repository implementation, transaction orchestration, query adapters, optimistic update statements, and error mapping remain assigned to Step 9. Full tombstone/source/external-reference semantics remain assigned to Step 10.
 
 ### Step 9 — SQLite Repository and Atomic Transactions
 - Implement SQLite repository/read adapters and Unit of Work integration.
@@ -434,3 +445,16 @@ pnpm --filter @argin/party test
 ```
 
 Step 7 uses in-memory test adapters only. Concrete SQLite persistence, database uniqueness/index enforcement, authorization/audit integration, React/Tauri UI, Argin Bridge transport, and Phase 45 synchronization remain assigned to their fixed later steps.
+
+## Step 8 Validation
+
+Focused validation commands for the Party package plus desktop migration registry:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/desktop typecheck
+cd apps/desktop/src-tauri && cargo check
+```
+
+Step 8 adds schema/constraints/indexes and migration registration only. SQLite repository/read adapters, atomic transaction implementation, optimistic UPDATE statements, and database error mapping remain assigned to Step 9. Repository/migration behavior tests remain mandatory in Step 17.
