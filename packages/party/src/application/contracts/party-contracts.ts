@@ -35,6 +35,15 @@ export type {
   SortDirection
 } from "./party-queries.ts";
 
+export type {
+  PartyDuplicateAssessment,
+  PartyDuplicateCandidate,
+  PartyDuplicateLookup,
+  PartyDuplicateProbe,
+  PartyDuplicateReason,
+  PartyDuplicateSeverity
+} from "./party-duplicate.ts";
+
 export type { PartyReader } from "./party-reader.ts";
 export type { PartyRepository } from "./party-repository.ts";
 export type {

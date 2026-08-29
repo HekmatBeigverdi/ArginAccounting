@@ -61,6 +61,14 @@ export {
 } from "./domain/party-address.ts";
 
 export {
+  PartyProfileError,
+  updatePartyProfile,
+  type UpdateLegalEntityProfileInput,
+  type UpdateNaturalPersonProfileInput,
+  type UpdatePartyProfileInput
+} from "./domain/party-profile.ts";
+
+export {
   PartyApplicationError,
   type PartyApplicationErrorCode
 } from "./application/contracts/party-errors.ts";
@@ -97,9 +105,23 @@ export type {
   SortDirection
 } from "./application/contracts/party-queries.ts";
 
+export type {
+  PartyDuplicateAssessment,
+  PartyDuplicateCandidate,
+  PartyDuplicateLookup,
+  PartyDuplicateProbe,
+  PartyDuplicateReason,
+  PartyDuplicateSeverity
+} from "./application/contracts/party-duplicate.ts";
+
 export type { PartyReader } from "./application/contracts/party-reader.ts";
 export type { PartyRepository } from "./application/contracts/party-repository.ts";
 export type {
   PartyUnitOfWork,
   PartyUnitOfWorkRepositories
 } from "./application/contracts/party-unit-of-work.ts";
+
+export {
+  PartyApplicationService,
+  type PartyMutationResult
+} from "./application/party-service.ts";

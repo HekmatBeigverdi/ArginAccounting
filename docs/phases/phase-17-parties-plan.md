@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–6 are completed. Steps 7–20 are not started.
+Phase 17 is active. Steps 1–7 are completed. Steps 8–20 are not started.
 
 ## Governance Rule
 
@@ -84,7 +84,7 @@ Full synchronization remains Phase 45.
 | 4 | Identity, Registration, and Tax Information | Completed |
 | 5 | Contacts and Addresses | Completed |
 | 6 | Application and Repository Contracts | Completed |
-| 7 | Application Services and Duplicate Detection | Not started |
+| 7 | Application Services and Duplicate Detection | Completed |
 | 8 | Migration, Schema, and Indexing | Not started |
 | 9 | SQLite Repository and Atomic Transactions | Not started |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
@@ -224,7 +224,19 @@ Evidence:
 
 Exit: Party Application behavior is deterministic, authorization-ready, and duplicate-safe.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added `PartyApplicationService` for create, profile update, activate/deactivate, and role add/remove use cases using the persistence-neutral `PartyUnitOfWork`/`PartyRepository` contracts.
+- Added `PartyDuplicateLookup`, probe, candidate, severity, reason, and assessment contracts so duplicate detection can be implemented efficiently by SQLite in Step 9 and by future PostgreSQL/Bridge adapters without changing Application behavior.
+- Hard duplicate conflicts are limited to strong company-scoped identifiers: Party code and official identity/economic identifiers. Hard conflicts block mutation with stable Application error codes.
+- Display-name similarity is modeled as advisory duplicate evidence only; advisory matches are returned to callers and never silently block creation/update.
+- Update duplicate probes exclude the current Party id to prevent self-matching, and `expectedVersion` flows unchanged to the repository so Step 9 can enforce optimistic concurrency.
+- Added `updatePartyProfile` Domain behavior that preserves durable Party id, company scope, display code, roles, status, and creation timestamp while revalidating type-specific identity/contact/address data. Natural/legal classification changes through ordinary update are explicitly rejected.
+- Create retries using the same durable Party id are idempotent only when the normalized semantic payload matches the existing Party. A different payload using the same durable id returns `party.id.conflict` instead of overwriting data.
+- Repeated status/role operations reuse Domain no-op semantics and avoid redundant repository writes.
+- Added focused in-memory Application tests covering advisory duplicate acceptance, hard identity rejection, safe durable-id replay, conflicting replay rejection, self-excluding update duplicate probes, expected-version forwarding, classification immutability, and no-op write suppression.
+- SQLite uniqueness/index enforcement, concrete duplicate queries, authorization enforcement, audit emission, and cross-process idempotency storage remain assigned to their fixed later steps.
 
 ### Step 8 — Migration, Schema, and Indexing
 - Add versioned SQLite migrations for Party, roles, contacts, addresses, and required metadata.
@@ -411,3 +423,14 @@ pnpm --filter @argin/party test
 ```
 
 Step 6 defines interfaces/types and focused contract tests only. SQLite/PostgreSQL repositories, Application services, duplicate detection, authorization, transport adapters, and UI implementation remain assigned to later fixed steps.
+
+## Step 7 Validation
+
+Focused validation commands for Application services and duplicate detection:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+```
+
+Step 7 uses in-memory test adapters only. Concrete SQLite persistence, database uniqueness/index enforcement, authorization/audit integration, React/Tauri UI, Argin Bridge transport, and Phase 45 synchronization remain assigned to their fixed later steps.

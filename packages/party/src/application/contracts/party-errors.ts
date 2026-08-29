@@ -1,7 +1,9 @@
 export type PartyApplicationErrorCode =
   | "party.notFound"
+  | "party.id.conflict"
   | "party.code.conflict"
   | "party.identity.conflict"
+  | "party.classification.mismatch"
   | "party.concurrentModification"
   | "party.permissionDenied"
   | "party.invalidQuery";
