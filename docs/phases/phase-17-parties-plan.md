@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Step 1 is completed. Steps 2–20 are not started.
+Phase 17 is active. Steps 1–2 are completed. Steps 3–20 are not started.
 
 ## Governance Rule
 
@@ -79,7 +79,7 @@ Full synchronization remains Phase 45.
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
-| 2 | Party Domain Model and Classification | Not started |
+| 2 | Party Domain Model and Classification | Completed |
 | 3 | Party Roles and Lifecycle | Not started |
 | 4 | Identity, Registration, and Tax Information | Not started |
 | 5 | Contacts and Addresses | Not started |
@@ -124,7 +124,16 @@ Evidence:
 
 Exit: the Party aggregate and classification model are explicit and covered by focused Domain tests.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added the independent `@argin/party` bounded-context package scaffold using the repository's strict TypeScript conventions.
+- Added `packages/party/src/domain/party.ts` with a persistence-neutral Party aggregate model, stable string identity, explicit `companyId` scope, display `code`, initial `active` status, Gregorian created/updated timestamps, and frozen aggregate snapshots.
+- Natural persons and legal entities are modeled as a discriminated union (`natural-person` / `legal-entity`) so type-specific names cannot be mixed accidentally.
+- Natural-person display names are derived from normalized first/last names; legal-entity display names prefer normalized trade name and fall back to legal name.
+- Added stable Domain error codes for required aggregate identity, company scope, display code, type-specific names, and creation timestamp validation.
+- Added focused Domain tests covering classification guards, normalization, company scope, initial status, display-name semantics, frozen snapshots, required invariants, and invalid timestamps.
+- Customer/Supplier roles, activation/deactivation transitions, identity/tax fields, contacts/addresses, persistence, and synchronization behavior remain intentionally deferred to their frozen later steps.
 
 ### Step 3 — Party Roles and Lifecycle
 - Define reusable roles such as Customer, Supplier, and future-compatible additional roles.
@@ -303,3 +312,14 @@ Any requested change to the frozen sequence, titles, scope, or architectural com
 ## Step 1 Validation
 
 Step 1 is documentation/branch setup only. No code behavior was added, so no package test/build run is required for this step. Repository validation begins with implementation-bearing steps and is mandatory before phase completion.
+
+## Step 2 Validation
+
+Focused validation commands for the implemented Domain boundary:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+```
+
+The implementation is intentionally persistence-neutral and does not require SQLite, Tauri, Desktop, or network integration validation in Step 2. Full repository validation remains mandatory in Step 18.
