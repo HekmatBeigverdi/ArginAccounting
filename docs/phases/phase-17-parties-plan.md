@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–2 are completed. Steps 3–20 are not started.
+Phase 17 is active. Steps 1–3 are completed. Steps 4–20 are not started.
 
 ## Governance Rule
 
@@ -34,7 +34,7 @@ Deliver the canonical Master Data model and desktop workflow for Parties in Argi
 
 ## Scope Boundaries
 
-Included: Party aggregate and types, natural/legal person identity, Iranian registration/tax identifiers, Party roles, lifecycle, contacts, addresses, duplicate detection, Application contracts/services, SQLite schema/repository, atomic writes, optimistic concurrency, permissions/audit integration, future Approval hooks where justified, bulk Excel/CSV import/export, Persian RTL desktop Party management, reusable Party selector contracts, integration boundaries for later Sales/Purchases/Treasury modules, tests, performance validation, documentation, merge, and release.
+Included: Party aggregate and types, natural/legal person identity, Iranian registration/tax identifiers, Party roles, lifecycle, contacts, addresses, duplicate detection, Application contracts/services, SQLite schema/repository, atomic writes, optimistic concurrency, permissions/audit integration, future Approval hooks where justified, bulk Excel/CSV import/export, Persian RTL desktop Party management, reusable Party selectors, integration boundaries for later Sales/Purchases/Treasury modules, tests, performance validation, documentation, merge, and release.
 
 Excluded: customer/supplier accounting balances, opening balances, sales/purchase documents, cheque/receivable behavior, bank operations, inventory ownership, posting rules, automatic journal posting, full PostgreSQL/Web implementation, active network synchronization, conflict-resolution UI, and the Phase 45 Synchronization engine.
 
@@ -80,7 +80,7 @@ Full synchronization remains Phase 45.
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | Party Domain Model and Classification | Completed |
-| 3 | Party Roles and Lifecycle | Not started |
+| 3 | Party Roles and Lifecycle | Completed |
 | 4 | Identity, Registration, and Tax Information | Not started |
 | 5 | Contacts and Addresses | Not started |
 | 6 | Application and Repository Contracts | Not started |
@@ -143,7 +143,17 @@ Evidence:
 
 Exit: role and lifecycle rules prevent duplicated Customer/Supplier master records and invalid transitions.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added explicit `customer` and `supplier` Party roles as reusable Domain classifications independent of natural/legal Party classification.
+- Party creation accepts zero, one, or multiple roles; duplicate roles are normalized so one master Party can safely act as both Customer and Supplier.
+- Added immutable `addPartyRole` and `removePartyRole` transitions. Repeated add of an existing role and repeated removal of an absent role are safe no-ops and do not create unnecessary aggregate revisions.
+- Added immutable `activateParty` and `deactivateParty` lifecycle transitions with safe repeated-state no-ops.
+- Mutation timestamps are validated and cannot move backwards relative to the aggregate's current `updatedAt`.
+- Added `assessPartyMergeBoundary` to explicitly reject self-merge and cross-company merge while allowing only a same-company candidate assessment; no destructive merge implementation was introduced.
+- Added focused tests covering role guards, multi-role Party semantics, duplicate role normalization, immutable add/remove operations, activation/deactivation, timestamp invariants, and merge boundaries.
+- Identity/tax fields, duplicate-candidate detection heuristics, persistence, tombstone deletion semantics, and synchronization remain deferred to their fixed later steps.
 
 ### Step 4 — Identity, Registration, and Tax Information
 - Model Iranian national ID, legal national identifier, registration number, economic/tax identifiers, and related metadata.
@@ -323,3 +333,14 @@ pnpm --filter @argin/party test
 ```
 
 The implementation is intentionally persistence-neutral and does not require SQLite, Tauri, Desktop, or network integration validation in Step 2. Full repository validation remains mandatory in Step 18.
+
+## Step 3 Validation
+
+Focused validation commands for Party roles and lifecycle:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+```
+
+Step 3 remains Domain-only and intentionally introduces no SQLite, Tauri, React, network, tax-identity, or synchronization dependencies. Full monorepo validation remains mandatory in Step 18.

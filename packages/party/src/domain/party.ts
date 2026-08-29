@@ -8,11 +8,19 @@ export type PartyClassification =
 
 export type PartyStatus = "active" | "inactive";
 
+export const partyRoles = [
+  "customer",
+  "supplier"
+] as const;
+
+export type PartyRole = (typeof partyRoles)[number];
+
 export interface PartyBase {
   readonly id: string;
   readonly companyId: string;
   readonly code: string;
   readonly status: PartyStatus;
+  readonly roles: readonly PartyRole[];
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -41,6 +49,7 @@ export interface CreateNaturalPersonPartyInput {
   readonly firstName: string;
   readonly lastName: string;
   readonly createdAt: string;
+  readonly roles?: readonly PartyRole[];
 }
 
 export interface CreateLegalEntityPartyInput {
@@ -51,11 +60,17 @@ export interface CreateLegalEntityPartyInput {
   readonly legalName: string;
   readonly tradeName?: string | null;
   readonly createdAt: string;
+  readonly roles?: readonly PartyRole[];
 }
 
 export type CreatePartyInput =
   | CreateNaturalPersonPartyInput
   | CreateLegalEntityPartyInput;
+
+export interface PartyMergeBoundary {
+  readonly allowed: boolean;
+  readonly reason: "same-party" | "cross-company" | null;
+}
 
 export class PartyDomainError extends Error {
   constructor(
@@ -66,7 +81,10 @@ export class PartyDomainError extends Error {
       | "party.firstName.required"
       | "party.lastName.required"
       | "party.legalName.required"
-      | "party.createdAt.invalid",
+      | "party.createdAt.invalid"
+      | "party.updatedAt.invalid"
+      | "party.updatedAt.beforeCurrent"
+      | "party.role.invalid",
     message: string
   ) {
     super(message);
@@ -81,6 +99,11 @@ export function isPartyClassification(
     partyClassifications.includes(value as PartyClassification);
 }
 
+export function isPartyRole(value: unknown): value is PartyRole {
+  return typeof value === "string" &&
+    partyRoles.includes(value as PartyRole);
+}
+
 export function createParty(input: CreatePartyInput): Party {
   const id = requireText(input.id, "party.id.required", "Party id is required.");
   const companyId = requireText(
@@ -93,7 +116,8 @@ export function createParty(input: CreatePartyInput): Party {
     "party.code.required",
     "Party display code is required."
   );
-  const createdAt = requireTimestamp(input.createdAt);
+  const createdAt = requireTimestamp(input.createdAt, "createdAt");
+  const roles = normalizeRoles(input.roles ?? []);
 
   if (input.classification === "natural-person") {
     const firstName = requireText(
@@ -107,11 +131,12 @@ export function createParty(input: CreatePartyInput): Party {
       "Natural-person last name is required."
     );
 
-    return Object.freeze({
+    return freezeParty({
       id,
       companyId,
       code,
       status: "active",
+      roles,
       classification: input.classification,
       firstName,
       lastName,
@@ -128,11 +153,12 @@ export function createParty(input: CreatePartyInput): Party {
   );
   const tradeName = normalizeOptionalText(input.tradeName);
 
-  return Object.freeze({
+  return freezeParty({
     id,
     companyId,
     code,
     status: "active",
+    roles,
     classification: input.classification,
     legalName,
     tradeName,
@@ -140,6 +166,87 @@ export function createParty(input: CreatePartyInput): Party {
     createdAt,
     updatedAt: createdAt
   });
+}
+
+export function addPartyRole(
+  party: Party,
+  role: PartyRole,
+  updatedAt: string
+): Party {
+  if (!isPartyRole(role)) {
+    throw new PartyDomainError(
+      "party.role.invalid",
+      `Unsupported Party role: ${String(role)}`
+    );
+  }
+
+  if (party.roles.includes(role)) {
+    return party;
+  }
+
+  return replaceParty(party, {
+    roles: normalizeRoles([...party.roles, role]),
+    updatedAt: requireMutationTimestamp(party, updatedAt)
+  });
+}
+
+export function removePartyRole(
+  party: Party,
+  role: PartyRole,
+  updatedAt: string
+): Party {
+  if (!isPartyRole(role)) {
+    throw new PartyDomainError(
+      "party.role.invalid",
+      `Unsupported Party role: ${String(role)}`
+    );
+  }
+
+  if (!party.roles.includes(role)) {
+    return party;
+  }
+
+  return replaceParty(party, {
+    roles: party.roles.filter((currentRole) => currentRole !== role),
+    updatedAt: requireMutationTimestamp(party, updatedAt)
+  });
+}
+
+export function activateParty(party: Party, updatedAt: string): Party {
+  if (party.status === "active") {
+    return party;
+  }
+
+  return replaceParty(party, {
+    status: "active",
+    updatedAt: requireMutationTimestamp(party, updatedAt)
+  });
+}
+
+export function deactivateParty(party: Party, updatedAt: string): Party {
+  if (party.status === "inactive") {
+    return party;
+  }
+
+  return replaceParty(party, {
+    status: "inactive",
+    updatedAt: requireMutationTimestamp(party, updatedAt)
+  });
+}
+
+export function assessPartyMergeBoundary(
+  source: Party,
+  target: Party
+): PartyMergeBoundary {
+  if (source.id === target.id) {
+    return Object.freeze({ allowed: false, reason: "same-party" });
+  }
+
+  if (source.companyId !== target.companyId) {
+    return Object.freeze({ allowed: false, reason: "cross-company" });
+  }
+
+  return Object.freeze({ allowed: true, reason: null });
 }
 
 function requireText<TCode extends PartyDomainError["code"]>(
@@ -163,13 +270,61 @@ function normalizeOptionalText(value: string | null | undefined): string | null 
   return normalized.length > 0 ? normalized : null;
 }
 
-function requireTimestamp(value: string): string {
+function normalizeRoles(roles: readonly PartyRole[]): readonly PartyRole[] {
+  const normalized: PartyRole[] = [];
+
+  for (const role of roles) {
+    if (!isPartyRole(role)) {
+      throw new PartyDomainError(
+        "party.role.invalid",
+        `Unsupported Party role: ${String(role)}`
+      );
+    }
+    if (!normalized.includes(role)) {
+      normalized.push(role);
+    }
+  }
+
+  return Object.freeze(normalized);
+}
+
+function requireTimestamp(
+  value: string,
+  field: "createdAt" | "updatedAt"
+): string {
   const normalized = value.trim();
   if (normalized.length === 0 || Number.isNaN(Date.parse(normalized))) {
     throw new PartyDomainError(
-      "party.createdAt.invalid",
-      "Party createdAt must be a valid timestamp."
+      field === "createdAt"
+        ? "party.createdAt.invalid"
+        : "party.updatedAt.invalid",
+      `Party ${field} must be a valid timestamp.`
     );
   }
   return normalized;
+}
+
+function requireMutationTimestamp(party: Party, value: string): string {
+  const updatedAt = requireTimestamp(value, "updatedAt");
+  if (Date.parse(updatedAt) < Date.parse(party.updatedAt)) {
+    throw new PartyDomainError(
+      "party.updatedAt.beforeCurrent",
+      "Party updatedAt cannot move backwards."
+    );
+  }
+  return updatedAt;
+}
+
+function replaceParty(
+  party: Party,
+  patch: Partial<Pick<PartyBase, "status" | "roles" | "updatedAt">>
+): Party {
+  return freezeParty({ ...party, ...patch } as Party);
+}
+
+function freezeParty<TParty extends Party>(party: TParty): TParty {
+  if (!Object.isFrozen(party.roles)) {
+    Object.freeze(party.roles);
+  }
+  return Object.freeze(party);
 }
