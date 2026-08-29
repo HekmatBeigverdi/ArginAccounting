@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–4 are completed. Steps 5–20 are not started.
+Phase 17 is active. Steps 1–5 are completed. Steps 6–20 are not started.
 
 ## Governance Rule
 
@@ -82,7 +82,7 @@ Full synchronization remains Phase 45.
 | 2 | Party Domain Model and Classification | Completed |
 | 3 | Party Roles and Lifecycle | Completed |
 | 4 | Identity, Registration, and Tax Information | Completed |
-| 5 | Contacts and Addresses | Not started |
+| 5 | Contacts and Addresses | Completed |
 | 6 | Application and Repository Contracts | Not started |
 | 7 | Application Services and Duplicate Detection | Not started |
 | 8 | Migration, Schema, and Indexing | Not started |
@@ -182,7 +182,19 @@ Evidence:
 
 Exit: Party contact/address information is normalized, reusable, and persistence-neutral.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added persistence-neutral `party-contact.ts` and `party-address.ts` Domain child/value models and exported them from `@argin/party`.
+- Contact types include phone, mobile, email, and website; purposes include general, sales, purchasing, accounting, management, and other, with optional contact-person and title metadata.
+- Phone/mobile values normalize Persian and Arabic-Indic digits, whitespace, parentheses, and hyphens; emails normalize case; website values normalize an omitted scheme to HTTPS and validate host shape.
+- Party addresses support registered, billing, shipping, operational, postal, and other purposes plus province, city, district, free address line, Iranian 10-digit postal code, and explicit primary semantics.
+- Persian/Arabic postal digits and common separators normalize deterministically without embedding UI presentation rules in Domain logic.
+- Contacts and addresses are attached to the Party aggregate as frozen collections. Duplicate child IDs are rejected.
+- At most one primary contact is permitted per contact `type + purpose`, and at most one primary address is permitted per address purpose; multiple contacts/addresses across different purposes remain supported.
+- Added focused tests for contact normalization/validation, contact-person metadata, address/postal normalization, multiple children, frozen aggregate collections, duplicate child IDs, and primary-address invariants.
+- Updated the Step 2 aggregate regression snapshot for deterministic empty contact/address collections so the expanded aggregate does not silently break earlier Domain coverage.
+- Repository persistence, CRUD mutation services, SQLite constraints, and UI formatting remain deferred to their fixed later steps.
 
 ### Step 6 — Application and Repository Contracts
 - Define Commands, Queries, DTOs, readers/repositories, paging, sorting, filtering, lookup, and selector contracts.
@@ -366,3 +378,14 @@ pnpm --filter @argin/party test
 ```
 
 Step 4 remains Domain-only. It does not add persistence uniqueness constraints, Taxpayer System submission contracts, contacts/addresses, or synchronization behavior; those remain assigned to later fixed steps.
+
+## Step 5 Validation
+
+Focused validation commands for Party contact/address models and aggregate integration:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+```
+
+Step 5 remains Domain-only. It introduces no SQLite persistence, Application CRUD services, React/Tauri UI, or synchronization implementation; those remain assigned to later fixed steps.

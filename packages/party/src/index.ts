@@ -36,3 +36,26 @@ export {
   type NaturalPersonIdentityInput,
   type PartyIdentityErrorCode
 } from "./domain/party-identity.ts";
+
+export {
+  PartyContactError,
+  createPartyContact,
+  normalizePartyContactValue,
+  partyContactPurposes,
+  partyContactTypes,
+  type PartyContact,
+  type PartyContactErrorCode,
+  type PartyContactInput,
+  type PartyContactPurpose,
+  type PartyContactType
+} from "./domain/party-contact.ts";
+
+export {
+  PartyAddressError,
+  createPartyAddress,
+  partyAddressPurposes,
+  type PartyAddress,
+  type PartyAddressErrorCode,
+  type PartyAddressInput,
+  type PartyAddressPurpose
+} from "./domain/party-address.ts";

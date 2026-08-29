@@ -47,6 +47,8 @@ test("creates a company-scoped natural-person party with normalized name and act
     code: "P-1001",
     status: "active",
     roles: [],
+    contacts: [],
+    addresses: [],
     firstName: "علی",
     lastName: "رضایی",
     displayName: "علی رضایی",
@@ -60,6 +62,8 @@ test("creates a company-scoped natural-person party with normalized name and act
   });
   assert.equal(Object.isFrozen(party), true);
   assert.equal(Object.isFrozen(party.roles), true);
+  assert.equal(Object.isFrozen(party.contacts), true);
+  assert.equal(Object.isFrozen(party.addresses), true);
   assert.equal(Object.isFrozen(party.identity), true);
 });
 
@@ -117,36 +121,20 @@ test("adds and removes roles immutably while keeping duplicate operations safe",
     createdAt: "2026-08-29T08:00:00.000Z"
   });
 
-  const withSupplier = addPartyRole(
-    original,
-    "supplier",
-    "2026-08-29T08:10:00.000Z"
-  );
+  const withSupplier = addPartyRole(original, "supplier", "2026-08-29T08:10:00.000Z");
   assert.notEqual(withSupplier, original);
   assert.deepEqual(withSupplier.roles, ["customer", "supplier"]);
   assert.equal(withSupplier.updatedAt, "2026-08-29T08:10:00.000Z");
   assert.deepEqual(original.roles, ["customer"]);
 
-  const duplicateAdd = addPartyRole(
-    withSupplier,
-    "supplier",
-    "2026-08-29T08:20:00.000Z"
-  );
+  const duplicateAdd = addPartyRole(withSupplier, "supplier", "2026-08-29T08:20:00.000Z");
   assert.equal(duplicateAdd, withSupplier);
 
-  const withoutCustomer = removePartyRole(
-    withSupplier,
-    "customer",
-    "2026-08-29T08:30:00.000Z"
-  );
+  const withoutCustomer = removePartyRole(withSupplier, "customer", "2026-08-29T08:30:00.000Z");
   assert.deepEqual(withoutCustomer.roles, ["supplier"]);
   assert.equal(withoutCustomer.updatedAt, "2026-08-29T08:30:00.000Z");
 
-  const missingRemove = removePartyRole(
-    withoutCustomer,
-    "customer",
-    "2026-08-29T08:40:00.000Z"
-  );
+  const missingRemove = removePartyRole(withoutCustomer, "customer", "2026-08-29T08:40:00.000Z");
   assert.equal(missingRemove, withoutCustomer);
 });
 
@@ -165,23 +153,14 @@ test("deactivates and reactivates Party with safe repeated transitions", () => {
   assert.equal(inactive.status, "inactive");
   assert.equal(inactive.updatedAt, "2026-08-29T09:10:00.000Z");
 
-  const duplicateDeactivate = deactivateParty(
-    inactive,
-    "2026-08-29T09:20:00.000Z"
-  );
+  const duplicateDeactivate = deactivateParty(inactive, "2026-08-29T09:20:00.000Z");
   assert.equal(duplicateDeactivate, inactive);
 
-  const reactivated = activateParty(
-    inactive,
-    "2026-08-29T09:30:00.000Z"
-  );
+  const reactivated = activateParty(inactive, "2026-08-29T09:30:00.000Z");
   assert.equal(reactivated.status, "active");
   assert.equal(reactivated.updatedAt, "2026-08-29T09:30:00.000Z");
 
-  const duplicateActivate = activateParty(
-    reactivated,
-    "2026-08-29T09:40:00.000Z"
-  );
+  const duplicateActivate = activateParty(reactivated, "2026-08-29T09:40:00.000Z");
   assert.equal(duplicateActivate, reactivated);
 });
 
@@ -198,9 +177,7 @@ test("prevents mutation timestamps from moving backwards", () => {
 
   assert.throws(
     () => addPartyRole(party, "customer", "2026-08-29T09:59:59.000Z"),
-    (error: unknown) =>
-      error instanceof PartyDomainError &&
-      error.code === "party.updatedAt.beforeCurrent"
+    (error: unknown) => error instanceof PartyDomainError && error.code === "party.updatedAt.beforeCurrent"
   );
 });
 
@@ -231,88 +208,24 @@ test("defines merge boundaries without performing destructive merge", () => {
     createdAt: "2026-08-29T11:02:00.000Z"
   });
 
-  assert.deepEqual(assessPartyMergeBoundary(source, source), {
-    allowed: false,
-    reason: "same-party"
-  });
-  assert.deepEqual(assessPartyMergeBoundary(source, otherCompanyTarget), {
-    allowed: false,
-    reason: "cross-company"
-  });
-  assert.deepEqual(assessPartyMergeBoundary(source, sameCompanyTarget), {
-    allowed: true,
-    reason: null
-  });
+  assert.deepEqual(assessPartyMergeBoundary(source, source), { allowed: false, reason: "same-party" });
+  assert.deepEqual(assessPartyMergeBoundary(source, otherCompanyTarget), { allowed: false, reason: "cross-company" });
+  assert.deepEqual(assessPartyMergeBoundary(source, sameCompanyTarget), { allowed: true, reason: null });
 });
 
 test("rejects missing aggregate identity, company scope, display code, and type-specific names", () => {
   const cases = [
-    {
-      input: {
-        classification: "natural-person" as const,
-        id: " ",
-        companyId: "company-001",
-        code: "P-1",
-        firstName: "علی",
-        lastName: "رضایی",
-        createdAt: "2026-08-29T07:00:00.000Z"
-      },
-      code: "party.id.required"
-    },
-    {
-      input: {
-        classification: "natural-person" as const,
-        id: "party-1",
-        companyId: " ",
-        code: "P-1",
-        firstName: "علی",
-        lastName: "رضایی",
-        createdAt: "2026-08-29T07:00:00.000Z"
-      },
-      code: "party.companyId.required"
-    },
-    {
-      input: {
-        classification: "natural-person" as const,
-        id: "party-1",
-        companyId: "company-001",
-        code: " ",
-        firstName: "علی",
-        lastName: "رضایی",
-        createdAt: "2026-08-29T07:00:00.000Z"
-      },
-      code: "party.code.required"
-    },
-    {
-      input: {
-        classification: "natural-person" as const,
-        id: "party-1",
-        companyId: "company-001",
-        code: "P-1",
-        firstName: " ",
-        lastName: "رضایی",
-        createdAt: "2026-08-29T07:00:00.000Z"
-      },
-      code: "party.firstName.required"
-    },
-    {
-      input: {
-        classification: "legal-entity" as const,
-        id: "party-2",
-        companyId: "company-001",
-        code: "P-2",
-        legalName: " ",
-        createdAt: "2026-08-29T07:00:00.000Z"
-      },
-      code: "party.legalName.required"
-    }
+    { input: { classification: "natural-person" as const, id: " ", companyId: "company-001", code: "P-1", firstName: "علی", lastName: "رضایی", createdAt: "2026-08-29T07:00:00.000Z" }, code: "party.id.required" },
+    { input: { classification: "natural-person" as const, id: "party-1", companyId: " ", code: "P-1", firstName: "علی", lastName: "رضایی", createdAt: "2026-08-29T07:00:00.000Z" }, code: "party.companyId.required" },
+    { input: { classification: "natural-person" as const, id: "party-1", companyId: "company-001", code: " ", firstName: "علی", lastName: "رضایی", createdAt: "2026-08-29T07:00:00.000Z" }, code: "party.code.required" },
+    { input: { classification: "natural-person" as const, id: "party-1", companyId: "company-001", code: "P-1", firstName: " ", lastName: "رضایی", createdAt: "2026-08-29T07:00:00.000Z" }, code: "party.firstName.required" },
+    { input: { classification: "legal-entity" as const, id: "party-2", companyId: "company-001", code: "P-2", legalName: " ", createdAt: "2026-08-29T07:00:00.000Z" }, code: "party.legalName.required" }
   ];
 
   for (const item of cases) {
     assert.throws(
       () => createParty(item.input),
-      (error: unknown) =>
-        error instanceof PartyDomainError && error.code === item.code
+      (error: unknown) => error instanceof PartyDomainError && error.code === item.code
     );
   }
 });
@@ -328,8 +241,6 @@ test("rejects invalid createdAt timestamps", () => {
       lastName: "احمدی",
       createdAt: "not-a-date"
     }),
-    (error: unknown) =>
-      error instanceof PartyDomainError &&
-      error.code === "party.createdAt.invalid"
+    (error: unknown) => error instanceof PartyDomainError && error.code === "party.createdAt.invalid"
   );
 });
