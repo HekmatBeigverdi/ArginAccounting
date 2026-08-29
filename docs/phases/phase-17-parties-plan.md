@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–8 are completed. Steps 9–20 are not started.
+Phase 17 is active. Steps 1–9 are completed. Steps 10–20 are not started.
 
 ## Governance Rule
 
@@ -86,7 +86,7 @@ Full synchronization remains Phase 45.
 | 6 | Application and Repository Contracts | Completed |
 | 7 | Application Services and Duplicate Detection | Completed |
 | 8 | Migration, Schema, and Indexing | Completed |
-| 9 | SQLite Repository and Atomic Transactions | Not started |
+| 9 | SQLite Repository and Atomic Transactions | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
 | 11 | Permissions, Audit, and Approval Integration | Not started |
 | 12 | Bulk Import and Export | Not started |
@@ -266,7 +266,19 @@ Evidence:
 
 Exit: SQLite persistence matches Application semantics with focused repository tests.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added the dedicated `@argin/party-tauri` SQLite adapter package, preserving the established bounded-context / `*-tauri` separation used by Company, Accounting, Fiscal, Security, Audit, and Platform infrastructure.
+- Added `SqlitePartyRepository` persistence for Party parent rows plus role/contact/address child tables. Aggregate reads remain company-scoped and hydrate one aggregate with bounded child queries rather than exposing an unbounded `findAll()` path.
+- Added `SqlitePartyUnitOfWork` directly on the shared `DatabaseExecutor.transaction()` contract. Party parent/role/contact/address writes therefore share one transaction session and roll back together when the Application service fails.
+- Added optimistic `UPDATE ... WHERE company_id = ? AND id = ? AND version = ?` behavior when `expectedVersion` is supplied, increments `version` on every successful mutation, and distinguishes missing Party from stale-version conflict using stable `party.notFound` / `party.concurrentModification` errors.
+- Child rows are replaced only after the optimistic parent update succeeds, preventing stale writers from deleting or replacing current child data.
+- Added SQLite constraint error mapping for durable-id, company-scoped Party code, and official identity uniqueness so race conditions between Application duplicate-check and database write return stable `party.id.conflict`, `party.code.conflict`, or `party.identity.conflict` errors instead of leaking raw SQLite errors.
+- Added `SqlitePartyReader` with company-scoped detail reads, SQL-level paging/filtering/sorting, bounded selector limits, role filtering via `EXISTS`, and summary projections that avoid loading all Party aggregates into memory.
+- Added `SqlitePartyDuplicateLookup` using indexed company/code/national-code/national-id/economic-number predicates for hard conflicts and bounded same-classification display-name lookup for advisory duplicate candidates.
+- Added focused adapter tests covering atomic Unit of Work usage, multi-table insert participation, stale-version detection before child replacement, missing-vs-concurrent error mapping, SQL-level page limits/offsets, role filtering, and selector bound enforcement.
+- Authorization/audit enforcement remains Step 11; Argin Bridge/tombstone/source/external-reference semantics remain Step 10; broader real-SQLite migration/repository regression coverage remains Step 17.
 
 ### Step 10 — Argin Bridge and Future Synchronization Contract
 - Formalize stable cross-database Party identity and display-number separation.
@@ -458,3 +470,17 @@ cd apps/desktop/src-tauri && cargo check
 ```
 
 Step 8 adds schema/constraints/indexes and migration registration only. SQLite repository/read adapters, atomic transaction implementation, optimistic UPDATE statements, and database error mapping remain assigned to Step 9. Repository/migration behavior tests remain mandatory in Step 17.
+
+## Step 9 Validation
+
+Focused validation commands for the SQLite Party adapter and its Application contracts:
+
+```bash
+pnpm install
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/party-tauri typecheck
+pnpm --filter @argin/party-tauri test
+```
+
+`pnpm install` is included because Step 9 introduces the new workspace package `@argin/party-tauri`; it refreshes the workspace links and lockfile importer locally. Step 9 focused tests use a deterministic database test double to validate transaction participation, concurrency/error behavior, and bounded query construction. Full real-SQLite migration/repository/rollback coverage remains mandatory in Step 17, and full monorepo validation remains mandatory in Step 18.
