@@ -32,6 +32,7 @@ import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Feedback } from "../../components/feedback";
 import { Field, Select } from "../../components/forms";
 import { Page } from "../../components/layout";
+import { PartyImportDialog } from "./party-import-dialog";
 
 import "./parties-page.css";
 
@@ -239,6 +240,7 @@ export function PartiesPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const permissionSet = useMemo(
     () => new Set(session?.user.permissions ?? []),
@@ -589,14 +591,24 @@ export function PartiesPage() {
             مدیریت یکپارچه اشخاص حقیقی و حقوقی با نقش مشتری و تأمین‌کننده
           </p>
         </div>
-        <button
-          className="party-button party-button--primary"
-          type="button"
-          onClick={startCreate}
-          disabled={!active.companyId || !can(partyPermissions.create)}
-        >
-          شخص جدید
-        </button>
+        <div className="parties-page__header-actions">
+          <button
+            className="party-button"
+            type="button"
+            onClick={() => setImportOpen(true)}
+            disabled={!active.companyId || !can(partyPermissions.import)}
+          >
+            ورود گروهی
+          </button>
+          <button
+            className="party-button party-button--primary"
+            type="button"
+            onClick={startCreate}
+            disabled={!active.companyId || !can(partyPermissions.create)}
+          >
+            شخص جدید
+          </button>
+        </div>
       </header>
 
       {!active.companyId && (
@@ -718,29 +730,12 @@ export function PartiesPage() {
                       }}
                     >
                       <td>{item.code}</td>
+                      <td><strong>{item.displayName}</strong></td>
+                      <td>{item.classification === "natural-person" ? "حقیقی" : "حقوقی"}</td>
+                      <td>{item.roles.length === 0 ? "—" : item.roles.map(roleLabel).join("، ")}</td>
+                      <td dir="ltr">{item.primaryMobile ?? item.primaryPhone ?? item.primaryEmail ?? "—"}</td>
                       <td>
-                        <strong>{item.displayName}</strong>
-                      </td>
-                      <td>
-                        {item.classification === "natural-person"
-                          ? "حقیقی"
-                          : "حقوقی"}
-                      </td>
-                      <td>
-                        {item.roles.length === 0
-                          ? "—"
-                          : item.roles.map(roleLabel).join("، ")}
-                      </td>
-                      <td dir="ltr">
-                        {item.primaryMobile ??
-                          item.primaryPhone ??
-                          item.primaryEmail ??
-                          "—"}
-                      </td>
-                      <td>
-                        <span
-                          className={`party-status party-status--${item.status}`}
-                        >
+                        <span className={`party-status party-status--${item.status}`}>
                           {item.status === "active" ? "فعال" : "غیرفعال"}
                         </span>
                       </td>
@@ -752,42 +747,19 @@ export function PartiesPage() {
           )}
           <footer className="party-pagination">
             <span>{totalItems.toLocaleString("fa-IR")} رکورد</span>
-            <button
-              type="button"
-              onClick={() => setPage((value) => Math.max(1, value - 1))}
-              disabled={page <= 1}
-            >
-              قبلی
-            </button>
-            <span>
-              صفحه {page.toLocaleString("fa-IR")} از{" "}
-              {Math.max(totalPages, 1).toLocaleString("fa-IR")}
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                setPage((value) =>
-                  Math.min(Math.max(totalPages, 1), value + 1),
-                )
-              }
-              disabled={totalPages === 0 || page >= totalPages}
-            >
-              بعدی
-            </button>
+            <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page <= 1}>قبلی</button>
+            <span>صفحه {page.toLocaleString("fa-IR")} از {Math.max(totalPages, 1).toLocaleString("fa-IR")}</span>
+            <button type="button" onClick={() => setPage((value) => Math.min(Math.max(totalPages, 1), value + 1))} disabled={totalPages === 0 || page >= totalPages}>بعدی</button>
           </footer>
         </section>
 
         <aside className="party-detail-panel" aria-label="جزئیات شخص">
           {detailLoading ? (
-            <div className="party-state" role="status">
-              در حال دریافت جزئیات…
-            </div>
+            <div className="party-state" role="status">در حال دریافت جزئیات…</div>
           ) : !detail ? (
             <div className="party-state">
               <strong>یک شخص را انتخاب کنید.</strong>
-              <span>
-                جزئیات، اطلاعات هویتی و تماس در این بخش نمایش داده می‌شود.
-              </span>
+              <span>جزئیات، اطلاعات هویتی و تماس در این بخش نمایش داده می‌شود.</span>
             </div>
           ) : (
             <>
@@ -797,118 +769,33 @@ export function PartiesPage() {
                   <h2>{detail.displayName}</h2>
                 </div>
                 <div className="party-detail-panel__actions">
-                  <button
-                    type="button"
-                    className="party-button"
-                    onClick={startEdit}
-                    disabled={!can(partyPermissions.update)}
-                  >
-                    ویرایش
-                  </button>
-                  <button
-                    type="button"
-                    className="party-button"
-                    onClick={() => void toggleStatus()}
-                    disabled={saving || !can(partyPermissions.changeStatus)}
-                  >
-                    {detail.status === "active"
-                      ? "غیرفعال‌کردن"
-                      : "فعال‌کردن"}
-                  </button>
+                  <button type="button" className="party-button" onClick={startEdit} disabled={!can(partyPermissions.update)}>ویرایش</button>
+                  <button type="button" className="party-button" onClick={() => void toggleStatus()} disabled={saving || !can(partyPermissions.changeStatus)}>{detail.status === "active" ? "غیرفعال‌کردن" : "فعال‌کردن"}</button>
                 </div>
               </div>
 
               <dl className="party-detail-grid">
-                <div>
-                  <dt>نوع</dt>
-                  <dd>
-                    {detail.classification === "natural-person"
-                      ? "شخص حقیقی"
-                      : "شخص حقوقی"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>وضعیت</dt>
-                  <dd>
-                    <span
-                      className={`party-status party-status--${detail.status}`}
-                    >
-                      {detail.status === "active" ? "فعال" : "غیرفعال"}
-                    </span>
-                  </dd>
-                </div>
-                <div>
-                  <dt>کد ملی / شناسه ملی</dt>
-                  <dd dir="ltr">
-                    {detail.identity.nationalCode ??
-                      detail.identity.nationalId ??
-                      "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>شماره ثبت</dt>
-                  <dd dir="ltr">{detail.identity.registrationNumber ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt>شماره اقتصادی</dt>
-                  <dd dir="ltr">{detail.identity.economicNumber ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt>پرونده مالیاتی</dt>
-                  <dd dir="ltr">{detail.identity.taxFileNumber ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt>موبایل</dt>
-                  <dd dir="ltr">{detail.primaryMobile ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt>تلفن</dt>
-                  <dd dir="ltr">{detail.primaryPhone ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt>ایمیل</dt>
-                  <dd dir="ltr">{detail.primaryEmail ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt>تاریخ ایجاد</dt>
-                  <dd>{formatPersianDateTime(detail.createdAt)}</dd>
-                </div>
-                <div>
-                  <dt>آخرین تغییر</dt>
-                  <dd>{formatPersianDateTime(detail.updatedAt)}</dd>
-                </div>
+                <div><dt>نوع</dt><dd>{detail.classification === "natural-person" ? "شخص حقیقی" : "شخص حقوقی"}</dd></div>
+                <div><dt>وضعیت</dt><dd><span className={`party-status party-status--${detail.status}`}>{detail.status === "active" ? "فعال" : "غیرفعال"}</span></dd></div>
+                <div><dt>کد ملی / شناسه ملی</dt><dd dir="ltr">{detail.identity.nationalCode ?? detail.identity.nationalId ?? "—"}</dd></div>
+                <div><dt>شماره ثبت</dt><dd dir="ltr">{detail.identity.registrationNumber ?? "—"}</dd></div>
+                <div><dt>شماره اقتصادی</dt><dd dir="ltr">{detail.identity.economicNumber ?? "—"}</dd></div>
+                <div><dt>پرونده مالیاتی</dt><dd dir="ltr">{detail.identity.taxFileNumber ?? "—"}</dd></div>
+                <div><dt>موبایل</dt><dd dir="ltr">{detail.primaryMobile ?? "—"}</dd></div>
+                <div><dt>تلفن</dt><dd dir="ltr">{detail.primaryPhone ?? "—"}</dd></div>
+                <div><dt>ایمیل</dt><dd dir="ltr">{detail.primaryEmail ?? "—"}</dd></div>
+                <div><dt>تاریخ ایجاد</dt><dd>{formatPersianDateTime(detail.createdAt)}</dd></div>
+                <div><dt>آخرین تغییر</dt><dd>{formatPersianDateTime(detail.updatedAt)}</dd></div>
               </dl>
 
               <section className="party-role-actions" aria-label="نقش‌های تجاری شخص">
                 <strong>نقش‌ها:</strong>
-                {detail.roles.map((item) => (
-                  <span key={item} className="party-role-chip">
-                    {roleLabel(item)}
-                  </span>
-                ))}
+                {detail.roles.map((item) => <span key={item} className="party-role-chip">{roleLabel(item)}</span>)}
                 {detail.roles.length === 0 && <span>بدون نقش تجاری</span>}
                 {can(partyPermissions.manageRoles) && (
                   <>
-                    <button
-                      type="button"
-                      className="party-button"
-                      disabled={saving}
-                      onClick={() => void toggleRole("customer")}
-                    >
-                      {detail.roles.includes("customer")
-                        ? "حذف نقش مشتری"
-                        : "افزودن نقش مشتری"}
-                    </button>
-                    <button
-                      type="button"
-                      className="party-button"
-                      disabled={saving}
-                      onClick={() => void toggleRole("supplier")}
-                    >
-                      {detail.roles.includes("supplier")
-                        ? "حذف نقش تأمین‌کننده"
-                        : "افزودن نقش تأمین‌کننده"}
-                    </button>
+                    <button type="button" className="party-button" disabled={saving} onClick={() => void toggleRole("customer")}>{detail.roles.includes("customer") ? "حذف نقش مشتری" : "افزودن نقش مشتری"}</button>
+                    <button type="button" className="party-button" disabled={saving} onClick={() => void toggleRole("supplier")}>{detail.roles.includes("supplier") ? "حذف نقش تأمین‌کننده" : "افزودن نقش تأمین‌کننده"}</button>
                   </>
                 )}
               </section>
@@ -917,11 +804,7 @@ export function PartiesPage() {
                 <div className="party-address-summary">
                   <strong>نشانی</strong>
                   <span>{detail.addresses[0].addressLine}</span>
-                  {detail.addresses[0].postalCode && (
-                    <small dir="ltr">
-                      کدپستی: {detail.addresses[0].postalCode}
-                    </small>
-                  )}
+                  {detail.addresses[0].postalCode && <small dir="ltr">کدپستی: {detail.addresses[0].postalCode}</small>}
                 </div>
               )}
             </>
@@ -930,335 +813,70 @@ export function PartiesPage() {
       </div>
 
       {formOpen && (
-        <div
-          className="party-dialog-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !saving) {
-              setFormOpen(false);
-            }
-          }}
-        >
-          <section
-            className="party-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="party-form-title"
-          >
+        <div className="party-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setFormOpen(false); }}>
+          <section className="party-dialog" role="dialog" aria-modal="true" aria-labelledby="party-form-title">
             <header>
-              <div>
-                <p className="parties-page__eyebrow">اطلاعات پایه</p>
-                <h2 id="party-form-title">
-                  {detail ? "ویرایش شخص" : "شخص جدید"}
-                </h2>
-              </div>
-              <button
-                className="party-dialog__close"
-                type="button"
-                onClick={() => setFormOpen(false)}
-                disabled={saving}
-                aria-label="بستن"
-              >
-                ×
-              </button>
+              <div><p className="parties-page__eyebrow">اطلاعات پایه</p><h2 id="party-form-title">{detail ? "ویرایش شخص" : "شخص جدید"}</h2></div>
+              <button className="party-dialog__close" type="button" onClick={() => setFormOpen(false)} disabled={saving} aria-label="بستن">×</button>
             </header>
-
             <form onSubmit={(event) => void submit(event)}>
               <div className="party-form-grid">
-                <Field label="نوع شخص">
-                  <Select
-                    value={draft.classification}
-                    disabled={detail !== null}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        classification: event.target.value as Classification,
-                      }))
-                    }
-                  >
-                    <option value="natural-person">حقیقی</option>
-                    <option value="legal-entity">حقوقی</option>
-                  </Select>
-                </Field>
-                <Field label="کد شخص">
-                  <input
-                    autoFocus
-                    value={draft.code}
-                    required
-                    disabled={detail !== null}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        code: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-
+                <Field label="نوع شخص"><Select value={draft.classification} disabled={detail !== null} onChange={(event) => setDraft((value) => ({ ...value, classification: event.target.value as Classification }))}><option value="natural-person">حقیقی</option><option value="legal-entity">حقوقی</option></Select></Field>
+                <Field label="کد شخص"><input autoFocus value={draft.code} required disabled={detail !== null} onChange={(event) => setDraft((value) => ({ ...value, code: event.target.value }))} /></Field>
                 {draft.classification === "natural-person" ? (
                   <>
-                    <Field label="نام">
-                      <input
-                        required
-                        value={draft.firstName}
-                        onChange={(event) =>
-                          setDraft((value) => ({
-                            ...value,
-                            firstName: event.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
-                    <Field label="نام خانوادگی">
-                      <input
-                        required
-                        value={draft.lastName}
-                        onChange={(event) =>
-                          setDraft((value) => ({
-                            ...value,
-                            lastName: event.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
-                    <Field label="کد ملی">
-                      <input
-                        inputMode="numeric"
-                        dir="ltr"
-                        value={draft.nationalCode}
-                        onChange={(event) =>
-                          setDraft((value) => ({
-                            ...value,
-                            nationalCode: event.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
+                    <Field label="نام"><input required value={draft.firstName} onChange={(event) => setDraft((value) => ({ ...value, firstName: event.target.value }))} /></Field>
+                    <Field label="نام خانوادگی"><input required value={draft.lastName} onChange={(event) => setDraft((value) => ({ ...value, lastName: event.target.value }))} /></Field>
+                    <Field label="کد ملی"><input inputMode="numeric" dir="ltr" value={draft.nationalCode} onChange={(event) => setDraft((value) => ({ ...value, nationalCode: event.target.value }))} /></Field>
                   </>
                 ) : (
                   <>
-                    <Field label="نام حقوقی">
-                      <input
-                        required
-                        value={draft.legalName}
-                        onChange={(event) =>
-                          setDraft((value) => ({
-                            ...value,
-                            legalName: event.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
-                    <Field label="نام تجاری">
-                      <input
-                        value={draft.tradeName}
-                        onChange={(event) =>
-                          setDraft((value) => ({
-                            ...value,
-                            tradeName: event.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
-                    <Field label="شناسه ملی">
-                      <input
-                        inputMode="numeric"
-                        dir="ltr"
-                        value={draft.nationalId}
-                        onChange={(event) =>
-                          setDraft((value) => ({
-                            ...value,
-                            nationalId: event.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
-                    <Field label="شماره ثبت">
-                      <input
-                        dir="ltr"
-                        value={draft.registrationNumber}
-                        onChange={(event) =>
-                          setDraft((value) => ({
-                            ...value,
-                            registrationNumber: event.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
-                    <Field label="کد اقتصادی قدیم">
-                      <input
-                        dir="ltr"
-                        value={draft.legacyEconomicCode}
-                        onChange={(event) =>
-                          setDraft((value) => ({
-                            ...value,
-                            legacyEconomicCode: event.target.value,
-                          }))
-                        }
-                      />
-                    </Field>
+                    <Field label="نام حقوقی"><input required value={draft.legalName} onChange={(event) => setDraft((value) => ({ ...value, legalName: event.target.value }))} /></Field>
+                    <Field label="نام تجاری"><input value={draft.tradeName} onChange={(event) => setDraft((value) => ({ ...value, tradeName: event.target.value }))} /></Field>
+                    <Field label="شناسه ملی"><input inputMode="numeric" dir="ltr" value={draft.nationalId} onChange={(event) => setDraft((value) => ({ ...value, nationalId: event.target.value }))} /></Field>
+                    <Field label="شماره ثبت"><input dir="ltr" value={draft.registrationNumber} onChange={(event) => setDraft((value) => ({ ...value, registrationNumber: event.target.value }))} /></Field>
+                    <Field label="کد اقتصادی قدیم"><input dir="ltr" value={draft.legacyEconomicCode} onChange={(event) => setDraft((value) => ({ ...value, legacyEconomicCode: event.target.value }))} /></Field>
                   </>
                 )}
-
-                <Field label="شماره اقتصادی">
-                  <input
-                    dir="ltr"
-                    value={draft.economicNumber}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        economicNumber: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="شماره پرونده مالیاتی">
-                  <input
-                    dir="ltr"
-                    value={draft.taxFileNumber}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        taxFileNumber: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="تلفن">
-                  <input
-                    dir="ltr"
-                    value={draft.phone}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        phone: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="موبایل">
-                  <input
-                    dir="ltr"
-                    value={draft.mobile}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        mobile: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="ایمیل">
-                  <input
-                    dir="ltr"
-                    type="email"
-                    value={draft.email}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        email: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="وب‌سایت">
-                  <input
-                    dir="ltr"
-                    value={draft.website}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        website: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <Field label="کدپستی">
-                  <input
-                    dir="ltr"
-                    inputMode="numeric"
-                    value={draft.postalCode}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        postalCode: event.target.value,
-                      }))
-                    }
-                  />
-                </Field>
-                <label className="party-form-address">
-                  <span>نشانی</span>
-                  <textarea
-                    rows={2}
-                    value={draft.addressLine}
-                    onChange={(event) =>
-                      setDraft((value) => ({
-                        ...value,
-                        addressLine: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
+                <Field label="شماره اقتصادی"><input dir="ltr" value={draft.economicNumber} onChange={(event) => setDraft((value) => ({ ...value, economicNumber: event.target.value }))} /></Field>
+                <Field label="شماره پرونده مالیاتی"><input dir="ltr" value={draft.taxFileNumber} onChange={(event) => setDraft((value) => ({ ...value, taxFileNumber: event.target.value }))} /></Field>
+                <Field label="تلفن"><input dir="ltr" value={draft.phone} onChange={(event) => setDraft((value) => ({ ...value, phone: event.target.value }))} /></Field>
+                <Field label="موبایل"><input dir="ltr" value={draft.mobile} onChange={(event) => setDraft((value) => ({ ...value, mobile: event.target.value }))} /></Field>
+                <Field label="ایمیل"><input dir="ltr" type="email" value={draft.email} onChange={(event) => setDraft((value) => ({ ...value, email: event.target.value }))} /></Field>
+                <Field label="وب‌سایت"><input dir="ltr" value={draft.website} onChange={(event) => setDraft((value) => ({ ...value, website: event.target.value }))} /></Field>
+                <Field label="کدپستی"><input dir="ltr" inputMode="numeric" value={draft.postalCode} onChange={(event) => setDraft((value) => ({ ...value, postalCode: event.target.value }))} /></Field>
+                <label className="party-form-address"><span>نشانی</span><textarea rows={2} value={draft.addressLine} onChange={(event) => setDraft((value) => ({ ...value, addressLine: event.target.value }))} /></label>
               </div>
 
               {detail === null && (
-                <fieldset
-                  className="party-role-fieldset"
-                  disabled={!can(partyPermissions.manageRoles)}
-                >
+                <fieldset className="party-role-fieldset" disabled={!can(partyPermissions.manageRoles)}>
                   <legend>نقش‌های تجاری</legend>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={draft.customer}
-                      onChange={(event) =>
-                        setDraft((value) => ({
-                          ...value,
-                          customer: event.target.checked,
-                        }))
-                      }
-                    />
-                    مشتری
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={draft.supplier}
-                      onChange={(event) =>
-                        setDraft((value) => ({
-                          ...value,
-                          supplier: event.target.checked,
-                        }))
-                      }
-                    />
-                    تأمین‌کننده
-                  </label>
-                  {!can(partyPermissions.manageRoles) && (
-                    <small>برای تعیین نقش، مجوز مدیریت نقش اشخاص لازم است.</small>
-                  )}
+                  <label><input type="checkbox" checked={draft.customer} onChange={(event) => setDraft((value) => ({ ...value, customer: event.target.checked }))} /> مشتری</label>
+                  <label><input type="checkbox" checked={draft.supplier} onChange={(event) => setDraft((value) => ({ ...value, supplier: event.target.checked }))} /> تأمین‌کننده</label>
+                  {!can(partyPermissions.manageRoles) && <small>برای تعیین نقش، مجوز مدیریت نقش اشخاص لازم است.</small>}
                 </fieldset>
               )}
 
               <footer className="party-dialog__footer">
-                <button
-                  type="button"
-                  className="party-button"
-                  onClick={() => setFormOpen(false)}
-                  disabled={saving}
-                >
-                  انصراف
-                </button>
-                <button
-                  type="submit"
-                  className="party-button party-button--primary"
-                  disabled={saving}
-                >
-                  {saving ? "در حال ذخیره…" : "ذخیره"}
-                </button>
+                <button type="button" className="party-button" onClick={() => setFormOpen(false)} disabled={saving}>انصراف</button>
+                <button type="submit" className="party-button party-button--primary" disabled={saving}>{saving ? "در حال ذخیره…" : "ذخیره"}</button>
               </footer>
             </form>
           </section>
         </div>
+      )}
+
+      {importOpen && active.companyId && (
+        <PartyImportDialog
+          companyId={active.companyId}
+          actorId={actorId}
+          authorization={authorization}
+          onClose={() => setImportOpen(false)}
+          onImported={async () => {
+            setMessage("ورود گروهی انجام شد و فهرست اشخاص تازه‌سازی شد.");
+            await reload();
+          }}
+        />
       )}
     </Page>
   );
