@@ -114,6 +114,23 @@ export type {
   PartyDuplicateSeverity
 } from "./application/contracts/party-duplicate.ts";
 
+export {
+  PartySyncContractError,
+  createPartySyncTombstoneEnvelope,
+  createPartySyncUpsertEnvelope,
+  partySyncChangeKinds,
+  type CreatePartySyncTombstoneInput,
+  type CreatePartySyncUpsertInput,
+  type PartyExternalReference,
+  type PartySyncChangeEnvelope,
+  type PartySyncChangeKind,
+  type PartySyncContractErrorCode,
+  type PartySyncEntityReference,
+  type PartySyncSnapshot,
+  type PartySyncTombstoneEnvelope,
+  type PartySyncUpsertEnvelope
+} from "./application/contracts/party-sync.ts";
+
 export type { PartyReader } from "./application/contracts/party-reader.ts";
 export type { PartyRepository } from "./application/contracts/party-repository.ts";
 export type {
