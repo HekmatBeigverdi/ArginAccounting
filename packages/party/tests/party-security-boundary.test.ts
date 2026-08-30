@@ -79,6 +79,39 @@ test("authorization is enforced before mutation", async () => {
   assert.equal(repository.values.size, 0);
 });
 
+test("create with roles requires role-management permission before write", async () => {
+  const repository = new MemoryRepository();
+  const requested: PartyPermission[] = [];
+  const secured = new SecuredPartyApplicationService(
+    createInner(repository),
+    {
+      require: async (_context, permission) => {
+        requested.push(permission);
+        if (permission === partyPermissions.manageRoles) {
+          throw new PartyApplicationError("party.permissionDenied", "role denied");
+        }
+      }
+    },
+    { record: async () => undefined }
+  );
+
+  await assert.rejects(
+    secured.create({
+      classification: "natural-person",
+      partyId: "party-role-1",
+      code: "1002",
+      firstName: "رضا",
+      lastName: "محمدی",
+      roles: ["customer"],
+      context
+    }),
+    (error: unknown) => error instanceof PartyApplicationError && error.code === "party.permissionDenied"
+  );
+
+  assert.deepEqual(requested, [partyPermissions.create, partyPermissions.manageRoles]);
+  assert.equal(repository.values.size, 0);
+});
+
 test("successful create records one correlated audit event", async () => {
   const repository = new MemoryRepository();
   const events: PartyAuditEvent[] = [];
