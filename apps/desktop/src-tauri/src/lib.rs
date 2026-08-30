@@ -131,6 +131,12 @@ fn database_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0017_party_sync_metadata.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 18,
+            description: "taxpayer_unit_reference_data",
+            sql: include_str!("../migrations/0018_taxpayer_unit_reference_data.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
