@@ -14,6 +14,7 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
+    "@argin/audit": "workspace:*",
     "@argin/database": "workspace:*",
     "@argin/party": "workspace:*",
     "xlsx": "0.18.5"
