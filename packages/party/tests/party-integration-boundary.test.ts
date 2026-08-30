@@ -23,11 +23,12 @@ test("Party package keeps accounting and desktop infrastructure out of the bound
 test("future document references use durable Party id rather than display code as identity", () => {
   const selector: PartySelectorDto = Object.freeze({
     id: "party-stable-id",
+    companyId: "company-1",
     code: "100245",
     displayName: "شرکت نمونه",
     classification: "legal-entity",
     status: "active",
-    roles: Object.freeze(["customer"])
+    roles: Object.freeze(["customer"] as const)
   });
 
   const reference = toPartySelectionReference(selector);
