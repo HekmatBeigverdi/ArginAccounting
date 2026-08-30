@@ -181,7 +181,7 @@ test("duplicate assessment preserves hard and advisory evidence independently", 
 
 test("secured reader enforces view permission with the queried company scope before delegating", async () => {
   let delegated = false;
-  let authorizationContext: PartyAuthorizationContext | null = null;
+  const authorizationContexts: PartyAuthorizationContext[] = [];
   const inner: PartyReader = {
     getById: async () => null,
     list: async (): Promise<PageResult<PartySummaryDto>> => {
@@ -192,7 +192,7 @@ test("secured reader enforces view permission with the queried company scope bef
   };
   const policy: PartyAuthorizationPolicy = {
     require: async (ctx, permission) => {
-      authorizationContext = ctx;
+      authorizationContexts.push(ctx);
       assert.equal(permission, partyPermissions.view);
       throw new PartyApplicationError("party.permissionDenied", "denied");
     }
@@ -213,6 +213,6 @@ test("secured reader enforces view permission with the queried company scope bef
   );
 
   assert.equal(delegated, false);
-  assert.equal(authorizationContext?.companyId, "company-2");
-  assert.equal(authorizationContext?.actorId, "reader-user");
+  assert.equal(authorizationContexts[0]?.companyId, "company-2");
+  assert.equal(authorizationContexts[0]?.actorId, "reader-user");
 });
