@@ -50,6 +50,12 @@ importers:
       '@argin/fiscal-tauri':
         specifier: workspace:*
         version: link:../../packages/fiscal-tauri
+      '@argin/party':
+        specifier: workspace:*
+        version: link:../../packages/party
+      '@argin/party-tauri':
+        specifier: workspace:*
+        version: link:../../packages/party-tauri
       '@argin/platform':
         specifier: workspace:*
         version: link:../../packages/platform
@@ -350,6 +356,9 @@ importers:
       '@argin/party':
         specifier: workspace:*
         version: link:../party
+      xlsx:
+        specifier: 0.18.5
+        version: 0.18.5
     devDependencies:
       '@types/node':
         specifier: ^20
