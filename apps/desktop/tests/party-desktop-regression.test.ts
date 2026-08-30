@@ -45,7 +45,7 @@ test("Party selector remains reusable and consumes only the Reader select bounda
   const source = await read("../src/components/party/party-selector.tsx");
 
   assert.match(source, /Pick<PartyReader, "select">/);
-  assert.match(source, /reader\.select\(/);
+  assert.match(source, /reader\s*\.\s*select\(/);
   assert.match(source, /role="combobox"/);
   assert.match(source, /role="listbox"/);
   assert.match(source, /ArrowDown/);
