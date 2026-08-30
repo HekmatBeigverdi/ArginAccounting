@@ -35,9 +35,17 @@ All phase records live in this directory and follow the permanent [phase templat
    - Step 16 and Step 17 local validation confirmed by repository owner
    - Semantic tag/GitHub Release publication remains the manual repository-owner action
 
+## Active Implementation
+
+17. [Phase 17 — Parties](phase-17-parties.md) — Steps 1–19 implemented/validated; final review, merge, and release remain Step 20
+   - [Fixed Implementation Plan](phase-17-parties-plan.md)
+   - [ADR-0017 — Party Master Data Model](../adr/ADR-0017-party-master-data-model.md)
+   - [Step 18 Monorepo/Performance/Accessibility Validation Evidence](phase-17-step-18-validation-evidence.md)
+   - [Step 19 Documentation and Validation Evidence](phase-17-step-19-documentation-evidence.md)
+
 ## Next Target
 
-17. Phase 17 — Parties
+Phase 18 starts only after Phase 17 Step 20 final review, merge, and release are complete.
 
 ## Renumbering Rule
 
