@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@argin/database": "workspace:*",
-    "@argin/party": "workspace:*"
+    "@argin/party": "workspace:*",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20",

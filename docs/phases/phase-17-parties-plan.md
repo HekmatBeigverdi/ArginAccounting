@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–11 are completed. Steps 12–20 are not started.
+Phase 17 is active. Steps 1–12 are completed. Steps 13–20 are not started.
 
 ## Governance Rule
 
@@ -89,7 +89,7 @@ Full synchronization remains Phase 45.
 | 9 | SQLite Repository and Atomic Transactions | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | Permissions, Audit, and Approval Integration | Completed |
-| 12 | Bulk Import and Export | Not started |
+| 12 | Bulk Import and Export | Completed |
 | 13 | Persian RTL Party Management UI | Not started |
 | 14 | Party Selector and Future Module Consumption Contract | Not started |
 | 15 | Shared Platform and Accounting Integration | Not started |
@@ -350,7 +350,21 @@ Evidence:
 
 Exit: large Party master sets can be transferred safely and diagnostically.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `PartyBulkTransferService` with explicit column mapping, Persian/English classification and role normalization, Domain-driven Party/contact/address validation, database duplicate assessment, and duplicate detection inside the imported batch.
+- Preview reports row numbers, validation issues, hard duplicate Party IDs, and advisory duplicate Party IDs before persistence.
+- Atomic mode rejects invalid batches without opening a write transaction and writes a valid batch through one `PartyUnitOfWork`; non-atomic mode isolates rows and returns per-row write failures.
+- Imported Contact/Address child IDs are scoped by the durable Party ID before persistence so independent imported Parties cannot collide on global SQLite child primary keys.
+- Added `legacyEconomicCode` to legal-entity import/export mapping so scalar Iranian identity data is not silently lost in a master-data round trip.
+- Added `PartyMasterExportService` and `SqlitePartyMasterExportReader` for company-scoped, bounded page streaming of Party identity/registration, roles, and primary contact/address fields without loading the complete master set into memory.
+- Added CSV/XLSX codecs in `@argin/party-tauri`; file adapters enforce file/row/column limits and only convert tabular data while Party business validation remains in Domain/Application.
+- Added summary and richer Master Data CSV/XLSX exports using canonical column names compatible with the import mapping.
+- Import/export operations reuse the permission and audit contracts established in Step 11 through dependency injection; no UI-only security was introduced.
+- Added focused tests for in-file duplicate preview, zero-write invalid atomic batches, one-transaction valid atomic batches, unique imported child IDs, bounded export paging, and CSV/XLSX round trips.
+- Party management screens, column-mapping UX, and preview UI remain Step 13; broader real-SQLite/import/Desktop regression coverage remains Step 17.
 
 ### Step 13 — Persian RTL Party Management UI
 
@@ -561,3 +575,17 @@ pnpm --filter @argin/security test
 ```
 
 Step 11 keeps authorization and audit contracts persistence-neutral. It does not add UI-only security, a Party-specific approval lifecycle, Bulk Import/Export behavior, or new SQLite schema. Concrete shared Audit composition remains part of later integration wiring and does not alter the accepted Party Application contracts.
+
+## Step 12 Validation
+
+Focused validation commands for Party bulk transfer and file adapters:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/party-tauri typecheck
+pnpm --filter @argin/party-tauri test
+```
+
+Step 12 reuses the monorepo's existing pinned `xlsx@0.18.5` dependency for the Party file adapter and keeps spreadsheet parsing/serialization outside Domain/Application business rules. Mapping UX and import-preview screens remain Step 13; full real-SQLite/import/Desktop regression coverage remains Step 17.
