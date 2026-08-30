@@ -19,6 +19,11 @@ export {
   createProductUnitProfile,
 } from "./domain/product-unit.ts";
 
+export {
+  diffTaxpayerUnitReferenceDataset,
+  normalizeTaxpayerUnitReferenceDataset,
+} from "./reference/taxpayer-unit-reference.ts";
+
 export type {
   CreateProductInput,
   ProductCapabilities,
@@ -40,3 +45,9 @@ export type {
   ProductUnitProfile,
   QuantityRoundingMode,
 } from "./domain/product-unit.ts";
+
+export type {
+  TaxpayerUnitReferenceDataset,
+  TaxpayerUnitReferenceDiff,
+  TaxpayerUnitReferenceEntry,
+} from "./reference/taxpayer-unit-reference.ts";
