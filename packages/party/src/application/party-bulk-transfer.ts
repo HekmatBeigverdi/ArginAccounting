@@ -1,0 +1,426 @@
+import {
+  createParty,
+  type CreatePartyInput,
+  type Party,
+  type PartyRole
+} from "../domain/party.ts";
+import type { PartyDuplicateLookup, PartyDuplicateProbe } from "./contracts/party-duplicate.ts";
+import type { PartyReader } from "./contracts/party-reader.ts";
+import type { PartyUnitOfWork } from "./contracts/party-unit-of-work.ts";
+import type {
+  PartyAuditSink,
+  PartyAuthorizationPolicy
+} from "./contracts/party-security.ts";
+import { partyPermissions } from "./contracts/party-security.ts";
+
+export const partyImportFields = [
+  "classification",
+  "code",
+  "firstName",
+  "lastName",
+  "legalName",
+  "tradeName",
+  "nationalCode",
+  "nationalId",
+  "registrationNumber",
+  "economicNumber",
+  "taxFileNumber",
+  "roles",
+  "phone",
+  "mobile",
+  "email",
+  "addressLine",
+  "postalCode"
+] as const;
+
+export type PartyImportField = (typeof partyImportFields)[number];
+export type PartyImportColumnMap = Readonly<Partial<Record<PartyImportField, string>>>;
+export type PartyTabularRow = Readonly<Record<string, string | null | undefined>>;
+
+export interface PartyImportContext {
+  readonly companyId: string;
+  readonly actorId: string;
+  readonly correlationId: string;
+  readonly requestId: string;
+  readonly occurredAt: string;
+}
+
+export interface PartyImportIssue {
+  readonly code: string;
+  readonly message: string;
+}
+
+export interface PartyImportPreviewRow {
+  readonly rowNumber: number;
+  readonly displayName: string | null;
+  readonly code: string | null;
+  readonly valid: boolean;
+  readonly issues: readonly PartyImportIssue[];
+  readonly advisoryDuplicatePartyIds: readonly string[];
+  readonly hardDuplicatePartyIds: readonly string[];
+}
+
+export interface PartyImportPreview {
+  readonly totalRows: number;
+  readonly validRows: number;
+  readonly invalidRows: number;
+  readonly rows: readonly PartyImportPreviewRow[];
+}
+
+export interface PartyImportResult {
+  readonly importedCount: number;
+  readonly failedCount: number;
+  readonly atomic: boolean;
+  readonly failures: readonly PartyImportPreviewRow[];
+}
+
+export interface PartyImportIdGenerator {
+  nextId(): string;
+}
+
+export interface PartyExportRow {
+  readonly id: string;
+  readonly code: string;
+  readonly classification: string;
+  readonly displayName: string;
+  readonly status: string;
+  readonly roles: string;
+  readonly primaryPhone: string;
+  readonly primaryMobile: string;
+  readonly primaryEmail: string;
+  readonly updatedAt: string;
+}
+
+export interface PartyExportBatchSink {
+  write(rows: readonly PartyExportRow[]): Promise<void>;
+}
+
+interface PreparedRow {
+  readonly rowNumber: number;
+  readonly createInput: Omit<CreatePartyInput, "id" | "companyId" | "createdAt">;
+  readonly previewParty: Party;
+  readonly preview: PartyImportPreviewRow;
+}
+
+export class PartyBulkTransferService {
+  constructor(
+    private readonly unitOfWork: PartyUnitOfWork,
+    private readonly duplicateLookup: PartyDuplicateLookup,
+    private readonly reader: PartyReader,
+    private readonly authorization: PartyAuthorizationPolicy,
+    private readonly audit: PartyAuditSink,
+    private readonly ids: PartyImportIdGenerator
+  ) {}
+
+  async previewImport(
+    rows: readonly PartyTabularRow[],
+    mapping: PartyImportColumnMap,
+    context: PartyImportContext
+  ): Promise<PartyImportPreview> {
+    await this.authorization.require(toAuthorizationContext(context), partyPermissions.import);
+    const prepared = await Promise.all(
+      rows.map((row, index) => this.prepareRow(row, index + 2, mapping, context))
+    );
+    return summarizePreview(prepared.map((entry) => entry.preview));
+  }
+
+  async import(
+    rows: readonly PartyTabularRow[],
+    mapping: PartyImportColumnMap,
+    context: PartyImportContext,
+    options: { readonly atomic: boolean }
+  ): Promise<PartyImportResult> {
+    await this.authorization.require(toAuthorizationContext(context), partyPermissions.import);
+    const prepared = await Promise.all(
+      rows.map((row, index) => this.prepareRow(row, index + 2, mapping, context))
+    );
+    const batchDuplicates = findBatchDuplicateRows(prepared);
+    const normalized = prepared.map((entry) => batchDuplicates.has(entry.rowNumber)
+      ? withIssue(entry, "party.import.batchDuplicate", "Duplicate Party code or official identifier exists in the import batch.")
+      : entry);
+    const failures = normalized.filter((entry) => !entry.preview.valid).map((entry) => entry.preview);
+
+    if (options.atomic && failures.length > 0) {
+      return Object.freeze({ importedCount: 0, failedCount: failures.length, atomic: true, failures: Object.freeze(failures) });
+    }
+
+    let importedCount = 0;
+    const runtimeFailures: PartyImportPreviewRow[] = [...failures];
+    const valid = normalized.filter((entry) => entry.preview.valid);
+
+    if (options.atomic) {
+      await this.unitOfWork.run(async ({ parties }) => {
+        for (const entry of valid) {
+          const party = materialize(entry, context, this.ids.nextId());
+          if (await parties.findByCode(context.companyId, party.code)) {
+            throw new Error(`Party code became unavailable during atomic import: ${party.code}`);
+          }
+          await parties.add(party);
+          importedCount += 1;
+        }
+      });
+    } else {
+      for (const entry of valid) {
+        try {
+          await this.unitOfWork.run(async ({ parties }) => {
+            const party = materialize(entry, context, this.ids.nextId());
+            if (await parties.findByCode(context.companyId, party.code)) {
+              throw new Error("party.code.conflict");
+            }
+            await parties.add(party);
+          });
+          importedCount += 1;
+        } catch (error) {
+          runtimeFailures.push(Object.freeze({
+            ...entry.preview,
+            valid: false,
+            issues: Object.freeze([
+              ...entry.preview.issues,
+              Object.freeze({ code: "party.import.writeFailed", message: error instanceof Error ? error.message : "Import write failed." })
+            ])
+          }));
+        }
+      }
+    }
+
+    await this.audit.record(Object.freeze({
+      action: "party.import",
+      actorId: context.actorId,
+      companyId: context.companyId,
+      partyId: null,
+      correlationId: context.correlationId,
+      requestId: context.requestId,
+      occurredAt: context.occurredAt,
+      metadata: Object.freeze({ importedCount, failedCount: runtimeFailures.length, atomic: options.atomic })
+    }));
+
+    return Object.freeze({
+      importedCount,
+      failedCount: runtimeFailures.length,
+      atomic: options.atomic,
+      failures: Object.freeze(runtimeFailures)
+    });
+  }
+
+  async export(
+    context: PartyImportContext,
+    sink: PartyExportBatchSink,
+    pageSize = 500
+  ): Promise<number> {
+    await this.authorization.require(toAuthorizationContext(context), partyPermissions.export);
+    let page = 1;
+    let exported = 0;
+    while (true) {
+      const result = await this.reader.list({
+        filter: { companyId: context.companyId },
+        page: { page, pageSize },
+        sort: { field: "code", direction: "asc" }
+      });
+      if (result.items.length === 0) break;
+      const batch = result.items.map((party): PartyExportRow => Object.freeze({
+        id: party.id,
+        code: party.code,
+        classification: party.classification,
+        displayName: party.displayName,
+        status: party.status,
+        roles: party.roles.join(","),
+        primaryPhone: party.primaryPhone ?? "",
+        primaryMobile: party.primaryMobile ?? "",
+        primaryEmail: party.primaryEmail ?? "",
+        updatedAt: party.updatedAt
+      }));
+      await sink.write(Object.freeze(batch));
+      exported += batch.length;
+      if (page >= result.totalPages) break;
+      page += 1;
+    }
+
+    await this.audit.record(Object.freeze({
+      action: "party.export",
+      actorId: context.actorId,
+      companyId: context.companyId,
+      partyId: null,
+      correlationId: context.correlationId,
+      requestId: context.requestId,
+      occurredAt: context.occurredAt,
+      metadata: Object.freeze({ exportedCount: exported, pageSize })
+    }));
+    return exported;
+  }
+
+  private async prepareRow(
+    row: PartyTabularRow,
+    rowNumber: number,
+    mapping: PartyImportColumnMap,
+    context: PartyImportContext
+  ): Promise<PreparedRow> {
+    try {
+      const input = mapRow(row, mapping);
+      const previewParty = createParty({
+        ...input,
+        id: `preview-${rowNumber}`,
+        companyId: context.companyId,
+        createdAt: context.occurredAt
+      } as CreatePartyInput);
+      const probe = buildProbe(previewParty);
+      const [hard, advisory] = await Promise.all([
+        this.duplicateLookup.findHardCandidates(probe),
+        this.duplicateLookup.findAdvisoryCandidates(probe)
+      ]);
+      const issues: PartyImportIssue[] = hard.length === 0 ? [] : [
+        Object.freeze({ code: "party.import.hardDuplicate", message: "A Party with the same code or official identifier already exists." })
+      ];
+      const preview = Object.freeze({
+        rowNumber,
+        displayName: previewParty.displayName,
+        code: previewParty.code,
+        valid: issues.length === 0,
+        issues: Object.freeze(issues),
+        advisoryDuplicatePartyIds: Object.freeze(advisory.map((candidate) => candidate.partyId)),
+        hardDuplicatePartyIds: Object.freeze(hard.map((candidate) => candidate.partyId))
+      });
+      return Object.freeze({ rowNumber, createInput: input, previewParty, preview });
+    } catch (error) {
+      const issue = Object.freeze({
+        code: error instanceof Error && "code" in error ? String((error as { code: unknown }).code) : "party.import.invalidRow",
+        message: error instanceof Error ? error.message : "Invalid import row."
+      });
+      const fallback = Object.freeze({
+        rowNumber,
+        displayName: null,
+        code: readMapped(row, mapping.code) || null,
+        valid: false,
+        issues: Object.freeze([issue]),
+        advisoryDuplicatePartyIds: Object.freeze([]),
+        hardDuplicatePartyIds: Object.freeze([])
+      });
+      return Object.freeze({
+        rowNumber,
+        createInput: { classification: "natural-person", code: "invalid", firstName: "invalid", lastName: "invalid" },
+        previewParty: createParty({ classification: "natural-person", id: `invalid-${rowNumber}`, companyId: context.companyId, code: "invalid", firstName: "invalid", lastName: "invalid", createdAt: context.occurredAt }),
+        preview: fallback
+      });
+    }
+  }
+}
+
+function mapRow(row: PartyTabularRow, mapping: PartyImportColumnMap): Omit<CreatePartyInput, "id" | "companyId" | "createdAt"> {
+  const classification = normalizeClassification(readMapped(row, mapping.classification));
+  const code = readMapped(row, mapping.code);
+  const roles = parseRoles(readMapped(row, mapping.roles));
+  const contacts = [
+    contact("phone", readMapped(row, mapping.phone), "general"),
+    contact("mobile", readMapped(row, mapping.mobile), "general"),
+    contact("email", readMapped(row, mapping.email), "general")
+  ].filter((value): value is NonNullable<typeof value> => value !== null);
+  const addressLine = readMapped(row, mapping.addressLine);
+  const addresses = addressLine ? [{ id: "import-address", purpose: "registered" as const, addressLine, postalCode: nullable(readMapped(row, mapping.postalCode)), isPrimary: true }] : [];
+
+  if (classification === "natural-person") {
+    return {
+      classification,
+      code,
+      firstName: readMapped(row, mapping.firstName),
+      lastName: readMapped(row, mapping.lastName),
+      roles,
+      identity: {
+        nationalCode: nullable(readMapped(row, mapping.nationalCode)),
+        economicNumber: nullable(readMapped(row, mapping.economicNumber)),
+        taxFileNumber: nullable(readMapped(row, mapping.taxFileNumber))
+      },
+      contacts,
+      addresses
+    };
+  }
+  return {
+    classification,
+    code,
+    legalName: readMapped(row, mapping.legalName),
+    tradeName: nullable(readMapped(row, mapping.tradeName)),
+    roles,
+    identity: {
+      nationalId: nullable(readMapped(row, mapping.nationalId)),
+      registrationNumber: nullable(readMapped(row, mapping.registrationNumber)),
+      economicNumber: nullable(readMapped(row, mapping.economicNumber)),
+      taxFileNumber: nullable(readMapped(row, mapping.taxFileNumber))
+    },
+    contacts,
+    addresses
+  };
+}
+
+function contact(type: "phone" | "mobile" | "email", value: string, purpose: "general") {
+  return value ? { id: `import-${type}`, type, value, purpose, isPrimary: true } as const : null;
+}
+
+function normalizeClassification(value: string): "natural-person" | "legal-entity" {
+  const normalized = value.trim().toLowerCase();
+  if (["natural-person", "natural", "individual", "حقیقی"].includes(normalized)) return "natural-person";
+  if (["legal-entity", "legal", "company", "حقوقی"].includes(normalized)) return "legal-entity";
+  throw new Error("Party classification must identify a natural person or legal entity.");
+}
+
+function parseRoles(value: string): readonly PartyRole[] {
+  if (!value) return Object.freeze([]);
+  const roles: PartyRole[] = [];
+  for (const token of value.split(/[،,;|]/).map((item) => item.trim().toLowerCase()).filter(Boolean)) {
+    if (["customer", "مشتری"].includes(token)) roles.push("customer");
+    else if (["supplier", "vendor", "تامین کننده", "تأمین‌کننده", "تأمین کننده"].includes(token)) roles.push("supplier");
+    else throw new Error(`Unsupported Party role: ${token}`);
+  }
+  return Object.freeze([...new Set(roles)]);
+}
+
+function buildProbe(party: Party): PartyDuplicateProbe {
+  return Object.freeze({
+    companyId: party.companyId,
+    excludePartyId: null,
+    code: party.code,
+    classification: party.classification,
+    displayName: party.displayName,
+    nationalCode: party.classification === "natural-person" ? party.identity.nationalCode : null,
+    nationalId: party.classification === "legal-entity" ? party.identity.nationalId : null,
+    economicNumber: party.identity.economicNumber
+  });
+}
+
+function materialize(entry: PreparedRow, context: PartyImportContext, id: string): Party {
+  return createParty({ ...entry.createInput, id, companyId: context.companyId, createdAt: context.occurredAt } as CreatePartyInput);
+}
+
+function summarizePreview(rows: readonly PartyImportPreviewRow[]): PartyImportPreview {
+  const validRows = rows.filter((row) => row.valid).length;
+  return Object.freeze({ totalRows: rows.length, validRows, invalidRows: rows.length - validRows, rows: Object.freeze([...rows]) });
+}
+
+function findBatchDuplicateRows(rows: readonly PreparedRow[]): ReadonlySet<number> {
+  const keys = new Map<string, number[]>();
+  for (const row of rows.filter((entry) => entry.preview.valid)) {
+    const party = row.previewParty;
+    const values = [
+      `code:${party.code}`,
+      party.classification === "natural-person" && party.identity.nationalCode ? `nationalCode:${party.identity.nationalCode}` : null,
+      party.classification === "legal-entity" && party.identity.nationalId ? `nationalId:${party.identity.nationalId}` : null,
+      party.identity.economicNumber ? `economic:${party.identity.economicNumber}` : null
+    ].filter((value): value is string => value !== null);
+    for (const key of values) keys.set(key, [...(keys.get(key) ?? []), row.rowNumber]);
+  }
+  return new Set([...keys.values()].filter((items) => items.length > 1).flat());
+}
+
+function withIssue(entry: PreparedRow, code: string, message: string): PreparedRow {
+  return Object.freeze({ ...entry, preview: Object.freeze({ ...entry.preview, valid: false, issues: Object.freeze([...entry.preview.issues, Object.freeze({ code, message })]) }) });
+}
+
+function readMapped(row: PartyTabularRow, sourceColumn: string | undefined): string {
+  if (!sourceColumn) return "";
+  return String(row[sourceColumn] ?? "").trim();
+}
+
+function nullable(value: string): string | null {
+  return value.length === 0 ? null : value;
+}
+
+function toAuthorizationContext(context: PartyImportContext) {
+  return Object.freeze({ actorId: context.actorId, companyId: context.companyId, correlationId: context.correlationId, requestId: context.requestId });
+}
