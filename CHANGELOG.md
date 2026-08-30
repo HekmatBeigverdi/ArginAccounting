@@ -6,6 +6,68 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.17.0] - 2026-08-30
+
+### Added
+
+- Canonical company-scoped Party Master Data bounded context for natural persons and legal entities
+- Customer and Supplier as reusable multi-role classifications on one Party master record
+- Iranian national code, legal national identifier, registration, economic/tax, contact, address, and postal normalization/validation
+- Persistence-neutral Party Application contracts, bounded readers/selectors, stable errors, duplicate assessment, idempotency boundaries, and optimistic concurrency
+- SQLite Party persistence, Unit of Work, bounded list/selector/duplicate readers, deterministic constraint mapping, and master-data export reader
+- CSV/XLSX import with automatic/manual mapping, preview, validation, hard/advisory/batch duplicate diagnostics, and atomic import mode
+- CSV/XLSX Party master-data export with bounded paging
+- Persian RTL Party management workspace with compact Phase 14 density, Solar Hijri timestamps, translated validation errors, modal Toast feedback, search/filter/paging, create/edit, lifecycle and role actions
+- Reusable accessible Party Selector for future Sales, Purchases, Treasury, and other operational modules
+- Argin Bridge/future synchronization contracts for durable identity, version/change metadata, tombstones, operation/idempotency identity, and external references without implementing active synchronization
+- Persistent Party Audit composition through the shared Audit infrastructure
+
+### Database and Performance
+
+- Added migration `0016_parties.sql`
+- Added migration `0017_party_sync_metadata.sql`
+- Added `parties`, `party_roles`, `party_contacts`, `party_addresses`, and `party_external_references`
+- Added company-scoped code and official-identity uniqueness, same-company child references, primary contact/address constraints, optimistic `version`, `deleted_at`, and external-reference constraints
+- Added bounded query indexes for Party list/search, classification, roles, duplicate lookup, synchronization change scans, tombstones, and external references
+- Added representative 50,000-row SQLite `EXPLAIN QUERY PLAN` validation for list/selector/duplicate paths
+
+### Security and Audit
+
+- Added `master-data.parties.view`
+- Added `master-data.parties.create`
+- Added `master-data.parties.update`
+- Added `master-data.parties.change-status`
+- Added `master-data.parties.manage-roles`
+- Added `master-data.parties.import`
+- Added `master-data.parties.export`
+- Enforced Party authorization and company scope at the Application boundary independently of UI visibility
+- Persisted correlated audit evidence for create, update, status, role, import, and export operations
+- Deliberately did not invent a Party-specific Approval lifecycle for routine Master Data maintenance
+
+### Tests and Validation
+
+- Added comprehensive Domain/Application coverage for classification, role/lifecycle, Iranian identifiers, contacts/addresses, duplicate semantics, idempotent replay, stable Application errors, authorization, and expected-version forwarding
+- Added SQLite repository/migration/rollback/concurrency/query/import/export/selector regression coverage
+- Added Desktop regression and quality contracts for secured composition, Persian RTL, keyboard interaction, accessibility, density, bounded loading, import preview, and reusable selector behavior
+- Repository owner confirmed Step 17 infrastructure/Desktop validation as successful
+- Repository owner confirmed the unified `pnpm validate:phase17` gate as successful, including focused validation, representative SQLite query plans, full monorepo typecheck/test/build/lint, and Desktop build
+
+### Architecture
+
+- Party is Master Data; Customer and Supplier are roles rather than duplicated entities
+- Durable Party identity is separate from user-facing Party code
+- Domain/Application remains independent from SQLite, Tauri, React, Accounting, and synchronization transports
+- Future modules consume stable Party references without reverse-coupling Party to Sales, Purchases, Treasury, Inventory, balances, posting, or Journal behavior
+- Full network synchronization, PostgreSQL/Web Party adapters, and conflict-resolution workflows remain deferred to Phase 45 and later owning phases
+
+### Merge and Release
+
+- Phase 17 validation and release preparation are complete
+- Prepared semantic tag and GitHub Release: `v0.17.0`
+- Phase 18 — Products and Services is the next implementation target
+
+---
+
 ## [0.16.0] - 2026-08-28
 
 ### Added
@@ -111,7 +173,7 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ### Deferred
 
-- Trial Balance, General Ledger, Subsidiary Ledger, and other Accounting Reports: Phase 16
+- Trial Balance, General Ledger, Subsidiary Ledger, Journal, and other Accounting Reports: Phase 16
 - Automatic posting from future operational modules: later owning phases
 - PostgreSQL/.NET synchronization adapters: future Argin Bridge delivery
 

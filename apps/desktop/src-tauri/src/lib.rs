@@ -113,6 +113,24 @@ fn database_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0014_journal_lifecycle.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 15,
+            description: "accounting_report_indexes",
+            sql: include_str!("../migrations/0015_accounting_report_indexes.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 16,
+            description: "parties",
+            sql: include_str!("../migrations/0016_parties.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 17,
+            description: "party_sync_metadata",
+            sql: include_str!("../migrations/0017_party_sync_metadata.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

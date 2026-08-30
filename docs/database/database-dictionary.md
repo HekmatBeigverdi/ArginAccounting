@@ -30,6 +30,7 @@ For every table record:
 | Accounting Dimensions | `accounting_dimension_types`, `accounting_dimension_members`, `account_dimension_policies` | Phase 11 |
 | Coding Templates | `coding_templates`, normalized version-item tables, application mappings/history, import batches | Phase 12 |
 | Journal Voucher Engine | `journal_vouchers`, `journal_lines`, `journal_line_dimension_assignments` | Phase 13 |
+| Parties | `parties`, `party_roles`, `party_contacts`, `party_addresses`, `party_external_references` | Phase 17 |
 
 ## Phase 10 — Chart of Accounts
 
@@ -113,3 +114,42 @@ Voucher/line deletion cascades to assignments. Company/type/member consistency i
 ### Migration
 
 - `apps/desktop/src-tauri/migrations/0013_journal_vouchers.sql`
+
+## Phase 17 — Parties
+
+### `parties`
+
+Company-scoped Party aggregate root. The TEXT `id` is durable identity and is distinct from the human-readable `code`. Stores natural/legal classification, active/inactive status, normalized names, Iranian identity/registration/tax fields, Gregorian timestamps, optimistic `version`, and nullable `deleted_at` synchronization tombstone metadata.
+
+Important integrity rules:
+
+- `(company_id, code)` is unique;
+- official national code, legal national identifier, and economic number are unique within company when present;
+- classification-specific name/identity shapes are constrained;
+- `version >= 1`;
+- `deleted_at` is synchronization deletion metadata and does not replace active/inactive business status.
+
+### `party_roles`
+
+Normalized commercial roles for one Party. Current values are `customer` and `supplier`; one Party can contain both. Same-company composite foreign keys prevent cross-company child ownership. Party deletion cascades to roles.
+
+### `party_contacts`
+
+Normalized phone/mobile/email/website child rows with purpose, primary flag, and optional contact-person metadata. Primary uniqueness follows Party Domain rules for type + purpose. Party deletion cascades to contacts.
+
+### `party_addresses`
+
+Normalized Iranian address child rows with purpose, country, province/city/district, address line, postal code, and primary flag. Primary uniqueness follows address purpose. Party deletion cascades to addresses.
+
+### `party_external_references`
+
+Source-system identity mappings for future Bridge/import traceability. Values are company-scoped and link source-system/external IDs to the durable Party identity. They must not be confused with Party display code.
+
+### Query/index policy
+
+Indexes support company/status/name paging, classification/name search, update-order scans, role selectors, contact/address lookups, hard duplicate checks, incremental sync changes, tombstones, and external-reference lookup. Phase 17 validation requires bounded list/select/export behavior and representative SQLite query-plan use of the accepted indexes.
+
+### Migrations
+
+- `apps/desktop/src-tauri/migrations/0016_parties.sql`
+- `apps/desktop/src-tauri/migrations/0017_party_sync_metadata.sql`
