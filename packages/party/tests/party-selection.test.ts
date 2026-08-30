@@ -16,7 +16,7 @@ const activeCustomer: PartySelectorDto = Object.freeze({
   displayName: "شرکت نمونه",
   classification: "legal-entity",
   status: "active",
-  roles: Object.freeze(["customer"])
+  roles: Object.freeze(["customer"] as const)
 });
 
 test("selector query defaults to active parties and bounded results", () => {
