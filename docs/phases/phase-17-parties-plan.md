@@ -102,6 +102,7 @@ Full synchronization remains Phase 45.
 ## Fixed Execution Sequence
 
 ### Step 1 — Baseline, Branch, and Plan Freeze
+
 - Confirm the completed Phase 16 baseline and current `main` head.
 - Create `phase/17-parties` from the current `main` head.
 - Freeze Phase 17 objective, dependencies, scope, exclusions, Argin Bridge constraints, governance rules, and the complete 20-step sequence.
@@ -117,6 +118,7 @@ Evidence:
 - Created this fixed plan with all 20 steps, explicit scope boundaries, and Argin Bridge/future synchronization constraints.
 
 ### Step 2 — Party Domain Model and Classification
+
 - Define the Party aggregate root and durable identity.
 - Define natural-person and legal-entity classification without duplicating Party records.
 - Define core name/title, status, code/display number, company ownership/scope, and invariant boundaries.
@@ -136,6 +138,7 @@ Evidence:
 - Customer/Supplier roles, activation/deactivation transitions, identity/tax fields, contacts/addresses, persistence, and synchronization behavior remain intentionally deferred to their frozen later steps.
 
 ### Step 3 — Party Roles and Lifecycle
+
 - Define reusable roles such as Customer, Supplier, and future-compatible additional roles.
 - Allow one Party to hold multiple roles simultaneously.
 - Define activation/deactivation and safe role add/remove semantics.
@@ -156,6 +159,7 @@ Evidence:
 - Identity/tax fields, duplicate-candidate detection heuristics, persistence, tombstone deletion semantics, and synchronization remain deferred to their fixed later steps.
 
 ### Step 4 — Identity, Registration, and Tax Information
+
 - Model Iranian national ID, legal national identifier, registration number, economic/tax identifiers, and related metadata.
 - Define normalization and validation rules with clear optionality by Party type.
 - Avoid coupling to the later Iranian Taxpayer System submission model while preserving compatible master data.
@@ -176,6 +180,7 @@ Evidence:
 - Contact/address modeling remains Step 5; duplicate detection, SQLite uniqueness/indexes, Taxpayer System submission DTOs, and synchronization behavior remain deferred to their fixed later steps.
 
 ### Step 5 — Contacts and Addresses
+
 - Define phone, mobile, email, website, contact-person, and address value/child models.
 - Support multiple addresses and contacts with explicit defaults/purposes where needed.
 - Define Iranian postal/address fields without hard-coding UI formatting into Domain logic.
@@ -197,6 +202,7 @@ Evidence:
 - Repository persistence, CRUD mutation services, SQLite constraints, and UI formatting remain deferred to their fixed later steps.
 
 ### Step 6 — Application and Repository Contracts
+
 - Define Commands, Queries, DTOs, readers/repositories, paging, sorting, filtering, lookup, and selector contracts.
 - Define Unit of Work and stable Application errors.
 - Keep contracts compatible with future SQLite, PostgreSQL, HTTP, and bridge adapters.
@@ -217,6 +223,7 @@ Evidence:
 - No Application service implementation, duplicate-detection algorithm, authorization enforcement, SQLite adapter, Tauri/React code, HTTP transport, or bridge implementation was added in this step.
 
 ### Step 7 — Application Services and Duplicate Detection
+
 - Implement create/update/activate/deactivate and role-management use cases.
 - Implement duplicate-candidate detection using normalized identifiers and justified business fields.
 - Distinguish hard uniqueness violations from advisory duplicate matches.
@@ -239,6 +246,7 @@ Evidence:
 - SQLite uniqueness/index enforcement, concrete duplicate queries, authorization enforcement, audit emission, and cross-process idempotency storage remain assigned to their fixed later steps.
 
 ### Step 8 — Migration, Schema, and Indexing
+
 - Add versioned SQLite migrations for Party, roles, contacts, addresses, and required metadata.
 - Add unique constraints and search indexes only where supported by domain rules and expected query shapes.
 - Preserve stable ID/concurrency/tombstone-compatible fields needed for future synchronization.
@@ -259,6 +267,7 @@ Evidence:
 - SQLite repository implementation, transaction orchestration, query adapters, optimistic update statements, and error mapping remain assigned to Step 9. Full tombstone/source/external-reference semantics remain assigned to Step 10.
 
 ### Step 9 — SQLite Repository and Atomic Transactions
+
 - Implement SQLite repository/read adapters and Unit of Work integration.
 - Guarantee atomic multi-table Party writes.
 - Enforce optimistic concurrency and deterministic error mapping.
@@ -281,6 +290,7 @@ Evidence:
 - Authorization/audit enforcement remains Step 11; Argin Bridge/tombstone/source/external-reference semantics remain Step 10; broader real-SQLite migration/repository regression coverage remains Step 17.
 
 ### Step 10 — Argin Bridge and Future Synchronization Contract
+
 - Formalize stable cross-database Party identity and display-number separation.
 - Formalize version/change metadata, tombstone-compatible deletion lifecycle, source/external references, and retry/idempotency boundaries.
 - Define persistence-neutral sync-facing DTO/boundary contracts only where necessary to protect future compatibility.
@@ -291,6 +301,7 @@ Exit: future Argin Bridge/PostgreSQL synchronization can be added without redesi
 Status: Not started
 
 ### Step 11 — Permissions, Audit, and Approval Integration
+
 - Add granular Party view/create/update/status/import/export permissions.
 - Enforce company scope and permissions at the Application boundary.
 - Emit audit events with actor/correlation/context for sensitive mutations.
@@ -301,6 +312,7 @@ Exit: security and audit behavior do not depend on UI visibility and do not leak
 Status: Not started
 
 ### Step 12 — Bulk Import and Export
+
 - Support professional Excel/CSV import with preview, column mapping where justified, normalization, validation, and duplicate reporting.
 - Support atomic import mode so invalid batches cannot leave partial master data.
 - Provide export without moving business logic into spreadsheet adapters.
@@ -310,6 +322,7 @@ Exit: large Party master sets can be transferred safely and diagnostically.
 Status: Not started
 
 ### Step 13 — Persian RTL Party Management UI
+
 - Build list/search/filter/detail/create/edit Party surfaces using the Phase 14 design system.
 - Use compact desktop-friendly tables and forms.
 - Provide loading, empty, error, keyboard, focus, accessibility, responsive, and display-density behavior.
@@ -320,6 +333,7 @@ Exit: Party management is usable as a professional Persian desktop Master Data w
 Status: Not started
 
 ### Step 14 — Party Selector and Future Module Consumption Contract
+
 - Provide reusable Party lookup/selector UI and Application contracts.
 - Support filtering by role/status/company without coupling to Sales, Purchases, Treasury, or Inventory implementations.
 - Return stable identifiers and display metadata needed by future documents.
@@ -329,6 +343,7 @@ Exit: later operational modules can consume Party selection without cloning Part
 Status: Not started
 
 ### Step 15 — Shared Platform and Accounting Integration
+
 - Integrate Company scope, shared query infrastructure, metadata, notifications/events, concurrency, and existing platform contracts where appropriate.
 - Confirm no accounting balances/posting logic are incorrectly introduced into Party Master Data.
 - Confirm future dimension/account/document references can use stable Party identity without reverse coupling.
@@ -338,6 +353,7 @@ Exit: Party fits the existing architecture cleanly without violating bounded res
 Status: Not started
 
 ### Step 16 — Domain and Application Tests
+
 - Cover aggregate invariants, Party types, roles, lifecycle, identity validation, contacts/addresses, duplicate detection, Application errors, idempotent boundaries, authorization behavior, and optimistic concurrency contracts.
 
 Exit: core Party semantics are comprehensively validated independent of SQLite/Desktop.
@@ -345,6 +361,7 @@ Exit: core Party semantics are comprehensively validated independent of SQLite/D
 Status: Not started
 
 ### Step 17 — Repository, Migration, Import, and Desktop Tests
+
 - Cover migrations, SQLite constraints/indexes, repository queries, atomic rollback, concurrency, bulk import/export, selector behavior, and Desktop regression states.
 - Verify security boundaries remain enforced outside UI.
 
@@ -353,6 +370,7 @@ Exit: infrastructure and Desktop integration are green with focused regression c
 Status: Not started
 
 ### Step 18 — Monorepo, Performance, Accessibility, and Quality Validation
+
 - Validate representative larger Party datasets and search/query plans.
 - Validate paging/filtering avoids unbounded loading and N+1 behavior.
 - Validate keyboard/accessibility/RTL/density behavior.
@@ -363,6 +381,7 @@ Exit: focused and monorepo validation is green with performance and UI-quality e
 Status: Not started
 
 ### Step 19 — Documentation, ADR, and Validation Evidence
+
 - Complete the Phase 17 implementation document.
 - Add/update ADRs for Party identity, role model, or bridge/synchronization compatibility decisions that meet ADR threshold.
 - Update database/security/architecture/glossary/canonical docs affected by the phase.
@@ -373,6 +392,7 @@ Exit: Phase 17 satisfies permanent Documentation Governance with no undocumented
 Status: Not started
 
 ### Step 20 — Final Review, Merge, and Release
+
 - Reconcile Step Status with actual evidence; no stale statuses are allowed.
 - Update `ROADMAP.md`, `CHANGELOG.md`, phase index/readmes, and release checklist as required.
 - Review diff for scope creep, architectural regressions, security issues, and undocumented changes.

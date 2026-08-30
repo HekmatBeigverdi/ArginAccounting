@@ -153,7 +153,14 @@ async function loadAggregate(database: DatabaseSession, row: PartyRow): Promise<
   return mapAggregate(row, Object.freeze(roleRows.map((item) => item.role)), mapContacts(contactRows), mapAddresses(addressRows));
 }
 
-function partyIdentityColumns(party: Party): readonly (string | null)[] {
+function partyIdentityColumns(party: Party): readonly [
+  string | null,
+  string | null,
+  string | null,
+  string | null,
+  string | null,
+  string | null
+] {
   if (party.classification === "natural-person") {
     return [party.identity.nationalCode, null, null, party.identity.economicNumber, null, party.identity.taxFileNumber];
   }
