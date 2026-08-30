@@ -32,6 +32,7 @@ import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Feedback } from "../../components/feedback";
 import { Field, Select } from "../../components/forms";
 import { Page } from "../../components/layout";
+import { getPartyErrorMessage } from "./party-error-presenter";
 import { PartyImportDialog } from "./party-import-dialog";
 
 import "./parties-page.css";
@@ -115,19 +116,7 @@ function roleLabel(role: PartyRole): string {
 }
 
 function messageFor(error: unknown): string {
-  if (error instanceof PartyApplicationError) {
-    const messages: Partial<Record<string, string>> = {
-      "party.notFound": "شخص موردنظر پیدا نشد.",
-      "party.code.conflict": "کد شخص در این شرکت تکراری است.",
-      "party.identity.conflict": "شناسه رسمی واردشده قبلاً برای شخص دیگری ثبت شده است.",
-      "party.concurrentModification": "اطلاعات توسط کاربر دیگری تغییر کرده است. صفحه را تازه‌سازی کنید و دوباره تلاش کنید.",
-      "party.permissionDenied": "مجوز انجام این عملیات را ندارید.",
-      "party.classification.mismatch": "نوع شخص در ویرایش قابل تغییر نیست.",
-      "party.invalidQuery": "فیلتر یا صفحه‌بندی اشخاص معتبر نیست.",
-    };
-    return messages[error.code] ?? error.message;
-  }
-  return error instanceof Error ? error.message : "خطای غیرمنتظره‌ای رخ داد.";
+  return getPartyErrorMessage(error, "fa-IR");
 }
 
 function rolesFromDraft(draft: Draft): PartyRole[] {
