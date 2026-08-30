@@ -12,6 +12,7 @@ export interface ProductUnitDefinition {
   readonly ratioToBase: number;
   readonly precision: number;
   readonly roundingMode: QuantityRoundingMode;
+  readonly taxpayerUnitCode: string | null;
 }
 
 export interface ProductUnitProfile {
@@ -28,6 +29,21 @@ const normalizeRequired = (value: string): string => {
   const normalized = value.trim().replace(/\s+/gu, " ");
   if (normalized.length === 0) {
     throw new ProductDomainError(PRODUCT_DOMAIN_ERROR_CODES.unitInvalid);
+  }
+  return normalized;
+};
+
+const normalizeTaxpayerUnitCode = (
+  value: string | null | undefined,
+): string | null => {
+  if (value == null) {
+    return null;
+  }
+  const normalized = value.trim();
+  if (normalized.length === 0) {
+    throw new ProductDomainError(
+      PRODUCT_DOMAIN_ERROR_CODES.taxpayerUnitCodeInvalid,
+    );
   }
   return normalized;
 };
@@ -60,6 +76,7 @@ const normalizeUnit = (
     ratioToBase: unit.ratioToBase,
     precision: unit.precision,
     roundingMode: unit.roundingMode,
+    taxpayerUnitCode: normalizeTaxpayerUnitCode(unit.taxpayerUnitCode),
   });
 };
 
