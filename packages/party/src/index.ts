@@ -181,3 +181,13 @@ export {
   type PartyMasterExportRow,
   type PartyMasterExportSink
 } from "./application/party-master-export.ts";
+
+export {
+  PartySelectionContractError,
+  buildPartySelectorQuery,
+  isPartySelectionEligible,
+  toPartySelectionReference,
+  type PartySelectionContractErrorCode,
+  type PartySelectionPolicy,
+  type PartySelectionReference
+} from "./application/party-selection.ts";

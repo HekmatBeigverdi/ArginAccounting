@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–13 are completed. Steps 14–20 are not started.
+Phase 17 is active. Steps 1–14 are completed. Steps 15–20 are not started.
 
 ## Governance Rule
 
@@ -91,7 +91,7 @@ Full synchronization remains Phase 45.
 | 11 | Permissions, Audit, and Approval Integration | Completed |
 | 12 | Bulk Import and Export | Completed |
 | 13 | Persian RTL Party Management UI | Completed |
-| 14 | Party Selector and Future Module Consumption Contract | Not started |
+| 14 | Party Selector and Future Module Consumption Contract | Completed |
 | 15 | Shared Platform and Accounting Integration | Not started |
 | 16 | Domain and Application Tests | Not started |
 | 17 | Repository, Migration, Import, and Desktop Tests | Not started |
@@ -399,7 +399,19 @@ Evidence:
 
 Exit: later operational modules can consume Party selection without cloning Party logic or UI.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral `party-selection.ts` on top of the existing Step 6 `PartyReader.select`/`PartySelectorDto` contracts rather than introducing a second lookup abstraction.
+- Added `PartySelectionPolicy` for company-scoped bounded lookup with reusable role/status constraints and a safe 20-row active-only default; callers may explicitly widen status scope and configure limits up to the existing 100-row selector ceiling.
+- Added `PartySelectionReference` containing durable `partyId` plus display code, display name, classification, and commercial roles so future documents can store stable identity while rendering useful lookup metadata without importing the Party aggregate.
+- Added deterministic `PartySelectionContractError` codes for missing company scope and unsafe selector limits, plus eligibility/reference helpers shared by non-React consumers.
+- Added focused Application tests covering active defaults, role/status filtering policy, deduplication of requested filters, company/limit guards, stable selection references, and eligibility behavior.
+- Added reusable Persian RTL `PartySelector` desktop component under `components/party`; it consumes only an injected `PartyReader.select` boundary and therefore has no SQLite/Tauri dependency and can be fed a `SecuredPartyReader` by future modules.
+- Added accessible combobox/listbox semantics, deferred bounded search, loading/empty states, keyboard Arrow/Enter/Escape navigation, clear behavior, blur close, active-option tracking, natural/legal and commercial-role display metadata, and Phase 14 density/design-token styling.
+- The selector component does not embed Customer/Supplier business behavior: future Sales/Purchases/Treasury consumers express their requirements through generic role/status policy (`customer`, `supplier`, active/inactive) without reverse coupling Party to those modules.
+- No Sales, Purchase, Treasury, Inventory document models, balances, posting rules, or module-specific workflows were introduced in Step 14.
 
 ### Step 15 — Shared Platform and Accounting Integration
 
@@ -620,3 +632,16 @@ pnpm --filter @argin/desktop build
 ```
 
 `pnpm install` is intentionally included because Step 13 adds direct desktop workspace links to `@argin/party` and `@argin/party-tauri`; pnpm must refresh the desktop lockfile importer before frozen-install validation. Full browser/Desktop interaction regression, real-SQLite import coverage, performance/accessibility validation, and complete monorepo validation remain assigned to Steps 17–18. Reusable Party selector behavior remains Step 14 and concrete shared Audit persistence composition remains Step 15.
+
+## Step 14 Validation
+
+Focused validation commands for the reusable Party selection contract and desktop selector component:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop build
+```
+
+Step 14 adds no new persistence schema or module-specific document behavior. The Application contract remains storage-neutral and the React component consumes only the injected `PartyReader.select` boundary; broader selector integration against real SQLite/Desktop interaction remains part of Step 17 and accessibility/performance validation remains Step 18.
