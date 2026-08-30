@@ -68,17 +68,17 @@ const normalizeTimestamp = (
   return new Date(timestamp).toISOString();
 };
 
-const assertKind = (kind: string): asserts kind is ProductKind => {
+function assertKind(kind: string): asserts kind is ProductKind {
   if (kind !== "product" && kind !== "service") {
     throw new ProductDomainError(PRODUCT_DOMAIN_ERROR_CODES.kindInvalid);
   }
-};
+}
 
-const assertStatus = (status: string): asserts status is ProductStatus => {
+function assertStatus(status: string): asserts status is ProductStatus {
   if (status !== "active" && status !== "inactive") {
     throw new ProductDomainError(PRODUCT_DOMAIN_ERROR_CODES.statusInvalid);
   }
-};
+}
 
 const freezeSnapshot = (snapshot: ProductSnapshot): ProductSnapshot =>
   Object.freeze({ ...snapshot });
