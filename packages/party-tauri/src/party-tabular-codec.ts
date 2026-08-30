@@ -1,4 +1,8 @@
-import type { PartyExportRow, PartyTabularRow } from "@argin/party";
+import type {
+  PartyExportRow,
+  PartyMasterExportRow,
+  PartyTabularRow
+} from "@argin/party";
 import { read, utils, write, type WorkBook, type WorkSheet } from "xlsx";
 
 export const PARTY_TABULAR_LIMITS = Object.freeze({
@@ -56,16 +60,31 @@ export function parsePartyCsv(text: string): PartyTabularData {
 }
 
 export function createPartyXlsx(rows: readonly PartyExportRow[]): Uint8Array {
-  const sheet = utils.json_to_sheet(rows.map(toPlainRow));
+  return createXlsx(rows.map(toPlainSummaryRow));
+}
+
+export function createPartyCsv(rows: readonly PartyExportRow[]): string {
+  return createCsv(rows.map(toPlainSummaryRow));
+}
+
+export function createPartyMasterXlsx(rows: readonly PartyMasterExportRow[]): Uint8Array {
+  return createXlsx(rows.map(toPlainMasterRow));
+}
+
+export function createPartyMasterCsv(rows: readonly PartyMasterExportRow[]): string {
+  return createCsv(rows.map(toPlainMasterRow));
+}
+
+function createXlsx(rows: readonly Record<string, string>[]): Uint8Array {
+  const sheet = utils.json_to_sheet(rows);
   const workbook = utils.book_new();
   utils.book_append_sheet(workbook, sheet, "Parties");
   const output = write(workbook, { type: "array", bookType: "xlsx", compression: true });
   return output instanceof Uint8Array ? output : new Uint8Array(output as ArrayBuffer);
 }
 
-export function createPartyCsv(rows: readonly PartyExportRow[]): string {
-  const sheet = utils.json_to_sheet(rows.map(toPlainRow));
-  return utils.sheet_to_csv(sheet);
+function createCsv(rows: readonly Record<string, string>[]): string {
+  return utils.sheet_to_csv(utils.json_to_sheet(rows));
 }
 
 function parseWorksheet(sheet: WorkSheet): PartyTabularData {
@@ -91,7 +110,7 @@ function parseWorksheet(sheet: WorkSheet): PartyTabularData {
   return Object.freeze({ headers: Object.freeze(headers), rows: Object.freeze(rows) });
 }
 
-function toPlainRow(row: PartyExportRow): Record<string, string> {
+function toPlainSummaryRow(row: PartyExportRow): Record<string, string> {
   return {
     id: row.id,
     code: row.code,
@@ -102,6 +121,32 @@ function toPlainRow(row: PartyExportRow): Record<string, string> {
     primaryPhone: row.primaryPhone,
     primaryMobile: row.primaryMobile,
     primaryEmail: row.primaryEmail,
+    updatedAt: row.updatedAt
+  };
+}
+
+function toPlainMasterRow(row: PartyMasterExportRow): Record<string, string> {
+  return {
+    id: row.id,
+    classification: row.classification,
+    code: row.code,
+    status: row.status,
+    firstName: row.firstName,
+    lastName: row.lastName,
+    legalName: row.legalName,
+    tradeName: row.tradeName,
+    nationalCode: row.nationalCode,
+    nationalId: row.nationalId,
+    registrationNumber: row.registrationNumber,
+    economicNumber: row.economicNumber,
+    taxFileNumber: row.taxFileNumber,
+    roles: row.roles,
+    phone: row.phone,
+    mobile: row.mobile,
+    email: row.email,
+    addressLine: row.addressLine,
+    postalCode: row.postalCode,
+    createdAt: row.createdAt,
     updatedAt: row.updatedAt
   };
 }
