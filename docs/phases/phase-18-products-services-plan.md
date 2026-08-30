@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–3 are completed; Steps 4–20 are not started.
+Phase 18 is active. Steps 1–4 are completed; Steps 5–20 are not started.
 
 ## Governance Rule
 
@@ -86,7 +86,7 @@ Full synchronization remains Phase 45.
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | Product and Service Domain Model | Completed |
 | 3 | Classification, Status, and Lifecycle | Completed |
-| 4 | Units of Measure and Conversion Rules | Not started |
+| 4 | Units of Measure and Conversion Rules | Completed |
 | 5 | Codes, Barcodes, and Official Identifiers | Not started |
 | 6 | Commercial, Tax, and Operational Master Data | Not started |
 | 7 | Application, Query, and Repository Contracts | Not started |
@@ -178,6 +178,20 @@ Evidence:
 - Prevent invalid, zero, negative, duplicate, cyclic, or ambiguous conversion semantics as applicable.
 
 Exit: unit definitions and conversions are persistence-neutral, deterministic, and tested.
+
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral `product-unit.ts` with a canonical base-unit profile and alternate-unit definitions.
+- Every alternate unit stores a positive finite `ratioToBase`; the base unit is fixed at ratio `1`, eliminating cyclic and multi-path conversion graphs by construction.
+- Unit IDs and normalized unit codes must be unique inside a product unit profile.
+- Added explicit quantity precision (`0..6`) and deterministic rounding modes (`half-up`, `down`, `up`) applied at the destination unit boundary.
+- Added `convertProductQuantity` which always converts through the canonical base ratio and rejects non-finite quantities or unknown units.
+- Added stable Domain error codes for invalid unit definitions, ratios, base ratios, precision, rounding, duplicates, missing units, and invalid quantities.
+- Unit profiles, unit collections, and unit definitions are frozen/immutable and contain no stock balance, valuation, warehouse, purchase-document, or sales-document behavior.
+- Added focused tests covering base/alternate definitions, carton/package/base conversions, target precision/rounding, ratio and precision rejection, duplicate-code rejection, unknown-unit rejection, and immutable unit profiles.
+- Persistence of units and downstream purchase/sales/inventory unit preferences remain deferred to later frozen steps/phases.
 
 ### Step 5 — Codes, Barcodes, and Official Identifiers
 
