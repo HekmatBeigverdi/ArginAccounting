@@ -12,7 +12,7 @@ export interface ProductUnitDefinition {
   readonly ratioToBase: number;
   readonly precision: number;
   readonly roundingMode: QuantityRoundingMode;
-  readonly taxpayerUnitCode: string | null;
+  readonly taxpayerUnitCode?: string | null;
 }
 
 export interface ProductUnitProfile {
