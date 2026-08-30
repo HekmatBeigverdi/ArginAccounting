@@ -90,7 +90,11 @@ export class PartyBulkTransferService {
   async previewImport(rows: readonly PartyTabularRow[], mapping: PartyImportColumnMap, context: PartyImportContext): Promise<PartyImportPreview> {
     await this.authorization.require(authContext(context), partyPermissions.import);
     const prepared = await Promise.all(rows.map((row, index) => this.prepareRow(row, index + 2, mapping, context)));
-    return summarize(prepared.map((entry) => entry.preview));
+    const duplicateRows = findBatchDuplicateRows(prepared);
+    const normalized = prepared.map((entry) => duplicateRows.has(entry.rowNumber)
+      ? withIssue(entry, "party.import.batchDuplicate", "Duplicate Party code or official identifier exists in the import batch.")
+      : entry);
+    return summarize(normalized.map((entry) => entry.preview));
   }
 
   async import(rows: readonly PartyTabularRow[], mapping: PartyImportColumnMap, context: PartyImportContext, options: { readonly atomic: boolean }): Promise<PartyImportResult> {
@@ -228,9 +232,11 @@ function mapRow(row: PartyTabularRow, mapping: PartyImportColumnMap): PartyImpor
 
 function materialize(entry: PreparedRow, context: PartyImportContext, id: string): Party { return materializeInput(entry.createInput, context, id); }
 function materializeInput(input: PartyImportCreateInput, context: PartyImportContext, id: string): Party {
+  const contacts = (input.contacts ?? []).map((item) => Object.freeze({ ...item, id: `${id}:${item.id}` }));
+  const addresses = (input.addresses ?? []).map((item) => Object.freeze({ ...item, id: `${id}:${item.id}` }));
   return input.classification === "natural-person"
-    ? createParty({ ...input, id, companyId: context.companyId, createdAt: context.occurredAt })
-    : createParty({ ...input, id, companyId: context.companyId, createdAt: context.occurredAt });
+    ? createParty({ ...input, contacts, addresses, id, companyId: context.companyId, createdAt: context.occurredAt })
+    : createParty({ ...input, contacts, addresses, id, companyId: context.companyId, createdAt: context.occurredAt });
 }
 function buildProbe(party: Party): PartyDuplicateProbe {
   return Object.freeze({ companyId: party.companyId, excludePartyId: null, code: party.code, classification: party.classification, displayName: party.displayName, nationalCode: party.classification === "natural-person" ? party.identity.nationalCode : null, nationalId: party.classification === "legal-entity" ? party.identity.nationalId : null, economicNumber: party.identity.economicNumber });
