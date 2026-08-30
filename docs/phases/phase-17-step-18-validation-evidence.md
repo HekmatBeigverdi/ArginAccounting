@@ -2,7 +2,7 @@
 
 ## Status
 
-Validation framework complete. Repository-owner execution of the unified command is required before Step 18 is considered green.
+Completed and confirmed green by the repository owner.
 
 ## Representative Party Dataset and Query Plans
 
@@ -37,7 +37,7 @@ Existing repository tests plus Step 17/18 coverage verify that Party list/search
 
 ## Unified Validation Command
 
-Run from the repository root:
+Executed from the repository root:
 
 ```bash
 pnpm install --frozen-lockfile
@@ -70,8 +70,9 @@ The performance validator requires the `sqlite3` CLI. It introduces no runtime p
 ## Validation Evidence
 
 - Step 17 repository/migration/import/Desktop validation: confirmed green by the repository owner before Step 18 started.
-- Step 18 focused quality tests: pending unified local execution.
-- Step 18 representative SQLite query-plan validator: pending unified local execution.
-- Step 18 full monorepo typecheck/test/build/lint: pending unified local execution.
+- Step 18 focused quality tests: confirmed green by the repository owner.
+- Step 18 representative SQLite query-plan validator: confirmed green by the repository owner.
+- Step 18 full monorepo typecheck/test/build/lint: confirmed green by the repository owner.
+- During local validation, `packages/party-tauri/tsconfig.json` was corrected to include the `scripts` directory so the performance validator participates in TypeScript configuration; the accepted branch head before Step 19 includes that fix.
 
-After the unified command is green, update the frozen Phase 17 plan so Steps 1–18 are `Completed` and record the execution result before starting Step 19.
+Step 18 exit criteria are satisfied. Phase 17 may proceed to permanent documentation/ADR reconciliation.
