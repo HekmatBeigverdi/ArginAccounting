@@ -63,8 +63,13 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 ## Master Data
 
-17. 🚧 Parties
-18. ⏳ Products and Services
+17. ✅ Parties
+   - Natural/legal Party master model with Customer/Supplier multi-role support
+   - Iranian identity, tax, contact, address, duplicate-detection, import/export, and Audit integration
+   - SQLite persistence, optimistic concurrency, stable cross-store identity, tombstone/external-reference compatibility
+   - Persian RTL Party workspace and reusable bounded Party Selector
+   - Representative 50,000-row SQLite query-plan and full monorepo validation
+18. 🚧 Products and Services
 19. ⏳ Warehouses
 
 ## Inventory
@@ -143,8 +148,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 17 — Parties.
+Phase 18 — Products and Services.
 
-## Latest Completed Accounting Milestone
+## Latest Completed Master Data Milestone
 
-Phase 16 — Accounting Reports, implementation/final review completed and prepared for semantic release `v0.16.0`.
+Phase 17 — Parties, implementation and validation completed; semantic release `v0.17.0` is prepared for final GitHub publication.

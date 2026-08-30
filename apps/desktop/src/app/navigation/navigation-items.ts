@@ -11,6 +11,12 @@ export const navigationItems: NavigationItem[] = [
   { label: "گردش تأیید", path: "/approval/requests", group: "اصلی" },
   { label: "گزارش ممیزی", path: "/audit/entries", group: "اصلی" },
   { label: "شرکت‌ها و شعب", path: "/company/setup", group: "اطلاعات پایه" },
+  {
+    label: "اشخاص",
+    path: "/master-data/parties",
+    group: "اطلاعات پایه",
+    requiredPermission: "master-data.parties.view",
+  },
   { label: "سال‌های مالی", path: "/fiscal/years", group: "مدیریت مالی" },
   {
     label: "اسناد حسابداری",

@@ -50,6 +50,12 @@ importers:
       '@argin/fiscal-tauri':
         specifier: workspace:*
         version: link:../../packages/fiscal-tauri
+      '@argin/party':
+        specifier: workspace:*
+        version: link:../../packages/party
+      '@argin/party-tauri':
+        specifier: workspace:*
+        version: link:../../packages/party-tauri
       '@argin/platform':
         specifier: workspace:*
         version: link:../../packages/platform
@@ -323,6 +329,40 @@ importers:
         specifier: workspace:*
         version: link:../fiscal
     devDependencies:
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/party:
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/party-tauri:
+    dependencies:
+      '@argin/database':
+        specifier: workspace:*
+        version: link:../database
+      '@argin/party':
+        specifier: workspace:*
+        version: link:../party
+      xlsx:
+        specifier: 0.18.5
+        version: 0.18.5
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3

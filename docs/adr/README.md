@@ -19,5 +19,7 @@ ADRs are immutable decision records. Superseded decisions remain in the reposito
 - [ADR-0013 — Journal Voucher Engine Architecture](ADR-0013-journal-voucher-engine.md)
 - [ADR-0014 — UI Foundation and Global Display Density](ADR-0014-ui-foundation-and-global-density.md)
 - [ADR-0015 — Journal Lifecycle Architecture](ADR-0015-journal-lifecycle.md)
+- [ADR-0016 — Accounting Reports](ADR-0016-accounting-reports.md)
+- [ADR-0017 — Party Master Data Model](ADR-0017-party-master-data-model.md)
 
 Use the [ADR template](../templates/adr-template.md) for new decisions.

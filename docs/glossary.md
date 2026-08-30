@@ -24,3 +24,27 @@ Cost Center
 
 Chart of Accounts
 
+Party
+
+Natural Person
+
+Legal Entity
+
+Customer Role
+
+Supplier Role
+
+Party Code
+
+Durable Party ID
+
+Party Selector
+
+Tombstone
+
+External Reference
+
+Optimistic Concurrency
+
+Idempotency
+
