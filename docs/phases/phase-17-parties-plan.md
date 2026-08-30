@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–10 are completed. Steps 11–20 are not started.
+Phase 17 is active. Steps 1–11 are completed. Steps 12–20 are not started.
 
 ## Governance Rule
 
@@ -88,7 +88,7 @@ Full synchronization remains Phase 45.
 | 8 | Migration, Schema, and Indexing | Completed |
 | 9 | SQLite Repository and Atomic Transactions | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
-| 11 | Permissions, Audit, and Approval Integration | Not started |
+| 11 | Permissions, Audit, and Approval Integration | Completed |
 | 12 | Bulk Import and Export | Not started |
 | 13 | Persian RTL Party Management UI | Not started |
 | 14 | Party Selector and Future Module Consumption Contract | Not started |
@@ -329,7 +329,18 @@ Evidence:
 
 Exit: security and audit behavior do not depend on UI visibility and do not leak cross-scope Party data.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added seven granular `master-data.parties.*` permissions for view, create, update, status changes, role management, import, and export and registered them in the shared Security permission catalog.
+- Added `SecuredPartyApplicationService` and `SecuredPartyReader`; authorization is evaluated at the Application boundary before reads or mutations and receives explicit actor/company/correlation/request context.
+- Added persistence-neutral Party audit contracts and correlation-aware events for create, update, status, role, import, and export operations. Successful mutations emit audit data through an injected `PartyAuditSink` without embedding audit persistence in Domain/SQLite code.
+- Idempotent create replay does not emit a duplicate mutation audit event.
+- Normalized optional command `requestId` to nullable Security/Audit metadata so the strict `exactOptionalPropertyTypes` configuration remains compatible with existing command contracts.
+- Reviewed the existing Approval architecture. Routine Party master-data CRUD/status/role/import/export does not justify a dedicated approval lifecycle, so no artificial Party approval workflow was introduced.
+- Added focused tests proving authorization runs before writes and successful mutations emit correlated audit metadata.
+- Concrete composition of `PartyAuditSink` with the shared Audit infrastructure remains an adapter/composition concern and can be wired during Step 15 without changing the Step 11 public contracts.
 
 ### Step 12 — Bulk Import and Export
 
@@ -537,3 +548,16 @@ cd apps/desktop/src-tauri && cargo check
 ```
 
 Step 10 validates only the persistence-neutral bridge envelope semantics plus versioned SQLite metadata storage. It intentionally does not require or introduce a network server/client, PostgreSQL adapter, background sync worker, conflict-resolution UI, checkpoint processor, or Phase 45 synchronization engine.
+
+## Step 11 Validation
+
+Focused validation commands for the Party security/audit boundary and shared permission catalog:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/security typecheck
+pnpm --filter @argin/security test
+```
+
+Step 11 keeps authorization and audit contracts persistence-neutral. It does not add UI-only security, a Party-specific approval lifecycle, Bulk Import/Export behavior, or new SQLite schema. Concrete shared Audit composition remains part of later integration wiring and does not alter the accepted Party Application contracts.
