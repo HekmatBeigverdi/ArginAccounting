@@ -113,6 +113,7 @@ Exit: the Phase 17 branch and fixed implementation plan exist; no Party business
 Status: Completed
 
 Evidence:
+
 - Confirmed `main` at `044fcdc0dd42ffdb435c0b36277b148cf70afb31` (`docs: finalize phase 16 release preparation`).
 - Created branch `phase/17-parties` from that exact SHA.
 - Created this fixed plan with all 20 steps, explicit scope boundaries, and Argin Bridge/future synchronization constraints.
@@ -129,6 +130,7 @@ Exit: the Party aggregate and classification model are explicit and covered by f
 Status: Completed
 
 Evidence:
+
 - Added the independent `@argin/party` bounded-context package scaffold using the repository's strict TypeScript conventions.
 - Added `packages/party/src/domain/party.ts` with a persistence-neutral Party aggregate model, stable string identity, explicit `companyId` scope, display `code`, initial `active` status, Gregorian created/updated timestamps, and frozen aggregate snapshots.
 - Natural persons and legal entities are modeled as a discriminated union (`natural-person` / `legal-entity`) so type-specific names cannot be mixed accidentally.
@@ -149,6 +151,7 @@ Exit: role and lifecycle rules prevent duplicated Customer/Supplier master recor
 Status: Completed
 
 Evidence:
+
 - Added explicit `customer` and `supplier` Party roles as reusable Domain classifications independent of natural/legal Party classification.
 - Party creation accepts zero, one, or multiple roles; duplicate roles are normalized so one master Party can safely act as both Customer and Supplier.
 - Added immutable `addPartyRole` and `removePartyRole` transitions. Repeated add of an existing role and repeated removal of an absent role are safe no-ops and do not create unnecessary aggregate revisions.
@@ -169,6 +172,7 @@ Exit: identity/tax attributes and validations are deterministic and type-aware.
 Status: Completed
 
 Evidence:
+
 - Added `party-identity.ts` as a persistence-neutral Domain value-object boundary for Iranian identity, registration, and tax master data.
 - Natural-person identity supports national code, current economic number, and tax file number; legal-entity identity supports national identifier, registration number, current economic number, legacy 12-digit economic code, and tax file number.
 - Persian and Arabic-Indic digits are normalized to Latin digits and common spaces/hyphens are removed before validation.
@@ -190,6 +194,7 @@ Exit: Party contact/address information is normalized, reusable, and persistence
 Status: Completed
 
 Evidence:
+
 - Added persistence-neutral `party-contact.ts` and `party-address.ts` Domain child/value models and exported them from `@argin/party`.
 - Contact types include phone, mobile, email, and website; purposes include general, sales, purchasing, accounting, management, and other, with optional contact-person and title metadata.
 - Phone/mobile values normalize Persian and Arabic-Indic digits, whitespace, parentheses, and hyphens; emails normalize case; website values normalize an omitted scheme to HTTPS and validate host shape.
@@ -212,6 +217,7 @@ Exit: Party capabilities are consumable without React, Tauri, SQLite, or HTTP de
 Status: Completed
 
 Evidence:
+
 - Added persistence-neutral command contracts for natural/legal create/update operations, status changes, and role add/remove operations with explicit company/actor/correlation/request context.
 - Added company-scoped query contracts for detail lookup, paged list/search/filter/sort, and bounded selector lookup; no `findAll()` contract was introduced.
 - Added summary/detail/selector DTO contracts and a generic page result so presentation/API adapters are not forced to consume the Domain aggregate directly.
@@ -234,6 +240,7 @@ Exit: Party Application behavior is deterministic, authorization-ready, and dupl
 Status: Completed
 
 Evidence:
+
 - Added `PartyApplicationService` for create, profile update, activate/deactivate, and role add/remove use cases using the persistence-neutral `PartyUnitOfWork`/`PartyRepository` contracts.
 - Added `PartyDuplicateLookup`, probe, candidate, severity, reason, and assessment contracts so duplicate detection can be implemented efficiently by SQLite in Step 9 and by future PostgreSQL/Bridge adapters without changing Application behavior.
 - Hard duplicate conflicts are limited to strong company-scoped identifiers: Party code and official identity/economic identifiers. Hard conflicts block mutation with stable Application error codes.
@@ -256,6 +263,7 @@ Exit: schema and migrations faithfully represent the accepted model and can be u
 Status: Completed
 
 Evidence:
+
 - Added `apps/desktop/src-tauri/migrations/0016_parties.sql` using the repository's existing numbered Tauri SQLite migration convention.
 - Added `parties`, `party_roles`, `party_contacts`, and `party_addresses` tables with stable TEXT identifiers, company-scoped ownership, Domain-aligned classification/status/role/contact/address checks, Iranian identity/tax field shape, Gregorian created/updated metadata, and `version >= 1` optimistic-concurrency storage.
 - Enforced company-scoped hard duplicate boundaries for Party code, national code, legal national identifier, and economic number while leaving display-name similarity advisory as defined by Step 7.
@@ -278,6 +286,7 @@ Exit: SQLite persistence matches Application semantics with focused repository t
 Status: Completed
 
 Evidence:
+
 - Added the dedicated `@argin/party-tauri` SQLite adapter package, preserving the established bounded-context / `*-tauri` separation used by Company, Accounting, Fiscal, Security, Audit, and Platform infrastructure.
 - Added `SqlitePartyRepository` persistence for Party parent rows plus role/contact/address child tables. Aggregate reads remain company-scoped and hydrate one aggregate with bounded child queries rather than exposing an unbounded `findAll()` path.
 - Added `SqlitePartyUnitOfWork` directly on the shared `DatabaseExecutor.transaction()` contract. Party parent/role/contact/address writes therefore share one transaction session and roll back together when the Application service fails.
@@ -301,6 +310,7 @@ Exit: future Argin Bridge/PostgreSQL synchronization can be added without redesi
 Status: Completed
 
 Evidence:
+
 - Added the persistence-neutral `party-sync.ts` contract with explicit `PartySyncChangeEnvelope` upsert/tombstone variants, durable `(companyId, partyId)` identity, separate display code, integer version, change timestamp, operation id, idempotency key, and external references.
 - Added stable sync contract errors and constructors that reject invalid versions/timestamps, mismatched snapshots, empty operation/idempotency identifiers, and duplicate external references before any transport adapter exists.
 - Kept Party lifecycle `active`/`inactive` distinct from synchronization deletion. A tombstone carries `deletedAt` and a null business snapshot instead of overloading ordinary inactive status.

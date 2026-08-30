@@ -19,7 +19,7 @@ const snapshot: PartySyncSnapshot = Object.freeze({
   lastName: "رضایی",
   legalName: null,
   tradeName: null,
-  roles: Object.freeze(["customer"]),
+  roles: Object.freeze(["customer"] as const),
   identity: Object.freeze({
     nationalCode: null,
     nationalId: null,
