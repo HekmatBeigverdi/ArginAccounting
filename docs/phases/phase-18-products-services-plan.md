@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–4 are completed; Steps 5–20 are not started.
+Phase 18 is active. Steps 1–5 are completed; Steps 6–20 are not started.
 
 ## Governance Rule
 
@@ -87,7 +87,7 @@ Full synchronization remains Phase 45.
 | 2 | Product and Service Domain Model | Completed |
 | 3 | Classification, Status, and Lifecycle | Completed |
 | 4 | Units of Measure and Conversion Rules | Completed |
-| 5 | Codes, Barcodes, and Official Identifiers | Not started |
+| 5 | Codes, Barcodes, and Official Identifiers | Completed |
 | 6 | Commercial, Tax, and Operational Master Data | Not started |
 | 7 | Application, Query, and Repository Contracts | Not started |
 | 8 | Application Services, Validation, and Duplicate Detection | Not started |
@@ -200,6 +200,21 @@ Evidence:
 - Preserve Taxpayer System compatible master identifiers without implementing taxpayer invoice submission logic.
 
 Exit: identifiers are normalized, deterministic, and safe for downstream lookup and integration.
+
+Status: Completed
+
+Evidence:
+
+- Kept the aggregate's durable `productId` separate from the human-readable internal/display `code`, preserving the Phase 18 identity boundary.
+- Added persistence-neutral `ProductIdentifierProfile` support for optional normalized SKU, reference code, multiple barcodes, external identifiers, and the official Iranian Taxpayer System goods/service identifier.
+- The Taxpayer System goods/service identifier is validated as exactly 13 numeric digits and remains distinct from Argin `productId`, internal code, SKU, reference code, and barcode values.
+- Barcode values are normalized, empty values are rejected, and duplicate barcodes within the identifier profile are rejected deterministically.
+- External identifiers use explicit normalized `scheme` plus `value` pairs; duplicate scheme/value pairs are rejected while preserving future ERP/import/bridge mapping flexibility.
+- Extended Product Unit definitions with an optional `taxpayerUnitCode` mapping that is explicitly separate from internal `unitId` and unit `code`.
+- The taxpayer unit code is treated as an external official-table value: it must be non-empty when supplied, but Phase 18 does not invent a numeric length/format constraint beyond the authoritative Taxpayer System unit-code reference file.
+- Added stable Domain error codes for malformed/duplicate barcodes, malformed Taxpayer goods/service IDs, external identifiers, and invalid Taxpayer unit mappings.
+- Added focused tests for the 13-digit identifier including `2720000014385`, malformed-length/non-numeric rejection, SKU/reference normalization, barcode/external-id duplicate detection, and Taxpayer unit-code/internal-unit identity separation.
+- No Taxpayer invoice projection, signing, submission, inquiry, or network behavior was introduced; those remain owned by Phases 31–35.
 
 ### Step 6 — Commercial, Tax, and Operational Master Data
 
