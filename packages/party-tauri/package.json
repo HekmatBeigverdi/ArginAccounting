@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo \"Party Tauri lint is not configured yet\"",
     "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts",
+    "validate:performance": "node --experimental-strip-types --experimental-transform-types scripts/validate-party-performance.ts",
     "clean": "rimraf dist"
   },
   "dependencies": {
