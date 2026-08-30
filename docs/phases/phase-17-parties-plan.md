@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–12 are completed. Steps 13–20 are not started.
+Phase 17 is active. Steps 1–13 are completed. Steps 14–20 are not started.
 
 ## Governance Rule
 
@@ -90,7 +90,7 @@ Full synchronization remains Phase 45.
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | Permissions, Audit, and Approval Integration | Completed |
 | 12 | Bulk Import and Export | Completed |
-| 13 | Persian RTL Party Management UI | Not started |
+| 13 | Persian RTL Party Management UI | Completed |
 | 14 | Party Selector and Future Module Consumption Contract | Not started |
 | 15 | Shared Platform and Accounting Integration | Not started |
 | 16 | Domain and Application Tests | Not started |
@@ -375,7 +375,21 @@ Evidence:
 
 Exit: Party management is usable as a professional Persian desktop Master Data workspace.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added the `/master-data/parties` desktop route and a permission-aware `اشخاص` navigation entry under `اطلاعات پایه`.
+- Added a Persian RTL Party workspace with bounded 40-row paging, deferred search, natural/legal classification filtering, status filtering, role filtering, compact Phase 14 density tokens, and a split list/detail layout that avoids unbounded Party loading.
+- Added natural-person and legal-entity create/edit forms covering accepted identity/tax fields, primary phone/mobile/email/website, registered address/postal code, and deterministic Domain/Application validation rather than duplicating business rules in React.
+- Added explicit active/inactive actions and independent Customer/Supplier role-management actions through `SecuredPartyApplicationService`; UI visibility is not the security boundary.
+- Tightened secured create behavior so assigning roles during Party creation also requires `master-data.parties.manage-roles`, with focused regression coverage proving denial occurs before persistence.
+- Added Solar Hijri display of created/updated timestamps through `Intl.DateTimeFormat("fa-IR-u-ca-persian")` while durable stored timestamps remain Gregorian ISO values.
+- Added loading, empty, success/error feedback, keyboard row selection, focus-visible styling, Escape-to-close create/edit behavior, responsive breakpoints, and display-density-aware controls/row heights using the canonical Phase 14 design tokens.
+- Added the Step 12-deferred CSV/XLSX import UX: file selection, Persian/English automatic column matching, manual column mapping, whole-file Domain/Application validation, hard/advisory/batch-duplicate diagnostics, bounded preview rendering, and atomic-import execution that refuses partial writes when invalid rows exist.
+- Added explicit desktop workspace dependencies on `@argin/party` and `@argin/party-tauri`; no Party Domain rules were moved into React or spreadsheet adapters.
+- Concrete persistence of Party audit events through the shared Audit composition remains the explicitly deferred Step 15 adapter/composition task established in Step 11; Step 13 keeps the secured Party contracts intact without introducing a second audit implementation.
+- Reusable Party selector UI/contracts remain Step 14. No Sales, Purchases, Treasury, balances, posting, network synchronization, or Phase 45 behavior was introduced.
 
 ### Step 14 — Party Selector and Future Module Consumption Contract
 
@@ -589,3 +603,20 @@ pnpm --filter @argin/party-tauri test
 ```
 
 Step 12 reuses the monorepo's existing pinned `xlsx@0.18.5` dependency for the Party file adapter and keeps spreadsheet parsing/serialization outside Domain/Application business rules. Mapping UX and import-preview screens remain Step 13; full real-SQLite/import/Desktop regression coverage remains Step 17.
+
+## Step 13 Validation
+
+Focused validation commands for the Party desktop workspace, import UI, and security regression:
+
+```bash
+pnpm install
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/party-tauri typecheck
+pnpm --filter @argin/party-tauri test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
+```
+
+`pnpm install` is intentionally included because Step 13 adds direct desktop workspace links to `@argin/party` and `@argin/party-tauri`; pnpm must refresh the desktop lockfile importer before frozen-install validation. Full browser/Desktop interaction regression, real-SQLite import coverage, performance/accessibility validation, and complete monorepo validation remain assigned to Steps 17–18. Reusable Party selector behavior remains Step 14 and concrete shared Audit persistence composition remains Step 15.
