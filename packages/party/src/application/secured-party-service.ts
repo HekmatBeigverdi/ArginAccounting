@@ -39,6 +39,9 @@ export class SecuredPartyApplicationService {
 
   async create(command: CreatePartyCommand): Promise<PartyMutationResult> {
     await this.require(command.context, partyPermissions.create);
+    if ((command.roles?.length ?? 0) > 0) {
+      await this.require(command.context, partyPermissions.manageRoles);
+    }
     const result = await this.inner.create(command);
     if (!result.idempotentReplay) {
       await this.record("party.create", command.context, result.party.id, {
