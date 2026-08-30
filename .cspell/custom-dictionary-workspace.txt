@@ -25,6 +25,7 @@ Sheetهای
 Tadbir
 tauri
 topbar
+transactionally
 unpost
 unposted
 Vazirmatn
