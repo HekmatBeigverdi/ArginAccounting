@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–2 are completed; Steps 3–20 are not started.
+Phase 18 is active. Steps 1–3 are completed; Steps 4–20 are not started.
 
 ## Governance Rule
 
@@ -85,7 +85,7 @@ Full synchronization remains Phase 45.
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
 | 2 | Product and Service Domain Model | Completed |
-| 3 | Classification, Status, and Lifecycle | Not started |
+| 3 | Classification, Status, and Lifecycle | Completed |
 | 4 | Units of Measure and Conversion Rules | Not started |
 | 5 | Codes, Barcodes, and Official Identifiers | Not started |
 | 6 | Commercial, Tax, and Operational Master Data | Not started |
@@ -155,6 +155,20 @@ Evidence:
 - Keep synchronization tombstones distinct from ordinary business activation status.
 
 Exit: classification and lifecycle rules are deterministic and preserve downstream module boundaries.
+
+Status: Completed
+
+Evidence:
+
+- Extended the persistence-neutral Product/Service aggregate with an optional stable `categoryId` reference; category assignment/removal is normalized, immutable, timestamped, and does not embed category persistence or hierarchy queries inside the aggregate.
+- Added explicit `ProductCapabilities` with `purchasable` and `sellable` flags. These are Master Data eligibility flags only and do not implement Purchase or Sales workflow behavior.
+- Added immutable `activateProduct` and `deactivateProduct` transitions with idempotent no-op behavior when the requested lifecycle state is already current.
+- Added immutable `assignProductCategory` and `configureProductCapabilities` transitions with no-op suppression when effective values do not change.
+- Mutation timestamps are normalized to Gregorian ISO timestamps and are forbidden from moving backwards relative to the aggregate's current `updatedAt`.
+- Product creation defaults to active, purchasable, and sellable while allowing explicit capability configuration for services or specialized items.
+- Ordinary business status remains strictly `active`/`inactive`; no `deleted`, tombstone, synchronization, network, or conflict-resolution state was added to the aggregate. Tombstone semantics remain reserved for the frozen Argin Bridge step.
+- Added focused Domain regression tests covering category assignment/removal, active/inactive transitions, repeated no-op transitions, capability configuration, service capability scenarios, nested immutability, timestamp ordering, and explicit absence of tombstone/deletion state.
+- Units/conversions, barcodes/official identifiers, Application services, SQLite persistence, and formal Argin Bridge metadata remain deferred to their frozen later steps.
 
 ### Step 4 — Units of Measure and Conversion Rules
 
