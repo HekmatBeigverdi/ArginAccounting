@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Step 1 is completed; Steps 2–20 are not started.
+Phase 18 is active. Steps 1–2 are completed; Steps 3–20 are not started.
 
 ## Governance Rule
 
@@ -84,7 +84,7 @@ Full synchronization remains Phase 45.
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, and Plan Freeze | Completed |
-| 2 | Product and Service Domain Model | Not started |
+| 2 | Product and Service Domain Model | Completed |
 | 3 | Classification, Status, and Lifecycle | Not started |
 | 4 | Units of Measure and Conversion Rules | Not started |
 | 5 | Codes, Barcodes, and Official Identifiers | Not started |
@@ -133,6 +133,19 @@ Evidence:
 - Keep infrastructure/persistence concerns out of Domain contracts.
 
 Exit: the Product/Service aggregate and primary classification model are explicit and covered by focused Domain tests.
+
+Status: Completed
+
+Evidence:
+
+- Added independent `@argin/product` bounded-context package following the established Master Data package conventions.
+- Added persistence-neutral Product/Service aggregate contracts in `packages/product/src/domain/product.ts`.
+- Introduced stable `productId` distinct from human-readable `code`, explicit `companyId` scope, normalized title/code, `product`/`service` classification, and an initial `active` status baseline.
+- Added deterministic Gregorian `createdAt`/`updatedAt` metadata and rehydration guards without introducing persistence or synchronization transport behavior.
+- Added stable Domain error codes for required identity, company scope, display code/title, classification, and timestamp invariants.
+- Aggregate snapshots are immutable/frozen and do not contain warehouse, inventory, purchase, sales, accounting-posting, or taxpayer workflow behavior.
+- Added focused Domain tests covering product creation, service classification, durable-id/display-code separation, required invariants, invalid classification, immutability, persisted status rehydration, and timestamp ordering.
+- Lifecycle transitions, categories/capabilities, units, barcodes/official identifiers, Application services, SQLite persistence, and formal Argin Bridge sync metadata remain intentionally deferred to their frozen later steps.
 
 ### Step 3 — Classification, Status, and Lifecycle
 
