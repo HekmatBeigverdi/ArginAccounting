@@ -13,7 +13,6 @@ import {
   SecuredPartyReader,
   partyPermissions,
   type PartyAddressInput,
-  type PartyAuditSink,
   type PartyAuthorizationPolicy,
   type PartyContactInput,
   type PartyDetailDto,
@@ -32,6 +31,7 @@ import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Feedback } from "../../components/feedback";
 import { Field, Select } from "../../components/forms";
 import { Page } from "../../components/layout";
+import { createPersistentPartyAuditSink } from "./party-audit-sink";
 import { getPartyErrorMessage } from "./party-error-presenter";
 import { PartyImportDialog } from "./party-import-dialog";
 
@@ -86,16 +86,6 @@ const emptyDraft: Draft = {
   postalCode: "",
   customer: false,
   supplier: false,
-};
-
-/*
- * Step 11 deliberately left the concrete shared Audit adapter for Step 15.
- * The secured Application service still emits Party audit events here; Step 15
- * replaces this sink with the shared persistent Audit composition without
- * changing the Party workspace or its commands.
- */
-const deferredPartyAuditSink: PartyAuditSink = {
-  record: async () => undefined,
 };
 
 const persianDateTimeFormatter = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
@@ -272,7 +262,7 @@ export function PartiesPage() {
         new SqlitePartyDuplicateLookup(database),
       ),
       authorization,
-      deferredPartyAuditSink,
+      createPersistentPartyAuditSink(database),
     );
 
     return { securedReader, securedApplication };

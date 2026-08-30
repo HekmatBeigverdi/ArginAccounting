@@ -2,7 +2,6 @@ import { type ChangeEvent, useMemo, useState } from "react";
 import {
   PartyBulkTransferService,
   partyImportFields,
-  type PartyAuditSink,
   type PartyAuthorizationPolicy,
   type PartyImportColumnMap,
   type PartyImportField,
@@ -21,6 +20,7 @@ import {
 import { getDesktopDatabase } from "@argin/database-tauri";
 
 import { Feedback } from "../../components/feedback";
+import { createPersistentPartyAuditSink } from "./party-audit-sink";
 
 import "./party-import-dialog.css";
 
@@ -31,10 +31,6 @@ interface PartyImportDialogProps {
   onClose(): void;
   onImported(): Promise<void> | void;
 }
-
-const deferredPartyAuditSink: PartyAuditSink = {
-  record: async () => undefined,
-};
 
 const fieldLabels: Record<PartyImportField, string> = {
   classification: "نوع شخص",
@@ -141,7 +137,7 @@ export function PartyImportDialog({
       new SqlitePartyDuplicateLookup(database),
       new SqlitePartyReader(database),
       authorization,
-      deferredPartyAuditSink,
+      createPersistentPartyAuditSink(database),
       { nextId: () => crypto.randomUUID() },
     );
   }

@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–14 are completed. Steps 15–20 are not started.
+Phase 17 is active. Steps 1–15 are completed. Steps 16–20 are not started.
 
 ## Governance Rule
 
@@ -92,7 +92,7 @@ Full synchronization remains Phase 45.
 | 12 | Bulk Import and Export | Completed |
 | 13 | Persian RTL Party Management UI | Completed |
 | 14 | Party Selector and Future Module Consumption Contract | Completed |
-| 15 | Shared Platform and Accounting Integration | Not started |
+| 15 | Shared Platform and Accounting Integration | Completed |
 | 16 | Domain and Application Tests | Not started |
 | 17 | Repository, Migration, Import, and Desktop Tests | Not started |
 | 18 | Monorepo, Performance, Accessibility, and Quality Validation | Not started |
@@ -421,7 +421,20 @@ Evidence:
 
 Exit: Party fits the existing architecture cleanly without violating bounded responsibilities.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Replaced the Step 11/13 no-op desktop Party audit composition with `createPersistentPartyAuditSink`, mapping persistence-neutral `PartyAuditEvent` values into the canonical `@argin/audit` model and storing them through `@argin/audit-tauri` on the shared desktop database.
+- Wired the persistent Audit sink into both ordinary Party mutations (`create`, `update`, status and role changes) and bulk import execution. The mapping preserves the real actor id, company scope, Party target id, correlation id, request id, occurrence timestamp, Party action, and operation metadata.
+- Mapped Party actions to canonical shared Audit actions: create/update/status-change/assign/unassign/import/export. Audit recording is treated as an internal consequence of an already-authorized Party command, so users do not require a separate UI-facing Audit-record permission merely to have their successful operation audited.
+- Added a deterministic `toSharedAuditEntryInput` mapper plus focused Desktop tests covering action mapping, actor/company scope, durable Party target identity, correlation id, request id, and metadata preservation.
+- Confirmed Party already aligns with shared platform metadata and concurrency conventions: company scope is explicit on commands/queries, correlation/request ids flow through Application/Audit boundaries, durable timestamps remain Gregorian, bounded list/selector contracts avoid unbounded reads, and `expectedVersion`/SQLite `version` remain the optimistic-concurrency boundary.
+- Deliberately did not add a second Party notification/domain-event stream because no current Phase 17 consumer requires it. Future operational workflows may use the existing shared Platform event bus when a concrete consumer exists rather than introducing speculative events now.
+- Added `docs/architecture/party-shared-platform-integration.md` documenting shared-platform alignment, Audit composition, future module dependency direction, and explicit accounting exclusions.
+- Added architecture regression coverage proving `@argin/party` has no dependency on Accounting, Audit, Tauri database adapters, or other infrastructure packages; Audit persistence stays in Desktop composition.
+- Confirmed future documents reference Parties through stable `PartySelectionReference.partyId`; display `code`/`displayName` remain presentation metadata and must not replace durable identity.
+- No Party balances, opening balances, journal lines, posting rules, account/dimension ownership, automatic vouchers, sales/purchase documents, treasury behavior, or reverse dependency from Party to Accounting was introduced.
 
 ### Step 16 — Domain and Application Tests
 
@@ -645,3 +658,19 @@ pnpm --filter @argin/desktop build
 ```
 
 Step 14 adds no new persistence schema or module-specific document behavior. The Application contract remains storage-neutral and the React component consumes only the injected `PartyReader.select` boundary; broader selector integration against real SQLite/Desktop interaction remains part of Step 17 and accessibility/performance validation remains Step 18.
+
+## Step 15 Validation
+
+Focused validation commands for shared Audit composition and architecture boundaries:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/audit typecheck
+pnpm --filter @argin/audit-tauri typecheck
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
+```
+
+Step 15 adds no Party persistence schema and no accounting/posting behavior. The Desktop tests validate deterministic Party-to-shared-Audit mapping while `@argin/party` tests protect the bounded-context dependency direction. Real SQLite Audit persistence interaction remains part of the broader infrastructure/Desktop regression work in Step 17, and complete monorepo/performance/accessibility validation remains Step 18.
