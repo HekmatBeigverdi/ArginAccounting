@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–16 are completed. Steps 17–20 are not started.
+Phase 17 implementation, validation, documentation, final review, and merge preparation are complete. Steps 1–19 are completed. Step 20 is completed except for the explicitly delegated manual publication of GitHub Release `v0.17.0`.
 
 ## Governance Rule
 
@@ -94,10 +94,10 @@ Full synchronization remains Phase 45.
 | 14 | Party Selector and Future Module Consumption Contract | Completed |
 | 15 | Shared Platform and Accounting Integration | Completed |
 | 16 | Domain and Application Tests | Completed |
-| 17 | Repository, Migration, Import, and Desktop Tests | Not started |
-| 18 | Monorepo, Performance, Accessibility, and Quality Validation | Not started |
-| 19 | Documentation, ADR, and Validation Evidence | Not started |
-| 20 | Final Review, Merge, and Release | Not started |
+| 17 | Repository, Migration, Import, and Desktop Tests | Completed |
+| 18 | Monorepo, Performance, Accessibility, and Quality Validation | Completed |
+| 19 | Documentation, ADR, and Validation Evidence | Completed |
+| 20 | Final Review, Merge, and Release | Completed — manual Release publication pending |
 
 ## Fixed Execution Sequence
 
@@ -462,7 +462,14 @@ Evidence:
 
 Exit: infrastructure and Desktop integration are green with focused regression coverage.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added focused `@argin/party-tauri` infrastructure coverage for transactional rollback, company-scoped duplicate queries, update self-exclusion, bounded advisory duplicates, selector role/status/search limits, master export paging, and tombstone exclusion.
+- Added migration-contract tests covering ordered registration of migrations `0016`/`0017`, Party uniqueness/company-scope constraints, optimistic version storage, read/selector/duplicate indexes, tombstone metadata, and external-reference schema.
+- Added Desktop regression coverage for secured Party composition, permission-independent Application boundaries, persistent Audit wiring, bounded paging/deferred search, CSV/XLSX import preview/atomic mode, and reusable selector behavior.
+- Repository owner executed and confirmed Step 17 validation as successful before Step 18 began.
 
 ### Step 18 — Monorepo, Performance, Accessibility, and Quality Validation
 
@@ -473,7 +480,14 @@ Status: Not started
 
 Exit: focused and monorepo validation is green with performance and UI-quality evidence.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added `packages/party-tauri/scripts/validate-party-performance.ts` with a representative 50,000-row SQLite dataset and `EXPLAIN QUERY PLAN` checks for list/selector/role/duplicate indexes without hardware-specific latency thresholds.
+- Added Desktop quality-contract coverage for bounded 40-row paging, deferred search, no unbounded `findAll()`, keyboard-selectable rows, modal semantics, combobox/listbox/option semantics, Arrow/Enter/Escape behavior, RTL/LTR islands, Solar Hijri display, Phase 14 density variables, responsive breakpoints, and import preview/atomic mode.
+- Added unified root command `pnpm validate:phase17` covering focused Party/Party-Tauri/Security/Audit/Desktop validation, representative query-plan validation, and full monorepo typecheck/test/build/lint.
+- Repository owner executed and confirmed `pnpm validate:phase17` as green. Detailed evidence is recorded in `docs/phases/phase-17-step-18-validation-evidence.md`.
 
 ### Step 19 — Documentation, ADR, and Validation Evidence
 
@@ -484,7 +498,15 @@ Status: Not started
 
 Exit: Phase 17 satisfies permanent Documentation Governance with no undocumented public contract or architectural decision.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Added permanent implementation record `docs/phases/phase-17-parties.md` and Step 19 documentation evidence.
+- Added `ADR-0017-party-master-data-model.md` covering canonical Party identity, Customer/Supplier roles, durable-id/display-code separation, persistence neutrality, and future synchronization compatibility.
+- Updated ADR registry, database design/dictionary, Party security documentation, glossary, phase index, and Step 18 evidence.
+- Recorded migration, permission, architecture, test/validation, and explicit non-scope matrices with Phase 18 as the next target.
+- Repository owner reviewed and approved Step 19 before Step 20 began.
 
 ### Step 20 — Final Review, Merge, and Release
 
@@ -495,7 +517,16 @@ Status: Not started
 
 Exit: Phase 17 is merged, documented, and released according to project governance; Phase 18 can start from a clean canonical baseline.
 
-Status: Not started
+Status: Completed — final GitHub Release publication delegated to repository owner by explicit request
+
+Evidence:
+
+- Final review compared the complete Phase 17 branch against the Phase 16 `main` baseline and confirmed the branch is strictly ahead with no divergent baseline commits.
+- Reviewed the complete diff for Phase 17 scope, migrations, permissions, bounded-context dependency direction, Party-to-Accounting separation, synchronization deferral, and user-facing Party functionality; no out-of-scope accounting/posting behavior was accepted.
+- Preserved all repository-owner corrective commits, including final test/config/dictionary corrections, rather than rewriting shared history.
+- Reconciled this Step Status table with actual Steps 17–20 evidence.
+- Updated `ROADMAP.md`, `CHANGELOG.md`, Phase 17 release notes, phase documentation/index, and release-facing checklist/evidence for semantic version `v0.17.0`.
+- Phase 17 was promoted through the repository branch strategy to `develop` and then `main`; the final semantic tag/GitHub Release publication is intentionally left as the only manual repository-owner action requested for completion.
 
 ## Change Requests
 
@@ -696,3 +727,36 @@ pnpm --filter @argin/party test
 ```
 
 Step 16 remains independent of SQLite/Tauri/Desktop behavior. It expands semantic coverage around stable Application errors, company-scoped authorization, duplicate assessment, mutation idempotency boundaries, and optimistic-concurrency forwarding. Real repository/migration/import/Desktop behavior remains Step 17, and complete monorepo/performance/accessibility validation remains Step 18.
+
+## Step 17 Validation
+
+Repository owner confirmed the focused repository/migration/import/Desktop validation as green. Canonical coverage is in:
+
+- `packages/party-tauri/tests/party-step17-infrastructure.test.ts`
+- `apps/desktop/tests/party-migration-contract.test.ts`
+- `apps/desktop/tests/party-desktop-regression.test.ts`
+
+## Step 18 Validation
+
+Repository owner confirmed the unified gate as green:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm validate:phase17
+```
+
+Detailed query-plan, performance, accessibility, RTL, density, and monorepo evidence is recorded in `docs/phases/phase-17-step-18-validation-evidence.md`.
+
+## Step 19 Validation
+
+Step 19 is documentation-only. Validation consisted of governance reconciliation, canonical documentation/ADR/security/database/glossary updates, migration/permission/test matrices, link review, and repository-owner approval.
+
+## Step 20 Validation
+
+Step 20 uses the already green Step 18 release gate and the approved Step 19 documentation set. Final release validation consists of:
+
+1. Complete phase diff review against `develop`/`main` baseline.
+2. Preservation of repository-owner corrective commits.
+3. Non-forced promotion to `develop` and `main` through the repository branch strategy.
+4. Verification that both integration branches contain the final Phase 17 release state.
+5. Manual publication of tag/GitHub Release `v0.17.0` from the verified `main` release commit, explicitly delegated to the repository owner.

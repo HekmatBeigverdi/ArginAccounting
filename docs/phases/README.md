@@ -34,18 +34,16 @@ All phase records live in this directory and follow the permanent [phase templat
    - [Step 17 SQLite/Desktop/Performance and Monorepo Validation](phase-16-step-17-validation.md)
    - Step 16 and Step 17 local validation confirmed by repository owner
    - Semantic tag/GitHub Release publication remains the manual repository-owner action
-
-## Active Implementation
-
-17. [Phase 17 — Parties](phase-17-parties.md) — Steps 1–19 implemented/validated; final review, merge, and release remain Step 20
+17. [Phase 17 — Parties](phase-17-parties.md) — implementation, validation, documentation, and merge complete; semantic release `v0.17.0` prepared for manual GitHub publication
    - [Fixed Implementation Plan](phase-17-parties-plan.md)
    - [ADR-0017 — Party Master Data Model](../adr/ADR-0017-party-master-data-model.md)
    - [Step 18 Monorepo/Performance/Accessibility Validation Evidence](phase-17-step-18-validation-evidence.md)
    - [Step 19 Documentation and Validation Evidence](phase-17-step-19-documentation-evidence.md)
+   - [Release Notes](phase-17-release-notes.md)
 
 ## Next Target
 
-Phase 18 starts only after Phase 17 Step 20 final review, merge, and release are complete.
+18. Phase 18 — Products and Services
 
 ## Renumbering Rule
 
@@ -53,4 +51,4 @@ The insertion of Platform Infrastructure as Phase 09 shifted Chart of Accounts a
 
 ## Historical Refactor Policy
 
-Phase 01–16 documents retain their implementation history and historical phase numbers. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.
+Phase 01–17 documents retain their implementation history and historical phase numbers. Link repair, status correction, standardized cross-references, and missing-record reconstruction are permitted; claims about validation must remain evidence-based.

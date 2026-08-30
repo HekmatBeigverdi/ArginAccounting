@@ -23,13 +23,13 @@ pnpm install --frozen-lockfile
 
 ## 3. Focused Validation
 
-Run phase-specific validation first. For Phase 16:
+Run the current phase-specific validation first. For Phase 17:
 
 ```bash
-pnpm validate:phase16
+pnpm validate:phase17
 ```
 
-This covers focused Accounting, Accounting-Tauri, representative SQLite report query-plan validation, Desktop typecheck/test/build, and monorepo typecheck/test/build.
+This covers Party Domain/Application, Party-Tauri, representative SQLite query-plan/performance validation, Security/Audit boundaries, Desktop typecheck/test/build, and full monorepo typecheck/test/build/lint.
 
 Validation evidence must identify who executed local commands. Connector-side documentation must not claim local execution it did not perform.
 
@@ -56,18 +56,14 @@ Run `pnpm lint` and documentation-index/link validation when configured for the 
 - [ ] New indexes/constraints have tests or measured query-path justification.
 - [ ] `PRAGMA foreign_key_check` and `PRAGMA integrity_check` are clean where a real migration database is exercised.
 
-Phase 16 migration:
+Phase 17 migrations:
 
 ```text
-0015_accounting_report_indexes.sql
+0016_parties.sql
+0017_party_sync_metadata.sql
 ```
 
-Phase 16 query-plan evidence must cover:
-
-```text
-ix_journal_vouchers_reporting_scope
-ix_journal_line_dimensions_reporting
-```
+Phase 17 query-plan evidence covers bounded Party list/selector/duplicate paths and requires the expected production index shapes, including company/status/name, role lookup, and official-identity uniqueness.
 
 ## 6. Security and Scope
 
@@ -78,25 +74,26 @@ ix_journal_line_dimensions_reporting
 - [ ] Export/download actions have their own required authorization when applicable.
 - [ ] No production password, token, secret, or private environment value is committed.
 
-For Phase 16 verify:
+For Phase 17 verify:
 
 ```text
-accounting.reports.trial-balance.view
-accounting.reports.general-ledger.view
-accounting.reports.subsidiary-ledger.view
-accounting.reports.journal.view
-accounting.reports.dimensions.view
-accounting.reports.export
+master-data.parties.view
+master-data.parties.create
+master-data.parties.update
+master-data.parties.change-status
+master-data.parties.manage-roles
+master-data.parties.import
+master-data.parties.export
 ```
 
-## 7. Financial Semantics
+## 7. Bounded-Context Semantics
 
-- [ ] Canonical financial calculations remain outside React/Tauri/SQL presentation adapters.
-- [ ] Posted facts are immutable and reportable according to lifecycle semantics.
-- [ ] Reversal preserves original + inverse traceability.
-- [ ] Date/Fiscal/Company/Branch/currency scope is deterministic.
-- [ ] Hierarchy aggregation does not double count.
-- [ ] Export and print reuse canonical result DTOs.
+- [ ] Domain/Application rules remain outside React/Tauri/SQL presentation adapters.
+- [ ] Durable Party ID remains distinct from display Party code.
+- [ ] Customer and Supplier remain Party roles rather than duplicated master entities.
+- [ ] Party does not acquire balances, posting, Journal, Sales/Purchase, Treasury, or Inventory business ownership.
+- [ ] Future synchronization contracts do not implement network/sync business rules in Party Domain or React.
+- [ ] Import/export reuse canonical Domain/Application validation rather than spreadsheet-owned business rules.
 
 ## 8. Desktop Validation
 
@@ -106,18 +103,19 @@ For user-facing phases verify applicable surfaces:
 - [ ] Solar Hijri input/presentation with Gregorian durable dates.
 - [ ] Loading, empty, error, focus, density, and contained overflow behavior.
 - [ ] Permission-aware navigation/actions.
-- [ ] Drill-down/source traceability.
-- [ ] Print/Preview/Excel/PDF behavior when delivered.
+- [ ] Keyboard/accessibility behavior.
+- [ ] Bounded list/selector/search behavior.
+- [ ] Import/export behavior when delivered.
 
-Phase 16 functional acceptance includes Excel download, full-screen Preview, native Print/Save-as-PDF, and correct landscape output.
+Phase 17 functional acceptance includes Party create/edit/status/role behavior, localized validation feedback, CSV/XLSX import preview/atomic mode, and reusable Party selector behavior.
 
 ## 9. Documentation
 
 Before merge verify:
 
-- [ ] `README.md`
+- [ ] `README.md` where affected
 - [ ] `ROADMAP.md`
-- [ ] `ARCHITECTURE.md`
+- [ ] `ARCHITECTURE.md` where affected
 - [ ] `CHANGELOG.md`
 - [ ] `docs/phases/phase-NN-<slug>.md`
 - [ ] fixed implementation plan and validation evidence
@@ -139,12 +137,18 @@ Do not force-push shared branches.
 
 ## 11. Semantic Tag and GitHub Release
 
-Create the semantic tag from the verified release commit on `main` and publish a GitHub Release using the matching `CHANGELOG.md` section.
+Create the semantic tag from the verified release commit on `main` and publish a GitHub Release using the matching `CHANGELOG.md` / release-notes section.
 
-For Phase 16 the prepared version is:
+For Phase 17 the prepared version is:
 
 ```text
-v0.16.0
+v0.17.0
+```
+
+Prepared notes:
+
+```text
+docs/phases/phase-17-release-notes.md
 ```
 
 ## 12. Post-Release
@@ -152,5 +156,5 @@ v0.16.0
 - [ ] Verify the tag points to the intended `main` commit.
 - [ ] Verify Release title/notes and artifacts.
 - [ ] Confirm `develop` contains the released state.
-- [ ] Mark the completed phase and next target in `ROADMAP.md`.
+- [ ] Confirm completed phase and next target in `ROADMAP.md`.
 - [ ] Start the next `phase/*` branch from the appropriate current integration baseline.

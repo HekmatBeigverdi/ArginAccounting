@@ -1,5 +1,9 @@
 # Phase 17 — Parties
 
+## Status
+
+Implementation, validation, documentation, final review, and repository merge are complete. Semantic release `v0.17.0` is prepared; final GitHub Release publication is the only manual repository-owner action intentionally left outside the automated Step 20 workflow.
+
 ## Purpose
 
 Phase 17 introduces Parties as canonical Master Data for natural persons and legal entities. Customer and Supplier are roles on one Party record, not separate duplicated masters.
@@ -71,10 +75,23 @@ Focused Domain/Application, SQLite/repository, migration, import/export, Desktop
 
 Repository-owner validation for Step 18 was confirmed green after running the Phase 17 validation path. The validator covers a representative 50,000-Party SQLite dataset and checks bounded list/selector/duplicate index usage without a hardware-specific latency threshold.
 
+## Release
+
+- Semantic version: `v0.17.0`.
+- Release notes: `docs/phases/phase-17-release-notes.md`.
+- Phase state is promoted through `develop` and `main` during Step 20.
+- Final tag/GitHub Release publication is intentionally delegated to the repository owner.
+
 ## Key Documents
 
 - `docs/phases/phase-17-parties-plan.md`
 - `docs/phases/phase-17-step-18-validation-evidence.md`
+- `docs/phases/phase-17-step-19-documentation-evidence.md`
+- `docs/phases/phase-17-release-notes.md`
 - `docs/architecture/party-argin-bridge-contract.md`
 - `docs/architecture/party-shared-platform-integration.md`
 - `docs/adr/ADR-0017-party-master-data-model.md`
+
+## Next Phase
+
+Phase 18 — Products and Services.
