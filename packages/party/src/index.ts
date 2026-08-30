@@ -131,6 +131,16 @@ export {
   type PartySyncUpsertEnvelope
 } from "./application/contracts/party-sync.ts";
 
+export {
+  partyPermissions,
+  type PartyAuditAction,
+  type PartyAuditEvent,
+  type PartyAuditSink,
+  type PartyAuthorizationContext,
+  type PartyAuthorizationPolicy,
+  type PartyPermission
+} from "./application/contracts/party-security.ts";
+
 export type { PartyReader } from "./application/contracts/party-reader.ts";
 export type { PartyRepository } from "./application/contracts/party-repository.ts";
 export type {
@@ -142,3 +152,8 @@ export {
   PartyApplicationService,
   type PartyMutationResult
 } from "./application/party-service.ts";
+
+export {
+  SecuredPartyApplicationService,
+  SecuredPartyReader
+} from "./application/secured-party-service.ts";
