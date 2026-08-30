@@ -162,3 +162,37 @@ test("rejects unknown units and non-finite quantities", () => {
       error.code === PRODUCT_DOMAIN_ERROR_CODES.quantityInvalid,
   );
 });
+
+test("keeps taxpayer unit code separate from internal unit identity", () => {
+  const mapped = createProductUnitProfile({
+    baseUnit: {
+      unitId: "unit-tax-each",
+      code: "EA",
+      title: "عدد",
+      precision: 0,
+      roundingMode: "half-up",
+      taxpayerUnitCode: "1627",
+    },
+  });
+
+  assert.equal(mapped.baseUnitId, "unit-tax-each");
+  assert.equal(mapped.units[0]?.taxpayerUnitCode, "1627");
+  assert.notEqual(mapped.units[0]?.unitId, mapped.units[0]?.taxpayerUnitCode);
+
+  assert.throws(
+    () =>
+      createProductUnitProfile({
+        baseUnit: {
+          unitId: "invalid-tax-unit",
+          code: "EA",
+          title: "عدد",
+          precision: 0,
+          roundingMode: "half-up",
+          taxpayerUnitCode: "   ",
+        },
+      }),
+    (error: unknown) =>
+      error instanceof ProductDomainError &&
+      error.code === PRODUCT_DOMAIN_ERROR_CODES.taxpayerUnitCodeInvalid,
+  );
+});
