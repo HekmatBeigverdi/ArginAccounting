@@ -9,6 +9,11 @@ export {
   rehydrateProduct,
 } from "./domain/product.ts";
 
+export {
+  convertProductQuantity,
+  createProductUnitProfile,
+} from "./domain/product-unit.ts";
+
 export type {
   CreateProductInput,
   ProductCapabilities,
@@ -17,3 +22,10 @@ export type {
   ProductSnapshot,
   ProductStatus,
 } from "./domain/product.ts";
+
+export type {
+  CreateProductUnitProfileInput,
+  ProductUnitDefinition,
+  ProductUnitProfile,
+  QuantityRoundingMode,
+} from "./domain/product-unit.ts";
