@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–9 are completed. Steps 10–20 are not started.
+Phase 17 is active. Steps 1–10 are completed. Steps 11–20 are not started.
 
 ## Governance Rule
 
@@ -87,7 +87,7 @@ Full synchronization remains Phase 45.
 | 7 | Application Services and Duplicate Detection | Completed |
 | 8 | Migration, Schema, and Indexing | Completed |
 | 9 | SQLite Repository and Atomic Transactions | Completed |
-| 10 | Argin Bridge and Future Synchronization Contract | Not started |
+| 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | Permissions, Audit, and Approval Integration | Not started |
 | 12 | Bulk Import and Export | Not started |
 | 13 | Persian RTL Party Management UI | Not started |
@@ -298,7 +298,17 @@ Evidence:
 
 Exit: future Argin Bridge/PostgreSQL synchronization can be added without redesigning Party identity or breaking current SQLite/Desktop behavior.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+- Added the persistence-neutral `party-sync.ts` contract with explicit `PartySyncChangeEnvelope` upsert/tombstone variants, durable `(companyId, partyId)` identity, separate display code, integer version, change timestamp, operation id, idempotency key, and external references.
+- Added stable sync contract errors and constructors that reject invalid versions/timestamps, mismatched snapshots, empty operation/idempotency identifiers, and duplicate external references before any transport adapter exists.
+- Kept Party lifecycle `active`/`inactive` distinct from synchronization deletion. A tombstone carries `deletedAt` and a null business snapshot instead of overloading ordinary inactive status.
+- Added migration `0017_party_sync_metadata.sql` with nullable `parties.deleted_at`, company-scoped `party_external_references`, uniqueness constraints for source-system identities, and indexes for incremental version/change scans and tombstone/external-reference lookup.
+- Registered migration version 17 in the desktop migration registry without rewriting migration 0016.
+- Added `docs/architecture/party-argin-bridge-contract.md` documenting durable-id/display-code separation, version ordering, tombstone semantics, external references, retry/idempotency requirements, and the exact boundary deferred to Phase 45.
+- Added focused tests proving durable identity cannot drift from the snapshot, display code remains separate, tombstones contain no business snapshot, versions are positive integers, and duplicate external references are deterministic errors.
+- No network endpoint, HTTP client/server, background sync worker, checkpoint/cursor, conflict-resolution engine/UI, PostgreSQL adapter, or durable network idempotency processor was introduced. Those remain explicitly deferred to Phase 45.
 
 ### Step 11 — Permissions, Audit, and Approval Integration
 
@@ -504,3 +514,16 @@ pnpm --filter @argin/party-tauri test
 ```
 
 `pnpm install` is included because Step 9 introduces the new workspace package `@argin/party-tauri`; it refreshes the workspace links and lockfile importer locally. Step 9 focused tests use a deterministic database test double to validate transaction participation, concurrency/error behavior, and bounded query construction. Full real-SQLite migration/repository/rollback coverage remains mandatory in Step 17, and full monorepo validation remains mandatory in Step 18.
+
+## Step 10 Validation
+
+Focused validation commands for the future synchronization contract and migration registry:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/desktop typecheck
+cd apps/desktop/src-tauri && cargo check
+```
+
+Step 10 validates only the persistence-neutral bridge envelope semantics plus versioned SQLite metadata storage. It intentionally does not require or introduce a network server/client, PostgreSQL adapter, background sync worker, conflict-resolution UI, checkpoint processor, or Phase 45 synchronization engine.
