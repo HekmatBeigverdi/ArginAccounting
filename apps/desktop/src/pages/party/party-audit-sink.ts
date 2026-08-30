@@ -3,7 +3,8 @@ import {
   type AuditAction,
   type AuditClock,
   type AuditIdGenerator,
-  type AuditPermissionAuthorizer
+  type AuditPermissionAuthorizer,
+  type CreateAuditEntryInput
 } from "@argin/audit";
 import {
   DatabaseExecutorAdapter,
@@ -39,11 +40,35 @@ const auditActionByPartyAction: Readonly<Record<PartyAuditAction, AuditAction>> 
   "party.export": "export"
 });
 
-function metadataFor(event: PartyAuditEvent) {
+export function toSharedAuditEntryInput(
+  event: PartyAuditEvent
+): CreateAuditEntryInput {
   return Object.freeze({
-    ...event.metadata,
-    partyAction: event.action,
-    requestId: event.requestId
+    occurredAt: event.occurredAt,
+    action: auditActionByPartyAction[event.action],
+    outcome: "success",
+    source: "desktop",
+    actor: Object.freeze({
+      type: "user" as const,
+      id: event.actorId,
+      displayName: event.actorId
+    }),
+    scope: Object.freeze({
+      companyId: event.companyId,
+      branchId: null,
+      fiscalYearId: null
+    }),
+    target: Object.freeze({
+      entityType: "party",
+      entityId: event.partyId,
+      entityDisplayName: null
+    }),
+    correlationId: event.correlationId,
+    metadata: Object.freeze({
+      ...event.metadata,
+      partyAction: event.action,
+      requestId: event.requestId
+    })
   });
 }
 
@@ -70,29 +95,7 @@ export function createPersistentPartyAuditSink(
           unitOfWork,
           auditRepository
         },
-        {
-          occurredAt: event.occurredAt,
-          action: auditActionByPartyAction[event.action],
-          outcome: "success",
-          source: "desktop",
-          actor: {
-            type: "user",
-            id: event.actorId,
-            displayName: event.actorId
-          },
-          scope: {
-            companyId: event.companyId,
-            branchId: null,
-            fiscalYearId: null
-          },
-          target: {
-            entityType: "party",
-            entityId: event.partyId,
-            entityDisplayName: null
-          },
-          correlationId: event.correlationId,
-          metadata: metadataFor(event)
-        }
+        toSharedAuditEntryInput(event)
       );
     }
   });
