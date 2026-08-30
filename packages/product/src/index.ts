@@ -10,6 +10,11 @@ export {
 } from "./domain/product.ts";
 
 export {
+  createProductIdentifierProfile,
+  normalizeTaxpayerGoodsServiceId,
+} from "./domain/product-identifiers.ts";
+
+export {
   convertProductQuantity,
   createProductUnitProfile,
 } from "./domain/product-unit.ts";
@@ -22,6 +27,12 @@ export type {
   ProductSnapshot,
   ProductStatus,
 } from "./domain/product.ts";
+
+export type {
+  CreateProductIdentifierProfileInput,
+  ProductExternalIdentifier,
+  ProductIdentifierProfile,
+} from "./domain/product-identifiers.ts";
 
 export type {
   CreateProductUnitProfileInput,
