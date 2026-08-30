@@ -22,6 +22,8 @@
     "@argin/database-tauri": "workspace:*",
     "@argin/fiscal": "workspace:*",
     "@argin/fiscal-tauri": "workspace:*",
+    "@argin/party": "workspace:*",
+    "@argin/party-tauri": "workspace:*",
     "@argin/platform": "workspace:*",
     "@argin/platform-tauri": "workspace:*",
     "@argin/security": "workspace:*",
