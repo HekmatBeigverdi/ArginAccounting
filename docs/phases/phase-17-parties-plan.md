@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 17 is active. Steps 1–15 are completed. Steps 16–20 are not started.
+Phase 17 is active. Steps 1–16 are completed. Steps 17–20 are not started.
 
 ## Governance Rule
 
@@ -93,7 +93,7 @@ Full synchronization remains Phase 45.
 | 13 | Persian RTL Party Management UI | Completed |
 | 14 | Party Selector and Future Module Consumption Contract | Completed |
 | 15 | Shared Platform and Accounting Integration | Completed |
-| 16 | Domain and Application Tests | Not started |
+| 16 | Domain and Application Tests | Completed |
 | 17 | Repository, Migration, Import, and Desktop Tests | Not started |
 | 18 | Monorepo, Performance, Accessibility, and Quality Validation | Not started |
 | 19 | Documentation, ADR, and Validation Evidence | Not started |
@@ -442,7 +442,18 @@ Evidence:
 
 Exit: core Party semantics are comprehensively validated independent of SQLite/Desktop.
 
-Status: Not started
+Status: Completed
+
+Evidence:
+
+- Reviewed the existing Party Domain/Application suite across aggregate/classification, role/lifecycle, Iranian identity, contact/address, contracts, Application service, security boundary, bulk transfer, selector, synchronization, and architecture-boundary tests and added only missing semantic coverage instead of duplicating prior cases.
+- Added focused Step 16 coverage proving company-scoped Party code conflicts are emitted before duplicate lookup, preserving the stable `party.code.conflict` boundary and avoiding unnecessary duplicate queries.
+- Added mutation-boundary coverage proving missing Party records deterministically return `party.notFound` for status changes and role add/remove use cases.
+- Added optimistic-concurrency contract coverage proving `expectedVersion` is forwarded unchanged for status, add-role, and remove-role mutations that actually change aggregate state.
+- Added duplicate-assessment coverage proving hard and advisory evidence remain independently preserved and that update-style assessments carry `excludePartyId` to prevent self-matching.
+- Added secured-reader coverage proving `master-data.parties.view` authorization is checked with the queried company scope and actor/correlation/request context before the underlying reader is invoked.
+- Existing tests continue to cover natural/legal aggregate invariants, role/lifecycle no-ops, timestamp monotonicity, Iranian identifier normalization/checksums, contacts/addresses and primary invariants, durable-id idempotent create replay, conflicting replay rejection, classification immutability, hard/advisory duplicate semantics, authorization-before-write, role-management authorization, and correlated audit emission.
+- No SQLite, migration, Tauri, browser interaction, or real persistence test was added in Step 16; those remain explicitly assigned to Step 17.
 
 ### Step 17 — Repository, Migration, Import, and Desktop Tests
 
@@ -674,3 +685,14 @@ pnpm --filter @argin/desktop build
 ```
 
 Step 15 adds no Party persistence schema and no accounting/posting behavior. The Desktop tests validate deterministic Party-to-shared-Audit mapping while `@argin/party` tests protect the bounded-context dependency direction. Real SQLite Audit persistence interaction remains part of the broader infrastructure/Desktop regression work in Step 17, and complete monorepo/performance/accessibility validation remains Step 18.
+
+## Step 16 Validation
+
+Focused validation commands for the complete Domain/Application Party test matrix:
+
+```bash
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+```
+
+Step 16 remains independent of SQLite/Tauri/Desktop behavior. It expands semantic coverage around stable Application errors, company-scoped authorization, duplicate assessment, mutation idempotency boundaries, and optimistic-concurrency forwarding. Real repository/migration/import/Desktop behavior remains Step 17, and complete monorepo/performance/accessibility validation remains Step 18.
