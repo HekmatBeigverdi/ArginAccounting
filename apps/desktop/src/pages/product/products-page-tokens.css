@@ -1,0 +1,21 @@
+.products-page {
+  --space-1: var(--ui-space-1);
+  --space-2: var(--ui-space-2);
+  --space-3: var(--ui-space-3);
+  --space-4: var(--ui-space-4);
+  --radius-sm: var(--ui-radius-sm);
+  --radius-md: var(--ui-radius-md);
+  --color-border: var(--ui-border);
+  --color-text: var(--ui-text);
+  --color-text-muted: var(--ui-text-muted);
+  --color-surface: var(--ui-surface);
+  --color-primary: var(--ui-primary);
+  --color-on-primary: #fff;
+  --color-focus: var(--ui-focus);
+  --color-success: var(--ui-success);
+  --control-height: var(--ui-density-control-height);
+  --table-cell-padding-x: var(--ui-density-cell-x);
+  --table-cell-padding-y: var(--ui-density-cell-y);
+  --font-size-xs: 0.76rem;
+  --font-size-sm: var(--ui-density-font-size);
+}
