@@ -5,18 +5,12 @@ import {
   rehydrateProduct,
   type ProductSnapshot,
 } from "../domain/product.ts";
-import {
-  createProductIdentifierProfile,
-  type ProductIdentifierProfile,
-} from "../domain/product-identifiers.ts";
+import { createProductIdentifierProfile } from "../domain/product-identifiers.ts";
 import {
   createProductMasterDataProfile,
   type ProductMasterDataProfile,
 } from "../domain/product-master-data.ts";
-import {
-  createProductUnitProfile,
-  type ProductUnitProfile,
-} from "../domain/product-unit.ts";
+import { createProductUnitProfile } from "../domain/product-unit.ts";
 import type {
   CreateProductCommand,
   ProductRequestContext,
@@ -116,25 +110,15 @@ const nextState = (
   version: current.version + 1,
 });
 
-const assertCompanyScope = (
-  state: ProductPersistenceState,
-  companyId: string,
-): void => {
-  if (state.product.companyId !== companyId) {
-    throw new ProductApplicationError(PRODUCT_APPLICATION_ERROR_CODES.notFound);
-  }
-};
-
 const loadRequired = async (
   repository: ProductRepository,
   companyId: string,
   productId: string,
 ): Promise<ProductPersistenceState> => {
   const state = await repository.findById(companyId, requireText(productId));
-  if (!state) {
+  if (!state || state.product.companyId !== companyId) {
     throw new ProductApplicationError(PRODUCT_APPLICATION_ERROR_CODES.notFound);
   }
-  assertCompanyScope(state, companyId);
   return state;
 };
 
@@ -156,10 +140,7 @@ const splitDuplicates = async (
 const assertNoHardIdentifierConflict = (
   result: ProductDuplicateCheckResult,
 ): void => {
-  const identifierConflict = result.hardConflicts.find(
-    (candidate) => candidate.reason !== "code",
-  );
-  if (identifierConflict) {
+  if (result.hardConflicts.some((candidate) => candidate.reason !== "code")) {
     throw new ProductApplicationError(
       PRODUCT_APPLICATION_ERROR_CODES.duplicateIdentifier,
     );
@@ -201,8 +182,12 @@ export class ProductService implements ProductApplicationContract {
           code: command.code,
           title: command.title,
           kind: command.kind,
-          categoryId: command.categoryId,
-          capabilities: command.capabilities,
+          ...(command.categoryId === undefined
+            ? {}
+            : { categoryId: command.categoryId }),
+          ...(command.capabilities === undefined
+            ? {}
+            : { capabilities: command.capabilities }),
           createdAt: context.occurredAt,
         });
         const identifiers = createProductIdentifierProfile(command.identifiers);
