@@ -51,7 +51,7 @@ const normalizedOccurredAt = (value: string): string => {
   return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : value;
 };
 
-export class SecuredProductService implements ProductApplicationContract {
+export class SecuredProductService {
   constructor(
     private readonly inner: ProductService,
     private readonly authorization: ProductAuthorizationPolicy,
@@ -137,42 +137,13 @@ export class SecuredProductService implements ProductApplicationContract {
   async setStatus(command: SetProductStatusCommand): Promise<ProductDto> {
     await this.requireMutation(command.context, productPermissions.changeStatus);
     const result = await this.inner.setStatus(command);
-    await this.record("product.change-status", command.context, result.productId, {
-      status: result.status,
-      version: result.version,
-    });
+    if (result.version !== command.expectedVersion) {
+      await this.record("product.change-status", command.context, result.productId, {
+        status: result.status,
+        version: result.version,
+      });
+    }
     return result;
-  }
-
-  async getById(query: GetProductByIdQuery): Promise<ProductDto | null> {
-    throw new ProductApplicationError(
-      PRODUCT_APPLICATION_ERROR_CODES.invalidRequest,
-      "Use SecuredProductReader for read operations.",
-    );
-  }
-
-  async getByCode(query: GetProductByCodeQuery): Promise<ProductDto | null> {
-    void query;
-    throw new ProductApplicationError(
-      PRODUCT_APPLICATION_ERROR_CODES.invalidRequest,
-      "Use SecuredProductReader for read operations.",
-    );
-  }
-
-  async list(query: ListProductsQuery): Promise<ProductPageDto<ProductListItemDto>> {
-    void query;
-    throw new ProductApplicationError(
-      PRODUCT_APPLICATION_ERROR_CODES.invalidRequest,
-      "Use SecuredProductReader for read operations.",
-    );
-  }
-
-  async select(query: ProductSelectorQuery): Promise<readonly ProductSelectorItemDto[]> {
-    void query;
-    throw new ProductApplicationError(
-      PRODUCT_APPLICATION_ERROR_CODES.invalidRequest,
-      "Use SecuredProductReader for read operations.",
-    );
   }
 
   private async requireMutation(
