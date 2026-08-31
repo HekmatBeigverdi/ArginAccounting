@@ -28,6 +28,11 @@ export {
 } from "./application/product-service.ts";
 
 export {
+  ProductBulkTransferService,
+  productImportFields,
+} from "./application/product-bulk-transfer.ts";
+
+export {
   SecuredProductReader,
   SecuredProductService,
 } from "./application/secured-product-service.ts";
@@ -92,6 +97,21 @@ export type {
 export type {
   ProductServiceDependencies,
 } from "./application/product-service.ts";
+
+export type {
+  ProductBulkContext,
+  ProductBulkExportReader,
+  ProductExportBatchSink,
+  ProductExportRow,
+  ProductImportColumnMap,
+  ProductImportField,
+  ProductImportIdGenerator,
+  ProductImportIssue,
+  ProductImportPreview,
+  ProductImportPreviewRow,
+  ProductImportResult,
+  ProductTabularRow,
+} from "./application/product-bulk-transfer.ts";
 
 export type {
   ProductReadSecurityContext,
