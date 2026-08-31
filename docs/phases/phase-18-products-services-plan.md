@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–12 are completed; Steps 13–20 are not started.
+Phase 18 is active. Steps 1–13 are completed; Steps 14–20 are not started.
 
 ## Governance Rule
 
@@ -95,7 +95,7 @@ Full synchronization remains Phase 45.
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | SQLite Repository, Unit of Work, and Atomic Transactions | Completed |
 | 12 | Permissions, Audit, and Approval Integration | Completed |
-| 13 | Bulk Import and Export | Not started |
+| 13 | Bulk Import and Export | Completed |
 | 14 | Persian RTL Product/Service Management UI | Not started |
 | 15 | Product/Service Selector and Future Module Consumption Contract | Not started |
 | 16 | Shared Platform and ERP Integration Boundaries | Not started |
@@ -393,6 +393,24 @@ Evidence:
 - Ensure import cannot bypass Domain/Application invariants or authorization.
 
 Exit: large master-data exchange is safe, diagnosable, and repeatable.
+
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral `ProductBulkTransferService` in `packages/product/src/application/product-bulk-transfer.ts` with explicit tabular row and column-mapping contracts; Product Application receives normalized tabular records rather than CSV/XLSX file APIs.
+- Import supports preview before persistence and maps each row through the existing Product/Service Domain constructors for identity/classification, identifier profiles, UoM profiles, and commercial/tax/operational master data.
+- Import validates active Taxpayer System unit reference codes through `TaxpayerUnitReferenceValidator` and validates default purchase/sales units against the same Product unit profile, preventing bulk input from bypassing the Step 8 master-data/reference rules.
+- Strong duplicates for code, SKU, reference code, barcode, 13-digit Taxpayer goods/service ID, and external identifiers are blocking diagnostics; advisory title/brand-model matches remain informational. The service also detects strong duplicates inside the current import batch before writes.
+- Atomic mode performs zero writes when preview contains invalid rows and writes all accepted rows in one `ProductUnitOfWork`; best-effort mode isolates accepted rows in individual Unit of Work transactions and returns row-specific write failures.
+- Bulk import and export enforce the dedicated `master-data.products.import` and `master-data.products.export` permissions at the Application boundary and emit Product import/export Audit facts after effective successful operations.
+- Added `ProductReaderBulkExportAdapter` so export reuses the canonical bounded Product Reader, hydrates only the current page, and streams rows to a `ProductExportBatchSink` with a maximum page size of 200 instead of loading the full Product/Service master-data set.
+- Added `@argin/product-tauri` CSV/XLSX codec using the project's established SheetJS `xlsx` version (`0.18.5`). File parsing remains adapter-level; the codec limits inputs to 20 MiB, 100,000 data rows, and 100 columns.
+- Export includes stable `productId`, display/master fields, identifiers, official goods/service ID, UoM/reference mappings, commercial/tax/operational attributes, version, and Gregorian timestamps. Multiple alternate units are represented as JSON in one tabular cell to preserve deterministic round-trip structure.
+- Added focused Product bulk tests for Persian normalization, hard/advisory duplicates, within-batch strong duplicates, atomic no-write behavior, one-UoW atomic writes, permissions/audit, bounded export, and CSV/XLSX round trips and file limits.
+- No Product management UI, Inventory/Purchase/Sales transaction workflow, Taxpayer invoice workflow, Argin Bridge transport, or synchronization engine was introduced in Step 13.
+- The assistant runtime could not execute pnpm tests/typecheck/build because its isolated direct network environment cannot resolve GitHub; local validation remains required before Step 14 is accepted.
+- `@argin/product-tauri` now declares the existing workspace `xlsx@0.18.5` dependency. The generated lockfile importer still requires a local `pnpm install --lockfile-only --no-frozen-lockfile` reconciliation before frozen-lock validation; no new package version needs to be resolved because `xlsx@0.18.5` is already present in the lockfile through existing adapters.
 
 ### Step 14 — Persian RTL Product/Service Management UI
 
