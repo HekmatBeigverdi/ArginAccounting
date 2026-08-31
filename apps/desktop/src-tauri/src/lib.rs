@@ -137,6 +137,12 @@ fn database_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0018_taxpayer_unit_reference_data.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 19,
+            description: "products_services",
+            sql: include_str!("../migrations/0019_products_services.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
