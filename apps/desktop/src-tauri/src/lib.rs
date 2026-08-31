@@ -143,6 +143,12 @@ fn database_migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0019_products_services.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 20,
+            description: "product_sync_metadata",
+            sql: include_str!("../migrations/0020_product_sync_metadata.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 
