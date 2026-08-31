@@ -15,6 +15,10 @@ export {
 } from "./domain/product-identifiers.ts";
 
 export {
+  createProductMasterDataProfile,
+} from "./domain/product-master-data.ts";
+
+export {
   convertProductQuantity,
   createProductUnitProfile,
 } from "./domain/product-unit.ts";
@@ -38,6 +42,15 @@ export type {
   ProductExternalIdentifier,
   ProductIdentifierProfile,
 } from "./domain/product-identifiers.ts";
+
+export type {
+  CreateProductMasterDataProfileInput,
+  ProductCommercialAttributes,
+  ProductMasterDataProfile,
+  ProductOperationalAttributes,
+  ProductTaxAttributes,
+  ProductTaxTreatment,
+} from "./domain/product-master-data.ts";
 
 export type {
   CreateProductUnitProfileInput,
