@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–13 are completed; Steps 14–20 are not started.
+Phase 18 is active. Steps 1–14 are completed; Steps 15–20 are not started.
 
 ## Governance Rule
 
@@ -96,7 +96,7 @@ Full synchronization remains Phase 45.
 | 11 | SQLite Repository, Unit of Work, and Atomic Transactions | Completed |
 | 12 | Permissions, Audit, and Approval Integration | Completed |
 | 13 | Bulk Import and Export | Completed |
-| 14 | Persian RTL Product/Service Management UI | Not started |
+| 14 | Persian RTL Product/Service Management UI | Completed |
 | 15 | Product/Service Selector and Future Module Consumption Contract | Not started |
 | 16 | Shared Platform and ERP Integration Boundaries | Not started |
 | 17 | Domain and Application Tests | Not started |
@@ -419,6 +419,23 @@ Evidence:
 - Keep business validation in Domain/Application boundaries.
 
 Exit: Product/Service management is usable and consistent with the canonical desktop experience.
+
+Status: Completed
+
+Evidence:
+
+- Added `apps/desktop/src/pages/product/products-page.tsx` as the Persian RTL Product/Service management workspace and registered `/master-data/products` in the desktop router and `کالاها و خدمات` under the permission-aware `اطلاعات پایه` navigation group.
+- The workspace provides bounded 40-row paging, deferred search, Product/Service and active/inactive filters, keyboard-selectable table rows, explicit loading/empty/error states, a detail pane, Persian-calendar display for timestamps, and responsive list/detail behavior without loading the entire master-data set.
+- Added create/edit workflow for durable display identity, Product/Service classification, category reference, purchasable/sellable capabilities, SKU/reference/barcode/13-digit Taxpayer identifiers, base-unit metadata and Taxpayer unit mapping, commercial descriptions, tax treatment/VAT rate, and Product operational tracking settings. Service stock/serial/lot/shelf-life controls are disabled at the UI surface while Domain/Application remain authoritative.
+- React performs only input shaping and presentation; final normalization, duplicate checks, Taxpayer unit-reference validation, Product/Service invariants, optimistic concurrency, and persistence remain inside the existing `ProductService`, Domain constructors, and SQLite adapters.
+- Desktop composition wires `SqliteProductReader`, `SqliteProductUnitOfWork`, `SqliteProductDuplicateDetector`, `SqliteProductIdempotencyExecutor`, and `SqliteTaxpayerUnitReferenceValidator` through `SecuredProductReader` / `SecuredProductService`; permission checks therefore occur at the Application boundary instead of relying on disabled buttons alone.
+- Added `product-audit-sink.ts` to bridge successful Product mutations into the existing shared append-only Audit infrastructure rather than introducing a Product-specific audit store.
+- Added a Persian Product error presenter covering authorization, optimistic-concurrency, hard identifier/code conflicts, Taxpayer references, 13-digit official identifier validation, unit precision/reference errors, VAT rules, and Product-vs-Service operational invariants.
+- Added dense RTL styling with sticky table headers, compact detail key/value layout, keyboard focus/selection treatment, modal Escape/backdrop close behavior, auto-focus, responsive breakpoints, and Phase 14 density bindings. `products-page-tokens.css` maps Product workspace styling directly to the canonical `--ui-density-*` and design-token contract so Compact/Comfortable/Spacious modes remain effective.
+- Product mutation commands carry the latest returned optimistic version forward during supported edit operations; each Application mutation remains independently authorized, audited, and transaction-safe rather than moving validation or direct SQL writes into React.
+- Added `@argin/product` and `@argin/product-tauri` as explicit Desktop workspace dependencies. Because `pnpm-lock.yaml` is generated and the connector cannot safely patch only its large importer section, local lockfile reconciliation remains required before frozen-lock validation.
+- No inventory quantity, warehouse movement, valuation, Purchase/Sales document, Taxpayer submission/signing/inquiry, Argin Bridge transport, synchronization conflict UI, or Phase 45 behavior was introduced.
+- Direct repository `pnpm` validation could not run in the assistant runtime because DNS resolution for GitHub is unavailable there; this limitation is recorded explicitly and is not treated as a passing CI result. Full Desktop integration/accessibility coverage remains owned by frozen Step 18 and final monorepo validation by Step 19.
 
 ### Step 15 — Product/Service Selector and Future Module Consumption Contract
 
