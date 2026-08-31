@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–8 are completed; Steps 9–20 are not started.
+Phase 18 is active. Steps 1–9 are completed; Steps 10–20 are not started.
 
 ## Governance Rule
 
@@ -91,7 +91,7 @@ Full synchronization remains Phase 45.
 | 6 | Commercial, Tax, and Operational Master Data | Completed |
 | 7 | Application, Query, and Repository Contracts | Completed |
 | 8 | Application Services, Validation, and Duplicate Detection | Completed |
-| 9 | Migration, Schema, Constraints, and Indexing | Not started |
+| 9 | Migration, Schema, Constraints, and Indexing | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
 | 11 | SQLite Repository, Unit of Work, and Atomic Transactions | Not started |
 | 12 | Permissions, Audit, and Approval Integration | Not started |
@@ -295,6 +295,21 @@ Evidence:
 - Preserve query-plan viability for large master-data sets.
 
 Exit: schema, constraints, and indexes reflect Domain/Application contracts without embedding business rules exclusively in SQLite.
+
+Status: Completed
+
+Evidence:
+
+- Added versioned desktop SQLite migration `0019_products_services.sql` and registered migration version 19 as `products_services` in the Tauri SQL migration registry.
+- Added canonical `products` persistence with durable text identity, explicit company scope, display code/title, product/service kind, active/inactive status, category reference, purchase/sales capability flags, Gregorian timestamps, and optimistic `version`.
+- Added normalized child persistence for identifier profile, barcodes, external identifiers, unit definitions, and commercial/tax/operational master data instead of serializing opaque JSON blobs.
+- All Product child tables use same-company composite foreign keys back to `products(company_id, id)`, preventing cross-company child attachment at the database boundary while preserving Application ownership of business semantics.
+- Added company-scoped hard uniqueness indexes for Product code, SKU, reference code, barcode, 13-digit Taxpayer goods/service identifier, and external scheme/value pairs to mirror Step 8 conflict policy.
+- Added deterministic database checks for Product kind/status/boolean/version shape, 13-digit numeric Taxpayer identifier syntax, positive unit ratios, precision `0..6`, supported rounding modes, one base-unit marker, VAT basis-point shape, and operational tracking consistency. Domain/Application remain authoritative for the corresponding business rules.
+- Product Units optionally reference the seeded `taxpayer_units(code)` Reference Data from migration 18 with `ON DELETE RESTRICT`; default purchase/sales units use same-product composite foreign keys so arbitrary or cross-product unit IDs cannot be persisted.
+- Added query-path indexes for company/status/title, kind/status/title, category/status/title, capabilities/status, updated-time ordering, identifier lookup, barcode/external lookup, product-unit loading, Taxpayer unit lookup, and brand/model advisory duplicate detection.
+- Migration DDL was executed against an isolated SQLite database with `PRAGMA foreign_keys=ON` and the required Company/Taxpayer reference dependencies; the schema created successfully. Full upgrade-path, constraint, query-plan, rollback, and Desktop migration tests remain assigned to frozen Steps 18–19.
+- No SQLite repository implementation, transaction adapter, synchronization metadata, authorization, audit, inventory balance, valuation, Purchase/Sales document, or posting behavior was introduced in Step 9.
 
 ### Step 10 — Argin Bridge and Future Synchronization Contract
 
