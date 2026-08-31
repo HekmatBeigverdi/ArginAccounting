@@ -33,6 +33,10 @@ export {
 } from "./application/product-bulk-transfer.ts";
 
 export {
+  ProductReaderBulkExportAdapter,
+} from "./application/product-bulk-export-reader.ts";
+
+export {
   SecuredProductReader,
   SecuredProductService,
 } from "./application/secured-product-service.ts";
