@@ -7,6 +7,8 @@ export const PRODUCT_APPLICATION_ERROR_CODES = Object.freeze({
   codeConflict: "product.application.code-conflict",
   concurrencyConflict: "product.application.concurrency-conflict",
   duplicateIdentifier: "product.application.duplicate-identifier",
+  unitReferenceInvalid: "product.application.unit-reference-invalid",
+  taxpayerUnitReferenceInvalid: "product.application.taxpayer-unit-reference-invalid",
   unauthorized: "product.application.unauthorized",
 });
 
