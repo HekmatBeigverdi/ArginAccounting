@@ -10,7 +10,10 @@ import {
   createProductMasterDataProfile,
   type ProductMasterDataProfile,
 } from "../domain/product-master-data.ts";
-import { createProductUnitProfile } from "../domain/product-unit.ts";
+import {
+  createProductUnitProfile,
+  type ProductUnitProfile,
+} from "../domain/product-unit.ts";
 import type {
   CreateProductCommand,
   ProductRequestContext,
@@ -48,6 +51,7 @@ import type {
   ProductPersistenceState,
   ProductRepository,
 } from "./contracts/product-repository.ts";
+import type { TaxpayerUnitReferenceValidator } from "./contracts/product-reference-validation.ts";
 import type { ProductUnitOfWork } from "./contracts/product-unit-of-work.ts";
 
 const requireText = (value: string): string => {
@@ -147,11 +151,50 @@ const assertNoHardIdentifierConflict = (
   }
 };
 
+const assertDefaultUnitReferences = (
+  masterData: Readonly<ProductMasterDataProfile>,
+  units: Readonly<ProductUnitProfile> | null,
+): void => {
+  const ids = new Set(units?.units.map((unit) => unit.unitId) ?? []);
+  for (const unitId of [
+    masterData.commercial.defaultPurchaseUnitId,
+    masterData.commercial.defaultSalesUnitId,
+  ]) {
+    if (unitId !== null && !ids.has(unitId)) {
+      throw new ProductApplicationError(
+        PRODUCT_APPLICATION_ERROR_CODES.unitReferenceInvalid,
+      );
+    }
+  }
+};
+
+const assertTaxpayerUnitReferences = async (
+  units: Readonly<ProductUnitProfile> | null,
+  validator: TaxpayerUnitReferenceValidator,
+): Promise<void> => {
+  if (!units) {
+    return;
+  }
+  const codes = new Set(
+    units.units
+      .map((unit) => unit.taxpayerUnitCode)
+      .filter((code): code is string => code !== null),
+  );
+  for (const code of codes) {
+    if (!(await validator.isActiveCode(code))) {
+      throw new ProductApplicationError(
+        PRODUCT_APPLICATION_ERROR_CODES.taxpayerUnitReferenceInvalid,
+      );
+    }
+  }
+};
+
 export interface ProductServiceDependencies {
   readonly unitOfWork: ProductUnitOfWork;
   readonly reader: ProductReader;
   readonly duplicateDetector: ProductDuplicateDetector;
   readonly idempotency: ProductIdempotencyExecutor;
+  readonly taxpayerUnitReferences: TaxpayerUnitReferenceValidator;
 }
 
 export class ProductService implements ProductApplicationContract {
@@ -198,6 +241,12 @@ export class ProductService implements ProductApplicationContract {
           kind: product.kind,
           ...(command.masterData ?? {}),
         });
+
+        assertDefaultUnitReferences(masterData, units);
+        await assertTaxpayerUnitReferences(
+          units,
+          this.dependencies.taxpayerUnitReferences,
+        );
 
         const codeConflict = await products.findByCode(
           context.companyId,
@@ -313,9 +362,17 @@ export class ProductService implements ProductApplicationContract {
       command.context,
       command.productId,
       command.expectedVersion,
-      async (current) => nextState(current, {
-        units: command.units == null ? null : createProductUnitProfile(command.units),
-      }),
+      async (current) => {
+        const units = command.units == null
+          ? null
+          : createProductUnitProfile(command.units);
+        assertDefaultUnitReferences(current.masterData, units);
+        await assertTaxpayerUnitReferences(
+          units,
+          this.dependencies.taxpayerUnitReferences,
+        );
+        return nextState(current, { units });
+      },
     );
   }
 
@@ -333,6 +390,7 @@ export class ProductService implements ProductApplicationContract {
             kind: current.product.kind,
             ...command.masterData,
           });
+        assertDefaultUnitReferences(masterData, current.units);
         const duplicates = await this.checkDuplicates({
           companyId: context.companyId,
           excludeProductId: current.product.productId,
