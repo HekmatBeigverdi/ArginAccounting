@@ -88,6 +88,7 @@ const context = (requestId: string, occurredAt = "2026-08-31T06:00:00.000Z") => 
 const createService = (
   repository: MemoryRepository,
   candidates: readonly ProductDuplicateCandidate[] = [],
+  activeTaxpayerCodes: readonly string[] = ["1627", "164"],
 ) => {
   const unitOfWork: ProductUnitOfWork = {
     async run(operation) {
@@ -102,6 +103,11 @@ const createService = (
     reader,
     duplicateDetector,
     idempotency: new MemoryIdempotency(),
+    taxpayerUnitReferences: {
+      async isActiveCode(code) {
+        return activeTaxpayerCodes.includes(code);
+      },
+    },
   });
 };
 
@@ -129,7 +135,6 @@ test("advisory duplicate candidates do not block create", async () => {
   }]);
 
   const created = await service.create(baseCreate("req-create-1"));
-
   assert.equal(created.code, "PRD-001");
   assert.equal(created.version, 1);
   assert.equal(repository.addCount, 1);
@@ -175,10 +180,8 @@ test("same request id is idempotent and does not create twice", async () => {
   const repository = new MemoryRepository();
   const service = createService(repository);
   const command = baseCreate("req-idempotent");
-
   const first = await service.create(command);
   const second = await service.create(command);
-
   assert.equal(first.productId, second.productId);
   assert.equal(repository.addCount, 1);
 });
@@ -240,4 +243,47 @@ test("repeating the current status is a no-op without version inflation", async 
 
   assert.equal(result.version, 1);
   assert.equal(repository.updateCount, 0);
+});
+
+test("rejects taxpayer unit codes that are not active seeded reference data", async () => {
+  const repository = new MemoryRepository();
+  const service = createService(repository, [], ["1627"]);
+
+  await assert.rejects(
+    () => service.create({
+      ...baseCreate("req-invalid-taxpayer-unit"),
+      units: {
+        baseUnit: {
+          unitId: "unit-each",
+          code: "EA",
+          title: "عدد",
+          precision: 0,
+          roundingMode: "half-up" as const,
+          taxpayerUnitCode: "9999",
+        },
+      },
+    }),
+    (error: unknown) =>
+      error instanceof ProductApplicationError &&
+      error.code === PRODUCT_APPLICATION_ERROR_CODES.taxpayerUnitReferenceInvalid,
+  );
+  assert.equal(repository.addCount, 0);
+});
+
+test("default purchase or sales unit must belong to the product unit profile", async () => {
+  const repository = new MemoryRepository();
+  const service = createService(repository);
+
+  await assert.rejects(
+    () => service.create({
+      ...baseCreate("req-invalid-default-unit"),
+      masterData: {
+        commercial: { defaultSalesUnitId: "unit-missing" },
+      },
+    }),
+    (error: unknown) =>
+      error instanceof ProductApplicationError &&
+      error.code === PRODUCT_APPLICATION_ERROR_CODES.unitReferenceInvalid,
+  );
+  assert.equal(repository.addCount, 0);
 });
