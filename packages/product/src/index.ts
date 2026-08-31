@@ -128,6 +128,10 @@ export type {
 } from "./application/contracts/product-reader.ts";
 
 export type {
+  TaxpayerUnitReferenceValidator,
+} from "./application/contracts/product-reference-validation.ts";
+
+export type {
   ProductPersistenceState,
   ProductRepository,
 } from "./application/contracts/product-repository.ts";
