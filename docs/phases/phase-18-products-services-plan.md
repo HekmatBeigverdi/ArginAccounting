@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–5 are completed; Steps 6–20 are not started.
+Phase 18 is active. Steps 1–6 are completed; Steps 7–20 are not started.
 
 ## Governance Rule
 
@@ -88,7 +88,7 @@ Full synchronization remains Phase 45.
 | 3 | Classification, Status, and Lifecycle | Completed |
 | 4 | Units of Measure and Conversion Rules | Completed |
 | 5 | Codes, Barcodes, and Official Identifiers | Completed |
-| 6 | Commercial, Tax, and Operational Master Data | Not started |
+| 6 | Commercial, Tax, and Operational Master Data | Completed |
 | 7 | Application, Query, and Repository Contracts | Not started |
 | 8 | Application Services, Validation, and Duplicate Detection | Not started |
 | 9 | Migration, Schema, Constraints, and Indexing | Not started |
@@ -224,6 +224,21 @@ Evidence:
 
 Exit: downstream modules can consume stable Product/Service master attributes without owning duplicated definitions.
 
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral `ProductMasterDataProfile` in `packages/product/src/domain/product-master-data.ts` with separate immutable commercial, tax, and operational sections.
+- Commercial master data supports normalized brand/model text, purchase/sales descriptions, and stable references to default purchase and sales unit IDs without introducing price lists, invoices, or transaction behavior.
+- Tax master data defines explicit `unspecified`, `taxable`, `exempt`, and `not-subject` treatments; taxable records use integer VAT basis points (`0..10000`) so tax-rate configuration remains deterministic and does not depend on floating-point percentages.
+- Non-taxable treatments reject a VAT rate, while taxable treatment requires a valid configured rate; this keeps later Purchase/Sales/Taxpayer consumers from inferring tax semantics from unrelated fields.
+- Operational master data defines stock-, serial-, lot-, and shelf-life eligibility only. It stores no quantities, balances, movements, valuation, warehouse state, or inventory documents.
+- Services are prohibited from stock/serial/lot/shelf-life tracking, and serial/lot/shelf-life configuration requires an explicitly stock-tracked product.
+- Defaults are deliberately neutral: no stock tracking, no commercial unit preference, and tax treatment `unspecified`; later workflows must not receive invented transactional defaults.
+- Added stable Domain errors for invalid commercial attributes, tax treatment/rate, operational configuration, and service stock-tracking violations.
+- Exported the master-data contracts from `@argin/product` and added focused Domain tests covering normalization, VAT invariants, service boundaries, tracking dependencies, immutability, and explicit absence of stock quantities, prices, account IDs, or posting state.
+- Persistence, query/repository contracts, Application mutation services, and UI remain deferred to their frozen subsequent steps.
+
 ### Step 7 — Application, Query, and Repository Contracts
 
 - Define Commands, Queries, DTOs, readers/repositories, paging, sorting, filtering, lookup, and selector contracts.
@@ -343,6 +358,13 @@ Exit: Phase 18 is merged, validated, documented, and prepared/published as the a
 
 ## Change Requests
 
-None.
+### CR-18-001 — Versioned Taxpayer Unit Reference Data — Approved
+
+- Approved by the repository owner after Step 5.
+- Seed the official Iranian Taxpayer System unit title/code reference data into SQLite as versioned reference data rather than requiring free-form user entry.
+- Preserve historical codes by deactivating removed entries instead of destructive deletion.
+- Provide a version/diff contract so future application releases or an authorized Reference Data management surface can apply a newer official dataset without redesigning Product Unit identity.
+- Keep ordinary Product Unit `unitId`/`code` separate from the external Taxpayer unit code.
+- UI management/import/apply behavior remains aligned with the frozen Application/UI steps rather than inserting a new numbered phase step.
 
 Any future change to the frozen sequence or scope must be recorded here before implementation and requires explicit user approval.
