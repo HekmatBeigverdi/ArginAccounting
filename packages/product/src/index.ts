@@ -28,6 +28,11 @@ export {
 } from "./application/product-service.ts";
 
 export {
+  SecuredProductReader,
+  SecuredProductService,
+} from "./application/secured-product-service.ts";
+
+export {
   PRODUCT_APPLICATION_ERROR_CODES,
   ProductApplicationError,
 } from "./application/contracts/product-errors.ts";
@@ -35,6 +40,11 @@ export {
 export {
   PRODUCT_QUERY_LIMITS,
 } from "./application/contracts/product-queries.ts";
+
+export {
+  productCorrelationId,
+  productPermissions,
+} from "./application/contracts/product-security.ts";
 
 export {
   ProductSyncContractError,
@@ -82,6 +92,10 @@ export type {
 export type {
   ProductServiceDependencies,
 } from "./application/product-service.ts";
+
+export type {
+  ProductReadSecurityContext,
+} from "./application/secured-product-service.ts";
 
 export type {
   CreateProductCommand,
@@ -142,6 +156,15 @@ export type {
   ProductPersistenceState,
   ProductRepository,
 } from "./application/contracts/product-repository.ts";
+
+export type {
+  ProductAuditAction,
+  ProductAuditEvent,
+  ProductAuditSink,
+  ProductAuthorizationContext,
+  ProductAuthorizationPolicy,
+  ProductPermission,
+} from "./application/contracts/product-security.ts";
 
 export type {
   ProductUnitOfWork,
