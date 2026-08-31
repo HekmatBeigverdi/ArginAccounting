@@ -24,6 +24,15 @@ export {
 } from "./domain/product-unit.ts";
 
 export {
+  PRODUCT_APPLICATION_ERROR_CODES,
+  ProductApplicationError,
+} from "./application/contracts/product-errors.ts";
+
+export {
+  PRODUCT_QUERY_LIMITS,
+} from "./application/contracts/product-queries.ts";
+
+export {
   diffTaxpayerUnitReferenceDataset,
   normalizeTaxpayerUnitReferenceDataset,
 } from "./reference/taxpayer-unit-reference.ts";
@@ -58,6 +67,57 @@ export type {
   ProductUnitProfile,
   QuantityRoundingMode,
 } from "./domain/product-unit.ts";
+
+export type {
+  CreateProductCommand,
+  ProductRequestContext,
+  ReplaceProductIdentifiersCommand,
+  ReplaceProductMasterDataCommand,
+  ReplaceProductUnitsCommand,
+  SetProductStatusCommand,
+  UpdateProductIdentityCommand,
+} from "./application/contracts/product-commands.ts";
+
+export type {
+  ProductApplicationContract,
+} from "./application/contracts/product-contracts.ts";
+
+export type {
+  ProductDto,
+  ProductListItemDto,
+  ProductPageDto,
+  ProductSelectorItemDto,
+} from "./application/contracts/product-dto.ts";
+
+export type {
+  ProductApplicationErrorCode,
+} from "./application/contracts/product-errors.ts";
+
+export type {
+  GetProductByCodeQuery,
+  GetProductByIdQuery,
+  ListProductsQuery,
+  ProductFilter,
+  ProductPageRequest,
+  ProductSelectorQuery,
+  ProductSort,
+  ProductSortDirection,
+  ProductSortField,
+} from "./application/contracts/product-queries.ts";
+
+export type {
+  ProductReader,
+} from "./application/contracts/product-reader.ts";
+
+export type {
+  ProductPersistenceState,
+  ProductRepository,
+} from "./application/contracts/product-repository.ts";
+
+export type {
+  ProductUnitOfWork,
+  ProductUnitOfWorkRepositories,
+} from "./application/contracts/product-unit-of-work.ts";
 
 export type {
   TaxpayerUnitReferenceDataset,
