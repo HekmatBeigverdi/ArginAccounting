@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–6 are completed; Steps 7–20 are not started.
+Phase 18 is active. Steps 1–7 are completed; Steps 8–20 are not started.
 
 ## Governance Rule
 
@@ -89,7 +89,7 @@ Full synchronization remains Phase 45.
 | 4 | Units of Measure and Conversion Rules | Completed |
 | 5 | Codes, Barcodes, and Official Identifiers | Completed |
 | 6 | Commercial, Tax, and Operational Master Data | Completed |
-| 7 | Application, Query, and Repository Contracts | Not started |
+| 7 | Application, Query, and Repository Contracts | Completed |
 | 8 | Application Services, Validation, and Duplicate Detection | Not started |
 | 9 | Migration, Schema, Constraints, and Indexing | Not started |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
@@ -247,6 +247,23 @@ Evidence:
 - Do not introduce unbounded `findAll()` contracts.
 
 Exit: Product/Service capabilities are consumable without React, Tauri, SQLite, or HTTP dependencies.
+
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral Application contracts under `packages/product/src/application/contracts/`, following the established Master Data pattern from Phase 17 Parties without depending on SQLite, Tauri, React, HTTP, or PostgreSQL.
+- Added explicit create/update/status/identifier/unit/master-data command DTOs. Write commands carry `requestId`, `actorId`, `companyId`, and `occurredAt`; mutation commands require `expectedVersion` so Step 8 can enforce optimistic concurrency and idempotent retry semantics at the Application boundary.
+- Added `ProductDto`, bounded list-item DTOs, selector DTOs, and paged result DTOs that expose durable `productId` rather than human-readable code as foreign identity.
+- Added company-scoped list, lookup, and selector queries with explicit filtering for classification, status, category, purchasable/sellable capability, stock-tracking eligibility, SKU, barcode, and Taxpayer goods/service ID where appropriate.
+- Added explicit query limits: list page sizes are bounded to `1..200` with default `50`, while selector limits are bounded to `1..100` with default `20`. No unbounded `findAll()` contract exists.
+- Added sort contracts for code/title/kind/status/created/updated fields and explicit ascending/descending direction.
+- Added `ProductReader` for bounded projection queries and `ProductRepository` for aggregate persistence by durable ID/code only; repository writes expose expected-version concurrency boundaries and do not leak SQLite-specific concepts.
+- Added `ProductPersistenceState` to keep Product aggregate, identifier profile, unit profile, master-data profile, and version together behind a persistence-neutral repository boundary.
+- Added `ProductUnitOfWork` with repository access scoped to an atomic callback, preserving future SQLite/PostgreSQL/HTTP/Argin Bridge adapter compatibility.
+- Added stable `ProductApplicationError` codes for invalid requests/page bounds, not-found, code/identifier conflicts, concurrency conflict, and authorization mapping.
+- Added `ProductApplicationContract` as the public use-case boundary for create/update/status mutations plus bounded get/list/select reads; actual behavior, validation, duplicate detection, authorization, and idempotency enforcement remain reserved for Step 8 and Step 12.
+- Exported all Step 7 contracts from `@argin/product` and added focused contract tests covering bounded query constants, company scope, absence of `findAll()`, expected-version repository writes, Unit of Work execution, reader pagination/selectors, and stable machine-readable Application errors.
 
 ### Step 8 — Application Services, Validation, and Duplicate Detection
 
