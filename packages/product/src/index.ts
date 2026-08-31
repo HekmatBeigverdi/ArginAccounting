@@ -44,6 +44,23 @@ export {
 } from "./application/contracts/product-sync.ts";
 
 export {
+  ProductSqliteRepository,
+  loadProductState,
+} from "./infrastructure/sqlite/product-sqlite-repository.ts";
+
+export {
+  ProductSqliteReader,
+} from "./infrastructure/sqlite/product-sqlite-reader.ts";
+
+export {
+  ProductSqliteDuplicateDetector,
+  ProductSqliteIdempotencyExecutor,
+  ProductSqliteImmediateTransactionManager,
+  ProductSqliteTaxpayerUnitValidator,
+  ProductSqliteUnitOfWork,
+} from "./infrastructure/sqlite/product-sqlite-support.ts";
+
+export {
   diffTaxpayerUnitReferenceDataset,
   normalizeTaxpayerUnitReferenceDataset,
 } from "./reference/taxpayer-unit-reference.ts";
@@ -160,6 +177,13 @@ export type {
   ProductSyncTombstoneEnvelope,
   ProductSyncUpsertEnvelope,
 } from "./application/contracts/product-sync.ts";
+
+export type {
+  ProductSqliteConnection,
+  ProductSqliteConnectionFactory,
+  ProductSqliteResult,
+  ProductSqliteTransactionManager,
+} from "./infrastructure/sqlite/sqlite-contracts.ts";
 
 export type {
   TaxpayerUnitReferenceDataset,
