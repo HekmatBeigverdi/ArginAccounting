@@ -8,6 +8,7 @@ import type { CreateProductUnitProfileInput } from "../../domain/product-unit.ts
 
 export interface ProductRequestContext {
   readonly requestId: string;
+  readonly correlationId?: string | null;
   readonly actorId: string;
   readonly companyId: string;
   readonly occurredAt: string;
