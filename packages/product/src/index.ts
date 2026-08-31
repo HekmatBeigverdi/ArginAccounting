@@ -24,6 +24,10 @@ export {
 } from "./domain/product-unit.ts";
 
 export {
+  ProductService,
+} from "./application/product-service.ts";
+
+export {
   PRODUCT_APPLICATION_ERROR_CODES,
   ProductApplicationError,
 } from "./application/contracts/product-errors.ts";
@@ -69,6 +73,10 @@ export type {
 } from "./domain/product-unit.ts";
 
 export type {
+  ProductServiceDependencies,
+} from "./application/product-service.ts";
+
+export type {
   CreateProductCommand,
   ProductRequestContext,
   ReplaceProductIdentifiersCommand,
@@ -88,6 +96,16 @@ export type {
   ProductPageDto,
   ProductSelectorItemDto,
 } from "./application/contracts/product-dto.ts";
+
+export type {
+  ProductDuplicateCandidate,
+  ProductDuplicateCheckResult,
+  ProductDuplicateDetector,
+  ProductDuplicateProbe,
+  ProductDuplicateReason,
+  ProductDuplicateStrength,
+  ProductIdempotencyExecutor,
+} from "./application/contracts/product-duplicates.ts";
 
 export type {
   ProductApplicationErrorCode,
