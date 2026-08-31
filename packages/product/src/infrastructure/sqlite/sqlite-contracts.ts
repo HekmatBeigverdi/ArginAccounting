@@ -14,6 +14,10 @@ export interface ProductSqliteConnection {
   ): Promise<ProductSqliteResult>;
 }
 
+export interface ProductSqliteConnectionFactory {
+  open(): Promise<ProductSqliteConnection>;
+}
+
 export interface ProductSqliteTransactionManager {
   transaction<T>(
     operation: (connection: ProductSqliteConnection) => Promise<T>,
