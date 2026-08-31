@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–9 are completed; Steps 10–20 are not started.
+Phase 18 is active. Steps 1–10 are completed; Steps 11–20 are not started.
 
 ## Governance Rule
 
@@ -92,7 +92,7 @@ Full synchronization remains Phase 45.
 | 7 | Application, Query, and Repository Contracts | Completed |
 | 8 | Application Services, Validation, and Duplicate Detection | Completed |
 | 9 | Migration, Schema, Constraints, and Indexing | Completed |
-| 10 | Argin Bridge and Future Synchronization Contract | Not started |
+| 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | SQLite Repository, Unit of Work, and Atomic Transactions | Not started |
 | 12 | Permissions, Audit, and Approval Integration | Not started |
 | 13 | Bulk Import and Export | Not started |
@@ -319,6 +319,21 @@ Evidence:
 - Do not implement network synchronization or Phase 45 conflict resolution.
 
 Exit: future Argin Bridge integration can be added without redesigning Product/Service identity or core persistence semantics.
+
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral Product synchronization contracts in `packages/product/src/application/contracts/product-sync.ts`, following the established Phase 17 Party synchronization precedent while preserving Product-specific master-data shape.
+- Defined explicit `upsert` and `tombstone` discriminated envelopes. Ordinary Product business status (`active`/`inactive`) remains independent from deletion semantics, so an inactive Product is still synchronized as an upsert rather than being treated as deleted.
+- Sync identity uses company-scoped durable `productId`; human-readable `displayCode` is retained only as display/reference metadata and cannot replace durable identity.
+- Every envelope carries positive optimistic `version`, `changedAt`, `operationId`, originating `requestId`, `idempotencyKey`, and optional source/external references, enabling retriable future adapters without embedding transport behavior in Domain/Application.
+- Upsert envelopes require the snapshot product/company/code to match the durable entity reference; tombstones carry no business snapshot and enforce deterministic deletion/change timestamp ordering.
+- External source mappings are normalized and duplicate source-system/external-id pairs are rejected by the contract.
+- Added migration `0020_product_sync_metadata.sql`, registered as migration version 20, adding `products.deleted_at`, company-scoped `product_sync_external_references`, change-feed-friendly `(company_id, updated_at, version, id)` indexing, and a dedicated tombstone lookup index.
+- Added `docs/architecture/product-sync-contract.md` documenting the adapter boundary for future SQLite, Argin Bridge, .NET/HTTP, PostgreSQL, queued/background adapters, and explicitly excluding URL/HTTP/retry/network state from the canonical Product sync envelope.
+- Added focused synchronization contract tests covering durable upsert identity, active/inactive versus tombstone separation, snapshot/reference mismatch rejection, version and operation/request/idempotency validation, external-reference deduplication, timestamp ordering, and absence of transport-specific fields.
+- No Argin Bridge network transport, remote acknowledgement, retry/backoff engine, server write path, conflict-resolution strategy/UI, or Phase 45 synchronization engine was implemented in Step 10.
 
 ### Step 11 — SQLite Repository, Unit of Work, and Atomic Transactions
 
