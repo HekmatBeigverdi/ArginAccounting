@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–10 are completed; Steps 11–20 are not started.
+Phase 18 is active. Steps 1–11 are completed; Steps 12–20 are not started.
 
 ## Governance Rule
 
@@ -93,7 +93,7 @@ Full synchronization remains Phase 45.
 | 8 | Application Services, Validation, and Duplicate Detection | Completed |
 | 9 | Migration, Schema, Constraints, and Indexing | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
-| 11 | SQLite Repository, Unit of Work, and Atomic Transactions | Not started |
+| 11 | SQLite Repository, Unit of Work, and Atomic Transactions | Completed |
 | 12 | Permissions, Audit, and Approval Integration | Not started |
 | 13 | Bulk Import and Export | Not started |
 | 14 | Persian RTL Product/Service Management UI | Not started |
@@ -343,6 +343,23 @@ Evidence:
 - Implement efficient duplicate/selector/list queries using Step 9 indexes.
 
 Exit: SQLite persistence is atomic, concurrency-safe, bounded, and adapter-compatible.
+
+Status: Completed
+
+Evidence:
+
+- Added a dedicated `@argin/product-tauri` adapter package, following the established `@argin/party` / `@argin/party-tauri` boundary so `@argin/product` remains persistence-neutral and contains no SQLite, Tauri, or plugin-specific imports.
+- Implemented `SqliteProductRepository` and the underlying Product SQLite store on the shared `@argin/database` `DatabaseSession` abstraction. Hydration reconstructs Product snapshots, identifier profiles, unit profiles, and commercial/tax/operational master data through existing Domain constructors rather than exposing database rows as domain state.
+- Product create/update persistence writes the normalized Product tables from migrations 19–20. Multi-table writes execute through `SqliteProductUnitOfWork`, which delegates to the shared `DatabaseExecutor.transaction` boundary so Product and all child-row writes commit or roll back as one operation.
+- Optimistic updates use a company-scoped `UPDATE ... WHERE id = ? AND version = ? AND deleted_at IS NULL`; zero affected rows map deterministically to `product.application.concurrency-conflict` before child rows are rewritten.
+- Added deterministic SQLite conflict mapping for company-scoped Product code and strong identifier UNIQUE races so concurrent database conflicts surface as stable `code-conflict` or `duplicate-identifier` Application errors rather than leaking raw SQLite messages.
+- Implemented `SqliteProductReader` with company scope, tombstone exclusion, bounded page/selector limits supplied by the Application contracts, deterministic sort-column mapping, and targeted filters for status, kind, category, capabilities, stock tracking, SKU, barcode, and Taxpayer goods/service identifiers.
+- Implemented `SqliteProductDuplicateDetector` for hard code/SKU/reference/barcode/Taxpayer/external-identifier checks and advisory title/brand-model checks. Queries exclude the current durable Product on updates, ignore tombstones, remain company-scoped, and are bounded (`LIMIT 20`) while targeting the indexes introduced in Step 9.
+- Implemented `SqliteTaxpayerUnitReferenceValidator` against active seeded `taxpayer_units`, preserving the approved Reference Data contract and preventing arbitrary Taxpayer unit mappings from bypassing the Application boundary.
+- Added migration `0021_product_idempotency.sql`, registered as migration version 21, with a `(scope, request_id)` primary key and explicit in-progress/completed result semantics. Added `SqliteProductIdempotencyExecutor` so completed retries replay the stored result and concurrent duplicate request identities are rejected deterministically without nesting a second Product transaction around the Unit of Work.
+- Added focused `@argin/product-tauri` adapter tests covering transaction-backed Unit of Work behavior, stale optimistic-version conflicts, SQLite UNIQUE-to-Application error mapping, and idempotent completed-result replay. Full real-SQLite migration/repository/rollback/query-plan integration coverage remains assigned to frozen Step 18, and representative performance validation remains assigned to Step 19.
+- The assistant runtime could not execute the repository's pnpm test/typecheck/build commands because its direct Git/network environment could not resolve GitHub; this is an agent-runtime limitation, not repository-owner authentication evidence. Local validation commands are therefore required before the next step is accepted.
+- No Product desktop UI wiring, permissions/audit/approval behavior, import/export workflow, Argin Bridge transport, or synchronization engine was introduced in Step 11.
 
 ### Step 12 — Permissions, Audit, and Approval Integration
 
