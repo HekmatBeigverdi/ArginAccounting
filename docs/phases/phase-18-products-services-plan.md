@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–7 are completed; Steps 8–20 are not started.
+Phase 18 is active. Steps 1–8 are completed; Steps 9–20 are not started.
 
 ## Governance Rule
 
@@ -90,7 +90,7 @@ Full synchronization remains Phase 45.
 | 5 | Codes, Barcodes, and Official Identifiers | Completed |
 | 6 | Commercial, Tax, and Operational Master Data | Completed |
 | 7 | Application, Query, and Repository Contracts | Completed |
-| 8 | Application Services, Validation, and Duplicate Detection | Not started |
+| 8 | Application Services, Validation, and Duplicate Detection | Completed |
 | 9 | Migration, Schema, Constraints, and Indexing | Not started |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
 | 11 | SQLite Repository, Unit of Work, and Atomic Transactions | Not started |
@@ -252,18 +252,16 @@ Status: Completed
 
 Evidence:
 
-- Added persistence-neutral Application contracts under `packages/product/src/application/contracts/`, following the established Master Data pattern from Phase 17 Parties without depending on SQLite, Tauri, React, HTTP, or PostgreSQL.
-- Added explicit create/update/status/identifier/unit/master-data command DTOs. Write commands carry `requestId`, `actorId`, `companyId`, and `occurredAt`; mutation commands require `expectedVersion` so Step 8 can enforce optimistic concurrency and idempotent retry semantics at the Application boundary.
-- Added `ProductDto`, bounded list-item DTOs, selector DTOs, and paged result DTOs that expose durable `productId` rather than human-readable code as foreign identity.
-- Added company-scoped list, lookup, and selector queries with explicit filtering for classification, status, category, purchasable/sellable capability, stock-tracking eligibility, SKU, barcode, and Taxpayer goods/service ID where appropriate.
-- Added explicit query limits: list page sizes are bounded to `1..200` with default `50`, while selector limits are bounded to `1..100` with default `20`. No unbounded `findAll()` contract exists.
-- Added sort contracts for code/title/kind/status/created/updated fields and explicit ascending/descending direction.
-- Added `ProductReader` for bounded projection queries and `ProductRepository` for aggregate persistence by durable ID/code only; repository writes expose expected-version concurrency boundaries and do not leak SQLite-specific concepts.
-- Added `ProductPersistenceState` to keep Product aggregate, identifier profile, unit profile, master-data profile, and version together behind a persistence-neutral repository boundary.
-- Added `ProductUnitOfWork` with repository access scoped to an atomic callback, preserving future SQLite/PostgreSQL/HTTP/Argin Bridge adapter compatibility.
-- Added stable `ProductApplicationError` codes for invalid requests/page bounds, not-found, code/identifier conflicts, concurrency conflict, and authorization mapping.
-- Added `ProductApplicationContract` as the public use-case boundary for create/update/status mutations plus bounded get/list/select reads; actual behavior, validation, duplicate detection, authorization, and idempotency enforcement remain reserved for Step 8 and Step 12.
-- Exported all Step 7 contracts from `@argin/product` and added focused contract tests covering bounded query constants, company scope, absence of `findAll()`, expected-version repository writes, Unit of Work execution, reader pagination/selectors, and stable machine-readable Application errors.
+- Added persistence-neutral Product/Service Application contracts under `packages/product/src/application/contracts/` for Commands, Queries, DTOs, Reader, Repository, Unit of Work, stable Application errors, and the aggregate Application facade.
+- Mutation commands carry a required `ProductRequestContext` with request, actor, company, and Gregorian occurrence metadata; post-create mutations also require an explicit optimistic `expectedVersion`.
+- Added bounded list and selector contracts with explicit page/limit rules; list page size is constrained to `1..200` (default `50`) and selector limit to `1..100` (default `20`). No unbounded `findAll()` repository or reader contract was introduced.
+- Added company-scoped filters for search, kind, status, category, purchase/sales eligibility, official Taxpayer goods/service identifier, and stable identifier lookups.
+- Added deterministic sorting contracts for code/title/kind/status/created/updated fields and stable list/selector DTOs that expose durable `productId` rather than treating code or title as foreign identity.
+- Added `ProductPersistenceState` as a persistence-neutral aggregate persistence envelope containing Product snapshot, identifiers, unit profile, master-data profile, and optimistic version; it contains no SQLite row IDs or adapter-specific types.
+- Repository contracts provide only targeted `findById`, `findByCode`, `add`, and optimistic `update`; the Unit of Work contract supplies repositories through an atomic operation boundary without binding Application to SQLite.
+- Added stable Product Application error codes for malformed requests/paging/selectors, not-found, code/identifier conflicts, optimistic-concurrency conflicts, and future authorization mapping.
+- Exported the complete contract surface from `@argin/product` and added focused contract tests covering bounds, company scope, durable selector identity, optimistic version requirements, Unit of Work behavior, Reader delegation, stable errors, and explicit absence of unbounded query APIs.
+- SQLite/PostgreSQL/HTTP/Argin Bridge implementations, duplicate algorithms, mutation orchestration, authorization, audit, and persistence behavior remain deferred to their frozen subsequent steps.
 
 ### Step 8 — Application Services, Validation, and Duplicate Detection
 
@@ -273,6 +271,22 @@ Evidence:
 - Preserve expected-version and idempotent retry boundaries.
 
 Exit: Application behavior is deterministic, authorization-ready, concurrency-aware, and duplicate-safe.
+
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral `ProductService` orchestration in `packages/product/src/application/product-service.ts` for create, identity update, identifier replacement, unit replacement, master-data replacement, active/inactive lifecycle mutations, and read delegation.
+- All mutation requests validate required request/actor/company identity and normalize Gregorian occurrence timestamps before entering the Unit of Work boundary.
+- Create operations validate durable product ID and normalized company-scoped code uniqueness before persistence; post-create mutations reject malformed or stale `expectedVersion` values before repository update.
+- Added `ProductDuplicateDetector` contracts with explicit `hard` versus `advisory` strengths and reason codes for code, SKU, reference code, barcode, 13-digit Taxpayer goods/service ID, external identifiers, title, and brand/model candidates.
+- Hard code conflicts map deterministically to `product.application.code-conflict`; hard strong-identifier conflicts map to `product.application.duplicate-identifier`. Advisory title/brand-model candidates are surfaced by duplicate checks but do not block valid writes.
+- Duplicate probes always carry company scope and, on updates, an excluded durable `productId`, preventing a Product from matching itself while remaining adapter-neutral.
+- Added `ProductIdempotencyExecutor` as a persistence-neutral boundary keyed by mutation scope plus `requestId`; retried create/update operations can therefore reuse a SQLite, PostgreSQL, HTTP, or Argin Bridge idempotency adapter without embedding transport logic in Domain/Application.
+- Mutations run inside `ProductUnitOfWork`; successful state-changing writes increment optimistic version exactly once, while lifecycle requests that are already in the requested state remain no-ops and do not inflate version or issue a repository update.
+- Domain constructors continue to own normalization/invariants for identifiers, unit conversions, tax/commercial/operational master data, and lifecycle timestamps; Application does not duplicate those business rules.
+- Added focused Application tests covering advisory duplicate acceptance, hard identifier rejection before persistence, code uniqueness conflicts, idempotent same-request create behavior, stale-version rejection, successful version increments, and lifecycle no-op version stability.
+- Authorization and audit enforcement remain owned by frozen Step 12; concrete duplicate-query, idempotency, SQLite repository, and transaction adapters remain owned by frozen Steps 9–11.
 
 ### Step 9 — Migration, Schema, Constraints, and Indexing
 
