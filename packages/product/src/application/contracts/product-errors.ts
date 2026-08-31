@@ -18,7 +18,7 @@ export type ProductApplicationErrorCode =
 export class ProductApplicationError extends Error {
   constructor(
     public readonly code: ProductApplicationErrorCode,
-    message = code,
+    message: string = code,
   ) {
     super(message);
     this.name = "ProductApplicationError";
