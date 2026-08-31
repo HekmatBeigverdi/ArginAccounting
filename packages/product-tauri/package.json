@@ -1,0 +1,25 @@
+{
+  "name": "@argin/product-tauri",
+  "version": "0.18.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo \"Product Tauri lint is not configured yet\"",
+    "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@argin/database": "workspace:*",
+    "@argin/product": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.0"
+  }
+}
