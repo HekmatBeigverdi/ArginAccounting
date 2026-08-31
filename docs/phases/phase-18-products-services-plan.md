@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–11 are completed; Steps 12–20 are not started.
+Phase 18 is active. Steps 1–12 are completed; Steps 13–20 are not started.
 
 ## Governance Rule
 
@@ -94,7 +94,7 @@ Full synchronization remains Phase 45.
 | 9 | Migration, Schema, Constraints, and Indexing | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | SQLite Repository, Unit of Work, and Atomic Transactions | Completed |
-| 12 | Permissions, Audit, and Approval Integration | Not started |
+| 12 | Permissions, Audit, and Approval Integration | Completed |
 | 13 | Bulk Import and Export | Not started |
 | 14 | Persian RTL Product/Service Management UI | Not started |
 | 15 | Product/Service Selector and Future Module Consumption Contract | Not started |
@@ -368,6 +368,23 @@ Evidence:
 - Evaluate existing Approval architecture and add hooks only where a justified business workflow exists.
 
 Exit: security is not UI-only, successful writes are auditable, and Approval is neither bypassed nor artificially introduced.
+
+Status: Completed
+
+Evidence:
+
+- Added persistence-neutral Product security and audit contracts in `packages/product/src/application/contracts/product-security.ts`, including granular permissions for view/create/update, identifiers, units, commercial/tax/operational master data, lifecycle status, import/export, and Taxpayer reference-data administration.
+- Registered the Product/Service permissions in the shared Security `defaultPermissions` catalog under the existing `master-data` module, preserving central role/permission assignment rather than introducing Product-local authorization storage.
+- Added optional `correlationId` to `ProductRequestContext` while preserving backward compatibility: when omitted, Product security/audit correlation deterministically falls back to the required `requestId`.
+- Added `SecuredProductService` at the Application boundary. Authorization is evaluated before the inner Product mutation executes; authorization failures map to the stable `product.application.unauthorized` error and neither call the mutation service nor emit a success audit fact.
+- Create authorization is granular: creation itself requires `master-data.products.create`, while supplied identifiers, units, or commercial/tax/operational master data additionally require their corresponding management permission. Update, identifier, unit, master-data, and status mutations each enforce their dedicated permission.
+- Added `SecuredProductReader` so get/list/select operations require `master-data.products.view` in the requested company scope. Duplicate checks are likewise protected by view permission and reject cross-company probe/context mismatches.
+- Successful mutations emit append-only `ProductAuditEvent` facts with action, actor, company, durable Product target id, correlation id, request id, Gregorian occurrence time, and bounded metadata. The audit sink contract requires idempotency for `(action, requestId, productId)` so a retried Product request cannot create duplicate audit facts.
+- Lifecycle requests that resolve to an Application no-op do not create a new mutation audit fact, preserving audit semantics as facts about effective state changes rather than repeated button presses.
+- Added `docs/security/product-security-and-approval.md` as the canonical Product security/audit boundary and explicitly evaluated the existing shared Approval subsystem. No Product approval workflow was introduced because ordinary Product/Service Master Data CRUD has no approved submit/approve/reject business lifecycle; adding one would create artificial state. Any future controlled Product approval requirement must reuse the shared Approval subsystem through an explicit later requirement/Change Request.
+- Added focused Product security tests covering permission constants, correlation fallback, authorization-before-write, successful audit emission, denied-write suppression, lifecycle no-op audit suppression, and company-scoped secured reads.
+- No UI-only authorization shortcut, Product-specific role store, Product-specific approval engine, inventory/purchase/sales approval behavior, or Taxpayer workflow approval was introduced.
+- The assistant runtime still cannot execute repository pnpm commands because direct network/Git resolution is unavailable in the isolated runtime; focused typecheck/test/build commands remain part of local validation before accepting the next step.
 
 ### Step 13 — Bulk Import and Export
 
