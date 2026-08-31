@@ -37,6 +37,13 @@ export {
 } from "./application/contracts/product-queries.ts";
 
 export {
+  ProductSyncContractError,
+  createProductSyncTombstoneEnvelope,
+  createProductSyncUpsertEnvelope,
+  productSyncChangeKinds,
+} from "./application/contracts/product-sync.ts";
+
+export {
   diffTaxpayerUnitReferenceDataset,
   normalizeTaxpayerUnitReferenceDataset,
 } from "./reference/taxpayer-unit-reference.ts";
@@ -140,6 +147,19 @@ export type {
   ProductUnitOfWork,
   ProductUnitOfWorkRepositories,
 } from "./application/contracts/product-unit-of-work.ts";
+
+export type {
+  CreateProductSyncTombstoneInput,
+  CreateProductSyncUpsertInput,
+  ProductExternalReference,
+  ProductSyncChangeEnvelope,
+  ProductSyncChangeKind,
+  ProductSyncContractErrorCode,
+  ProductSyncEntityReference,
+  ProductSyncSnapshot,
+  ProductSyncTombstoneEnvelope,
+  ProductSyncUpsertEnvelope,
+} from "./application/contracts/product-sync.ts";
 
 export type {
   TaxpayerUnitReferenceDataset,
