@@ -73,7 +73,12 @@ const normalizeTax = (
 
   const rate = input?.vatRateBasisPoints ?? null;
   if (treatment === "taxable") {
-    if (!Number.isInteger(rate) || rate < 0 || rate > 10_000) {
+    if (
+      rate === null ||
+      !Number.isInteger(rate) ||
+      rate < 0 ||
+      rate > 10_000
+    ) {
       throw new ProductDomainError(PRODUCT_DOMAIN_ERROR_CODES.vatRateInvalid);
     }
   } else if (rate !== null) {
@@ -102,7 +107,10 @@ const normalizeOperational = (
     );
   }
 
-  if (kind === "service" && (stockTracking || serialTracking || lotTracking || shelfLifeDays !== null)) {
+  if (
+    kind === "service" &&
+    (stockTracking || serialTracking || lotTracking || shelfLifeDays !== null)
+  ) {
     throw new ProductDomainError(
       PRODUCT_DOMAIN_ERROR_CODES.serviceStockTrackingInvalid,
     );
