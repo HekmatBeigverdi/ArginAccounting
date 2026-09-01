@@ -1,5 +1,6 @@
 import {
   type FormEvent,
+  type ReactNode,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -34,11 +35,38 @@ import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
 import { createPersistentProductAuditSink } from "./product-audit-sink";
 import { getProductErrorMessage } from "./product-error-presenter";
+import {
+  loadTaxpayerUnitOptions,
+  type TaxpayerUnitOption,
+} from "./taxpayer-unit-options";
 
 import "./products-page.css";
+import "./products-page-validation.css";
 
 type KindFilter = "all" | ProductKind;
 type StatusFilter = "all" | "active" | "inactive";
+type FieldKey =
+  | "code"
+  | "title"
+  | "categoryId"
+  | "sku"
+  | "referenceCode"
+  | "barcode"
+  | "taxpayerGoodsServiceId"
+  | "unit"
+  | "baseUnitPrecision"
+  | "brand"
+  | "model"
+  | "purchaseDescription"
+  | "salesDescription"
+  | "taxTreatment"
+  | "vatRatePercent"
+  | "stockTracking"
+  | "serialTracking"
+  | "lotTracking"
+  | "shelfLifeDays";
+
+type FieldErrors = Partial<Record<FieldKey, string>>;
 
 interface Draft {
   kind: ProductKind;
@@ -129,6 +157,30 @@ function nullable(value: string): string | null {
   return normalized === "" ? null : normalized;
 }
 
+function HelpLabel({ children, help }: { children: ReactNode; help: string }) {
+  return (
+    <span className="product-label-text">
+      <span>{children}</span>
+      <button
+        className="product-help"
+        type="button"
+        data-help={help}
+        aria-label={`راهنما: ${typeof children === "string" ? children : "فیلد"}`}
+      >
+        ؟
+      </button>
+    </span>
+  );
+}
+
+function fieldClass(errors: FieldErrors, key: FieldKey): string | undefined {
+  return errors[key] ? "product-field--invalid" : undefined;
+}
+
+function FieldError({ errors, name }: { errors: FieldErrors; name: FieldKey }) {
+  return errors[name] ? <span className="product-field-error">{errors[name]}</span> : null;
+}
+
 function draftFromDetail(detail: ProductDto): Draft {
   const base = detail.units?.units.find((unit) => unit.unitId === detail.units?.baseUnitId);
   return {
@@ -177,9 +229,7 @@ function identifiersFromDraft(draft: Draft) {
 }
 
 function unitsFromDraft(draft: Draft) {
-  if (!draft.baseUnitId.trim() && !draft.baseUnitCode.trim() && !draft.baseUnitTitle.trim()) {
-    return null;
-  }
+  if (!draft.baseUnitId.trim()) return null;
   return {
     baseUnit: {
       unitId: draft.baseUnitId,
@@ -206,9 +256,10 @@ function masterDataFromDraft(draft: Draft) {
     },
     tax: {
       treatment: draft.taxTreatment,
-      vatRateBasisPoints: taxable && draft.vatRatePercent.trim()
-        ? Math.round(Number(draft.vatRatePercent) * 100)
-        : null,
+      vatRateBasisPoints:
+        taxable && draft.vatRatePercent.trim()
+          ? Math.round(Number(draft.vatRatePercent) * 100)
+          : null,
     },
     operational: {
       stockTracking: draft.kind === "product" && draft.stockTracking,
@@ -222,6 +273,59 @@ function masterDataFromDraft(draft: Draft) {
   } as const;
 }
 
+function validateDraft(draft: Draft): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!draft.code.trim()) errors.code = "کد کالا/خدمت الزامی است.";
+  if (!draft.title.trim()) errors.title = "عنوان کالا/خدمت الزامی است.";
+  if (draft.taxpayerGoodsServiceId.trim() && !/^\d{13}$/u.test(draft.taxpayerGoodsServiceId.trim())) {
+    errors.taxpayerGoodsServiceId = "شناسه سامانه مودیان باید دقیقاً ۱۳ رقم باشد.";
+  }
+  if (draft.baseUnitId.trim()) {
+    const precision = Number(draft.baseUnitPrecision);
+    if (!Number.isInteger(precision) || precision < 0 || precision > 6) {
+      errors.baseUnitPrecision = "دقت اعشار باید یک عدد صحیح بین صفر تا ۶ باشد.";
+    }
+  }
+  if (draft.taxTreatment === "taxable") {
+    const vat = Number(draft.vatRatePercent);
+    if (!draft.vatRatePercent.trim() || !Number.isFinite(vat) || vat < 0 || vat > 100) {
+      errors.vatRatePercent = "برای رکورد مشمول، نرخ ارزش افزوده بین صفر تا ۱۰۰ وارد کنید.";
+    }
+  }
+  if (draft.kind === "product" && (draft.serialTracking || draft.lotTracking || draft.shelfLifeDays.trim()) && !draft.stockTracking) {
+    errors.stockTracking = "برای سریال، بچ یا عمر نگهداری باید ردیابی موجودی فعال باشد.";
+  }
+  if (draft.shelfLifeDays.trim()) {
+    const days = Number(draft.shelfLifeDays);
+    if (!Number.isInteger(days) || days <= 0) errors.shelfLifeDays = "عمر نگهداری باید تعداد روز صحیح و مثبت باشد.";
+  }
+  return errors;
+}
+
+function mapErrorToFields(reason: unknown): FieldErrors {
+  const code = typeof reason === "object" && reason !== null && "code" in reason
+    ? String((reason as { code?: unknown }).code ?? "")
+    : "";
+  const message = getProductErrorMessage(reason);
+  const map: Record<string, FieldKey[]> = {
+    "product.code.required": ["code"],
+    "product.application.code-conflict": ["code"],
+    "product.title.required": ["title"],
+    "product.taxpayer-goods-service-id.invalid": ["taxpayerGoodsServiceId"],
+    "product.unit.invalid": ["unit"],
+    "product.unit.taxpayer-code.invalid": ["unit"],
+    "product.application.taxpayer-unit-reference-invalid": ["unit"],
+    "product.unit.precision.invalid": ["baseUnitPrecision"],
+    "product.vat-rate.invalid": ["vatRatePercent"],
+    "product.tax-treatment.invalid": ["taxTreatment"],
+    "product.service-stock-tracking.invalid": ["stockTracking", "serialTracking", "lotTracking", "shelfLifeDays"],
+    "product.operational-attribute.invalid": ["stockTracking", "serialTracking", "lotTracking", "shelfLifeDays"],
+    "product.commercial-attribute.invalid": ["brand", "model", "purchaseDescription", "salesDescription"],
+    "product.application.duplicate-identifier": ["sku", "referenceCode", "barcode", "taxpayerGoodsServiceId"],
+  };
+  return Object.fromEntries((map[code] ?? []).map((field) => [field, message])) as FieldErrors;
+}
+
 export function ProductsPage() {
   const { session } = useAuthSession();
   const active = useActiveContext();
@@ -229,6 +333,9 @@ export function ProductsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ProductDto | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [unitOptions, setUnitOptions] = useState<readonly TaxpayerUnitOption[]>([]);
+  const [unitSearch, setUnitSearch] = useState("");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [kind, setKind] = useState<KindFilter>("all");
@@ -243,36 +350,26 @@ export function ProductsPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const permissionSet = useMemo(
-    () => new Set(session?.user.permissions ?? []),
-    [session],
-  );
+  const permissionSet = useMemo(() => new Set(session?.user.permissions ?? []), [session]);
   const can = useCallback(
-    (permission: string) =>
-      permissionSet.has("system.full-access") || permissionSet.has(permission),
+    (permission: string) => permissionSet.has("system.full-access") || permissionSet.has(permission),
     [permissionSet],
   );
   const actorId = session?.user.id ?? "desktop-local-user";
 
-  const authorization = useMemo<ProductAuthorizationPolicy>(
-    () => ({
-      require: async (_context, permission) => {
-        if (!can(permission)) {
-          throw new ProductApplicationError(PRODUCT_APPLICATION_ERROR_CODES.unauthorized);
-        }
-      },
-    }),
-    [can],
-  );
+  const authorization = useMemo<ProductAuthorizationPolicy>(() => ({
+    require: async (_context, permission) => {
+      if (!can(permission)) throw new ProductApplicationError(PRODUCT_APPLICATION_ERROR_CODES.unauthorized);
+    },
+  }), [can]);
 
   const buildAdapters = useCallback(async () => {
     const database = await getDesktopDatabase();
     const reader = new SqliteProductReader(database);
-    const duplicateDetector = new SqliteProductDuplicateDetector(database);
     const service = new ProductService({
       unitOfWork: new SqliteProductUnitOfWork(database),
       reader,
-      duplicateDetector,
+      duplicateDetector: new SqliteProductDuplicateDetector(database),
       idempotency: new SqliteProductIdempotencyExecutor(database),
       taxpayerUnitReferences: new SqliteTaxpayerUnitReferenceValidator(database),
     });
@@ -282,11 +379,7 @@ export function ProductsPage() {
         correlationId: crypto.randomUUID(),
         requestId: crypto.randomUUID(),
       }),
-      service: new SecuredProductService(
-        service,
-        authorization,
-        createPersistentProductAuditSink(database),
-      ),
+      service: new SecuredProductService(service, authorization, createPersistentProductAuditSink(database)),
     };
   }, [actorId, authorization]);
 
@@ -345,7 +438,6 @@ export function ProductsPage() {
     setDetail(null);
     setPage(1);
   }, [active.companyId]);
-
   useEffect(() => { void reload(); }, [reload]);
   useEffect(() => { void loadDetail(selectedId); }, [loadDetail, selectedId]);
 
@@ -358,6 +450,18 @@ export function ProductsPage() {
     return () => document.removeEventListener("keydown", close);
   }, [formOpen, saving]);
 
+  useEffect(() => {
+    if (!formOpen) return;
+    void (async () => {
+      try {
+        const database = await getDesktopDatabase();
+        setUnitOptions(await loadTaxpayerUnitOptions(database));
+      } catch (reason) {
+        setError(getProductErrorMessage(reason));
+      }
+    })();
+  }, [formOpen]);
+
   function clearFeedback() {
     setError("");
     setMessage("");
@@ -367,21 +471,56 @@ export function ProductsPage() {
     setSelectedId(null);
     setDetail(null);
     setDraft(emptyDraft);
+    setUnitSearch("");
+    setFieldErrors({});
     clearFeedback();
     setFormOpen(true);
   }
 
   function startEdit() {
     if (!detail) return;
-    setDraft(draftFromDetail(detail));
+    const next = draftFromDetail(detail);
+    setDraft(next);
+    setUnitSearch(next.baseUnitTitle ? `${next.baseUnitTitle}${next.taxpayerUnitCode ? ` — ${next.taxpayerUnitCode}` : ""}` : "");
+    setFieldErrors({});
     clearFeedback();
     setFormOpen(true);
+  }
+
+  function selectUnit(value: string) {
+    setUnitSearch(value);
+    const option = unitOptions.find((item) => item.label === value || item.code === value || item.title === value);
+    if (!option) {
+      setDraft((current) => ({
+        ...current,
+        baseUnitId: "",
+        baseUnitCode: "",
+        baseUnitTitle: "",
+        taxpayerUnitCode: "",
+      }));
+      return;
+    }
+    setDraft((current) => ({
+      ...current,
+      baseUnitId: `taxpayer-unit:${option.code}`,
+      baseUnitCode: option.code,
+      baseUnitTitle: option.title,
+      taxpayerUnitCode: option.code,
+    }));
+    setFieldErrors((current) => ({ ...current, unit: undefined }));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!active.companyId) return;
+    const validation = validateDraft(draft);
+    if (Object.keys(validation).length > 0) {
+      setFieldErrors(validation);
+      setError("لطفاً فیلدهای مشخص‌شده را اصلاح کنید.");
+      return;
+    }
     setSaving(true);
+    setFieldErrors({});
     clearFeedback();
     try {
       const { service } = await buildAdapters();
@@ -434,8 +573,10 @@ export function ProductsPage() {
       }
       setFormOpen(false);
       await reload();
-      if (selectedId) await loadDetail(selectedId);
+      const id = detail?.productId ?? selectedId;
+      if (id) await loadDetail(id);
     } catch (reason) {
+      setFieldErrors(mapErrorToFields(reason));
       setError(getProductErrorMessage(reason));
     } finally {
       setSaving(false);
@@ -517,16 +658,49 @@ export function ProductsPage() {
       {formOpen && (
         <div className="product-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.currentTarget === event.target && !saving) setFormOpen(false); }}>
           <section className="product-dialog" role="dialog" aria-modal="true" aria-labelledby="product-form-title">
-            <form onSubmit={(event) => void submit(event)}>
+            <form onSubmit={(event) => void submit(event)} noValidate>
               <header><div><p>اطلاعات پایه</p><h2 id="product-form-title">{detail ? "ویرایش کالا / خدمت" : "کالا / خدمت جدید"}</h2></div><button type="button" className="product-dialog__close" aria-label="بستن" onClick={() => setFormOpen(false)} disabled={saving}>×</button></header>
               <div className="product-form-scroll">
-                <fieldset><legend>هویت و طبقه‌بندی</legend><div className="product-form-grid"><label><span>نوع</span><select value={draft.kind} disabled={Boolean(detail)} onChange={(event) => setDraft((value) => ({ ...value, kind: event.target.value as ProductKind }))}><option value="product">کالا</option><option value="service">خدمت</option></select></label><label><span>کد *</span><input autoFocus value={draft.code} onChange={(event) => setDraft((value) => ({ ...value, code: event.target.value }))} /></label><label className="product-form-grid__wide"><span>عنوان *</span><input value={draft.title} onChange={(event) => setDraft((value) => ({ ...value, title: event.target.value }))} /></label><label><span>شناسه گروه</span><input value={draft.categoryId} onChange={(event) => setDraft((value) => ({ ...value, categoryId: event.target.value }))} /></label><label className="product-check"><input type="checkbox" checked={draft.purchasable} onChange={(event) => setDraft((value) => ({ ...value, purchasable: event.target.checked }))} /><span>قابل خرید</span></label><label className="product-check"><input type="checkbox" checked={draft.sellable} onChange={(event) => setDraft((value) => ({ ...value, sellable: event.target.checked }))} /><span>قابل فروش</span></label></div></fieldset>
-                <fieldset><legend>شناسه‌ها</legend><div className="product-form-grid"><label><span>SKU</span><input dir="ltr" value={draft.sku} onChange={(event) => setDraft((value) => ({ ...value, sku: event.target.value }))} /></label><label><span>کد مرجع</span><input dir="ltr" value={draft.referenceCode} onChange={(event) => setDraft((value) => ({ ...value, referenceCode: event.target.value }))} /></label><label><span>بارکد اصلی</span><input dir="ltr" value={draft.barcode} onChange={(event) => setDraft((value) => ({ ...value, barcode: event.target.value }))} /></label><label><span>شناسه ۱۳ رقمی مودیان</span><input dir="ltr" inputMode="numeric" maxLength={13} value={draft.taxpayerGoodsServiceId} onChange={(event) => setDraft((value) => ({ ...value, taxpayerGoodsServiceId: event.target.value }))} /></label></div></fieldset>
-                <fieldset><legend>واحد پایه</legend><div className="product-form-grid"><label><span>شناسه واحد</span><input dir="ltr" value={draft.baseUnitId} onChange={(event) => setDraft((value) => ({ ...value, baseUnitId: event.target.value }))} /></label><label><span>کد داخلی واحد</span><input dir="ltr" value={draft.baseUnitCode} onChange={(event) => setDraft((value) => ({ ...value, baseUnitCode: event.target.value }))} /></label><label><span>عنوان واحد</span><input value={draft.baseUnitTitle} onChange={(event) => setDraft((value) => ({ ...value, baseUnitTitle: event.target.value }))} /></label><label><span>دقت اعشار</span><input type="number" min="0" max="6" value={draft.baseUnitPrecision} onChange={(event) => setDraft((value) => ({ ...value, baseUnitPrecision: event.target.value }))} /></label><label><span>کد واحد مودیان</span><input dir="ltr" value={draft.taxpayerUnitCode} onChange={(event) => setDraft((value) => ({ ...value, taxpayerUnitCode: event.target.value }))} /></label></div></fieldset>
-                <fieldset><legend>تجاری و مالیاتی</legend><div className="product-form-grid"><label><span>برند</span><input value={draft.brand} onChange={(event) => setDraft((value) => ({ ...value, brand: event.target.value }))} /></label><label><span>مدل</span><input value={draft.model} onChange={(event) => setDraft((value) => ({ ...value, model: event.target.value }))} /></label><label className="product-form-grid__wide"><span>شرح خرید</span><input value={draft.purchaseDescription} onChange={(event) => setDraft((value) => ({ ...value, purchaseDescription: event.target.value }))} /></label><label className="product-form-grid__wide"><span>شرح فروش</span><input value={draft.salesDescription} onChange={(event) => setDraft((value) => ({ ...value, salesDescription: event.target.value }))} /></label><label><span>وضعیت مالیاتی</span><select value={draft.taxTreatment} onChange={(event) => setDraft((value) => ({ ...value, taxTreatment: event.target.value as ProductTaxTreatment }))}><option value="unspecified">تعیین نشده</option><option value="taxable">مشمول</option><option value="exempt">معاف</option><option value="not-subject">خارج از شمول</option></select></label><label><span>نرخ ارزش افزوده (%)</span><input type="number" min="0" max="100" step="0.01" disabled={draft.taxTreatment !== "taxable"} value={draft.vatRatePercent} onChange={(event) => setDraft((value) => ({ ...value, vatRatePercent: event.target.value }))} /></label></div></fieldset>
-                <fieldset disabled={draft.kind === "service"}><legend>تنظیمات عملیاتی کالا</legend><div className="product-form-grid product-form-grid--checks"><label className="product-check"><input type="checkbox" checked={draft.stockTracking} onChange={(event) => setDraft((value) => ({ ...value, stockTracking: event.target.checked, ...(event.target.checked ? {} : { serialTracking: false, lotTracking: false, shelfLifeDays: "" }) }))} /><span>ردیابی موجودی</span></label><label className="product-check"><input type="checkbox" checked={draft.serialTracking} disabled={!draft.stockTracking} onChange={(event) => setDraft((value) => ({ ...value, serialTracking: event.target.checked }))} /><span>ردیابی سریال</span></label><label className="product-check"><input type="checkbox" checked={draft.lotTracking} disabled={!draft.stockTracking} onChange={(event) => setDraft((value) => ({ ...value, lotTracking: event.target.checked }))} /><span>ردیابی بچ</span></label><label><span>عمر نگهداری (روز)</span><input type="number" min="1" disabled={!draft.stockTracking} value={draft.shelfLifeDays} onChange={(event) => setDraft((value) => ({ ...value, shelfLifeDays: event.target.value }))} /></label></div></fieldset>
+                <fieldset><legend>هویت و طبقه‌بندی</legend><div className="product-form-grid">
+                  <label><HelpLabel help="نوع رکورد را مشخص می‌کند. نوع کالا/خدمت پس از ایجاد قابل تغییر نیست.">نوع</HelpLabel><select value={draft.kind} disabled={Boolean(detail)} onChange={(event) => setDraft((value) => ({ ...value, kind: event.target.value as ProductKind }))}><option value="product">کالا</option><option value="service">خدمت</option></select></label>
+                  <label className={fieldClass(fieldErrors, "code")}><HelpLabel help="کد نمایشی و یکتای کالا/خدمت در همین شرکت است؛ شناسه پایدار سیستم محسوب نمی‌شود.">کد *</HelpLabel><input autoFocus aria-invalid={Boolean(fieldErrors.code)} value={draft.code} onChange={(event) => setDraft((value) => ({ ...value, code: event.target.value }))} /><FieldError errors={fieldErrors} name="code" /></label>
+                  <label className={`product-form-grid__wide ${fieldClass(fieldErrors, "title") ?? ""}`}><HelpLabel help="عنوانی است که در فرم‌ها، گزارش‌ها و انتخابگرهای کالا/خدمت نمایش داده می‌شود.">عنوان *</HelpLabel><input aria-invalid={Boolean(fieldErrors.title)} value={draft.title} onChange={(event) => setDraft((value) => ({ ...value, title: event.target.value }))} /><FieldError errors={fieldErrors} name="title" /></label>
+                  <label><HelpLabel help="شناسه گروه‌بندی کالا/خدمت برای طبقه‌بندی آینده است و اختیاری است.">شناسه گروه</HelpLabel><input value={draft.categoryId} onChange={(event) => setDraft((value) => ({ ...value, categoryId: event.target.value }))} /></label>
+                  <label className="product-check"><input type="checkbox" checked={draft.purchasable} onChange={(event) => setDraft((value) => ({ ...value, purchasable: event.target.checked }))} /><HelpLabel help="مشخص می‌کند این رکورد در ماژول خرید آینده قابل انتخاب باشد.">قابل خرید</HelpLabel></label>
+                  <label className="product-check"><input type="checkbox" checked={draft.sellable} onChange={(event) => setDraft((value) => ({ ...value, sellable: event.target.checked }))} /><HelpLabel help="مشخص می‌کند این رکورد در ماژول فروش آینده قابل انتخاب باشد.">قابل فروش</HelpLabel></label>
+                </div></fieldset>
+
+                <fieldset><legend>شناسه‌ها</legend><div className="product-form-grid">
+                  <label className={fieldClass(fieldErrors, "sku")}><HelpLabel help="شناسه تجاری داخلی یا SKU است و برای جستجو و تطبیق استفاده می‌شود.">SKU</HelpLabel><input dir="ltr" aria-invalid={Boolean(fieldErrors.sku)} value={draft.sku} onChange={(event) => setDraft((value) => ({ ...value, sku: event.target.value }))} /><FieldError errors={fieldErrors} name="sku" /></label>
+                  <label className={fieldClass(fieldErrors, "referenceCode")}><HelpLabel help="کد مرجع اختیاری برای تطبیق با کاتالوگ یا سیستم‌های دیگر است.">کد مرجع</HelpLabel><input dir="ltr" aria-invalid={Boolean(fieldErrors.referenceCode)} value={draft.referenceCode} onChange={(event) => setDraft((value) => ({ ...value, referenceCode: event.target.value }))} /><FieldError errors={fieldErrors} name="referenceCode" /></label>
+                  <label className={fieldClass(fieldErrors, "barcode")}><HelpLabel help="بارکد اصلی کالا است. در مراحل بعد امکان نگهداری چند بارکد نیز وجود دارد.">بارکد اصلی</HelpLabel><input dir="ltr" aria-invalid={Boolean(fieldErrors.barcode)} value={draft.barcode} onChange={(event) => setDraft((value) => ({ ...value, barcode: event.target.value }))} /><FieldError errors={fieldErrors} name="barcode" /></label>
+                  <label className={fieldClass(fieldErrors, "taxpayerGoodsServiceId")}><HelpLabel help="شناسه رسمی ۱۳ رقمی کالا/خدمت در سامانه مودیان است و با کد داخلی آرگین تفاوت دارد.">شناسه ۱۳ رقمی مودیان</HelpLabel><input dir="ltr" inputMode="numeric" maxLength={13} aria-invalid={Boolean(fieldErrors.taxpayerGoodsServiceId)} value={draft.taxpayerGoodsServiceId} onChange={(event) => setDraft((value) => ({ ...value, taxpayerGoodsServiceId: event.target.value }))} /><FieldError errors={fieldErrors} name="taxpayerGoodsServiceId" /></label>
+                </div></fieldset>
+
+                <fieldset><legend>واحد پایه</legend><div className="product-form-grid">
+                  <label className={`product-form-grid__wide ${fieldClass(fieldErrors, "unit") ?? ""}`}><HelpLabel help="نام یا کد واحد را جستجو کنید و یک گزینه از فهرست رسمی سامانه مودیان انتخاب کنید.">انتخاب واحد</HelpLabel><input list="taxpayer-unit-options" placeholder="مثلاً کیلوگرم یا 164" value={unitSearch} aria-invalid={Boolean(fieldErrors.unit)} onChange={(event) => selectUnit(event.target.value)} /><datalist id="taxpayer-unit-options">{unitOptions.map((option) => <option key={option.code} value={option.label} />)}</datalist><FieldError errors={fieldErrors} name="unit" /></label>
+                  <label><HelpLabel help="کد رسمی واحد از Reference Data سامانه مودیان و بر اساس انتخاب شما به‌صورت خودکار درج می‌شود.">کد واحد</HelpLabel><input className="product-unit-code" dir="ltr" readOnly value={draft.taxpayerUnitCode} /></label>
+                  <label className={fieldClass(fieldErrors, "baseUnitPrecision")}><HelpLabel help="تعداد رقم اعشار مجاز برای مقدار این واحد، بین صفر تا ۶ است.">دقت اعشار</HelpLabel><input type="number" min="0" max="6" aria-invalid={Boolean(fieldErrors.baseUnitPrecision)} value={draft.baseUnitPrecision} onChange={(event) => setDraft((value) => ({ ...value, baseUnitPrecision: event.target.value }))} /><FieldError errors={fieldErrors} name="baseUnitPrecision" /></label>
+                  <p className="product-unit-hint">عنوان، کد داخلی واحد و کد رسمی مودیان از گزینه انتخاب‌شده ساخته می‌شوند؛ ورود دستی کد لازم نیست.</p>
+                </div></fieldset>
+
+                <fieldset><legend>تجاری و مالیاتی</legend><div className="product-form-grid">
+                  <label className={fieldClass(fieldErrors, "brand")}><HelpLabel help="برند یا نام تجاری کالا/خدمت؛ اختیاری و برای جستجو و گزارش‌گیری مفید است.">برند</HelpLabel><input value={draft.brand} onChange={(event) => setDraft((value) => ({ ...value, brand: event.target.value }))} /><FieldError errors={fieldErrors} name="brand" /></label>
+                  <label className={fieldClass(fieldErrors, "model")}><HelpLabel help="مدل، تیپ یا شناسه مدل محصول؛ اختیاری است.">مدل</HelpLabel><input value={draft.model} onChange={(event) => setDraft((value) => ({ ...value, model: event.target.value }))} /><FieldError errors={fieldErrors} name="model" /></label>
+                  <label className={`product-form-grid__wide ${fieldClass(fieldErrors, "purchaseDescription") ?? ""}`}><HelpLabel help="شرح پیش‌فرض برای استفاده در فرایندهای خرید آینده است.">شرح خرید</HelpLabel><input value={draft.purchaseDescription} onChange={(event) => setDraft((value) => ({ ...value, purchaseDescription: event.target.value }))} /><FieldError errors={fieldErrors} name="purchaseDescription" /></label>
+                  <label className={`product-form-grid__wide ${fieldClass(fieldErrors, "salesDescription") ?? ""}`}><HelpLabel help="شرح پیش‌فرض برای استفاده در فرایندهای فروش آینده است.">شرح فروش</HelpLabel><input value={draft.salesDescription} onChange={(event) => setDraft((value) => ({ ...value, salesDescription: event.target.value }))} /><FieldError errors={fieldErrors} name="salesDescription" /></label>
+                  <label className={fieldClass(fieldErrors, "taxTreatment")}><HelpLabel help="طبقه‌بندی مالیاتی رکورد: مشمول، معاف، خارج از شمول یا هنوز تعیین‌نشده.">وضعیت مالیاتی</HelpLabel><select aria-invalid={Boolean(fieldErrors.taxTreatment)} value={draft.taxTreatment} onChange={(event) => setDraft((value) => ({ ...value, taxTreatment: event.target.value as ProductTaxTreatment }))}><option value="unspecified">تعیین نشده</option><option value="taxable">مشمول</option><option value="exempt">معاف</option><option value="not-subject">خارج از شمول</option></select><FieldError errors={fieldErrors} name="taxTreatment" /></label>
+                  <label className={fieldClass(fieldErrors, "vatRatePercent")}><HelpLabel help="در صورت مشمول بودن، نرخ ارزش افزوده به درصد وارد می‌شود و داخلی به Basis Point ذخیره می‌شود.">نرخ ارزش افزوده (%)</HelpLabel><input type="number" min="0" max="100" step="0.01" disabled={draft.taxTreatment !== "taxable"} aria-invalid={Boolean(fieldErrors.vatRatePercent)} value={draft.vatRatePercent} onChange={(event) => setDraft((value) => ({ ...value, vatRatePercent: event.target.value }))} /><FieldError errors={fieldErrors} name="vatRatePercent" /></label>
+                </div></fieldset>
+
+                <fieldset><legend>ویژگی‌های عملیاتی</legend><div className="product-form-grid product-form-grid--checks">
+                  <label className={`product-check ${fieldClass(fieldErrors, "stockTracking") ?? ""}`}><input type="checkbox" disabled={draft.kind === "service"} checked={draft.stockTracking} onChange={(event) => setDraft((value) => ({ ...value, stockTracking: event.target.checked }))} /><HelpLabel help="فقط برای کالا؛ مشخص می‌کند موجودی آن در ماژول انبار آینده ردیابی شود.">ردیابی موجودی</HelpLabel><FieldError errors={fieldErrors} name="stockTracking" /></label>
+                  <label className={`product-check ${fieldClass(fieldErrors, "serialTracking") ?? ""}`}><input type="checkbox" disabled={draft.kind === "service" || !draft.stockTracking} checked={draft.serialTracking} onChange={(event) => setDraft((value) => ({ ...value, serialTracking: event.target.checked }))} /><HelpLabel help="برای کالاهای دارای شماره سریال یکتا؛ نیازمند فعال بودن ردیابی موجودی است.">ردیابی سریال</HelpLabel><FieldError errors={fieldErrors} name="serialTracking" /></label>
+                  <label className={`product-check ${fieldClass(fieldErrors, "lotTracking") ?? ""}`}><input type="checkbox" disabled={draft.kind === "service" || !draft.stockTracking} checked={draft.lotTracking} onChange={(event) => setDraft((value) => ({ ...value, lotTracking: event.target.checked }))} /><HelpLabel help="برای کالاهایی که بر اساس بچ/لات مدیریت می‌شوند؛ نیازمند ردیابی موجودی است.">ردیابی بچ</HelpLabel><FieldError errors={fieldErrors} name="lotTracking" /></label>
+                  <label className={fieldClass(fieldErrors, "shelfLifeDays")}><HelpLabel help="عمر نگهداری کالا به روز؛ فقط برای کالاهای دارای ردیابی موجودی کاربرد دارد.">عمر نگهداری (روز)</HelpLabel><input type="number" min="1" disabled={draft.kind === "service" || !draft.stockTracking} aria-invalid={Boolean(fieldErrors.shelfLifeDays)} value={draft.shelfLifeDays} onChange={(event) => setDraft((value) => ({ ...value, shelfLifeDays: event.target.value }))} /><FieldError errors={fieldErrors} name="shelfLifeDays" /></label>
+                </div></fieldset>
               </div>
-              <footer><span>اعتبارسنجی نهایی توسط Domain و Application انجام می‌شود.</span><div><button className="product-button" type="button" onClick={() => setFormOpen(false)} disabled={saving}>انصراف</button><button className="product-button product-button--primary" type="submit" disabled={saving}>{saving ? "در حال ذخیره…" : "ذخیره"}</button></div></footer>
+              <footer><span>فیلدهای دارای * الزامی هستند. علامت سؤال کنار هر فیلد راهنمای همان فیلد را نمایش می‌دهد.</span><div><button className="product-button" type="button" onClick={() => setFormOpen(false)} disabled={saving}>انصراف</button><button className="product-button product-button--primary" type="submit" disabled={saving}>{saving ? "در حال ذخیره…" : "ذخیره"}</button></div></footer>
             </form>
           </section>
         </div>
