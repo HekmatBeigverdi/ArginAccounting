@@ -2,9 +2,9 @@
 
 ## Canonical current status
 
-This correction record resolves the stale Step Status information that remained in the original frozen plan after connector-safe step evidence was split into separate records.
+This correction record tracks the live implementation state alongside the canonical Phase 18 plan.
 
-As of this commit, the repository implementation status is:
+As of this commit:
 
 | Step | Title | Status |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ As of this commit, the repository implementation status is:
 | 15 | Product/Service Selector and Future Module Consumption Contract | Completed |
 | 16 | Shared Platform and ERP Integration Boundaries | Completed |
 | 17 | Domain and Application Tests | Completed |
-| 18 | Repository, Migration, Import/Export, and Desktop Tests | Not started |
+| 18 | Repository, Migration, Import/Export, and Desktop Tests | Completed |
 | 19 | Monorepo, Performance, Accessibility, Quality, and Documentation | Not started |
 | 20 | Final Review, Merge, and Release | Not started |
 
@@ -34,9 +34,10 @@ As of this commit, the repository implementation status is:
 - Step 15: `docs/phases/phase-18-step-15-selector.md`
 - Step 16: `docs/phases/phase-18-step-16-integration-boundaries.md`
 - Step 17: `docs/phases/phase-18-step-17-domain-application-tests.md`
+- Step 18: `docs/phases/phase-18-step-18-repository-desktop-tests.md`
 
 ## Governance correction
 
-The stale rows for Steps 15 and 16 in `phase-18-products-services-plan.md` are historical drift and must not be interpreted as current implementation state. This reconciliation is an explicit correction under the Documentation Governance allowance for status corrections and is the authoritative status record until the large frozen plan is safely consolidated during Step 19 documentation reconciliation.
+The canonical `phase-18-products-services-plan.md` now also reflects the same live status. The archived detailed plan through Step 14 is retained only as historical evidence and must not be used as the current status table.
 
-No step title, order, scope, or exit criterion is changed by this correction.
+No step title, order, scope, or exit criterion is changed by this reconciliation.
