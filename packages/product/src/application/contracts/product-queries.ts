@@ -44,6 +44,7 @@ export interface ProductFilter {
   readonly taxpayerGoodsServiceId?: string | null;
   readonly barcode?: string | null;
   readonly sku?: string | null;
+  readonly requiresTaxpayerGoodsServiceId?: boolean;
 }
 
 export interface ListProductsQuery {
@@ -71,5 +72,6 @@ export interface ProductSelectorQuery {
   readonly purchasable?: boolean;
   readonly sellable?: boolean;
   readonly stockTracking?: boolean;
+  readonly requiresTaxpayerGoodsServiceId?: boolean;
   readonly limit: number;
 }
