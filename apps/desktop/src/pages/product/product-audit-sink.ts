@@ -50,7 +50,7 @@ const actionMap: Readonly<Record<ProductAuditAction, AuditAction>> = Object.free
 function toAuditDatabase(session: DatabaseSession): SqliteDatabase {
   return Object.freeze({
     async execute(sql: string, parameters?: unknown[]) {
-      const result = await session.execute(sql, parameters as never[] | undefined);
+      const result = await session.execute(sql, parameters as any);
       return {
         rowsAffected: result.rowsAffected,
         ...(result.lastInsertId === undefined
@@ -59,7 +59,7 @@ function toAuditDatabase(session: DatabaseSession): SqliteDatabase {
       };
     },
     async select<T>(sql: string, parameters?: unknown[]): Promise<T> {
-      return await session.query(sql, parameters as never[] | undefined) as T;
+      return await session.query(sql, parameters as any) as T;
     },
   });
 }
