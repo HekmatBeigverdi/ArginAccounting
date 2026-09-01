@@ -8,6 +8,7 @@ export {
 export { SqliteProductRepository } from "./sqlite-product-repository.ts";
 export { SqliteProductUnitOfWork } from "./sqlite-product-unit-of-work.ts";
 export { SqliteProductIdempotencyExecutor } from "./sqlite-product-idempotency.ts";
+export { SqliteProductSelectorReader } from "./sqlite-product-selector-reader.ts";
 
 export {
   PRODUCT_TABULAR_LIMITS,
