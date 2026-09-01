@@ -1,5 +1,7 @@
 import type { DatabaseExecutor } from "@argin/database";
 
+import "./product-help-controller";
+
 export interface TaxpayerUnitOption {
   readonly code: string;
   readonly title: string;
