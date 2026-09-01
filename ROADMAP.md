@@ -25,6 +25,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Event Bus
    - Money
    - Query Framework
+   - Structured filtering, sorting, projection, and pagination
    - Number Series Engine
    - Metadata Engine
    - Notification
@@ -69,8 +70,15 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - SQLite persistence, optimistic concurrency, stable cross-store identity, tombstone/external-reference compatibility
    - Persian RTL Party workspace and reusable bounded Party Selector
    - Representative 50,000-row SQLite query-plan and full monorepo validation
-18. 🚧 Products and Services
-19. ⏳ Warehouses
+18. ✅ Products and Services
+   - Canonical Product/Service Master Data with durable `productId`, classification, lifecycle and capabilities
+   - Product Units/conversions, SKU/reference/barcodes, official Taxpayer identifiers and versioned Taxpayer unit reference data
+   - Commercial/tax/operational master attributes without prices, stock quantities, valuation or posting state
+   - SQLite persistence, optimistic concurrency, idempotency, Audit/security integration and Argin Bridge-compatible tombstone/external references
+   - CSV/XLSX import/export, Persian RTL desktop workspace and bounded future-module selector contracts
+   - Repository/migration/Desktop regression coverage plus representative 50,000-row query-plan validation gate
+   - Implementation, documentation and final merge preparation complete; semantic release `v0.18.0` prepared for manual publication
+19. 🚧 Warehouses
 
 ## Inventory
 
@@ -148,8 +156,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 18 — Products and Services.
+Phase 19 — Warehouses.
 
 ## Latest Completed Master Data Milestone
 
-Phase 17 — Parties, implementation and validation completed; semantic release `v0.17.0` is prepared for final GitHub publication.
+Phase 18 — Products and Services, implementation and merge preparation completed; semantic release `v0.18.0` prepared for manual GitHub publication.

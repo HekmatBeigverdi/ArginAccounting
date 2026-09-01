@@ -26,6 +26,8 @@
     "@argin/party-tauri": "workspace:*",
     "@argin/platform": "workspace:*",
     "@argin/platform-tauri": "workspace:*",
+    "@argin/product": "workspace:*",
+    "@argin/product-tauri": "workspace:*",
     "@argin/security": "workspace:*",
     "@argin/security-tauri": "workspace:*",
     "@tauri-apps/api": "^2",

@@ -35,6 +35,7 @@ import "./components/ui.css";
 import "./App.css";
 import "./styles/persian-date-isolation.css";
 import "./styles/accessibility.css";
+import "./pages/product/products-page-tokens.css";
 
 function App() {
   return (

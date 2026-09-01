@@ -2,6 +2,12 @@
 
 All phase records live in this directory and follow the permanent [phase template](../templates/phase-template.md) and [documentation governance](../development/documentation-governance.md).
 
+## Active documentation rule
+
+Active and future phases use one canonical phase record for fixed plan, Step Status, step evidence, validation evidence, Change Requests, documentation impact, and exit criteria. Do not create routine `phase-NN-step-YY-*.md` evidence/status files. Cross-cutting architecture, ADR, database, security, and glossary material belongs in its canonical directory; Git history preserves prior phase-file versions.
+
+Historical Phase 01–17 documentation is retained as project history and is not mass-rewritten solely to enforce the newer consolidation rule.
+
 ## Completed Implementation
 
 1. [Phase 01 — Architecture Baseline](phase-01-architecture-baseline.md)
@@ -18,32 +24,14 @@ All phase records live in this directory and follow the permanent [phase templat
 12. [Phase 12 — Coding Templates](phase-12-coding-templates.md)
 13. [Phase 13 — Journal Voucher Engine](phase-13-journal-voucher-engine.md) — completed, merged, and released as `v0.13.0`
 14. [Phase 14 — UI Foundation Consolidation](phase-14-ui-foundation-consolidation.md) — completed, merged, and released as `v0.14.0`
-   - [Fixed Implementation Plan](phase-14-ui-foundation-consolidation-plan.md)
-   - [ADR-0014 — UI Foundation and Global Display Density](../adr/ADR-0014-ui-foundation-and-global-density.md)
 15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — completed and integrated; semantic release `v0.15.0`
-   - [Fixed Implementation Plan](phase-15-journal-lifecycle-plan.md)
-   - [ADR-0015 — Journal Lifecycle Architecture](../adr/ADR-0015-journal-lifecycle.md)
-   - [Step 15 Domain and Application Test Matrix](phase-15-step-15-test-matrix.md)
-   - [Step 16 Persistence and Desktop Regression Matrix](phase-15-step-16-regression-matrix.md)
-   - [Step 17 Monorepo Validation and Documentation Completion](phase-15-step-17-validation.md)
-   - [Manual Desktop Lifecycle Validation](phase-15-manual-desktop-validation.md)
 16. [Phase 16 — Accounting Reports](phase-16-accounting-reports.md) — implementation/final review complete; prepared semantic release `v0.16.0`
-   - [Fixed Implementation Plan](phase-16-accounting-reports-plan.md)
-   - [ADR-0016 — Accounting Reports](../adr/ADR-0016-accounting-reports.md)
-   - [Step 16 Domain and Application Report Test Matrix](phase-16-step-16-report-test-matrix.md)
-   - [Step 17 SQLite/Desktop/Performance and Monorepo Validation](phase-16-step-17-validation.md)
-   - Step 16 and Step 17 local validation confirmed by repository owner
-   - Semantic tag/GitHub Release publication remains the manual repository-owner action
 17. [Phase 17 — Parties](phase-17-parties.md) — implementation, validation, documentation, and merge complete; semantic release `v0.17.0` prepared for manual GitHub publication
-   - [Fixed Implementation Plan](phase-17-parties-plan.md)
-   - [ADR-0017 — Party Master Data Model](../adr/ADR-0017-party-master-data-model.md)
-   - [Step 18 Monorepo/Performance/Accessibility Validation Evidence](phase-17-step-18-validation-evidence.md)
-   - [Step 19 Documentation and Validation Evidence](phase-17-step-19-documentation-evidence.md)
-   - [Release Notes](phase-17-release-notes.md)
+18. [Phase 18 — Products and Services](phase-18-products-services-plan.md) — implementation and Step 20 merge preparation complete; semantic release `v0.18.0` prepared for manual Tag/GitHub Release publication
 
-## Next Target
+## Current Phase
 
-18. Phase 18 — Products and Services
+19. Phase 19 — Warehouses
 
 ## Renumbering Rule
 
