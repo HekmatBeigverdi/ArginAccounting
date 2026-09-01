@@ -5,7 +5,6 @@ import {
 import {
   createProductIdentifierProfile,
   type ProductExternalIdentifier,
-  type ProductIdentifierProfile,
 } from "../domain/product-identifiers.ts";
 import {
   createProductMasterDataProfile,
