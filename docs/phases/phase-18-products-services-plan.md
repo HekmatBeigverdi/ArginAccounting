@@ -2,26 +2,18 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–18 are completed; Steps 19–20 are not started.
+Phase 18 is active. Steps 1–19 are completed; Step 20 is not started.
 
 ## Governance
 
 This 20-step sequence is frozen. Step title, order, scope, or exit criteria may change only through an explicitly approved Change Request.
 
-Before every step, follow:
+This file is the canonical Phase 18 record. Step status, implementation evidence, validation evidence, Change Requests, and phase exit criteria are maintained here. Cross-cutting rules remain in their canonical architecture/database/security/glossary documents.
+
+Mandatory governance:
 
 - `docs/development/documentation-governance.md`
 - `docs/development/github-publishing-workflow.md`
-
-Detailed historical evidence through Step 14 is preserved at `docs/phases/archive/phase-18-products-services-plan-through-step-14.md`.
-
-Later detailed evidence:
-
-- Step 15: `docs/phases/phase-18-step-15-selector.md`
-- Step 16: `docs/phases/phase-18-step-16-integration-boundaries.md`
-- Step 17: `docs/phases/phase-18-step-17-domain-application-tests.md`
-- Step 18: `docs/phases/phase-18-step-18-repository-desktop-tests.md`
-- Status reconciliation history: `docs/phases/phase-18-status-reconciliation.md`
 
 ## Objective
 
@@ -61,7 +53,7 @@ Durable `productId` is the downstream reference identity. Display code, title, S
 | 16 | Shared Platform and ERP Integration Boundaries | Completed |
 | 17 | Domain and Application Tests | Completed |
 | 18 | Repository, Migration, Import/Export, and Desktop Tests | Completed |
-| 19 | Monorepo, Performance, Accessibility, Quality, and Documentation | Not started |
+| 19 | Monorepo, Performance, Accessibility, Quality, and Documentation | Completed |
 | 20 | Final Review, Merge, and Release | Not started |
 
 ## Fixed Execution Sequence
@@ -87,13 +79,98 @@ Durable `productId` is the downstream reference identity. Display code, title, S
 19. Monorepo, Performance, Accessibility, Quality, and Documentation
 20. Final Review, Merge, and Release
 
-## Remaining exit criteria
+## Consolidated implementation evidence
 
-### Step 19
-Run focused and monorepo validation, performance/query-plan checks, accessibility/RTL/density checks, internal-link validation, and complete mandatory architecture/database/security/glossary/roadmap/changelog/release documentation.
+### Steps 1–14
 
-### Step 20
-Reconcile final status, run release validation, review branch scope, merge using the approved strategy, and prepare/publish semantic release `v0.18.0` as authorized.
+- Established independent `@argin/product` Domain/Application and dedicated `@argin/product-tauri` SQLite adapter packages.
+- Added stable company-scoped `productId`, Product/Service classification, active/inactive lifecycle, category and purchasable/sellable capabilities.
+- Added deterministic Product Unit profiles with base/alternate units, ratios, precision, rounding and official Taxpayer unit mappings.
+- Added SKU/reference/barcodes/external identifiers and 13-digit Taxpayer goods/service identifiers with normalized hard-duplicate boundaries.
+- Added commercial, tax and operational master attributes while explicitly excluding price, stock quantity, valuation and posting state.
+- Added persistence-neutral commands/queries/readers/repositories/UoW/errors, duplicate detection, idempotency, optimistic concurrency and reference validation.
+- Added migrations `0018`–`0021` for Taxpayer unit reference data, Product persistence, synchronization metadata and Product idempotency.
+- Added security permissions, secured Application boundaries and shared Audit composition without inventing a Product-specific Approval workflow.
+- Added CSV/XLSX preview/import/export with Domain validation, strong/advisory duplicate diagnostics, atomic mode and bounded export.
+- Added Persian RTL Product/Service Desktop management with Phase 14 density, field-level validation, click-only viewport-aware help, searchable Taxpayer unit selection, keyboard handling and responsive states.
+- UI corrections discovered during acceptance, including Audit transaction composition and stale optimistic-version behavior, were addressed on the phase branch.
+
+### Step 15 — Product/Service Selector and Future Module Consumption Contract
+
+- Added persistence-neutral `ProductSelectorService` and secured selector boundary with bounded requests (`1..100`, default `20`).
+- Added reusable usages for general, inventory, purchase, sales, taxpayer, manufacturing and cost-accounting consumers.
+- Mandatory consumer eligibility cannot be relaxed by caller filters; incompatible intersections return no results rather than broadening the query.
+- Selector results preserve durable `productId`/`durableId` while code/title remain display metadata.
+- Added `requiresTaxpayerGoodsServiceId` and `SqliteProductSelectorReader`; filters are applied in SQL before `LIMIT`, tombstones are excluded, and queries remain company-scoped.
+- Added focused selector tests and `docs/architecture/product-selector-contract.md`.
+
+### Step 16 — Shared Platform and ERP Integration Boundaries
+
+- Reused existing Company scope, Security, Audit, shared database/UoW, optimistic concurrency, bounded query and Gregorian metadata capabilities instead of duplicating them.
+- Product is company-scoped Master Data; Branch does not duplicate Product identity.
+- Defined forward-only downstream ownership: Warehouse owns warehouse definitions; Inventory owns quantities/movements; valuation owns cost layers; Purchases/Sales own transactional prices/documents; Accounting owns posting; Taxpayer phases own projection/signing/submission/inquiry; Manufacturing and Cost Accounting own their respective workflows.
+- Party and Product remain peer Master Data contexts consumed together by future documents without reverse dependency.
+- Price/list-price behavior remains explicitly outside Product Master Data.
+- Added `docs/architecture/product-shared-platform-integration.md` and architecture regression coverage.
+
+### Step 17 — Domain and Application Tests
+
+- Consolidated Product Domain/Application coverage for classification/lifecycle, UoM/conversions, identifiers, master attributes, duplicate semantics, idempotency, optimistic concurrency, company isolation, security, selector and sync contracts.
+- Added regression coverage for company-isolated mutation behavior, idempotency scoping, expected-version chains across multiple mutations, invalid context rejection before UoW entry, and default-unit reference safety.
+- Core business behavior remains independently testable without SQLite/Desktop.
+
+### Step 18 — Repository, Migration, Import/Export, and Desktop Tests
+
+- Added real `node:sqlite` in-memory migration/constraint coverage for migrations 18–21, company scope, strong identifier uniqueness, Taxpayer-unit references, tombstones, idempotency constraints and transaction rollback.
+- Added Product Tauri persistence regression tests for idempotency cleanup/concurrency and bounded selector behavior.
+- Retained CSV/XLSX import/export round-trip, limits, atomic import and duplicate coverage.
+- Added Desktop contracts for Product route/permission, bounded loading, loading/empty/error states, field-level validation, click-only viewport-aware help, reference-data unit selection and absence of direct Product SQL in React.
+
+### Step 19 — Monorepo, Performance, Accessibility, Quality, and Documentation
+
+- Added `@argin/product-tauri validate:performance` using a representative 50,000-row Product/Service dataset and SQLite `EXPLAIN QUERY PLAN` checks for list, Inventory-style selector and SKU hard-duplicate paths. Portable quality criteria are expected index use and bounded queries, not hardware-specific elapsed-time thresholds.
+- Added root `pnpm validate:phase18` as the unified Phase 18 gate: Product/Product-Tauri tests and typecheck, Product performance validation, Security/Audit checks, Desktop typecheck/test/build, then full monorepo typecheck/test/build/lint.
+- Added Product accessibility/quality regression coverage for Persian RTL, explicit LTR identifiers, keyboard row selection, Escape/dialog semantics, loading/validation accessibility, Phase 14 density tokens, responsive layout and local overflow.
+- Updated Documentation Governance with a permanent one-canonical-phase-file rule to prevent step-document sprawl. Step-specific temporary Phase 18 evidence files are consolidated into this record and removed; Git history remains the historical record.
+- Updated `ROADMAP.md`, Product glossary terms and canonical database design; Product architecture/security documents created earlier in the phase remain the canonical cross-cutting references.
+- Direct execution of `pnpm validate:phase18` is not claimed in the assistant runtime because direct GitHub DNS resolution is unavailable there. The gate must be executed locally/repository CI before Step 20 merge/release acceptance; Step 20 must not claim release readiness without a passing recorded result.
+
+## Architecture and cross-cutting documentation
+
+- `docs/architecture/product-sync-contract.md`
+- `docs/architecture/product-selector-contract.md`
+- `docs/architecture/product-shared-platform-integration.md`
+- `docs/security/product-security-and-approval.md`
+- `docs/database/database-design.md`
+- `docs/glossary/domain-glossary.md`
+
+No new ADR is required for Step 19 itself: the phase follows existing offline-first, shared-platform, Master Data, security/audit and Phase 14 UI decisions; Product-specific architecture decisions are already documented in the canonical architecture/security records above.
+
+## Validation gate
+
+Before Step 20 final review/merge/release, execute:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm validate:phase18
+```
+
+If frozen-lock installation fails because the workspace lockfile still needs reconciliation from Phase 18 dependency additions, reconcile with:
+
+```bash
+pnpm install --lockfile-only --no-frozen-lockfile
+git diff -- pnpm-lock.yaml
+```
+
+Commit only the legitimate generated lockfile changes, then rerun the frozen validation gate.
+
+## Step 20 remaining exit criteria
+
+- Confirm `pnpm validate:phase18` passes and record the result.
+- Reconcile final branch scope and ensure no stale Step Status remains.
+- Finalize `CHANGELOG.md` release entry and Phase 18 release notes as part of release preparation.
+- Merge using the repository's approved branch strategy only with explicit authorization.
+- Prepare/publish semantic release `v0.18.0` as authorized.
 
 ## Change Requests
 
