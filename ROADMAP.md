@@ -70,6 +70,13 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Persian RTL Party workspace and reusable bounded Party Selector
    - Representative 50,000-row SQLite query-plan and full monorepo validation
 18. 🚧 Products and Services
+   - Canonical Product/Service Master Data with durable `productId`, classification, lifecycle and capabilities
+   - Product Units/conversions, SKU/reference/barcodes, official Taxpayer identifiers and versioned Taxpayer unit reference data
+   - Commercial/tax/operational master attributes without prices, stock quantities, valuation or posting state
+   - SQLite persistence, optimistic concurrency, idempotency, Audit/security integration and Argin Bridge-compatible tombstone/external references
+   - CSV/XLSX import/export, Persian RTL desktop workspace and bounded future-module selector contracts
+   - Repository/migration/Desktop regression coverage plus representative 50,000-row query-plan validation gate
+   - Implementation and documentation through Step 19 complete; final validation/merge/release remains Step 20
 19. ⏳ Warehouses
 
 ## Inventory
