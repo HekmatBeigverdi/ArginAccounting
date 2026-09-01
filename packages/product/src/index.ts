@@ -14,58 +14,28 @@ export {
   normalizeTaxpayerGoodsServiceId,
 } from "./domain/product-identifiers.ts";
 
+export { createProductMasterDataProfile } from "./domain/product-master-data.ts";
+export { convertProductQuantity, createProductUnitProfile } from "./domain/product-unit.ts";
+export { ProductService } from "./application/product-service.ts";
+export { ProductBulkTransferService, productImportFields } from "./application/product-bulk-transfer.ts";
+export { ProductReaderBulkExportAdapter } from "./application/product-bulk-export-reader.ts";
 export {
-  createProductMasterDataProfile,
-} from "./domain/product-master-data.ts";
-
-export {
-  convertProductQuantity,
-  createProductUnitProfile,
-} from "./domain/product-unit.ts";
-
-export {
-  ProductService,
-} from "./application/product-service.ts";
-
-export {
-  ProductBulkTransferService,
-  productImportFields,
-} from "./application/product-bulk-transfer.ts";
-
-export {
-  ProductReaderBulkExportAdapter,
-} from "./application/product-bulk-export-reader.ts";
-
-export {
-  SecuredProductReader,
-  SecuredProductService,
-} from "./application/secured-product-service.ts";
-
-export {
-  PRODUCT_APPLICATION_ERROR_CODES,
-  ProductApplicationError,
-} from "./application/contracts/product-errors.ts";
-
-export {
-  PRODUCT_QUERY_LIMITS,
-} from "./application/contracts/product-queries.ts";
-
-export {
-  productCorrelationId,
-  productPermissions,
-} from "./application/contracts/product-security.ts";
-
+  ProductSelectorService,
+  SecuredProductSelectorService,
+  createProductSelectorQuery,
+  productSelectorUsages,
+} from "./application/product-selector.ts";
+export { SecuredProductReader, SecuredProductService } from "./application/secured-product-service.ts";
+export { PRODUCT_APPLICATION_ERROR_CODES, ProductApplicationError } from "./application/contracts/product-errors.ts";
+export { PRODUCT_QUERY_LIMITS } from "./application/contracts/product-queries.ts";
+export { productCorrelationId, productPermissions } from "./application/contracts/product-security.ts";
 export {
   ProductSyncContractError,
   createProductSyncTombstoneEnvelope,
   createProductSyncUpsertEnvelope,
   productSyncChangeKinds,
 } from "./application/contracts/product-sync.ts";
-
-export {
-  diffTaxpayerUnitReferenceDataset,
-  normalizeTaxpayerUnitReferenceDataset,
-} from "./reference/taxpayer-unit-reference.ts";
+export { diffTaxpayerUnitReferenceDataset, normalizeTaxpayerUnitReferenceDataset } from "./reference/taxpayer-unit-reference.ts";
 
 export type {
   CreateProductInput,
@@ -75,13 +45,7 @@ export type {
   ProductSnapshot,
   ProductStatus,
 } from "./domain/product.ts";
-
-export type {
-  CreateProductIdentifierProfileInput,
-  ProductExternalIdentifier,
-  ProductIdentifierProfile,
-} from "./domain/product-identifiers.ts";
-
+export type { CreateProductIdentifierProfileInput, ProductExternalIdentifier, ProductIdentifierProfile } from "./domain/product-identifiers.ts";
 export type {
   CreateProductMasterDataProfileInput,
   ProductCommercialAttributes,
@@ -90,18 +54,13 @@ export type {
   ProductTaxAttributes,
   ProductTaxTreatment,
 } from "./domain/product-master-data.ts";
-
+export type { CreateProductUnitProfileInput, ProductUnitDefinition, ProductUnitProfile, QuantityRoundingMode } from "./domain/product-unit.ts";
+export type { ProductServiceDependencies } from "./application/product-service.ts";
 export type {
-  CreateProductUnitProfileInput,
-  ProductUnitDefinition,
-  ProductUnitProfile,
-  QuantityRoundingMode,
-} from "./domain/product-unit.ts";
-
-export type {
-  ProductServiceDependencies,
-} from "./application/product-service.ts";
-
+  ProductSelectorOption,
+  ProductSelectorRequest,
+  ProductSelectorUsage,
+} from "./application/product-selector.ts";
 export type {
   ProductBulkContext,
   ProductBulkExportReader,
@@ -116,11 +75,7 @@ export type {
   ProductImportResult,
   ProductTabularRow,
 } from "./application/product-bulk-transfer.ts";
-
-export type {
-  ProductReadSecurityContext,
-} from "./application/secured-product-service.ts";
-
+export type { ProductReadSecurityContext } from "./application/secured-product-service.ts";
 export type {
   CreateProductCommand,
   ProductRequestContext,
@@ -130,18 +85,8 @@ export type {
   SetProductStatusCommand,
   UpdateProductIdentityCommand,
 } from "./application/contracts/product-commands.ts";
-
-export type {
-  ProductApplicationContract,
-} from "./application/contracts/product-contracts.ts";
-
-export type {
-  ProductDto,
-  ProductListItemDto,
-  ProductPageDto,
-  ProductSelectorItemDto,
-} from "./application/contracts/product-dto.ts";
-
+export type { ProductApplicationContract } from "./application/contracts/product-contracts.ts";
+export type { ProductDto, ProductListItemDto, ProductPageDto, ProductSelectorItemDto } from "./application/contracts/product-dto.ts";
 export type {
   ProductDuplicateCandidate,
   ProductDuplicateCheckResult,
@@ -151,11 +96,7 @@ export type {
   ProductDuplicateStrength,
   ProductIdempotencyExecutor,
 } from "./application/contracts/product-duplicates.ts";
-
-export type {
-  ProductApplicationErrorCode,
-} from "./application/contracts/product-errors.ts";
-
+export type { ProductApplicationErrorCode } from "./application/contracts/product-errors.ts";
 export type {
   GetProductByCodeQuery,
   GetProductByIdQuery,
@@ -167,20 +108,9 @@ export type {
   ProductSortDirection,
   ProductSortField,
 } from "./application/contracts/product-queries.ts";
-
-export type {
-  ProductReader,
-} from "./application/contracts/product-reader.ts";
-
-export type {
-  TaxpayerUnitReferenceValidator,
-} from "./application/contracts/product-reference-validation.ts";
-
-export type {
-  ProductPersistenceState,
-  ProductRepository,
-} from "./application/contracts/product-repository.ts";
-
+export type { ProductReader } from "./application/contracts/product-reader.ts";
+export type { TaxpayerUnitReferenceValidator } from "./application/contracts/product-reference-validation.ts";
+export type { ProductPersistenceState, ProductRepository } from "./application/contracts/product-repository.ts";
 export type {
   ProductAuditAction,
   ProductAuditEvent,
@@ -189,12 +119,7 @@ export type {
   ProductAuthorizationPolicy,
   ProductPermission,
 } from "./application/contracts/product-security.ts";
-
-export type {
-  ProductUnitOfWork,
-  ProductUnitOfWorkRepositories,
-} from "./application/contracts/product-unit-of-work.ts";
-
+export type { ProductUnitOfWork, ProductUnitOfWorkRepositories } from "./application/contracts/product-unit-of-work.ts";
 export type {
   CreateProductSyncTombstoneInput,
   CreateProductSyncUpsertInput,
@@ -207,9 +132,4 @@ export type {
   ProductSyncTombstoneEnvelope,
   ProductSyncUpsertEnvelope,
 } from "./application/contracts/product-sync.ts";
-
-export type {
-  TaxpayerUnitReferenceDataset,
-  TaxpayerUnitReferenceDiff,
-  TaxpayerUnitReferenceEntry,
-} from "./reference/taxpayer-unit-reference.ts";
+export type { TaxpayerUnitReferenceDataset, TaxpayerUnitReferenceDiff, TaxpayerUnitReferenceEntry } from "./reference/taxpayer-unit-reference.ts";
