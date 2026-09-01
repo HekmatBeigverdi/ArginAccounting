@@ -1,0 +1,82 @@
+.product-label-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.product-help {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 999px;
+  background: var(--ui-surface-subtle);
+  color: var(--ui-text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: help;
+}
+
+.product-help::after {
+  content: attr(data-help);
+  position: absolute;
+  z-index: 140;
+  inset-block-end: calc(100% + 0.45rem);
+  inset-inline-start: 50%;
+  width: max-content;
+  max-width: min(22rem, 70vw);
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-text);
+  color: var(--ui-surface);
+  box-shadow: var(--ui-shadow-md);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.7;
+  text-align: start;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(50%) translateY(0.2rem);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.product-help:hover::after,
+.product-help:focus-visible::after {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
+}
+
+.product-field--invalid input,
+.product-field--invalid select {
+  border-color: var(--ui-danger) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-danger) 18%, transparent);
+}
+
+.product-field--invalid .product-label-text {
+  color: var(--ui-danger);
+}
+
+.product-field-error {
+  color: var(--ui-danger);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.product-unit-code {
+  background: var(--ui-surface-subtle) !important;
+  color: var(--ui-text-muted) !important;
+}
+
+.product-unit-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--ui-text-muted);
+  font-size: 0.76rem;
+}
