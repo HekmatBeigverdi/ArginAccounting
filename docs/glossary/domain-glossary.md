@@ -42,3 +42,12 @@ This glossary defines canonical English repository terms and their Persian UI me
 | Journal Report | دفتر روزنامه | Chronological report of posted Journal Line facts with account, dimension, debit/credit, and source traceability. |
 | Accounting Dimension Report | گزارش ابعاد حسابداری | Canonical posted-fact aggregation by Dimension Member or Account × Dimension Member. |
 | Report Trace Identity | شناسه رهگیری گزارش | Durable Voucher ID + Journal Line ID used to navigate from a report row to its accounting source. |
+| Product/Service Master | کالا / خدمت | Canonical company-scoped Master Data record describing a product or service independently of stock, price, purchasing, selling, posting, or synchronization workflow. |
+| Product ID | شناسه پایدار کالا/خدمت | Durable cross-store identity used by downstream modules. Display code, title, SKU, barcode, and official identifiers are not foreign identity. |
+| Product Code | کد کالا/خدمت | Human-readable company-scoped display code; mutable business identity metadata rather than durable entity identity. |
+| Product Capability | قابلیت کالا/خدمت | Master-data eligibility such as purchasable or sellable; it does not implement Purchase or Sales workflow behavior. |
+| Unit of Measure | واحد اندازه‌گیری | Product-specific base or alternate unit with deterministic ratio, precision, and rounding semantics. |
+| Taxpayer Unit Code | کد واحد سامانه مودیان | Official external measurement-unit reference mapped to a Product unit and kept separate from Argin unit identity. |
+| Taxpayer Goods/Service ID | شناسه کالا/خدمت مودیان | Official 13-digit Iranian Taxpayer System goods/service identifier stored as Product master metadata. |
+| Product Selector | انتخابگر کالا/خدمت | Bounded persistence-neutral lookup contract that returns durable Product ID plus display metadata for future ERP consumers. |
+| Product Tombstone | نشان حذف همگام‌سازی کالا/خدمت | Deletion/change-propagation metadata reserved for synchronization; distinct from ordinary active/inactive business status. |

@@ -17,6 +17,12 @@ export const navigationItems: NavigationItem[] = [
     group: "اطلاعات پایه",
     requiredPermission: "master-data.parties.view",
   },
+  {
+    label: "کالاها و خدمات",
+    path: "/master-data/products",
+    group: "اطلاعات پایه",
+    requiredPermission: "master-data.products.view",
+  },
   { label: "سال‌های مالی", path: "/fiscal/years", group: "مدیریت مالی" },
   {
     label: "اسناد حسابداری",
