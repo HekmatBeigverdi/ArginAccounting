@@ -9,7 +9,8 @@ This note records repository-owner feedback applied after the initial completion
 - Replaced manual base-unit title/code entry with a searchable unit selector backed by active rows from the versioned `taxpayer_units` reference table.
 - Selecting an official unit automatically derives the Product unit title, internal unit identity/code, and Taxpayer unit code. Users no longer need to type the official unit code manually.
 - Reference lookup SQL is isolated in the Desktop composition adapter `taxpayer-unit-options.ts`; the React page consumes bounded option DTOs rather than embedding SQL.
-- Added an accessible question-mark help affordance beside form fields. Help text is available by hover and keyboard focus and explains field purpose and downstream semantics without permanently expanding the dense accounting form.
+- Added an accessible question-mark help affordance beside form fields. Help is now click-only: hover and ordinary keyboard focus do not open it. Clicking the same help button, clicking outside the popover, or pressing Escape closes it.
+- Help popovers are rendered as fixed viewport overlays and are positioned from the clicked question-mark button. Placement prefers above the field, flips below when top space is insufficient, clamps horizontally within viewport margins, and remains repositioned during scroll/resize so fields near the top/right edges do not show clipped help text.
 - Added dedicated validation/help CSS using the Phase 14 `--ui-*` design tokens and preserving Compact/Comfortable/Spacious density behavior.
 
 ## Files
@@ -17,6 +18,7 @@ This note records repository-owner feedback applied after the initial completion
 - `apps/desktop/src/pages/product/products-page.tsx`
 - `apps/desktop/src/pages/product/products-page-validation.css`
 - `apps/desktop/src/pages/product/taxpayer-unit-options.ts`
+- `apps/desktop/src/pages/product/product-help-controller.ts`
 
 ## Validation
 
