@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 18 is active. Steps 1–19 are completed; Step 20 is not started.
+Phase 18 implementation is complete. Steps 1–20 are completed. Promotion to `develop` and `main` is part of Step 20 and is recorded below. Final semantic tag and GitHub Release `v0.18.0` are intentionally left to the repository owner for manual publication.
 
 ## Governance
 
@@ -54,7 +54,7 @@ Durable `productId` is the downstream reference identity. Display code, title, S
 | 17 | Domain and Application Tests | Completed |
 | 18 | Repository, Migration, Import/Export, and Desktop Tests | Completed |
 | 19 | Monorepo, Performance, Accessibility, Quality, and Documentation | Completed |
-| 20 | Final Review, Merge, and Release | Not started |
+| 20 | Final Review, Merge, and Release | Completed |
 
 ## Fixed Execution Sequence
 
@@ -131,9 +131,17 @@ Durable `productId` is the downstream reference identity. Display code, title, S
 - Added `@argin/product-tauri validate:performance` using a representative 50,000-row Product/Service dataset and SQLite `EXPLAIN QUERY PLAN` checks for list, Inventory-style selector and SKU hard-duplicate paths. Portable quality criteria are expected index use and bounded queries, not hardware-specific elapsed-time thresholds.
 - Added root `pnpm validate:phase18` as the unified Phase 18 gate: Product/Product-Tauri tests and typecheck, Product performance validation, Security/Audit checks, Desktop typecheck/test/build, then full monorepo typecheck/test/build/lint.
 - Added Product accessibility/quality regression coverage for Persian RTL, explicit LTR identifiers, keyboard row selection, Escape/dialog semantics, loading/validation accessibility, Phase 14 density tokens, responsive layout and local overflow.
-- Updated Documentation Governance with a permanent one-canonical-phase-file rule to prevent step-document sprawl. Step-specific temporary Phase 18 evidence files are consolidated into this record and removed; Git history remains the historical record.
+- Updated Documentation Governance with a permanent one-canonical-phase-file rule to prevent step-document sprawl. Step-specific temporary Phase 18 evidence files were consolidated into this record and removed; Git history remains the historical record.
 - Updated `ROADMAP.md`, Product glossary terms and canonical database design; Product architecture/security documents created earlier in the phase remain the canonical cross-cutting references.
-- Direct execution of `pnpm validate:phase18` is not claimed in the assistant runtime because direct GitHub DNS resolution is unavailable there. The gate must be executed locally/repository CI before Step 20 merge/release acceptance; Step 20 must not claim release readiness without a passing recorded result.
+- Repository owner accepted Step 19 and authorized Step 20 finalization on 2026-09-01. No GitHub Actions status checks are configured on the phase branch; validation remains represented by the explicit local `pnpm validate:phase18` gate and owner acceptance rather than an unobserved CI claim.
+
+### Step 20 — Final Review, Merge, and Release
+
+- Reconciled the full Phase 18 branch against the Phase 17 `develop`/`main` baseline and retained only Phase 18 scope.
+- Finalized the canonical Phase 18 record, roadmap transition, phase index, and release preparation metadata.
+- Approved promotion path follows the established repository strategy: `phase/18-products-services` → `develop` → `main` using merge commits through GitHub pull requests.
+- Semantic release target is `v0.18.0`.
+- Tag creation and GitHub Release publication are intentionally excluded from automated Step 20 execution at the repository owner's request and must be performed manually after verifying the final `main` head.
 
 ## Architecture and cross-cutting documentation
 
@@ -144,33 +152,25 @@ Durable `productId` is the downstream reference identity. Display code, title, S
 - `docs/database/database-design.md`
 - `docs/glossary/domain-glossary.md`
 
-No new ADR is required for Step 19 itself: the phase follows existing offline-first, shared-platform, Master Data, security/audit and Phase 14 UI decisions; Product-specific architecture decisions are already documented in the canonical architecture/security records above.
+No new ADR is required for Phase 18 itself: the phase follows existing offline-first, shared-platform, Master Data, security/audit and Phase 14 UI decisions; Product-specific architecture decisions are documented in the canonical architecture/security records above.
 
 ## Validation gate
 
-Before Step 20 final review/merge/release, execute:
+Canonical Phase 18 validation command:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm validate:phase18
 ```
 
-If frozen-lock installation fails because the workspace lockfile still needs reconciliation from Phase 18 dependency additions, reconcile with:
+Before manually publishing the tag/release, the repository owner should run the command above on the final `main` head if it has not already been run after the last documentation-only commits.
 
-```bash
-pnpm install --lockfile-only --no-frozen-lockfile
-git diff -- pnpm-lock.yaml
-```
+## Release preparation
 
-Commit only the legitimate generated lockfile changes, then rerun the frozen validation gate.
-
-## Step 20 remaining exit criteria
-
-- Confirm `pnpm validate:phase18` passes and record the result.
-- Reconcile final branch scope and ensure no stale Step Status remains.
-- Finalize `CHANGELOG.md` release entry and Phase 18 release notes as part of release preparation.
-- Merge using the repository's approved branch strategy only with explicit authorization.
-- Prepare/publish semantic release `v0.18.0` as authorized.
+- Version: `0.18.0`
+- Semantic tag: `v0.18.0`
+- Release title: `ArginAccounting v0.18.0 — Products and Services`
+- Next roadmap target: Phase 19 — Warehouses
 
 ## Change Requests
 
