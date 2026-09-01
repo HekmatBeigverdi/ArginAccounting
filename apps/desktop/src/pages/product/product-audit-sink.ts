@@ -4,14 +4,19 @@ import {
   type AuditClock,
   type AuditIdGenerator,
   type AuditPermissionAuthorizer,
+  type AuditRepositories,
+  type AuditUnitOfWork,
   type CreateAuditEntryInput,
 } from "@argin/audit";
 import {
-  DatabaseExecutorAdapter,
+  SqliteApprovalRepository,
   SqliteAuditRepository,
-  SqliteAuditUnitOfWork,
+  type SqliteDatabase,
 } from "@argin/audit-tauri";
-import type { DatabaseExecutor } from "@argin/database";
+import type {
+  DatabaseExecutor,
+  DatabaseSession,
+} from "@argin/database";
 import type {
   ProductAuditAction,
   ProductAuditEvent,
@@ -41,6 +46,37 @@ const actionMap: Readonly<Record<ProductAuditAction, AuditAction>> = Object.free
   "product.export": "export",
   "product.taxpayer-reference-data.update": "update",
 });
+
+function toAuditDatabase(session: DatabaseSession): SqliteDatabase {
+  return Object.freeze({
+    async execute(sql: string, parameters?: unknown[]) {
+      const result = await session.execute(sql, parameters as never[] | undefined);
+      return {
+        rowsAffected: result.rowsAffected,
+        ...(result.lastInsertId === undefined
+          ? {}
+          : { lastInsertId: result.lastInsertId }),
+      };
+    },
+    async select<T>(sql: string, parameters?: unknown[]): Promise<T> {
+      return await session.query(sql, parameters as never[] | undefined) as T;
+    },
+  });
+}
+
+function createSharedAuditUnitOfWork(database: DatabaseExecutor): AuditUnitOfWork {
+  return Object.freeze({
+    async run<T>(action: (repositories: AuditRepositories) => Promise<T>): Promise<T> {
+      return database.transaction(async (transaction) => {
+        const sqlite = toAuditDatabase(transaction);
+        return action({
+          audit: new SqliteAuditRepository(sqlite),
+          approval: new SqliteApprovalRepository(sqlite),
+        });
+      });
+    },
+  });
+}
 
 export function toSharedProductAuditEntryInput(event: ProductAuditEvent): CreateAuditEntryInput {
   return Object.freeze({
@@ -73,9 +109,7 @@ export function toSharedProductAuditEntryInput(event: ProductAuditEvent): Create
 }
 
 export function createPersistentProductAuditSink(database: DatabaseExecutor): ProductAuditSink {
-  const sqliteDatabase = new DatabaseExecutorAdapter(database);
-  const unitOfWork = new SqliteAuditUnitOfWork(sqliteDatabase);
-  const auditRepository = new SqliteAuditRepository(sqliteDatabase);
+  const unitOfWork = createSharedAuditUnitOfWork(database);
 
   return Object.freeze({
     async record(event: ProductAuditEvent): Promise<void> {
@@ -85,7 +119,7 @@ export function createPersistentProductAuditSink(database: DatabaseExecutor): Pr
           clock: systemAuditClock,
           authorizer: internalAuditAuthorizer,
           unitOfWork,
-          auditRepository,
+          auditRepository: new SqliteAuditRepository(toAuditDatabase(database)),
         },
         toSharedProductAuditEntryInput(event),
       );
