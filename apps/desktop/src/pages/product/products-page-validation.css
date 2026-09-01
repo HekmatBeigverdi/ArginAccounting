@@ -56,7 +56,8 @@
 }
 
 .product-field--invalid input,
-.product-field--invalid select {
+.product-field--invalid select,
+[aria-invalid="true"] {
   border-color: var(--ui-danger) !important;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-danger) 18%, transparent);
 }

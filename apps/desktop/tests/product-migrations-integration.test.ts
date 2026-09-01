@@ -59,7 +59,10 @@ describe("Phase 18 Product migrations", () => {
       .run("company-1", "product-1");
     const row = database.prepare(`SELECT p.code, u.taxpayer_unit_code
       FROM products p JOIN product_units u ON u.product_id=p.id WHERE p.id=?`).get("product-1") as { code: string; taxpayer_unit_code: string };
-    assert.deepEqual(row, { code: "PRD-001", taxpayer_unit_code: "164" });
+    assert.deepEqual(
+      { ...row },
+      { code: "PRD-001", taxpayer_unit_code: "164" },
+    );
   });
 
   it("enforces company-scoped identifiers while allowing same identifier in another company", () => {

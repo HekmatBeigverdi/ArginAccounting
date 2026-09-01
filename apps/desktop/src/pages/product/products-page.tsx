@@ -334,7 +334,9 @@ export function ProductsPage() {
   const [detail, setDetail] = useState<ProductDto | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [unitOptions, setUnitOptions] = useState<readonly TaxpayerUnitOption[]>([]);
+  const [taxpayerUnitOptions, setTaxpayerUnitOptions] = useState<
+    readonly TaxpayerUnitOption[]
+  >([]);
   const [unitSearch, setUnitSearch] = useState("");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
@@ -455,7 +457,7 @@ export function ProductsPage() {
     void (async () => {
       try {
         const database = await getDesktopDatabase();
-        setUnitOptions(await loadTaxpayerUnitOptions(database));
+        setTaxpayerUnitOptions(await loadTaxpayerUnitOptions(database));
       } catch (reason) {
         setError(getProductErrorMessage(reason));
       }
@@ -489,7 +491,9 @@ export function ProductsPage() {
 
   function selectUnit(value: string) {
     setUnitSearch(value);
-    const option = unitOptions.find((item) => item.label === value || item.code === value || item.title === value);
+    const option = taxpayerUnitOptions.find(
+      (item) => item.label === value || item.code === value || item.title === value,
+    );
     if (!option) {
       setDraft((current) => ({
         ...current,
@@ -678,7 +682,7 @@ export function ProductsPage() {
                 </div></fieldset>
 
                 <fieldset><legend>واحد پایه</legend><div className="product-form-grid">
-                  <label className={`product-form-grid__wide ${fieldClass(fieldErrors, "unit") ?? ""}`}><HelpLabel help="نام یا کد واحد را جستجو کنید و یک گزینه از فهرست رسمی سامانه مودیان انتخاب کنید.">انتخاب واحد</HelpLabel><input list="taxpayer-unit-options" placeholder="مثلاً کیلوگرم یا 164" value={unitSearch} aria-invalid={Boolean(fieldErrors.unit)} onChange={(event) => selectUnit(event.target.value)} /><datalist id="taxpayer-unit-options">{unitOptions.map((option) => <option key={option.code} value={option.label} />)}</datalist><FieldError errors={fieldErrors} name="unit" /></label>
+                  <label className={`product-form-grid__wide ${fieldClass(fieldErrors, "unit") ?? ""}`}><HelpLabel help="نام یا کد واحد را جستجو کنید و یک گزینه از فهرست رسمی سامانه مودیان انتخاب کنید.">انتخاب واحد</HelpLabel><input list="taxpayer-unit-options" placeholder="مثلاً کیلوگرم یا 164" value={unitSearch} aria-invalid={Boolean(fieldErrors.unit)} onChange={(event) => selectUnit(event.target.value)} /><datalist id="taxpayer-unit-options">{taxpayerUnitOptions.map((option) => <option key={option.code} value={option.label} />)}</datalist><FieldError errors={fieldErrors} name="unit" /></label>
                   <label><HelpLabel help="کد رسمی واحد از Reference Data سامانه مودیان و بر اساس انتخاب شما به‌صورت خودکار درج می‌شود.">کد واحد</HelpLabel><input className="product-unit-code" dir="ltr" readOnly value={draft.taxpayerUnitCode} /></label>
                   <label className={fieldClass(fieldErrors, "baseUnitPrecision")}><HelpLabel help="تعداد رقم اعشار مجاز برای مقدار این واحد، بین صفر تا ۶ است.">دقت اعشار</HelpLabel><input type="number" min="0" max="6" aria-invalid={Boolean(fieldErrors.baseUnitPrecision)} value={draft.baseUnitPrecision} onChange={(event) => setDraft((value) => ({ ...value, baseUnitPrecision: event.target.value }))} /><FieldError errors={fieldErrors} name="baseUnitPrecision" /></label>
                   <p className="product-unit-hint">عنوان، کد داخلی واحد و کد رسمی مودیان از گزینه انتخاب‌شده ساخته می‌شوند؛ ورود دستی کد لازم نیست.</p>
