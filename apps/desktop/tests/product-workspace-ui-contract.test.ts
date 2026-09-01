@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const page = readFileSync(new URL("../src/pages/product/products-page.tsx", import.meta.url), "utf8");
-const router = readFileSync(new URL("../src/app/router.tsx", import.meta.url), "utf8");
-const navigation = readFileSync(new URL("../src/app/navigation.ts", import.meta.url), "utf8");
+const router = readFileSync(new URL("../src/app/router/app-router.tsx", import.meta.url), "utf8");
+const navigation = readFileSync(new URL("../src/app/navigation/navigation-items.ts", import.meta.url), "utf8");
 const validationCss = readFileSync(new URL("../src/pages/product/products-page-validation.css", import.meta.url), "utf8");
 const helpController = readFileSync(new URL("../src/pages/product/product-help-controller.ts", import.meta.url), "utf8");
 
