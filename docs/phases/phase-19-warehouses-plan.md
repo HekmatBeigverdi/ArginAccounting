@@ -1,0 +1,181 @@
+# Phase 19 — Warehouses — Fixed Implementation Plan
+
+## Status
+
+Phase 19 is in progress. Step 1 is completed. Steps 2–20 are not started.
+
+## Governance
+
+This 20-step sequence is frozen. Step title, order, scope, or exit criteria may change only through an explicitly approved Change Request.
+
+This file is the canonical Phase 19 record. Step status, implementation evidence, validation evidence, Change Requests, and phase exit criteria are maintained here. Cross-cutting rules remain in their canonical architecture/database/security/glossary documents.
+
+Mandatory governance:
+
+- `docs/development/documentation-governance.md`
+- `docs/development/github-publishing-workflow.md`
+
+## Objective
+
+Deliver canonical Warehouse Master Data and desktop management with durable identity, company/branch-aware organizational scope, lifecycle, warehouse classification, extensible physical-location boundaries, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, and future Argin Bridge compatibility.
+
+Target future direction remains:
+
+`Argin Desktop -> SQLite -> Argin Bridge -> .NET API / PostgreSQL -> Synchronization`
+
+Full synchronization remains outside Phase 19 and must be implemented only in its dedicated roadmap phase.
+
+## Baseline
+
+Phase 19 starts from `develop` after completion and promotion of Phase 18 — Products and Services.
+
+Phase branch:
+
+`phase/19-warehouses`
+
+Release target:
+
+- Version: `0.19.0`
+- Semantic tag: `v0.19.0`
+- Release title: `ArginAccounting v0.19.0 — Warehouses`
+
+## Scope
+
+Phase 19 owns reusable Warehouse Master Data and the contracts required by future inventory and ERP consumers. It includes:
+
+- Stable company-scoped Warehouse identity.
+- Warehouse code, title, description and lifecycle.
+- Warehouse classification and operational metadata.
+- Company and branch association rules.
+- Extensible physical-location boundary for future Zone/Location/Bin structures without forcing premature stock logic into Warehouse.
+- Duplicate detection and identifier normalization.
+- Persistence-neutral Domain/Application/Repository contracts.
+- SQLite persistence, constraints, indexes and atomic Unit of Work behavior.
+- Idempotency and optimistic-concurrency protection for mutations.
+- Argin Bridge / future synchronization metadata and tombstone-compatible deletion semantics where required by the existing platform contract.
+- Permissions, Audit integration and reuse of existing Approval infrastructure only where a real Warehouse workflow requires it.
+- CSV/XLSX import/export.
+- Persian RTL desktop management UI following Phase 14 density/accessibility conventions.
+- Reusable Warehouse selector contracts for Inventory, Purchasing, Sales, Manufacturing, Cost Accounting and other future consumers.
+- Domain/Application/Repository/Migration/Desktop/performance/accessibility/documentation validation.
+
+## Explicit Non-Scope
+
+Phase 19 does not own transactional inventory state or downstream document behavior. The following are explicitly out of scope:
+
+- Product stock balances or on-hand quantities.
+- Stock ledger / kardex.
+- Warehouse receipt documents.
+- Warehouse issue documents.
+- Inter-warehouse transfer documents.
+- Inventory adjustments and physical stock-count workflows.
+- FIFO, weighted-average or other inventory valuation methods.
+- Cost layers or inventory costing.
+- Inventory accounting postings.
+- Purchase documents or purchase pricing.
+- Sales documents or sales pricing.
+- Manufacturing production/WIP transactions.
+- Taxpayer invoice projection, signing, submission or inquiry.
+- Live client/server synchronization engine or conflict-resolution UI.
+
+These concerns remain owned by their dedicated roadmap phases. Warehouse must expose durable references and forward-compatible contracts without absorbing their business logic.
+
+## Phase 18 Dependency and Identity Rule
+
+Phase 18 established Product/Service Master Data and durable `productId` references. Phase 19 must consume Product capabilities only through existing public contracts where needed for future integration validation; it must not duplicate Product identity, unit, Taxpayer identifier, commercial/tax attributes or Product lifecycle rules.
+
+Likewise, downstream modules must reference a Warehouse through durable `warehouseId`. Warehouse code, title, branch title, external code or UI labels are display/integration metadata and are not foreign identity.
+
+## Argin Bridge Requirement
+
+Argin Bridge compatibility is mandatory from the beginning of the phase.
+
+Warehouse design must remain compatible with the established future topology:
+
+`SQLite <-> Argin Bridge <-> .NET API / PostgreSQL`
+
+Phase 19 must therefore preserve the platform's forward-sync requirements, including durable IDs, optimistic versioning, deterministic timestamps/metadata, tombstone-compatible deletion semantics where applicable, idempotent mutations and company-scoped identity. Phase 19 must not implement the full synchronization engine.
+
+## Step Status
+
+| Step | Title | Status |
+| --- | --- | --- |
+| 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
+| 2 | Warehouse Domain Model | Not started |
+| 3 | Warehouse Classification, Lifecycle and Business Rules | Not started |
+| 4 | Company, Branch and Organizational Scope | Not started |
+| 5 | Warehouse Locations and Extensible Physical Structure | Not started |
+| 6 | Warehouse Codes, Identifiers and Duplicate Rules | Not started |
+| 7 | Application, Query and Repository Contracts | Not started |
+| 8 | Application Services, Validation and Concurrency | Not started |
+| 9 | Migration, Schema, Constraints and Indexing | Not started |
+| 10 | Argin Bridge and Future Synchronization Contract | Not started |
+| 11 | SQLite Repository, Unit of Work and Atomic Transactions | Not started |
+| 12 | Permissions, Audit and Approval Integration | Not started |
+| 13 | Import / Export and Initial Warehouse Setup | Not started |
+| 14 | Persian RTL Warehouse Management UI | Not started |
+| 15 | Warehouse Selector and Future Consumer Contract | Not started |
+| 16 | Inventory and ERP Integration Boundaries | Not started |
+| 17 | Domain and Application Tests | Not started |
+| 18 | Repository, Migration, Import/Export and Desktop Tests | Not started |
+| 19 | Performance, Accessibility, Monorepo Quality and Documentation | Not started |
+| 20 | Final Review, Merge and Release | Not started |
+
+## Fixed Execution Sequence
+
+1. Baseline, Branch, Scope and Plan Freeze
+2. Warehouse Domain Model
+3. Warehouse Classification, Lifecycle and Business Rules
+4. Company, Branch and Organizational Scope
+5. Warehouse Locations and Extensible Physical Structure
+6. Warehouse Codes, Identifiers and Duplicate Rules
+7. Application, Query and Repository Contracts
+8. Application Services, Validation and Concurrency
+9. Migration, Schema, Constraints and Indexing
+10. Argin Bridge and Future Synchronization Contract
+11. SQLite Repository, Unit of Work and Atomic Transactions
+12. Permissions, Audit and Approval Integration
+13. Import / Export and Initial Warehouse Setup
+14. Persian RTL Warehouse Management UI
+15. Warehouse Selector and Future Consumer Contract
+16. Inventory and ERP Integration Boundaries
+17. Domain and Application Tests
+18. Repository, Migration, Import/Export and Desktop Tests
+19. Performance, Accessibility, Monorepo Quality and Documentation
+20. Final Review, Merge and Release
+
+## Step 1 — Completion Record
+
+Step 1 establishes the authoritative Phase 19 baseline and freezes implementation governance before Domain work begins.
+
+Completed actions:
+
+- Verified the Phase 18 completion baseline on both `develop` and `main`.
+- Confirmed `develop` and `main` resolve to the same final Phase 18 repository tree before Phase 19 starts.
+- Created `phase/19-warehouses` from `develop`.
+- Created this canonical Phase 19 plan file.
+- Defined Phase 19 objective, Scope and Explicit Non-Scope.
+- Preserved the one-canonical-phase-file documentation rule established in Phase 18.
+- Froze the 20-step sequence and Step Status table.
+- Recorded mandatory Product/Service dependency boundaries from Phase 18.
+- Recorded durable `warehouseId` as the downstream identity rule.
+- Made Argin Bridge compatibility an explicit Phase 19 requirement while excluding the full synchronization engine.
+- Set the semantic release target to `v0.19.0`.
+
+### Step 1 Exit Criteria
+
+Step 1 is complete only when all of the following are true:
+
+- Phase branch exists from the final Phase 18 `develop` baseline.
+- Canonical Phase 19 plan exists on the phase branch.
+- Scope and Non-Scope are explicit.
+- The 20-step sequence is frozen.
+- Step 1 is recorded as `Completed` and Steps 2–20 remain `Not started`.
+- Argin Bridge compatibility and durable Warehouse identity are documented before Domain implementation starts.
+- No stock-balance, stock-movement, valuation, purchasing, sales, Taxpayer submission or live synchronization logic is introduced by Step 1.
+
+All Step 1 exit criteria are satisfied.
+
+## Change Requests
+
+No Change Request is currently approved for Phase 19.
