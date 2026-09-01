@@ -73,10 +73,10 @@ test("consumer filters cannot relax mandatory usage constraints", () => {
 });
 
 test("selector returns durable product identity separately from display code", async () => {
-  let captured: ProductSelectorQuery | null = null;
+  const capturedQueries: ProductSelectorQuery[] = [];
   const service = new ProductSelectorService({
     select: async (query) => {
-      captured = query;
+      capturedQueries.push(query);
       return [item];
     },
   });
@@ -85,7 +85,7 @@ test("selector returns durable product identity separately from display code", a
   assert.equal(result[0]?.durableId, "product-1");
   assert.equal(result[0]?.productId, "product-1");
   assert.equal(result[0]?.code, "P-001");
-  assert.equal(captured?.sellable, true);
+  assert.equal(capturedQueries[0]?.sellable, true);
 });
 
 test("secured selector enforces view permission and company scope", async () => {

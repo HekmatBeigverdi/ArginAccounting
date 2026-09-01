@@ -8,6 +8,7 @@ blankrows
 Clippy
 concurr
 defval
+describedby
 filterbar
 finaliz
 irreproducible
