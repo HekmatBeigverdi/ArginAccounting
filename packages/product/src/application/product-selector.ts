@@ -2,6 +2,11 @@ import type { ProductSelectorItemDto } from "./contracts/product-dto.ts";
 import type { ProductReader } from "./contracts/product-reader.ts";
 import { PRODUCT_QUERY_LIMITS, type ProductSelectorQuery } from "./contracts/product-queries.ts";
 import { PRODUCT_APPLICATION_ERROR_CODES, ProductApplicationError } from "./contracts/product-errors.ts";
+import {
+  productPermissions,
+  type ProductAuthorizationContext,
+  type ProductAuthorizationPolicy,
+} from "./contracts/product-security.ts";
 import type { ProductKind, ProductStatus } from "../domain/product.ts";
 
 export const productSelectorUsages = [
@@ -34,10 +39,7 @@ export interface ProductSelectorOption extends ProductSelectorItemDto {
 function requiredText(value: string, label: string): string {
   const normalized = value.trim();
   if (!normalized) {
-    throw new ProductApplicationError(
-      PRODUCT_APPLICATION_ERROR_CODES.invalidRequest,
-      `${label} is required.`,
-    );
+    throw new ProductApplicationError(PRODUCT_APPLICATION_ERROR_CODES.invalidRequest, `${label} is required.`);
   }
   return normalized;
 }
@@ -105,5 +107,26 @@ export class ProductSelectorService {
   async search(request: ProductSelectorRequest): Promise<readonly ProductSelectorOption[]> {
     const items = await this.reader.select(createProductSelectorQuery(request));
     return Object.freeze(items.map((item) => Object.freeze({ ...item, durableId: item.productId })));
+  }
+}
+
+export class SecuredProductSelectorService {
+  constructor(
+    private readonly inner: ProductSelectorService,
+    private readonly authorization: ProductAuthorizationPolicy,
+  ) {}
+
+  async search(
+    context: ProductAuthorizationContext,
+    request: ProductSelectorRequest,
+  ): Promise<readonly ProductSelectorOption[]> {
+    if (context.companyId.trim() !== request.companyId.trim()) {
+      throw new ProductApplicationError(
+        PRODUCT_APPLICATION_ERROR_CODES.invalidRequest,
+        "Product selector company scope does not match authorization context.",
+      );
+    }
+    await this.authorization.require(context, productPermissions.view);
+    return this.inner.search(request);
   }
 }
