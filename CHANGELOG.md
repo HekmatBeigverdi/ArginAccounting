@@ -6,6 +6,61 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.18.0] - 2026-09-01
+
+### Added
+
+- Canonical company-scoped Product/Service Master Data with durable `productId`, Product/Service classification, lifecycle, categories, and purchasable/sellable capabilities
+- Product Unit profiles with base/alternate units, conversion ratios, precision/rounding, and official Taxpayer unit mappings backed by versioned reference data
+- SKU, reference code, barcodes, external identifiers, and 13-digit Taxpayer goods/service identifiers with normalized duplicate detection
+- Commercial, tax, and operational master attributes while deliberately excluding prices, stock quantities, valuation, and accounting posting state
+- Persistence-neutral Product Application contracts, bounded queries/selectors, stable errors, idempotency, optimistic concurrency, company isolation, and Argin Bridge-compatible synchronization envelopes
+- SQLite Product repository, Unit of Work, idempotency persistence, tombstones, external references, bounded selectors, and deterministic constraint/error mapping
+- CSV/XLSX Product import/export with preview, strong/advisory duplicate diagnostics, atomic import mode, bounded export, and codec safety limits
+- Persian RTL Product/Service workspace with Phase 14 density, field-level validation, searchable Taxpayer unit selection, click-only viewport-aware field help, keyboard support, and responsive states
+- Reusable secured Product selector contracts for Inventory, Purchase, Sales, Taxpayer, Manufacturing, Cost Accounting, and general future consumers without coupling those modules to SQLite or Product UI internals
+
+### Database and Performance
+
+- Added migration `0018_taxpayer_unit_reference_data.sql`
+- Added migration `0019_products_services.sql`
+- Added migration `0020_product_sync_metadata.sql`
+- Added migration `0021_product_idempotency.sql`
+- Added company-scoped Product/identifier/unit/master-data constraints and indexes, optimistic `version`, `deleted_at`, external-reference metadata, and request-id idempotency storage
+- Added representative 50,000-row SQLite `EXPLAIN QUERY PLAN` validation for Product list, Inventory-style selector, and hard SKU duplicate lookup paths
+- Kept list/select/export surfaces explicitly bounded and retained SQLite-specific SQL inside the adapter package
+
+### Security and Audit
+
+- Added granular Product view/create/update/identifier/unit/master-data/status/import/export/Taxpayer-reference permissions
+- Enforced Product authorization and company scope at the Application boundary independently of UI visibility
+- Integrated Product mutations with shared Audit infrastructure and correlation/request context
+- Deliberately did not invent a Product-specific Approval lifecycle for routine Master Data maintenance
+
+### Tests and Quality
+
+- Added Domain/Application regression coverage for lifecycle, units/conversions, identifiers, tax/operational attributes, duplicates, idempotency, optimistic concurrency, company isolation, selectors, security, and synchronization contracts
+- Added real in-memory SQLite migration/constraint/rollback coverage for migrations 18–21 and Product persistence regressions
+- Added CSV/XLSX import/export round-trip and atomicity coverage
+- Added Desktop regression contracts for route/permissions, bounded loading, loading/empty/error states, field-level validation, unit reference data, click-only help, Persian RTL, keyboard interaction, accessibility, density, responsive layout, and local overflow
+- Added unified `pnpm validate:phase18` and Product performance validation commands; repository owner accepted Step 19 and authorized final Step 20 promotion
+
+### Architecture
+
+- Product/Service remains company-scoped Master Data; Branch does not duplicate Product identity
+- Durable `productId` is the downstream foreign identity; code/title/SKU/barcode/Taxpayer identifiers remain display or external metadata
+- Warehouse, Inventory, valuation, Purchases, Sales, Pricing, Accounting/Posting, Taxpayer transport, Manufacturing, and Cost Accounting retain ownership of their transactional behavior
+- Full active synchronization, PostgreSQL/Web adapters, retries/acks/conflict-resolution workflows remain deferred to Phase 45 and later owning phases
+
+### Merge and Release
+
+- Phase 18 merged to `develop` through PR #13 with merge commit `8fc6e86f61499935ae05ebe055ccd1b0d08c4cdd`
+- Phase 18 promoted from `develop` to `main` through PR #14 with merge commit `f1ddd7e5765a4af47f887d92d408e9f08ab7f964`
+- Prepared semantic tag and GitHub Release: `v0.18.0`
+- Phase 19 — Warehouses is the next implementation target
+
+---
+
 ## [0.17.0] - 2026-08-30
 
 ### Added
