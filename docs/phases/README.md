@@ -27,12 +27,9 @@ Historical Phase 01–17 documentation is retained as project history and is not
 15. [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md) — completed and integrated; semantic release `v0.15.0`
 16. [Phase 16 — Accounting Reports](phase-16-accounting-reports.md) — implementation/final review complete; prepared semantic release `v0.16.0`
 17. [Phase 17 — Parties](phase-17-parties.md) — implementation, validation, documentation, and merge complete; semantic release `v0.17.0` prepared for manual GitHub publication
+18. [Phase 18 — Products and Services](phase-18-products-services-plan.md) — implementation and Step 20 merge preparation complete; semantic release `v0.18.0` prepared for manual Tag/GitHub Release publication
 
 ## Current Phase
-
-18. [Phase 18 — Products and Services](phase-18-products-services-plan.md) — Steps 1–19 completed on the phase branch; final validation/merge/release remains Step 20.
-
-## Next Target
 
 19. Phase 19 — Warehouses
 
