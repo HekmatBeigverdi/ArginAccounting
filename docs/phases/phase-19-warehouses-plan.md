@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Step 1 is completed. Steps 2–20 are not started.
+Phase 19 is in progress. Steps 1–2 are completed. Steps 3–20 are not started.
 
 ## Governance
 
@@ -101,7 +101,7 @@ Phase 19 must therefore preserve the platform's forward-sync requirements, inclu
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
-| 2 | Warehouse Domain Model | Not started |
+| 2 | Warehouse Domain Model | Completed |
 | 3 | Warehouse Classification, Lifecycle and Business Rules | Not started |
 | 4 | Company, Branch and Organizational Scope | Not started |
 | 5 | Warehouse Locations and Extensible Physical Structure | Not started |
@@ -175,6 +175,37 @@ Step 1 is complete only when all of the following are true:
 - No stock-balance, stock-movement, valuation, purchasing, sales, Taxpayer submission or live synchronization logic is introduced by Step 1.
 
 All Step 1 exit criteria are satisfied.
+
+## Step 2 — Completion Record
+
+Step 2 establishes the persistence-neutral Warehouse Domain baseline without consuming the responsibilities reserved for Steps 3–6.
+
+Completed actions:
+
+- Added independent `@argin/warehouse` workspace package at version `0.19.0`.
+- Added immutable `WarehouseSnapshot` with durable `warehouseId`, mandatory `companyId`, display `code`, `title`, optional normalized `description`, and deterministic UTC timestamps.
+- Added `CreateWarehouseInput`, `createWarehouse`, and `rehydrateWarehouse` Domain contracts.
+- Added stable Warehouse Domain error codes for required identity/company/code/title invariants and timestamp validation.
+- Added canonical normalization: trimmed/collapsed text, uppercase warehouse code, blank optional descriptions normalized to `null`, and ISO UTC timestamp normalization.
+- Added rehydration protection against `updatedAt < createdAt`.
+- Added focused Domain tests covering durable identity separation, company scope, normalization, immutable snapshots, required invariants, invalid timestamps and rehydration ordering.
+- Kept classification/status transitions out of Step 2 for Step 3, Branch association rules out for Step 4, physical structures out for Step 5, and advanced identifier/duplicate rules out for Step 6.
+- Introduced no SQLite, Tauri, React, inventory movement, stock balance, valuation, purchasing, sales, Taxpayer submission, or synchronization-engine dependency.
+
+### Step 2 Exit Criteria
+
+Step 2 is complete only when all of the following are true:
+
+- Warehouse exists as an independent persistence-neutral Domain package.
+- `warehouseId` is the durable identity and is independent of warehouse display code.
+- Company scope is mandatory at the Domain boundary.
+- Code/title/timestamps are validated and canonicalized deterministically.
+- Domain snapshots are immutable.
+- Persisted snapshots can be rehydrated without infrastructure dependencies.
+- Focused tests cover the Step 2 invariants.
+- No behavior assigned to Steps 3–6 or later phases is prematurely implemented.
+
+All Step 2 exit criteria are satisfied by the committed implementation. Full workspace validation remains part of later phase validation gates; the Step 2 package exposes `test`, `typecheck`, and `build` scripts for local verification.
 
 ## Change Requests
 
