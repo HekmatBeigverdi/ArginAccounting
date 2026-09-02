@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–2 are completed. Steps 3–20 are not started.
+Phase 19 is in progress. Steps 1–3 are completed. Steps 4–20 are not started.
 
 ## Governance
 
@@ -102,7 +102,7 @@ Phase 19 must therefore preserve the platform's forward-sync requirements, inclu
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Warehouse Domain Model | Completed |
-| 3 | Warehouse Classification, Lifecycle and Business Rules | Not started |
+| 3 | Warehouse Classification, Lifecycle and Business Rules | Completed |
 | 4 | Company, Branch and Organizational Scope | Not started |
 | 5 | Warehouse Locations and Extensible Physical Structure | Not started |
 | 6 | Warehouse Codes, Identifiers and Duplicate Rules | Not started |
@@ -206,6 +206,41 @@ Step 2 is complete only when all of the following are true:
 - No behavior assigned to Steps 3–6 or later phases is prematurely implemented.
 
 All Step 2 exit criteria are satisfied by the committed implementation. Full workspace validation remains part of later phase validation gates; the Step 2 package exposes `test`, `typecheck`, and `build` scripts for local verification.
+
+## Step 3 — Completion Record
+
+Step 3 adds Warehouse classification and lifecycle semantics while preserving the organizational, location, identifier and persistence responsibilities reserved for later steps.
+
+Completed actions:
+
+- Added the frozen Warehouse classification set: `general`, `raw-material`, `finished-goods`, `consumables`, `spare-parts`, `wip`, `transit`, `consignment`, and `other`.
+- Added lifecycle states `active`, `inactive`, and terminal `archived`.
+- Added `ClassifiedWarehouseSnapshot`, `classifyWarehouse`, and `rehydrateClassifiedWarehouse` without adding infrastructure dependencies.
+- New classified Warehouses start as `active`.
+- Added explicit `activateWarehouse`, `deactivateWarehouse`, and `archiveWarehouse` Domain transitions.
+- Repeated activation/deactivation/archive requests are idempotent when the Warehouse is already in the requested state.
+- `archived` is terminal: archived Warehouses cannot be activated or deactivated again.
+- Lifecycle mutations preserve immutable snapshots and advance `updatedAt`; timestamp regression is rejected.
+- Added stable Domain errors for invalid classification, invalid persisted status, and forbidden transitions from archived state.
+- Added focused tests for all supported classifications, invalid classification/status rejection, active/inactive round trips, terminal archive semantics, idempotent same-state transitions, immutability and timestamp-order protection.
+- Kept Branch/company organizational association behavior for Step 4, Zone/Location/Bin for Step 5, and external/duplicate identifier rules for Step 6.
+- Introduced no stock balance, stock movement, costing, accounting posting, purchasing, sales, Taxpayer submission, SQLite/Tauri persistence or live synchronization logic.
+
+### Step 3 Exit Criteria
+
+Step 3 is complete only when all of the following are true:
+
+- The supported Warehouse classification vocabulary is explicit and typed.
+- Lifecycle states are explicit and persisted snapshots can be validated during rehydration.
+- New classified Warehouses start active.
+- Active and inactive Warehouses can transition deterministically in both directions.
+- Archive is a terminal lifecycle state and same-state requests are idempotent.
+- Lifecycle transitions cannot move `updatedAt` backwards.
+- Domain outputs remain immutable and persistence-neutral.
+- Focused tests cover classification and lifecycle invariants.
+- Responsibilities belonging to Steps 4–6 and later inventory phases are not introduced.
+
+All Step 3 exit criteria are satisfied by the committed implementation. Full monorepo validation remains reserved for the later validation gates.
 
 ## Change Requests
 
