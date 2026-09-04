@@ -130,6 +130,23 @@ export type {
 } from "./application/contracts/warehouse-validation.ts";
 
 export {
+  warehouseApprovalIntegration,
+  warehouseCorrelationId,
+  warehousePermissions,
+} from "./application/contracts/warehouse-security.ts";
+export type {
+  WarehouseAuditAction,
+  WarehouseAuditEvent,
+  WarehouseAuditSink,
+  WarehouseAuthorizationContext,
+  WarehouseAuthorizationPolicy,
+  WarehouseMutationCommand,
+  WarehousePermission,
+  WarehouseReadSecurityContext,
+  WarehouseSecurityContext,
+} from "./application/contracts/warehouse-security.ts";
+
+export {
   WAREHOUSE_SYNC_CHANGE_KINDS,
   WarehouseSyncContractError,
   createWarehouseSyncTombstoneEnvelope,
@@ -151,3 +168,7 @@ export type {
 
 export { WarehouseService } from "./application/warehouse-service.ts";
 export type { WarehouseServiceDependencies } from "./application/warehouse-service.ts";
+export {
+  SecuredWarehouseReader,
+  SecuredWarehouseService,
+} from "./application/secured-warehouse-service.ts";
