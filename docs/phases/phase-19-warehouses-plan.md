@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–12 are completed. Steps 13–20 are not started.
+Phase 19 is in progress. Steps 1–13 are completed. Steps 14–20 are not started.
 
 ## Governance
 
@@ -47,23 +47,14 @@ Phase 19 owns Warehouse Master Data and future-consumer contracts, including:
 
 ## Explicit Non-Scope
 
-Phase 19 does not own:
-
-- stock balances, kardex, receipts/issues/transfers
-- adjustments or stock count
-- FIFO/average-cost valuation or cost layers
-- inventory accounting postings
-- purchase/sales pricing or documents
-- manufacturing transactional logic
-- Taxpayer submission/signing/inquiry
-- live synchronization or conflict-resolution UI
+Phase 19 does not own stock balances, kardex, receipt/issue/transfer transactions, stock count, valuation/cost layers, inventory accounting postings, purchasing/sales documents and prices, manufacturing transactional logic, Taxpayer submission/signing/inquiry, or live synchronization/conflict-resolution UI.
 
 ## Identity and Argin Bridge Rules
 
 - `warehouseId` is the durable downstream identity.
-- Warehouse code, title, Branch title, external identifier and UI labels are not foreign identity.
-- Product identity remains owned by Phase 18 and must be consumed through public contracts.
-- Warehouse design must remain compatible with durable IDs, deterministic timestamps, optimistic versions, idempotent mutations, company isolation, future tombstone semantics, origin/source metadata, optional server revision and namespaced external identifiers.
+- Warehouse code/title/Branch title/external identifier/UI labels are not foreign identity.
+- Product identity remains owned by Phase 18 and is consumed through public contracts.
+- Warehouse remains compatible with durable IDs, optimistic versions, deterministic timestamps, idempotent mutations, Company isolation, future tombstones, origin metadata and optional server revision.
 
 ## Step Status
 
@@ -81,7 +72,7 @@ Phase 19 does not own:
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | SQLite Repository, Unit of Work and Atomic Transactions | Completed |
 | 12 | Permissions, Audit and Approval Integration | Completed |
-| 13 | Import / Export and Initial Warehouse Setup | Not started |
+| 13 | Import / Export and Initial Warehouse Setup | Completed |
 | 14 | Persian RTL Warehouse Management UI | Not started |
 | 15 | Warehouse Selector and Future Consumer Contract | Not started |
 | 16 | Inventory and ERP Integration Boundaries | Not started |
@@ -116,125 +107,79 @@ Phase 19 does not own:
 ## Completion Records
 
 ### Step 1 — Baseline, Branch, Scope and Plan Freeze
-
 Established the Phase 19 branch, canonical plan, frozen sequence, scope/non-scope, release target, Phase 18 dependency boundary and mandatory Argin Bridge compatibility.
 
 ### Step 2 — Warehouse Domain Model
-
-Added independent `@argin/warehouse` package, immutable `WarehouseSnapshot`, durable `warehouseId`, mandatory `companyId`, normalized code/title/description/timestamps, create/rehydrate operations and focused Domain tests.
+Added independent `@argin/warehouse`, immutable Warehouse snapshots, durable Warehouse identity, Company ownership and normalized core fields/timestamps.
 
 ### Step 3 — Warehouse Classification, Lifecycle and Business Rules
-
-Added classifications `general`, `raw-material`, `finished-goods`, `consumables`, `spare-parts`, `wip`, `transit`, `consignment`, `other`; lifecycle `active/inactive/archived`; deterministic transitions, terminal archive behavior, idempotent same-state operations and timestamp protection.
+Added approved Warehouse classifications and `active/inactive/archived` lifecycle with terminal archive semantics and idempotent same-state transitions.
 
 ### Step 4 — Company, Branch and Organizational Scope
-
-Added discriminated company-wide/Branch scope, same-company Branch validation, active-Branch assignment, historical inactive-Branch rehydration, single-Branch ownership and archived reassignment protection.
+Added company-wide or single-Branch discriminated scope, same-company active-Branch validation and archived-scope-change protection.
 
 ### Step 5 — Warehouse Locations and Extensible Physical Structure
-
-Added durable Zone/Location master data, `Warehouse -> Zone -> Location`, optional `parentLocationId`, location kinds for Rack/Shelf/Bin-style expansion and strict Company/Warehouse/Zone reference validation without inventory state.
+Added durable Zone/Location hierarchy with optional nested Location parentage and no inventory-state leakage.
 
 ### Step 6 — Warehouse Codes, Identifiers and Duplicate Rules
-
-Preserved `warehouseId` as primary identity, added normalized company-scoped code uniqueness, namespaced external identifiers and pure duplicate rules for durable ID/code/external identifier conflicts.
+Added Company-scoped normalized code uniqueness, namespaced external identifiers and deterministic duplicate rules while preserving `warehouseId` as durable identity.
 
 ### Step 7 — Application, Query and Repository Contracts
-
-Added persistence-neutral commands, DTOs, bounded company-scoped queries, Reader, Warehouse/Zone/Location repositories, version-aware `update(expectedVersion)`, `WarehousePersistenceState`, and atomic Unit of Work contracts.
+Added persistence-neutral commands, DTOs, bounded queries, Reader, Warehouse/Zone/Location repositories, version-aware updates and UoW contracts.
 
 ### Step 8 — Application Services, Validation and Concurrency
-
-Added `WarehouseService`, request-level idempotency contracts, Branch resolution, duplicate checks, stale-version rejection, real-update version increments, Domain no-op preservation, archived physical-mutation protection, nested-location validation and focused Application tests. SQLite/Tauri persistence remains outside Step 8.
+Added `WarehouseService`, request idempotency, Branch resolution, duplicate checks, optimistic concurrency, lifecycle/scope orchestration and focused Application tests.
 
 ### Step 9 — Migration, Schema, Constraints and Indexing
-
-Added migration `0022_warehouses.sql`, registered desktop migration version 22, created Warehouse/external-identifier/Zone/Location schema, company/Branch/physical hierarchy foreign keys, hard uniqueness rules, optimistic version constraint, query indexes, and real in-memory SQLite migration/constraint tests. Repository and synchronization implementation remained outside Step 9.
+Added migration `0022_warehouses.sql`, Warehouse/identifier/Zone/Location schema, Company/Branch/physical FKs, uniqueness/check constraints, indexes and migration tests.
 
 ### Step 10 — Argin Bridge and Future Synchronization Contract
-
-Added the persistence-neutral Warehouse sync contract, discriminated upsert/tombstone envelopes, origin/server-revision metadata, sync external references, migration `0023_warehouse_sync_metadata.sql`, version-23 registration, architecture documentation and focused contract/migration tests while keeping live synchronization and conflict resolution out of scope.
+Added persistence-neutral Warehouse upsert/tombstone contracts, origin/server-revision metadata, sync external references, migration `0023_warehouse_sync_metadata.sql` and architecture tests/docs without implementing live synchronization.
 
 ### Step 11 — SQLite Repository, Unit of Work and Atomic Transactions
-
-Step 11 implements the production SQLite adapter surface required by the Step 8 `WarehouseService` and the persistence contracts frozen in Step 7.
-
-Completed actions:
-
-- Added dedicated `@argin/warehouse-tauri` adapter package at version `0.19.0`, keeping SQLite/Tauri concerns outside the persistence-neutral `@argin/warehouse` Domain/Application package.
-- Added `SqliteWarehouseRepository` with company-scoped lookup by durable id, case-insensitive Warehouse code and namespaced external identifier.
-- Repository reads rehydrate persisted state through canonical Domain functions rather than returning raw SQLite rows, including lifecycle, organizational scope, Branch reference and external identifiers.
-- Added Warehouse insert/update persistence for the Warehouse row plus external identifiers; normal service writes execute these operations through the Unit of Work transaction boundary.
-- Implemented SQL optimistic concurrency with `WHERE company_id = ? AND id = ? AND version = ?` and deterministic zero-row mapping: existing entity means `warehouse.application.concurrency-conflict`, absent entity means `warehouse.application.not-found`.
-- Added SQLite unique-conflict mapping to `warehouse.application.duplicate-identifier` while leaving unrelated database failures visible instead of silently misclassifying them.
-- Added `SqliteWarehouseZoneRepository` and `SqliteWarehouseLocationRepository` with company/Warehouse/Zone-scoped reads and writes and Domain rehydration of physical master data.
-- Added `SqliteWarehouseUnitOfWork`; one `DatabaseExecutor.transaction(...)` supplies the same transactional `DatabaseSession` to Warehouse, Zone and Location repositories so a multi-table mutation either commits or rolls back as one unit.
-- Added `SqliteWarehouseReader` implementing detail, list, selector, Zone and Location read contracts with bounded page/selector limits, parameterized filters, controlled sort-column mapping and company-scoped SQL.
-- Added `SqliteWarehouseBranchResolver` so Branch-scoped Application validation is backed by the canonical SQLite Branch table without coupling the Domain package to infrastructure.
-- Added migration `0024_warehouse_idempotency.sql` and registered desktop migration version `24`.
-- Added durable `warehouse_idempotency` storage keyed by `(scope, request_id)` with explicit `in-progress`/`completed` state constraints and stored result JSON.
-- Added `SqliteWarehouseIdempotencyExecutor`: completed requests replay the stored result, concurrent in-progress duplicates fail deterministically, successful work stores the result, and failed work releases the claim for a later retry.
-- Added focused adapter tests for one-transaction UoW usage, rollback propagation, optimistic-version SQL predicate, stale-version mapping and missing-row mapping.
-- Added focused idempotency tests for completed replay, duplicate in-progress detection, successful result persistence and retry after failed work.
-- Added real `node:sqlite` migration tests for migration-24 registration, idempotency primary-key enforcement and state-shape checks.
-- Kept permission enforcement, Audit emission and Approval policy out of the SQLite adapter; those remain Step 12 responsibilities.
-- Added no stock transaction, inventory valuation, purchasing/sales document, Taxpayer submission or live synchronization behavior.
-
-### Step 11 Exit Criteria
-
-Step 11 is complete when:
-
-- Warehouse, Zone and Location persistence contracts have concrete SQLite implementations without leaking SQLite types into Domain/Application contracts.
-- `WarehouseService` can be composed with SQLite Repository/Reader/BranchResolver/Idempotency/UoW adapters.
-- Multi-repository business writes can execute on one transactional Database session and failure propagates for rollback.
-- Warehouse optimistic concurrency is enforced atomically in SQL using `expectedVersion`.
-- Missing-row and stale-version failures remain distinguishable.
-- Hard SQLite uniqueness conflicts map to the stable Warehouse duplicate error boundary.
-- Durable request idempotency survives application retries through SQLite persistence.
-- Reader list/select paths remain company-scoped, parameterized and bounded.
-- Focused adapter and migration tests cover transaction, concurrency and idempotency behavior.
-- Permission/Audit/Approval, import/export, UI and live synchronization remain outside this step.
-
-All Step 11 implementation artifacts and focused tests are committed. Full executable package/desktop/monorepo validation remains mandatory in Steps 17–19. Because `@argin/warehouse-tauri` is a newly introduced workspace package, the generated `pnpm-lock.yaml` importer must be refreshed by pnpm before the later frozen-lockfile validation gate; no dependency versions beyond already-locked workspace/tooling dependencies are introduced by this adapter package.
+Added `@argin/warehouse-tauri`, SQLite Warehouse/Zone/Location repositories, Reader, Branch resolver, atomic UoW, SQL optimistic concurrency and durable request idempotency through migration `0024_warehouse_idempotency.sql`.
 
 ### Step 12 — Permissions, Audit and Approval Integration
+Added Warehouse permission catalog entries, secured read/mutation wrappers, stable unauthorized error, retry-safe Audit contracts/actions and explicit `approval: not-required` policy for Warehouse master-data operations.
 
-Step 12 adds the authorization and audit boundary around Warehouse Application operations while preserving the generic Approval subsystem as a separate capability that is not artificially activated without a Warehouse domain workflow requirement.
+### Step 13 — Import / Export and Initial Warehouse Setup
+
+Step 13 adds reusable bulk-transfer contracts and deterministic Company onboarding without introducing spreadsheet/UI technology into the Domain/Application package.
 
 Completed actions:
 
-- Added `warehousePermissions` with stable Inventory-module permission codes for view, create, update, status change, organizational-scope management, physical-location management, import and export.
-- Seeded all Warehouse permission definitions in the central Security `defaultPermissions` catalog using Persian titles and the existing `inventory` permission module.
-- Added `WarehouseAuthorizationPolicy` and explicit authorization context carrying actor, Company, correlation and request identities.
-- Added `SecuredWarehouseService` so authorization is checked before create/update/status/scope/Zone/Location mutations and denied requests cannot reach the underlying Application service.
-- Added `SecuredWarehouseReader` so get-by-id, get-by-code, list and selector reads require `inventory.warehouses.view` and remain Company-scoped.
-- Added stable `warehouse.application.unauthorized` mapping for infrastructure/security-policy failures without leaking provider-specific errors into Warehouse callers.
-- Added Warehouse Audit contracts with explicit action names for create, update, status change, scope change, Zone creation and Location creation.
-- Audit events carry actor, Company, durable Warehouse id, optional child entity id, request/correlation identity, normalized occurrence time and immutable metadata.
-- Audit persistence is explicitly required to be append-only and idempotent for the same `(action, requestId, warehouseId, childEntityId)` fact so retries cannot duplicate audit history.
-- Successful real mutations emit Audit facts; lifecycle/scope Domain no-ops do not emit a false mutation Audit event.
-- Authorization always precedes mutation, and failed authorization produces neither a data mutation nor a success Audit fact.
-- Added `warehouseApprovalIntegration` with explicit `mode: "not-required"`: Warehouse master-data CRUD/status/scope/location operations do not have an intrinsic approval lifecycle in Phase 19.
-- The generic Phase 8 Approval aggregate remains reusable, but binding Warehouse operations to Approval requires a future explicit domain requirement / Change Request rather than being silently introduced by infrastructure.
-- Added focused security tests covering permission catalog identity, correlation fallback, explicit Approval boundary, authorization-before-mutation, success Audit emission and denial preventing both mutation and Audit.
-- Kept persistent desktop Audit adapter composition, import/export execution, UI permission presentation and any future configurable approval workflow outside this step where their owning phases/steps require them.
+- Added `WarehouseBulkTransferService` and stable import field contract for `code`, `title`, `description`, `kind`, `status`, organizational scope/Branch and namespaced external identifiers.
+- Added persistence-neutral tabular-row and column-mapping contracts so CSV/Excel adapters can be attached later without coupling Warehouse logic to a specific file library.
+- Added import preview with row numbers, normalized code/title/kind, validity and stable issue information before writes occur.
+- Import validates Warehouse Domain rules, approved classification/status values, Company-vs-Branch scope, resolvable Branch references and external-identifier syntax.
+- Added hard duplicate detection against persisted Company data for Warehouse code and namespaced external identifiers.
+- Added in-batch duplicate detection for case-normalized Warehouse codes and normalized external identifiers so duplicate rows are rejected before persistence.
+- Added both atomic and best-effort execution modes. Atomic mode refuses the batch when preview failures exist and performs valid writes through one Warehouse UoW transaction; best-effort mode isolates each row and reports write failures per row.
+- Imported rows receive fresh durable `warehouseId` values from an injected ID generator and start at persistence `version = 1`; imported business codes never become durable identity.
+- Added bulk Import/Export Audit actions using the Step 12 authorization/audit boundary and existing `inventory.warehouses.import` / `inventory.warehouses.export` permissions.
+- Added bounded paged export with a maximum batch size of 200 and complete root Warehouse fields including durable ID, lifecycle/classification, organizational scope, external identifiers, version and timestamps.
+- Added `WarehouseReaderBulkExportAdapter` so export can retrieve complete Warehouse DTOs through the persistence-neutral Reader rather than depending directly on SQLite/Tauri.
+- Added deterministic `WarehouseInitialSetupService` for Company onboarding. A company with no Warehouse can receive one company-wide active `general` Warehouse with default code `MAIN` and Persian title `انبار اصلی`, with optional code/title/description overrides.
+- Initial setup uses injected durable-ID generation, existing Warehouse Service validation/idempotency, `inventory.warehouses.create` authorization and a dedicated `warehouse.initial-setup` Audit fact.
+- Initial setup never creates a second default Warehouse when Company data already exists.
+- Root Warehouse import/export intentionally does not flatten Zone/Location hierarchy into repeated spreadsheet rows. Physical hierarchy remains separately modeled; any future bulk physical-layout format requires an explicit unambiguous contract rather than implicit row expansion.
+- Added focused tests for stable import fields/default setup policy, in-batch code/external-identifier duplicates, atomic Company/Branch imports, status handling and invalid Branch references.
+- No UI, file picker, XLSX parser, stock quantity, transaction, valuation, posting, Taxpayer submission or synchronization engine was introduced.
 
-### Step 12 Exit Criteria
+### Step 13 Exit Criteria
 
-Step 12 is complete when:
+Step 13 is complete when:
 
-- Stable Warehouse permissions are defined and centrally seeded.
-- Read and mutation Application entry points have reusable authorization wrappers.
-- Authorization is Company-aware and executes before protected operations.
-- Unauthorized infrastructure failures map to a stable Warehouse Application error.
-- Successful Warehouse mutations expose append-only, retry-safe Audit facts with durable identity and request correlation.
-- No-op lifecycle/scope requests do not generate false mutation Audit facts.
-- Warehouse Approval behavior is explicitly defined rather than left ambiguous.
-- No Approval workflow is introduced without a concrete Warehouse business requirement.
-- Focused tests cover authorization, audit and approval-boundary behavior.
-- Import/export implementation, UI wiring and full executable validation remain in their frozen later steps.
-
-All Step 12 implementation artifacts and focused tests are committed. Full executable package/desktop/monorepo validation remains mandatory in Steps 17–19.
+- Import/export logic is persistence-neutral and does not depend on Excel/CSV libraries.
+- Import has a preview stage and deterministic row-level issue reporting.
+- Existing-data and same-batch hard duplicates are detected before writes.
+- Company/Branch isolation is preserved during import.
+- Atomic and best-effort modes have explicit semantics.
+- Export is paged, bounded and carries durable identity plus master-data fields.
+- Initial Company setup can create one safe default Warehouse without silently creating duplicates.
+- Import/export/setup operations use the established Permission and Audit contracts.
+- Zone/Location bulk-layout design, UI, inventory transactions and live synchronization remain outside this step.
+- Focused Step 13 tests are committed; exhaustive executable validation remains in Steps 17–19.
 
 ## Change Requests
 
