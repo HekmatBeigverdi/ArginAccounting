@@ -90,6 +90,12 @@ export type {
   WarehouseZoneDto,
 } from "./application/contracts/warehouse-dto.ts";
 
+export {
+  WAREHOUSE_APPLICATION_ERROR_CODES,
+  WarehouseApplicationError,
+} from "./application/contracts/warehouse-errors.ts";
+export type { WarehouseApplicationErrorCode } from "./application/contracts/warehouse-errors.ts";
+
 export { WAREHOUSE_QUERY_LIMITS } from "./application/contracts/warehouse-queries.ts";
 
 export type {
@@ -118,3 +124,10 @@ export type {
   WarehouseUnitOfWork,
   WarehouseUnitOfWorkContext,
 } from "./application/contracts/warehouse-unit-of-work.ts";
+export type {
+  WarehouseBranchResolver,
+  WarehouseIdempotencyExecutor,
+} from "./application/contracts/warehouse-validation.ts";
+
+export { WarehouseService } from "./application/warehouse-service.ts";
+export type { WarehouseServiceDependencies } from "./application/warehouse-service.ts";
