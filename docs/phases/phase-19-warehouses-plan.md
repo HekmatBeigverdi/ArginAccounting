@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–9 are completed. Steps 10–20 are not started.
+Phase 19 is in progress. Steps 1–10 are completed. Steps 11–20 are not started.
 
 ## Governance
 
@@ -63,7 +63,7 @@ Phase 19 does not own:
 - `warehouseId` is the durable downstream identity.
 - Warehouse code, title, Branch title, external identifier and UI labels are not foreign identity.
 - Product identity remains owned by Phase 18 and must be consumed through public contracts.
-- Warehouse design must remain compatible with durable IDs, deterministic timestamps, optimistic versions, idempotent mutations, company isolation, future tombstone semantics and namespaced external identifiers.
+- Warehouse design must remain compatible with durable IDs, deterministic timestamps, optimistic versions, idempotent mutations, company isolation, future tombstone semantics, origin/source metadata, optional server revision and namespaced external identifiers.
 
 ## Step Status
 
@@ -78,7 +78,7 @@ Phase 19 does not own:
 | 7 | Application, Query and Repository Contracts | Completed |
 | 8 | Application Services, Validation and Concurrency | Completed |
 | 9 | Migration, Schema, Constraints and Indexing | Completed |
-| 10 | Argin Bridge and Future Synchronization Contract | Not started |
+| 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | SQLite Repository, Unit of Work and Atomic Transactions | Not started |
 | 12 | Permissions, Audit and Approval Integration | Not started |
 | 13 | Import / Export and Initial Warehouse Setup | Not started |
@@ -149,36 +149,47 @@ Added `WarehouseService`, request-level idempotency contracts, Branch resolution
 
 ### Step 9 — Migration, Schema, Constraints and Indexing
 
-Step 9 establishes the first production SQLite schema for Warehouse Master Data while preserving Repository and transaction implementation for Step 11.
+Added migration `0022_warehouses.sql`, registered desktop migration version 22, created Warehouse/external-identifier/Zone/Location schema, company/Branch/physical hierarchy foreign keys, hard uniqueness rules, optimistic version constraint, query indexes, and real in-memory SQLite migration/constraint tests. Repository and synchronization implementation remained outside Step 9.
+
+### Step 10 — Argin Bridge and Future Synchronization Contract
+
+Step 10 formalizes Warehouse compatibility with Argin Bridge and the future synchronization phase without implementing transport or conflict resolution.
 
 Completed actions:
 
-- Added migration `apps/desktop/src-tauri/migrations/0022_warehouses.sql` and registered it as desktop migration version `22`.
-- Added `warehouses` with durable `id`, mandatory `company_id`, normalized display code/title/description, classification, lifecycle, explicit organizational scope, optional Branch reference, UTC timestamps and optimistic `version`.
-- Enforced company-scoped, case-insensitive Warehouse code uniqueness with SQLite `NOCASE` semantics.
-- Added same-company Branch referential integrity using composite `(company_id, branch_id)` foreign-key semantics; Company-wide Warehouse rows cannot carry a Branch and Branch-scoped rows must carry one.
-- Added check constraints for frozen Warehouse classification vocabulary, `active/inactive/archived` lifecycle, valid organizational-scope combinations, non-empty normalized code/title/description, non-regressing timestamps and `version >= 1`.
-- Added `warehouse_external_identifiers` with same-company Warehouse FK and unique `(company_id, namespace, value)` boundary; namespace comparison is case-insensitive while value remains case-sensitive, matching Step 6 normalization policy.
-- Added `warehouse_zones` with durable identity, same-company Warehouse FK, active/inactive status, Warehouse-scoped code uniqueness and timestamp/text constraints.
-- Added `warehouse_locations` with durable identity, Zone/Warehouse/Company composite scope, optional hierarchical `parent_location_id`, typed location-kind checks, active/inactive status, Zone-scoped code uniqueness, self-parent protection and same-scope parent FK.
-- Added indexes for company/status/title listing, kind/status filtering, Branch/company organizational filtering, updated-time ordering, external-identifier lookup, Zone lookup, Location lookup and parent traversal.
-- Added real `node:sqlite` integration tests that apply migrations `0002` + `0022` in-memory and validate migration registration, company-wide/Branch persistence, case-insensitive code uniqueness, cross-company Branch rejection, scope checks, external-identifier uniqueness, Zone/Location hierarchy integrity, self-parent rejection, classification checks and version checks.
-- Added no SQLite Repository implementation, Unit of Work adapter, transaction orchestration, idempotency storage, tombstone/sync metadata or live synchronization behavior; those remain assigned to Steps 10–11 and later validation gates.
+- Added `warehouse-sync.ts` as the persistence-neutral synchronization-facing contract exported from `@argin/warehouse`.
+- Added discriminated `upsert` / `tombstone` change envelopes for the versioned Warehouse entity.
+- Preserved `warehouseId` + `companyId` as durable synchronization identity and kept `displayCode` as metadata only.
+- Added required `operationId`, `requestId` and `idempotencyKey` fields so retriable future processing has explicit correlation and deduplication identities.
+- Added positive local `version` and optional positive `serverRevision`; `serverRevision = null` is valid before a local record has a known canonical server revision.
+- Added explicit origin metadata using `sourceSystem` plus optional `sourceInstanceId` without introducing network/transport state into the Domain.
+- Added separate synchronization external references (`sourceSystem`, `externalId`) rather than conflating them with Warehouse business external identifiers from Step 6.
+- Added deterministic validation for required operation/request/idempotency fields, durable reference consistency, version/server-revision validity, timestamps, origin, snapshot/reference matching and duplicate source mappings.
+- Formalized that Warehouse business lifecycle `active/inactive/archived` remains an `upsert`; `archived` is not a deletion/tombstone signal.
+- Added tombstone envelopes with `snapshot: null`, durable identity/version metadata and a validated `deletedAt` timestamp.
+- Added migration `0023_warehouse_sync_metadata.sql` and registered desktop migration version `23`.
+- Added `warehouses.deleted_at`, `origin_system`, optional `origin_instance_id`, nullable `server_revision`, `warehouse_sync_external_references`, and change-feed/tombstone/server-revision/source-mapping indexes.
+- Kept source mappings company-scoped with same-company Warehouse foreign keys and case-insensitive source-system uniqueness semantics.
+- Added focused sync-contract tests for immutable upserts, nullable/positive server revision, origin validation, snapshot/reference mismatch, duplicate source mappings, tombstone behavior and archive-vs-tombstone separation.
+- Added real `node:sqlite` migration tests for version-23 registration, tombstone/origin/server-revision persistence, company-scoped source mappings and cross-company FK rejection.
+- Added `docs/architecture/warehouse-sync-contract.md` as the canonical architecture record for the Step 10 boundary.
+- Explicitly excluded change polling, push/pull transport, acknowledgements, retry/backoff, server winner policy, last-write-wins, merge UI, remote writes and network configuration.
+- Zone/Location retain durable IDs but are not silently folded into the Warehouse version or sync envelope; independent child synchronization requires a dedicated child change contract when a concrete future consumer needs it.
 
-### Step 9 Exit Criteria
+### Step 10 Exit Criteria
 
-Step 9 is complete when:
+Step 10 is complete when:
 
-- Migration `0022_warehouses.sql` is registered as version 22.
-- Warehouse, external identifier, Zone and Location tables encode the frozen Domain/Application invariants that belong at database level.
-- Company/Branch/physical-child scope leakage is blocked by foreign keys and check constraints.
-- Warehouse code and external identifier hard-duplicate rules have database-level uniqueness protection.
-- Optimistic version state is persisted and constrained.
-- Representative list/select/lookup paths have supporting indexes.
-- A real in-memory SQLite integration test exercises the migration and critical constraints.
-- Repository implementation, atomic Unit of Work behavior, Argin Bridge sync metadata and idempotency storage remain outside this step.
+- Warehouse durable identity is stable across SQLite, Argin Bridge and future PostgreSQL/.NET projections.
+- Upsert and tombstone contracts are explicit, typed and persistence-neutral.
+- Idempotency, request/operation correlation, origin metadata, local version and future server revision are represented without transport coupling.
+- Archive and tombstone semantics cannot be confused.
+- SQLite can persist deletion/origin/server-revision/source-reference metadata without enabling live synchronization.
+- External synchronization source mappings cannot cross Company ownership boundaries.
+- Focused contract and migration tests cover the new boundary.
+- No sync engine, network transport, retry queue or conflict-resolution policy is introduced.
 
-All Step 9 implementation artifacts and focused migration tests are committed. Full executable monorepo validation remains mandatory in the later validation gates.
+All Step 10 implementation artifacts and focused tests are committed. Full executable monorepo validation remains mandatory in the later validation gates.
 
 ## Change Requests
 
