@@ -192,3 +192,4 @@ export type {
   WarehouseImportResult,
   WarehouseTabularRow,
 } from "./application/warehouse-bulk-transfer.ts";
+export { WarehouseReaderBulkExportAdapter } from "./application/warehouse-bulk-export-reader.ts";
