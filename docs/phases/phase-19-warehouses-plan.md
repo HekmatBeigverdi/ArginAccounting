@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–5 are completed. Steps 6–20 are not started.
+Phase 19 is in progress. Steps 1–6 are completed. Steps 7–20 are not started.
 
 ## Governance
 
@@ -84,7 +84,7 @@ These concerns remain owned by their dedicated roadmap phases. Warehouse must ex
 
 Phase 18 established Product/Service Master Data and durable `productId` references. Phase 19 must consume Product capabilities only through existing public contracts where needed for future integration validation; it must not duplicate Product identity, unit, Taxpayer identifier, commercial/tax attributes or Product lifecycle rules.
 
-Likewise, downstream modules must reference a Warehouse through durable `warehouseId`. Warehouse code, title, branch title, external code or UI labels are display/integration metadata and are not foreign identity.
+Likewise, downstream modules must reference a Warehouse through durable `warehouseId`. Warehouse code, title, branch title, external identifier or UI labels are display/integration metadata and are not foreign identity.
 
 ## Argin Bridge Requirement
 
@@ -94,7 +94,7 @@ Warehouse design must remain compatible with the established future topology:
 
 `SQLite <-> Argin Bridge <-> .NET API / PostgreSQL`
 
-Phase 19 must therefore preserve the platform's forward-sync requirements, including durable IDs, optimistic versioning, deterministic timestamps/metadata, tombstone-compatible deletion semantics where applicable, idempotent mutations and company-scoped identity. Phase 19 must not implement the full synchronization engine.
+Phase 19 must therefore preserve durable IDs, optimistic versioning, deterministic timestamps/metadata, tombstone-compatible deletion semantics where applicable, idempotent mutations, company-scoped identity, and namespaced external identifiers suitable for future integration. Phase 19 must not implement the full synchronization engine.
 
 ## Step Status
 
@@ -105,7 +105,7 @@ Phase 19 must therefore preserve the platform's forward-sync requirements, inclu
 | 3 | Warehouse Classification, Lifecycle and Business Rules | Completed |
 | 4 | Company, Branch and Organizational Scope | Completed |
 | 5 | Warehouse Locations and Extensible Physical Structure | Completed |
-| 6 | Warehouse Codes, Identifiers and Duplicate Rules | Not started |
+| 6 | Warehouse Codes, Identifiers and Duplicate Rules | Completed |
 | 7 | Application, Query and Repository Contracts | Not started |
 | 8 | Application Services, Validation and Concurrency | Not started |
 | 9 | Migration, Schema, Constraints and Indexing | Not started |
@@ -146,174 +146,67 @@ Phase 19 must therefore preserve the platform's forward-sync requirements, inclu
 
 ## Step 1 — Completion Record
 
-Step 1 establishes the authoritative Phase 19 baseline and freezes implementation governance before Domain work begins.
-
-Completed actions:
-
-- Verified the Phase 18 completion baseline on both `develop` and `main`.
-- Confirmed `develop` and `main` resolve to the same final Phase 18 repository tree before Phase 19 starts.
-- Created `phase/19-warehouses` from `develop`.
-- Created this canonical Phase 19 plan file.
-- Defined Phase 19 objective, Scope and Explicit Non-Scope.
-- Preserved the one-canonical-phase-file documentation rule established in Phase 18.
-- Froze the 20-step sequence and Step Status table.
-- Recorded mandatory Product/Service dependency boundaries from Phase 18.
-- Recorded durable `warehouseId` as the downstream identity rule.
-- Made Argin Bridge compatibility an explicit Phase 19 requirement while excluding the full synchronization engine.
-- Set the semantic release target to `v0.19.0`.
-
-### Step 1 Exit Criteria
-
-Step 1 is complete only when all of the following are true:
-
-- Phase branch exists from the final Phase 18 `develop` baseline.
-- Canonical Phase 19 plan exists on the phase branch.
-- Scope and Non-Scope are explicit.
-- The 20-step sequence is frozen.
-- Step 1 is recorded as `Completed` and Steps 2–20 remain `Not started`.
-- Argin Bridge compatibility and durable Warehouse identity are documented before Domain implementation starts.
-- No stock-balance, stock-movement, valuation, purchasing, sales, Taxpayer submission or live synchronization logic is introduced by Step 1.
+Step 1 established the authoritative baseline, created `phase/19-warehouses`, froze this plan, recorded the Phase 18 dependency boundary, preserved durable `warehouseId` identity, and made Argin Bridge compatibility explicit while keeping the synchronization engine out of scope.
 
 All Step 1 exit criteria are satisfied.
 
 ## Step 2 — Completion Record
 
-Step 2 establishes the persistence-neutral Warehouse Domain baseline without consuming the responsibilities reserved for Steps 3–6.
+Step 2 added independent `@argin/warehouse` Domain package, immutable `WarehouseSnapshot`, durable `warehouseId`, mandatory `companyId`, normalized code/title/description/timestamps, stable Domain error codes, create/rehydrate operations, and focused tests without infrastructure dependencies.
 
-Completed actions:
-
-- Added independent `@argin/warehouse` workspace package at version `0.19.0`.
-- Added immutable `WarehouseSnapshot` with durable `warehouseId`, mandatory `companyId`, display `code`, `title`, optional normalized `description`, and deterministic UTC timestamps.
-- Added `CreateWarehouseInput`, `createWarehouse`, and `rehydrateWarehouse` Domain contracts.
-- Added stable Warehouse Domain error codes for required identity/company/code/title invariants and timestamp validation.
-- Added canonical normalization: trimmed/collapsed text, uppercase warehouse code, blank optional descriptions normalized to `null`, and ISO UTC timestamp normalization.
-- Added rehydration protection against `updatedAt < createdAt`.
-- Added focused Domain tests covering durable identity separation, company scope, normalization, immutable snapshots, required invariants, invalid timestamps and rehydration ordering.
-- Kept classification/status transitions out of Step 2 for Step 3, Branch association rules out for Step 4, physical structures out for Step 5, and advanced identifier/duplicate rules out for Step 6.
-- Introduced no SQLite, Tauri, React, inventory movement, stock balance, valuation, purchasing, sales, Taxpayer submission, or synchronization-engine dependency.
-
-### Step 2 Exit Criteria
-
-Step 2 is complete only when all of the following are true:
-
-- Warehouse exists as an independent persistence-neutral Domain package.
-- `warehouseId` is the durable identity and is independent of warehouse display code.
-- Company scope is mandatory at the Domain boundary.
-- Code/title/timestamps are validated and canonicalized deterministically.
-- Domain snapshots are immutable.
-- Persisted snapshots can be rehydrated without infrastructure dependencies.
-- Focused tests cover the Step 2 invariants.
-- No behavior assigned to Steps 3–6 or later phases is prematurely implemented.
-
-All Step 2 exit criteria are satisfied by the committed implementation. Full workspace validation remains part of later phase validation gates; the Step 2 package exposes `test`, `typecheck`, and `build` scripts for local verification.
+All Step 2 exit criteria are satisfied.
 
 ## Step 3 — Completion Record
 
-Step 3 adds Warehouse classification and lifecycle semantics while preserving the organizational, location, identifier and persistence responsibilities reserved for later steps.
+Step 3 added the frozen Warehouse classifications `general`, `raw-material`, `finished-goods`, `consumables`, `spare-parts`, `wip`, `transit`, `consignment`, and `other`; lifecycle states `active`, `inactive`, `archived`; deterministic activate/deactivate/archive transitions; terminal archive semantics; idempotent same-state requests; timestamp protection; and focused tests.
 
-Completed actions:
-
-- Added the frozen Warehouse classification set: `general`, `raw-material`, `finished-goods`, `consumables`, `spare-parts`, `wip`, `transit`, `consignment`, and `other`.
-- Added lifecycle states `active`, `inactive`, and terminal `archived`.
-- Added `ClassifiedWarehouseSnapshot`, `classifyWarehouse`, and `rehydrateClassifiedWarehouse` without adding infrastructure dependencies.
-- New classified Warehouses start as `active`.
-- Added explicit `activateWarehouse`, `deactivateWarehouse`, and `archiveWarehouse` Domain transitions.
-- Repeated activation/deactivation/archive requests are idempotent when the Warehouse is already in the requested state.
-- `archived` is terminal: archived Warehouses cannot be activated or deactivated again.
-- Lifecycle mutations preserve immutable snapshots and advance `updatedAt`; timestamp regression is rejected.
-- Added stable Domain errors for invalid classification, invalid persisted status, and forbidden transitions from archived state.
-- Added focused tests for all supported classifications, invalid classification/status rejection, active/inactive round trips, terminal archive semantics, idempotent same-state transitions, immutability and timestamp-order protection.
-- Kept Branch/company organizational association behavior for Step 4, Zone/Location/Bin for Step 5, and external/duplicate identifier rules for Step 6.
-- Introduced no stock balance, stock movement, costing, accounting posting, purchasing, sales, Taxpayer submission, SQLite/Tauri persistence or live synchronization logic.
-
-### Step 3 Exit Criteria
-
-Step 3 is complete only when all of the following are true:
-
-- The supported Warehouse classification vocabulary is explicit and typed.
-- Lifecycle states are explicit and persisted snapshots can be validated during rehydration.
-- New classified Warehouses start active.
-- Active and inactive Warehouses can transition deterministically in both directions.
-- Archive is a terminal lifecycle state and same-state requests are idempotent.
-- Lifecycle transitions cannot move `updatedAt` backwards.
-- Domain outputs remain immutable and persistence-neutral.
-- Focused tests cover classification and lifecycle invariants.
-- Responsibilities belonging to Steps 4–6 and later inventory phases are not introduced.
-
-All Step 3 exit criteria are satisfied by the committed implementation. Full monorepo validation remains reserved for the later validation gates.
+All Step 3 exit criteria are satisfied.
 
 ## Step 4 — Completion Record
 
-Step 4 defines the organizational ownership boundary for Warehouse while reusing the existing Company/Branch model instead of duplicating Branch master data.
+Step 4 added explicit organizational scope as company-wide or one Branch, reused the existing Company/Branch model through a minimal Branch reference, enforced same-company ownership and active-Branch assignment, preserved historical inactive-Branch rehydration, prohibited implicit multi-Branch ownership, and blocked organizational reassignment after archive.
 
-Completed actions:
-
-- Added typed `WarehouseOrganizationalScope` as a discriminated union with exactly two supported modes: company-wide (`company`) or one specific Branch (`branch`).
-- Added `OrganizedWarehouseSnapshot` as the next immutable Warehouse Domain layer over the classified/lifecycle snapshot.
-- Added a minimal `WarehouseBranchReference` contract containing only Branch durable reference identity, Company ownership, and active/inactive status; Warehouse does not clone Branch code/name/head-office metadata.
-- Added `assignWarehouseOrganizationalScope`, `changeWarehouseOrganizationalScope`, and `rehydrateOrganizedWarehouse` Domain operations.
-- Enforced that a Branch-scoped Warehouse must reference exactly the requested Branch and that the Branch belongs to the same `companyId` as the Warehouse.
-- Enforced that new assignment or reassignment to a Branch requires an active Branch.
-- Preserved historical validity during rehydration: a previously valid Branch association remains rehydratable if that Branch later becomes inactive, while cross-company references remain invalid.
-- Company-wide Warehouses carry no synthetic Branch identity; Branch scope is optional organizational ownership and does not replace durable `warehouseId` or Company ownership.
-- Multi-Branch ownership is intentionally not representable in the Step 4 Domain contract. A Warehouse is either Company-wide or owned by one Branch. Shared multi-Branch semantics require an explicit future Change Request/architecture decision rather than an implicit array of Branch IDs.
-- Organizational-scope reassignment is idempotent when the requested scope is unchanged and advances `updatedAt` only on a real scope change.
-- Organizational-scope changes reject timestamp regression and are forbidden after the Warehouse reaches terminal `archived` state.
-- Added stable Domain errors for invalid organizational scope, missing/mismatched Branch references, cross-company Branch assignment, inactive-Branch assignment, and archived Warehouse reassignment.
-- Added focused tests for Company-wide scope, Branch scope, cross-company protection, inactive Branch protection, Branch-reference mismatch, historical inactive-Branch rehydration, idempotent scope changes, timestamp ordering, and archived-state protection.
-- Kept Zone/Location/Bin structures for Step 5 and advanced identifier/duplicate rules for Step 6; no stock quantities, movements, valuation, SQLite persistence, UI or live synchronization behavior was introduced.
-
-### Step 4 Exit Criteria
-
-Step 4 is complete only when all of the following are true:
-
-- Every organized Warehouse remains Company-owned and has an explicit organizational-scope mode.
-- A Warehouse can be Company-wide or Branch-scoped without changing durable `warehouseId` identity.
-- A Branch-scoped Warehouse can reference only one Branch and that Branch must belong to the same Company.
-- New Branch assignment cannot target an inactive Branch.
-- Historical Branch associations survive later Branch deactivation during rehydration.
-- Multi-Branch ownership is not silently introduced.
-- Real scope changes advance `updatedAt`, same-scope requests are idempotent, and timestamp regression is rejected.
-- Archived Warehouses cannot be organizationally reassigned.
-- Domain behavior remains immutable and persistence-neutral.
-- Responsibilities reserved for Step 5, Step 6 and later inventory phases remain outside this step.
-
-All Step 4 exit criteria are satisfied by the committed implementation. Full monorepo validation remains reserved for the later validation gates.
+All Step 4 exit criteria are satisfied.
 
 ## Step 5 — Completion Record
 
-Step 5 establishes an extensible physical-location model for Warehouses without introducing inventory quantity, movement, valuation, or document behavior.
+Step 5 added persistence-neutral `WarehouseZoneSnapshot` and `WarehouseLocationSnapshot`, durable `zoneId`/`locationId`, `Warehouse -> Zone -> Location` structure, optional `parentLocationId` for future Rack/Shelf/Bin nesting, typed physical-location kinds and active/inactive master-data status, reference consistency checks, immutable/timestamp-safe rehydration, and focused tests. No stock quantity, movement, costing or inventory document behavior was introduced.
+
+All Step 5 exit criteria are satisfied.
+
+## Step 6 — Completion Record
+
+Step 6 establishes Warehouse code, external-identifier and duplicate-detection policy while keeping persistence and query implementation for later steps.
 
 Completed actions:
 
-- Added persistence-neutral `WarehouseZoneSnapshot` and `WarehouseLocationSnapshot` Domain contracts with durable `zoneId` and `locationId` identities independent of display codes.
-- Added explicit hierarchy `Warehouse -> Zone -> Location`, while allowing `parentLocationId` on Location so Rack/Shelf/Bin-style nesting can evolve without redesigning Warehouse identity or introducing a rigid fixed-depth tree.
-- Added supported physical location kinds: `bin`, `rack`, `shelf`, `staging`, `receiving`, `dispatch`, and `other`.
-- Added `WarehousePhysicalStatus` with `active`/`inactive` for persisted physical master data; stock availability semantics are intentionally not inferred from this status.
-- Added `WarehouseReference` and `warehouseReferenceFrom` so physical children consume only durable Warehouse/Company identity instead of cloning the Warehouse aggregate.
-- Added `createWarehouseZone`, `rehydrateWarehouseZone`, `createWarehouseLocation`, and `rehydrateWarehouseLocation`.
-- Enforced Company and Warehouse consistency between Zone, Location and their parent Warehouse reference.
-- Enforced Zone-reference consistency during Location rehydration and rejected Location self-parenting.
-- Preserved deterministic normalization for codes/text and UTC timestamps, immutable snapshots, timestamp ordering, and historical inactive physical records during rehydration.
-- Added stable Domain errors for missing Zone/Location identity, Warehouse/Company physical-reference mismatch, Zone-reference mismatch, invalid physical status, invalid location kind, and self-parenting.
-- Added focused tests for Zone creation, nested Rack/Bin-style locations, Company/Warehouse mismatch, invalid kinds, self-parent protection, historical inactive rehydration, timestamp ordering, and mismatched Zone references.
-- Did not add stock balances, capacity consumption, reserved quantity, lot/serial tracking, receipt/issue/transfer operations, costing, physical-count workflows, SQLite persistence, UI, or synchronization-engine behavior.
-- Kept code uniqueness, external identifiers and duplicate-detection policy for Step 6 rather than embedding repository-level uniqueness into the physical Domain model.
+- Preserved `warehouseId` as the sole durable foreign identity; code and external identifiers never replace it.
+- Added `WarehouseExternalIdentifier` as a namespaced integration identifier with required `namespace` and `value`.
+- Added deterministic external-identifier normalization: namespace is trimmed, whitespace-collapsed and uppercased; value is trimmed and whitespace-collapsed without destructive case conversion.
+- Added `WarehouseIdentifierSnapshot` and `createWarehouseIdentifierSnapshot` to expose immutable normalized identifier state independently from infrastructure.
+- Added `WarehouseDuplicateCandidate` and pure Domain rule `assertWarehouseIdentifiersUnique` so later Application/Repository layers can perform deterministic duplicate validation after loading candidates.
+- Warehouse durable IDs are treated as globally unique identities.
+- Warehouse `code` uniqueness is company-scoped and compares the canonical normalized uppercase code.
+- External identifiers are unique inside a Company by the normalized `(namespace, value)` pair. The same external identifier may exist in another Company without collision.
+- Duplicate external identifiers inside the same Warehouse snapshot are rejected.
+- Added stable Domain errors for missing external namespace/value, duplicate Warehouse ID, duplicate company-scoped code, and duplicate external identifier.
+- Added focused tests for canonical identifier normalization, immutable identifier snapshots, missing namespace/value, duplicate durable ID, same-company code collision, cross-company code reuse, same-company external-identifier collision, and cross-company external-identifier reuse.
+- Added no repository lookup, SQL unique constraint, SQLite schema, UI behavior, inventory state, or synchronization engine; those responsibilities remain in Steps 7–11 and later validation gates.
 
-### Step 5 Exit Criteria
+### Step 6 Exit Criteria
 
-Step 5 is complete only when all of the following are true:
+Step 6 is complete only when all of the following are true:
 
-- Zone and Location have durable identities independent of display codes.
-- Physical children remain bound to the same Company and Warehouse as their parent references.
-- Location belongs to a valid Zone and cannot parent itself.
-- The model supports future nested physical locations without forcing a fixed Rack/Shelf/Bin depth today.
-- Physical snapshots are immutable, persistence-neutral and timestamp-safe.
-- Historical inactive Zone/Location records remain rehydratable.
-- No stock quantity, movement, valuation, purchasing, sales, accounting posting or live synchronization logic is introduced.
-- Duplicate/identifier policy remains reserved for Step 6.
+- Durable `warehouseId` remains independent from all display/integration identifiers.
+- Warehouse code has one deterministic canonical representation and a company-scoped uniqueness rule.
+- External identifiers are explicitly namespaced and normalized deterministically.
+- Duplicate detection can distinguish durable-ID, code, and external-identifier conflicts with stable Domain errors.
+- External-identifier uniqueness is isolated by Company and namespace.
+- Identifier snapshots are immutable and persistence-neutral.
+- Focused tests cover normalization and duplicate-policy boundaries.
+- Persistence/index implementation and actual repository candidate loading are not prematurely implemented.
 
-All Step 5 exit criteria are satisfied by the committed implementation. Full package and monorepo execution validation remains reserved for the later validation gates; focused Step 5 tests are included in the `@argin/warehouse` test suite.
+All Step 6 exit criteria are satisfied by the committed implementation. Full package and monorepo execution validation remains reserved for the later validation gates.
 
 ## Change Requests
 
