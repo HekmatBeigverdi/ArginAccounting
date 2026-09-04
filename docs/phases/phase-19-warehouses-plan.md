@@ -2,99 +2,68 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–7 are completed. Steps 8–20 are not started.
+Phase 19 is in progress. Steps 1–8 are completed. Steps 9–20 are not started.
 
 ## Governance
 
 This 20-step sequence is frozen. Step title, order, scope, or exit criteria may change only through an explicitly approved Change Request.
 
-This file is the canonical Phase 19 record. Step status, implementation evidence, validation evidence, Change Requests, and phase exit criteria are maintained here. Cross-cutting rules remain in their canonical architecture/database/security/glossary documents.
-
-Mandatory governance:
+This file is the canonical Phase 19 record. Cross-cutting governance remains defined by:
 
 - `docs/development/documentation-governance.md`
 - `docs/development/github-publishing-workflow.md`
 
 ## Objective
 
-Deliver canonical Warehouse Master Data and desktop management with durable identity, company/branch-aware organizational scope, lifecycle, warehouse classification, extensible physical-location boundaries, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, and future Argin Bridge compatibility.
+Deliver canonical Warehouse Master Data and desktop management with durable identity, company/branch-aware organizational scope, lifecycle, classification, extensible physical-location boundaries, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, and future Argin Bridge compatibility.
 
-Target future direction remains:
+Future topology remains:
 
 `Argin Desktop -> SQLite -> Argin Bridge -> .NET API / PostgreSQL -> Synchronization`
 
-Full synchronization remains outside Phase 19 and must be implemented only in its dedicated roadmap phase.
+Full synchronization is outside Phase 19.
 
 ## Baseline
 
-Phase 19 starts from `develop` after completion and promotion of Phase 18 — Products and Services.
-
-Phase branch:
-
-`phase/19-warehouses`
-
-Release target:
-
+- Branch: `phase/19-warehouses`
 - Version: `0.19.0`
-- Semantic tag: `v0.19.0`
+- Tag: `v0.19.0`
 - Release title: `ArginAccounting v0.19.0 — Warehouses`
 
 ## Scope
 
-Phase 19 owns reusable Warehouse Master Data and the contracts required by future inventory and ERP consumers. It includes:
+Phase 19 owns Warehouse Master Data and future-consumer contracts, including:
 
-- Stable company-scoped Warehouse identity.
-- Warehouse code, title, description and lifecycle.
-- Warehouse classification and operational metadata.
-- Company and branch association rules.
-- Extensible physical-location boundary for future Zone/Location/Bin structures without forcing premature stock logic into Warehouse.
-- Duplicate detection and identifier normalization.
-- Persistence-neutral Domain/Application/Repository contracts.
-- SQLite persistence, constraints, indexes and atomic Unit of Work behavior.
-- Idempotency and optimistic-concurrency protection for mutations.
-- Argin Bridge / future synchronization metadata and tombstone-compatible deletion semantics where required by the existing platform contract.
-- Permissions, Audit integration and reuse of existing Approval infrastructure only where a real Warehouse workflow requires it.
-- CSV/XLSX import/export.
-- Persian RTL desktop management UI following Phase 14 density/accessibility conventions.
-- Reusable Warehouse selector contracts for Inventory, Purchasing, Sales, Manufacturing, Cost Accounting and other future consumers.
-- Domain/Application/Repository/Migration/Desktop/performance/accessibility/documentation validation.
+- durable `warehouseId`
+- company/branch organizational scope
+- warehouse classification and lifecycle
+- Zone/Location physical master data
+- code/external-identifier normalization and duplicate rules
+- persistence-neutral Application/Query/Repository/UoW contracts
+- validation, idempotency and optimistic concurrency
+- SQLite persistence and atomic transactions in later steps
+- permissions/audit, import/export, dense Persian RTL UI, selectors and integration boundaries
+- Argin Bridge compatibility without implementing the sync engine
 
 ## Explicit Non-Scope
 
-Phase 19 does not own transactional inventory state or downstream document behavior. The following are explicitly out of scope:
+Phase 19 does not own:
 
-- Product stock balances or on-hand quantities.
-- Stock ledger / kardex.
-- Warehouse receipt documents.
-- Warehouse issue documents.
-- Inter-warehouse transfer documents.
-- Inventory adjustments and physical stock-count workflows.
-- FIFO, weighted-average or other inventory valuation methods.
-- Cost layers or inventory costing.
-- Inventory accounting postings.
-- Purchase documents or purchase pricing.
-- Sales documents or sales pricing.
-- Manufacturing production/WIP transactions.
-- Taxpayer invoice projection, signing, submission or inquiry.
-- Live client/server synchronization engine or conflict-resolution UI.
+- stock balances, kardex, receipts/issues/transfers
+- adjustments or stock count
+- FIFO/average-cost valuation or cost layers
+- inventory accounting postings
+- purchase/sales pricing or documents
+- manufacturing transactional logic
+- Taxpayer submission/signing/inquiry
+- live synchronization or conflict-resolution UI
 
-These concerns remain owned by their dedicated roadmap phases. Warehouse must expose durable references and forward-compatible contracts without absorbing their business logic.
+## Identity and Argin Bridge Rules
 
-## Phase 18 Dependency and Identity Rule
-
-Phase 18 established Product/Service Master Data and durable `productId` references. Phase 19 must consume Product capabilities only through existing public contracts where needed for future integration validation; it must not duplicate Product identity, unit, Taxpayer identifier, commercial/tax attributes or Product lifecycle rules.
-
-Likewise, downstream modules must reference a Warehouse through durable `warehouseId`. Warehouse code, title, branch title, external identifier or UI labels are display/integration metadata and are not foreign identity.
-
-## Argin Bridge Requirement
-
-Argin Bridge compatibility is mandatory from the beginning of the phase.
-
-Warehouse design must remain compatible with the established future topology:
-
-`SQLite <-> Argin Bridge <-> .NET API / PostgreSQL`
-
-Phase 19 must therefore preserve durable IDs, optimistic versioning, deterministic timestamps/metadata, tombstone-compatible deletion semantics where applicable, idempotent mutations, company-scoped identity, and namespaced external identifiers suitable for future integration. Phase 19 must not implement the full synchronization engine.
+- `warehouseId` is the durable downstream identity.
+- Warehouse code, title, Branch title, external identifier and UI labels are not foreign identity.
+- Product identity remains owned by Phase 18 and must be consumed through public contracts.
+- Warehouse design must remain compatible with durable IDs, deterministic timestamps, optimistic versions, idempotent mutations, company isolation, future tombstone semantics and namespaced external identifiers.
 
 ## Step Status
 
@@ -107,7 +76,7 @@ Phase 19 must therefore preserve durable IDs, optimistic versioning, determinist
 | 5 | Warehouse Locations and Extensible Physical Structure | Completed |
 | 6 | Warehouse Codes, Identifiers and Duplicate Rules | Completed |
 | 7 | Application, Query and Repository Contracts | Completed |
-| 8 | Application Services, Validation and Concurrency | Not started |
+| 8 | Application Services, Validation and Concurrency | Completed |
 | 9 | Migration, Schema, Constraints and Indexing | Not started |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
 | 11 | SQLite Repository, Unit of Work and Atomic Transactions | Not started |
@@ -144,104 +113,76 @@ Phase 19 must therefore preserve durable IDs, optimistic versioning, determinist
 19. Performance, Accessibility, Monorepo Quality and Documentation
 20. Final Review, Merge and Release
 
-## Step 1 — Completion Record
+## Completion Records
 
-Step 1 established the authoritative baseline, created `phase/19-warehouses`, froze this plan, recorded the Phase 18 dependency boundary, preserved durable `warehouseId` identity, and made Argin Bridge compatibility explicit while keeping the synchronization engine out of scope.
+### Step 1 — Baseline, Branch, Scope and Plan Freeze
 
-All Step 1 exit criteria are satisfied.
+Established the Phase 19 branch, canonical plan, frozen sequence, scope/non-scope, release target, Phase 18 dependency boundary and mandatory Argin Bridge compatibility.
 
-## Step 2 — Completion Record
+### Step 2 — Warehouse Domain Model
 
-Step 2 added independent `@argin/warehouse` Domain package, immutable `WarehouseSnapshot`, durable `warehouseId`, mandatory `companyId`, normalized code/title/description/timestamps, stable Domain error codes, create/rehydrate operations, and focused tests without infrastructure dependencies.
+Added independent `@argin/warehouse` package, immutable `WarehouseSnapshot`, durable `warehouseId`, mandatory `companyId`, normalized code/title/description/timestamps, create/rehydrate operations and focused Domain tests.
 
-All Step 2 exit criteria are satisfied.
+### Step 3 — Warehouse Classification, Lifecycle and Business Rules
 
-## Step 3 — Completion Record
+Added classifications `general`, `raw-material`, `finished-goods`, `consumables`, `spare-parts`, `wip`, `transit`, `consignment`, `other`; lifecycle `active/inactive/archived`; deterministic transitions, terminal archive behavior, idempotent same-state operations and timestamp protection.
 
-Step 3 added the frozen Warehouse classifications `general`, `raw-material`, `finished-goods`, `consumables`, `spare-parts`, `wip`, `transit`, `consignment`, and `other`; lifecycle states `active`, `inactive`, `archived`; deterministic activate/deactivate/archive transitions; terminal archive semantics; idempotent same-state requests; timestamp protection; and focused tests.
+### Step 4 — Company, Branch and Organizational Scope
 
-All Step 3 exit criteria are satisfied.
+Added discriminated company-wide/Branch scope, same-company Branch validation, active-Branch assignment, historical inactive-Branch rehydration, single-Branch ownership and archived reassignment protection.
 
-## Step 4 — Completion Record
+### Step 5 — Warehouse Locations and Extensible Physical Structure
 
-Step 4 added explicit organizational scope as company-wide or one Branch, reused the existing Company/Branch model through a minimal Branch reference, enforced same-company ownership and active-Branch assignment, preserved historical inactive-Branch rehydration, prohibited implicit multi-Branch ownership, and blocked organizational reassignment after archive.
+Added durable Zone/Location master data, `Warehouse -> Zone -> Location`, optional `parentLocationId`, location kinds for Rack/Shelf/Bin-style expansion and strict Company/Warehouse/Zone reference validation without inventory state.
 
-All Step 4 exit criteria are satisfied.
+### Step 6 — Warehouse Codes, Identifiers and Duplicate Rules
 
-## Step 5 — Completion Record
+Preserved `warehouseId` as primary identity, added normalized company-scoped code uniqueness, namespaced external identifiers and pure duplicate rules for durable ID/code/external identifier conflicts.
 
-Step 5 added persistence-neutral `WarehouseZoneSnapshot` and `WarehouseLocationSnapshot`, durable `zoneId`/`locationId`, `Warehouse -> Zone -> Location` structure, optional `parentLocationId` for future Rack/Shelf/Bin nesting, typed physical-location kinds and active/inactive master-data status, reference consistency checks, immutable/timestamp-safe rehydration, and focused tests. No stock quantity, movement, costing or inventory document behavior was introduced.
+### Step 7 — Application, Query and Repository Contracts
 
-All Step 5 exit criteria are satisfied.
+Added persistence-neutral commands, DTOs, bounded company-scoped queries, Reader, Warehouse/Zone/Location repositories, version-aware `update(expectedVersion)`, `WarehousePersistenceState`, and atomic Unit of Work contracts.
 
-## Step 6 — Completion Record
+### Step 8 — Application Services, Validation and Concurrency
 
-Step 6 establishes Warehouse code, external-identifier and duplicate-detection policy while keeping persistence and query implementation for later steps.
-
-Completed actions:
-
-- Preserved `warehouseId` as the sole durable foreign identity; code and external identifiers never replace it.
-- Added `WarehouseExternalIdentifier` as a namespaced integration identifier with required `namespace` and `value`.
-- Added deterministic external-identifier normalization: namespace is trimmed, whitespace-collapsed and uppercased; value is trimmed and whitespace-collapsed without destructive case conversion.
-- Added `WarehouseIdentifierSnapshot` and `createWarehouseIdentifierSnapshot` to expose immutable normalized identifier state independently from infrastructure.
-- Added `WarehouseDuplicateCandidate` and pure Domain rule `assertWarehouseIdentifiersUnique` so later Application/Repository layers can perform deterministic duplicate validation after loading candidates.
-- Warehouse durable IDs are treated as globally unique identities.
-- Warehouse `code` uniqueness is company-scoped and compares the canonical normalized uppercase code.
-- External identifiers are unique inside a Company by the normalized `(namespace, value)` pair. The same external identifier may exist in another Company without collision.
-- Duplicate external identifiers inside the same Warehouse snapshot are rejected.
-- Added stable Domain errors for missing external namespace/value, duplicate Warehouse ID, duplicate company-scoped code, and duplicate external identifier.
-- Added focused tests for canonical identifier normalization, immutable identifier snapshots, missing namespace/value, duplicate durable ID, same-company code collision, cross-company code reuse, same-company external-identifier collision, and cross-company external-identifier reuse.
-- Added no repository lookup, SQL unique constraint, SQLite schema, UI behavior, inventory state, or synchronization engine; those responsibilities remain in Steps 7–11 and later validation gates.
-
-### Step 6 Exit Criteria
-
-Step 6 is complete only when all of the following are true:
-
-- Durable `warehouseId` remains independent from all display/integration identifiers.
-- Warehouse code has one deterministic canonical representation and a company-scoped uniqueness rule.
-- External identifiers are explicitly namespaced and normalized deterministically.
-- Duplicate detection can distinguish durable-ID, code, and external-identifier conflicts with stable Domain errors.
-- External-identifier uniqueness is isolated by Company and namespace.
-- Identifier snapshots are immutable and persistence-neutral.
-- Focused tests cover normalization and duplicate-policy boundaries.
-- Persistence/index implementation and actual repository candidate loading are not prematurely implemented.
-
-All Step 6 exit criteria are satisfied by the committed implementation. Full package and monorepo execution validation remains reserved for the later validation gates.
-
-## Step 7 — Completion Record
-
-Step 7 freezes the persistence-neutral Application, Query and Repository boundaries that later Application Service and SQLite implementation steps must consume without redesigning the Warehouse Domain.
+Step 8 implements the orchestration layer over the frozen Step 7 contracts.
 
 Completed actions:
 
-- Added typed Application commands for create/update Warehouse, lifecycle change, organizational-scope change, Zone creation and Location creation.
-- Added `WarehouseDto`, list DTOs, Zone/Location DTOs and generic paged-result contract so UI/Application consumers do not depend directly on persistence rows.
-- Added bounded Warehouse query contracts with explicit paging and selector limits.
-- Added company-scoped list/get/select filters, optional Branch filtering, explicit Company-wide inclusion, classification/status filtering and namespaced external-identifier lookup fields.
-- Added Zone and Location query contracts without adding inventory quantities or movement semantics.
-- Added `WarehouseReader` as the persistence-neutral read boundary for detail, list, selector, Zone and Location projections.
-- Added `WarehousePersistenceState` carrying the organized Warehouse snapshot, normalized external identifiers and optimistic `version`.
-- Added `WarehouseRepository` with company-scoped lookup by durable ID, code and namespaced external identifier, plus `add` and version-aware `update(expectedVersion)` contracts.
-- Added separate `WarehouseZoneRepository` and `WarehouseLocationRepository` contracts so physical master-data persistence does not contaminate the Warehouse aggregate with stock behavior.
-- Added `WarehouseUnitOfWork` / `WarehouseUnitOfWorkContext` covering Warehouse, Zone and Location repositories in one atomic application boundary.
-- Re-exported all Step 7 contracts from `@argin/warehouse` public API.
-- Added focused contract tests verifying immutable bounded query limits and the company-scoped/version-aware repository signature.
-- Added no Application Service orchestration, duplicate lookup workflow, concurrency exception mapping, SQLite implementation, SQL schema, Tauri adapter or live synchronization behavior; those responsibilities remain in Steps 8–11.
+- Added `WarehouseService` as the persistence-neutral Application Service for Warehouse creation/update, lifecycle changes, organizational-scope changes, Zone creation and Location creation.
+- Added read delegation for get-by-id, get-by-code, list and bounded selector queries through `WarehouseReader`.
+- Added mandatory `requestId` to all mutation commands so retries can be handled deterministically rather than inferred from mutable business data.
+- Added `WarehouseIdempotencyExecutor` contract and wrapped every mutation in an explicit operation/company/entity idempotency scope.
+- Added `WarehouseBranchResolver` contract so Application validation can consume Branch identity/status without introducing a direct infrastructure dependency.
+- Added stable Application error codes for invalid requests, not-found state, duplicate identifiers, concurrency conflicts, invalid Branch references and forbidden physical mutations after archive.
+- Added duplicate validation against Repository lookups before create/update for company-scoped code and namespaced external identifiers.
+- Added `expectedVersion` validation and pre-write version comparison; stale mutations fail with `warehouse.application.concurrency-conflict` before Repository update.
+- Preserved Repository-level `update(state, expectedVersion)` as the second optimistic-concurrency boundary for SQLite/server implementations.
+- New Warehouse state starts at version `1`; successful real updates/lifecycle/scope mutations advance version by one.
+- Same-state lifecycle and same-scope Domain no-ops do not write or increment version.
+- Warehouse updates rehydrate through Domain canonicalization, preserve immutable snapshots, preserve classification/lifecycle/scope, and reject timestamp regression.
+- Branch-scoped creation/scope changes resolve the Branch and rely on Domain rules for same-company and active-Branch enforcement; historical rehydration can preserve an inactive Branch association.
+- Zone/Location creation requires an existing Warehouse and rejects physical master-data changes after the Warehouse is archived.
+- Location parent validation requires the parent to exist in the same Company, Warehouse and Zone before nested Rack/Shelf/Bin structures can be created.
+- Added focused in-memory Application tests for create/idempotent replay, duplicate company-scoped code, stale version rejection, Branch validation, lifecycle versioning, Zone creation and nested Location parent validation.
+- Public exports were updated for `WarehouseService`, Application errors, idempotency and Branch resolver contracts.
+- No SQLite implementation, schema migration, transaction adapter, Tauri command or live synchronization engine was introduced.
 
-### Step 7 Exit Criteria
+### Step 8 Exit Criteria
 
-Step 7 is complete only when all of the following are true:
+Step 8 is complete when:
 
-- Commands, DTOs, queries, Reader, Repository and Unit of Work interfaces are persistence-neutral and exported publicly.
-- Every Warehouse read/write lookup is explicitly company-scoped.
-- Selector and list query limits are bounded by contract.
-- Repository update accepts an `expectedVersion` suitable for optimistic concurrency in Step 8.
-- Warehouse, Zone and Location persistence boundaries are explicit without introducing inventory transactions.
-- External identifiers can be queried through namespace/value without replacing durable `warehouseId` identity.
-- SQLite/Tauri implementation details remain absent from the package contracts.
-- Focused tests lock the query-limit and repository-scope contract.
+- Application mutations are orchestrated only through persistence-neutral contracts.
+- Every mutation has an explicit idempotency request key.
+- Duplicate code/external-identifier validation runs before writes.
+- Stale `expectedVersion` values are rejected and Repository optimistic concurrency remains enforceable.
+- Real successful mutations advance version exactly once; Domain no-ops do not.
+- Branch and physical-parent references are validated before mutation.
+- Archived Warehouse restrictions are enforced for later physical master-data creation.
+- Focused tests exist for idempotency, duplicate detection, concurrency and key validation paths.
+- SQLite/Migration/Tauri work remains outside this step.
 
-All Step 7 exit criteria are satisfied by the committed implementation. Full Application behavior and concurrency validation are reserved for Step 8 and later validation gates.
+Implementation and focused tests are committed. Direct execution of `test/typecheck/build` could not be performed in the assistant container because the environment could not resolve `github.com` during clone; this is an execution-environment DNS limitation, not a repository/authentication issue. Full executable validation remains mandatory in the later validation gates and can be run locally now.
 
 ## Change Requests
 
