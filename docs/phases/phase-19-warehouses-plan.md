@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–3 are completed. Steps 4–20 are not started.
+Phase 19 is in progress. Steps 1–4 are completed. Steps 5–20 are not started.
 
 ## Governance
 
@@ -103,7 +103,7 @@ Phase 19 must therefore preserve the platform's forward-sync requirements, inclu
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Warehouse Domain Model | Completed |
 | 3 | Warehouse Classification, Lifecycle and Business Rules | Completed |
-| 4 | Company, Branch and Organizational Scope | Not started |
+| 4 | Company, Branch and Organizational Scope | Completed |
 | 5 | Warehouse Locations and Extensible Physical Structure | Not started |
 | 6 | Warehouse Codes, Identifiers and Duplicate Rules | Not started |
 | 7 | Application, Query and Repository Contracts | Not started |
@@ -241,6 +241,44 @@ Step 3 is complete only when all of the following are true:
 - Responsibilities belonging to Steps 4–6 and later inventory phases are not introduced.
 
 All Step 3 exit criteria are satisfied by the committed implementation. Full monorepo validation remains reserved for the later validation gates.
+
+## Step 4 — Completion Record
+
+Step 4 defines the organizational ownership boundary for Warehouse while reusing the existing Company/Branch model instead of duplicating Branch master data.
+
+Completed actions:
+
+- Added typed `WarehouseOrganizationalScope` as a discriminated union with exactly two supported modes: company-wide (`company`) or one specific Branch (`branch`).
+- Added `OrganizedWarehouseSnapshot` as the next immutable Warehouse Domain layer over the classified/lifecycle snapshot.
+- Added a minimal `WarehouseBranchReference` contract containing only Branch durable reference identity, Company ownership, and active/inactive status; Warehouse does not clone Branch code/name/head-office metadata.
+- Added `assignWarehouseOrganizationalScope`, `changeWarehouseOrganizationalScope`, and `rehydrateOrganizedWarehouse` Domain operations.
+- Enforced that a Branch-scoped Warehouse must reference exactly the requested Branch and that the Branch belongs to the same `companyId` as the Warehouse.
+- Enforced that new assignment or reassignment to a Branch requires an active Branch.
+- Preserved historical validity during rehydration: a previously valid Branch association remains rehydratable if that Branch later becomes inactive, while cross-company references remain invalid.
+- Company-wide Warehouses carry no synthetic Branch identity; Branch scope is optional organizational ownership and does not replace durable `warehouseId` or Company ownership.
+- Multi-Branch ownership is intentionally not representable in the Step 4 Domain contract. A Warehouse is either Company-wide or owned by one Branch. Shared multi-Branch semantics require an explicit future Change Request/architecture decision rather than an implicit array of Branch IDs.
+- Organizational-scope reassignment is idempotent when the requested scope is unchanged and advances `updatedAt` only on a real scope change.
+- Organizational-scope changes reject timestamp regression and are forbidden after the Warehouse reaches terminal `archived` state.
+- Added stable Domain errors for invalid organizational scope, missing/mismatched Branch references, cross-company Branch assignment, inactive-Branch assignment, and archived Warehouse reassignment.
+- Added focused tests for Company-wide scope, Branch scope, cross-company protection, inactive Branch protection, Branch-reference mismatch, historical inactive-Branch rehydration, idempotent scope changes, timestamp ordering, and archived-state protection.
+- Kept Zone/Location/Bin structures for Step 5 and advanced identifier/duplicate rules for Step 6; no stock quantities, movements, valuation, SQLite persistence, UI or live synchronization behavior was introduced.
+
+### Step 4 Exit Criteria
+
+Step 4 is complete only when all of the following are true:
+
+- Every organized Warehouse remains Company-owned and has an explicit organizational-scope mode.
+- A Warehouse can be Company-wide or Branch-scoped without changing durable `warehouseId` identity.
+- A Branch-scoped Warehouse can reference only one Branch and that Branch must belong to the same Company.
+- New Branch assignment cannot target an inactive Branch.
+- Historical Branch associations survive later Branch deactivation during rehydration.
+- Multi-Branch ownership is not silently introduced.
+- Real scope changes advance `updatedAt`, same-scope requests are idempotent, and timestamp regression is rejected.
+- Archived Warehouses cannot be organizationally reassigned.
+- Domain behavior remains immutable and persistence-neutral.
+- Responsibilities reserved for Step 5, Step 6 and later inventory phases remain outside this step.
+
+All Step 4 exit criteria are satisfied by the committed implementation. Full monorepo validation remains reserved for the later validation gates.
 
 ## Change Requests
 
