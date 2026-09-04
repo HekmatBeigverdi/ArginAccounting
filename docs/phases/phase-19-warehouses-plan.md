@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–10 are completed. Steps 11–20 are not started.
+Phase 19 is in progress. Steps 1–11 are completed. Steps 12–20 are not started.
 
 ## Governance
 
@@ -41,7 +41,7 @@ Phase 19 owns Warehouse Master Data and future-consumer contracts, including:
 - code/external-identifier normalization and duplicate rules
 - persistence-neutral Application/Query/Repository/UoW contracts
 - validation, idempotency and optimistic concurrency
-- SQLite persistence and atomic transactions in later steps
+- SQLite persistence and atomic transactions
 - permissions/audit, import/export, dense Persian RTL UI, selectors and integration boundaries
 - Argin Bridge compatibility without implementing the sync engine
 
@@ -79,7 +79,7 @@ Phase 19 does not own:
 | 8 | Application Services, Validation and Concurrency | Completed |
 | 9 | Migration, Schema, Constraints and Indexing | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
-| 11 | SQLite Repository, Unit of Work and Atomic Transactions | Not started |
+| 11 | SQLite Repository, Unit of Work and Atomic Transactions | Completed |
 | 12 | Permissions, Audit and Approval Integration | Not started |
 | 13 | Import / Export and Initial Warehouse Setup | Not started |
 | 14 | Persian RTL Warehouse Management UI | Not started |
@@ -153,43 +153,49 @@ Added migration `0022_warehouses.sql`, registered desktop migration version 22, 
 
 ### Step 10 — Argin Bridge and Future Synchronization Contract
 
-Step 10 formalizes Warehouse compatibility with Argin Bridge and the future synchronization phase without implementing transport or conflict resolution.
+Added the persistence-neutral Warehouse sync contract, discriminated upsert/tombstone envelopes, origin/server-revision metadata, sync external references, migration `0023_warehouse_sync_metadata.sql`, version-23 registration, architecture documentation and focused contract/migration tests while keeping live synchronization and conflict resolution out of scope.
+
+### Step 11 — SQLite Repository, Unit of Work and Atomic Transactions
+
+Step 11 implements the production SQLite adapter surface required by the Step 8 `WarehouseService` and the persistence contracts frozen in Step 7.
 
 Completed actions:
 
-- Added `warehouse-sync.ts` as the persistence-neutral synchronization-facing contract exported from `@argin/warehouse`.
-- Added discriminated `upsert` / `tombstone` change envelopes for the versioned Warehouse entity.
-- Preserved `warehouseId` + `companyId` as durable synchronization identity and kept `displayCode` as metadata only.
-- Added required `operationId`, `requestId` and `idempotencyKey` fields so retriable future processing has explicit correlation and deduplication identities.
-- Added positive local `version` and optional positive `serverRevision`; `serverRevision = null` is valid before a local record has a known canonical server revision.
-- Added explicit origin metadata using `sourceSystem` plus optional `sourceInstanceId` without introducing network/transport state into the Domain.
-- Added separate synchronization external references (`sourceSystem`, `externalId`) rather than conflating them with Warehouse business external identifiers from Step 6.
-- Added deterministic validation for required operation/request/idempotency fields, durable reference consistency, version/server-revision validity, timestamps, origin, snapshot/reference matching and duplicate source mappings.
-- Formalized that Warehouse business lifecycle `active/inactive/archived` remains an `upsert`; `archived` is not a deletion/tombstone signal.
-- Added tombstone envelopes with `snapshot: null`, durable identity/version metadata and a validated `deletedAt` timestamp.
-- Added migration `0023_warehouse_sync_metadata.sql` and registered desktop migration version `23`.
-- Added `warehouses.deleted_at`, `origin_system`, optional `origin_instance_id`, nullable `server_revision`, `warehouse_sync_external_references`, and change-feed/tombstone/server-revision/source-mapping indexes.
-- Kept source mappings company-scoped with same-company Warehouse foreign keys and case-insensitive source-system uniqueness semantics.
-- Added focused sync-contract tests for immutable upserts, nullable/positive server revision, origin validation, snapshot/reference mismatch, duplicate source mappings, tombstone behavior and archive-vs-tombstone separation.
-- Added real `node:sqlite` migration tests for version-23 registration, tombstone/origin/server-revision persistence, company-scoped source mappings and cross-company FK rejection.
-- Added `docs/architecture/warehouse-sync-contract.md` as the canonical architecture record for the Step 10 boundary.
-- Explicitly excluded change polling, push/pull transport, acknowledgements, retry/backoff, server winner policy, last-write-wins, merge UI, remote writes and network configuration.
-- Zone/Location retain durable IDs but are not silently folded into the Warehouse version or sync envelope; independent child synchronization requires a dedicated child change contract when a concrete future consumer needs it.
+- Added dedicated `@argin/warehouse-tauri` adapter package at version `0.19.0`, keeping SQLite/Tauri concerns outside the persistence-neutral `@argin/warehouse` Domain/Application package.
+- Added `SqliteWarehouseRepository` with company-scoped lookup by durable id, case-insensitive Warehouse code and namespaced external identifier.
+- Repository reads rehydrate persisted state through canonical Domain functions rather than returning raw SQLite rows, including lifecycle, organizational scope, Branch reference and external identifiers.
+- Added Warehouse insert/update persistence for the Warehouse row plus external identifiers; normal service writes execute these operations through the Unit of Work transaction boundary.
+- Implemented SQL optimistic concurrency with `WHERE company_id = ? AND id = ? AND version = ?` and deterministic zero-row mapping: existing entity means `warehouse.application.concurrency-conflict`, absent entity means `warehouse.application.not-found`.
+- Added SQLite unique-conflict mapping to `warehouse.application.duplicate-identifier` while leaving unrelated database failures visible instead of silently misclassifying them.
+- Added `SqliteWarehouseZoneRepository` and `SqliteWarehouseLocationRepository` with company/Warehouse/Zone-scoped reads and writes and Domain rehydration of physical master data.
+- Added `SqliteWarehouseUnitOfWork`; one `DatabaseExecutor.transaction(...)` supplies the same transactional `DatabaseSession` to Warehouse, Zone and Location repositories so a multi-table mutation either commits or rolls back as one unit.
+- Added `SqliteWarehouseReader` implementing detail, list, selector, Zone and Location read contracts with bounded page/selector limits, parameterized filters, controlled sort-column mapping and company-scoped SQL.
+- Added `SqliteWarehouseBranchResolver` so Branch-scoped Application validation is backed by the canonical SQLite Branch table without coupling the Domain package to infrastructure.
+- Added migration `0024_warehouse_idempotency.sql` and registered desktop migration version `24`.
+- Added durable `warehouse_idempotency` storage keyed by `(scope, request_id)` with explicit `in-progress`/`completed` state constraints and stored result JSON.
+- Added `SqliteWarehouseIdempotencyExecutor`: completed requests replay the stored result, concurrent in-progress duplicates fail deterministically, successful work stores the result, and failed work releases the claim for a later retry.
+- Added focused adapter tests for one-transaction UoW usage, rollback propagation, optimistic-version SQL predicate, stale-version mapping and missing-row mapping.
+- Added focused idempotency tests for completed replay, duplicate in-progress detection, successful result persistence and retry after failed work.
+- Added real `node:sqlite` migration tests for migration-24 registration, idempotency primary-key enforcement and state-shape checks.
+- Kept permission enforcement, Audit emission and Approval policy out of the SQLite adapter; those remain Step 12 responsibilities.
+- Added no stock transaction, inventory valuation, purchasing/sales document, Taxpayer submission or live synchronization behavior.
 
-### Step 10 Exit Criteria
+### Step 11 Exit Criteria
 
-Step 10 is complete when:
+Step 11 is complete when:
 
-- Warehouse durable identity is stable across SQLite, Argin Bridge and future PostgreSQL/.NET projections.
-- Upsert and tombstone contracts are explicit, typed and persistence-neutral.
-- Idempotency, request/operation correlation, origin metadata, local version and future server revision are represented without transport coupling.
-- Archive and tombstone semantics cannot be confused.
-- SQLite can persist deletion/origin/server-revision/source-reference metadata without enabling live synchronization.
-- External synchronization source mappings cannot cross Company ownership boundaries.
-- Focused contract and migration tests cover the new boundary.
-- No sync engine, network transport, retry queue or conflict-resolution policy is introduced.
+- Warehouse, Zone and Location persistence contracts have concrete SQLite implementations without leaking SQLite types into Domain/Application contracts.
+- `WarehouseService` can be composed with SQLite Repository/Reader/BranchResolver/Idempotency/UoW adapters.
+- Multi-repository business writes can execute on one transactional Database session and failure propagates for rollback.
+- Warehouse optimistic concurrency is enforced atomically in SQL using `expectedVersion`.
+- Missing-row and stale-version failures remain distinguishable.
+- Hard SQLite uniqueness conflicts map to the stable Warehouse duplicate error boundary.
+- Durable request idempotency survives application retries through SQLite persistence.
+- Reader list/select paths remain company-scoped, parameterized and bounded.
+- Focused adapter and migration tests cover transaction, concurrency and idempotency behavior.
+- Permission/Audit/Approval, import/export, UI and live synchronization remain outside this step.
 
-All Step 10 implementation artifacts and focused tests are committed. Full executable monorepo validation remains mandatory in the later validation gates.
+All Step 11 implementation artifacts and focused tests are committed. Full executable package/desktop/monorepo validation remains mandatory in Steps 17–19. Because `@argin/warehouse-tauri` is a newly introduced workspace package, the generated `pnpm-lock.yaml` importer must be refreshed by pnpm before the later frozen-lockfile validation gate; no dependency versions beyond already-locked workspace/tooling dependencies are introduced by this adapter package.
 
 ## Change Requests
 
