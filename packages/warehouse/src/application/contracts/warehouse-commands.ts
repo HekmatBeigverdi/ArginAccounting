@@ -4,6 +4,7 @@ import type { WarehouseExternalIdentifier } from "../../domain/warehouse-identif
 import type { WarehouseLocationKind } from "../../domain/warehouse-physical-structure.ts";
 
 export interface CreateWarehouseCommand {
+  readonly requestId: string;
   readonly warehouseId: string;
   readonly companyId: string;
   readonly code: string;
@@ -16,6 +17,7 @@ export interface CreateWarehouseCommand {
 }
 
 export interface UpdateWarehouseCommand {
+  readonly requestId: string;
   readonly warehouseId: string;
   readonly companyId: string;
   readonly code: string;
@@ -27,6 +29,7 @@ export interface UpdateWarehouseCommand {
 }
 
 export interface ChangeWarehouseStatusCommand {
+  readonly requestId: string;
   readonly warehouseId: string;
   readonly companyId: string;
   readonly targetStatus: WarehouseStatus;
@@ -35,6 +38,7 @@ export interface ChangeWarehouseStatusCommand {
 }
 
 export interface ChangeWarehouseScopeCommand {
+  readonly requestId: string;
   readonly warehouseId: string;
   readonly companyId: string;
   readonly organizationalScope: WarehouseOrganizationalScope;
@@ -43,6 +47,7 @@ export interface ChangeWarehouseScopeCommand {
 }
 
 export interface CreateWarehouseZoneCommand {
+  readonly requestId: string;
   readonly zoneId: string;
   readonly warehouseId: string;
   readonly companyId: string;
@@ -53,6 +58,7 @@ export interface CreateWarehouseZoneCommand {
 }
 
 export interface CreateWarehouseLocationCommand {
+  readonly requestId: string;
   readonly locationId: string;
   readonly zoneId: string;
   readonly warehouseId: string;
