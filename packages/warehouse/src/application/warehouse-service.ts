@@ -338,7 +338,7 @@ export class WarehouseService {
         const current = await loadRequired(warehouses, companyId, command.warehouseId);
         assertVersion(current, command.expectedVersion);
         const target = command.targetStatus;
-        const warehouse = target === "active"
+        const transitionedWarehouse = target === "active"
           ? activateWarehouse(current.warehouse, command.occurredAt)
           : target === "inactive"
             ? deactivateWarehouse(current.warehouse, command.occurredAt)
@@ -349,9 +349,13 @@ export class WarehouseService {
                     WAREHOUSE_APPLICATION_ERROR_CODES.invalidRequest,
                   );
                 })();
-        if (warehouse === current.warehouse) {
+        if (transitionedWarehouse === current.warehouse) {
           return toDto(current);
         }
+        const warehouse: OrganizedWarehouseSnapshot = Object.freeze({
+          ...transitionedWarehouse,
+          organizationalScope: current.warehouse.organizationalScope,
+        });
         const next: WarehousePersistenceState = Object.freeze({
           ...current,
           warehouse,

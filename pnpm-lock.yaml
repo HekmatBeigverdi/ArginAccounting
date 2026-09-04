@@ -516,6 +516,25 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  packages/warehouse-tauri:
+    dependencies:
+      '@argin/database':
+        specifier: workspace:*
+        version: link:../database
+      '@argin/warehouse':
+        specifier: workspace:*
+        version: link:../warehouse
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
 packages:
 
   '@alloc/quick-lru@5.2.0':
