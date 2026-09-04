@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–6 are completed. Steps 7–20 are not started.
+Phase 19 is in progress. Steps 1–7 are completed. Steps 8–20 are not started.
 
 ## Governance
 
@@ -106,7 +106,7 @@ Phase 19 must therefore preserve durable IDs, optimistic versioning, determinist
 | 4 | Company, Branch and Organizational Scope | Completed |
 | 5 | Warehouse Locations and Extensible Physical Structure | Completed |
 | 6 | Warehouse Codes, Identifiers and Duplicate Rules | Completed |
-| 7 | Application, Query and Repository Contracts | Not started |
+| 7 | Application, Query and Repository Contracts | Completed |
 | 8 | Application Services, Validation and Concurrency | Not started |
 | 9 | Migration, Schema, Constraints and Indexing | Not started |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
@@ -207,6 +207,41 @@ Step 6 is complete only when all of the following are true:
 - Persistence/index implementation and actual repository candidate loading are not prematurely implemented.
 
 All Step 6 exit criteria are satisfied by the committed implementation. Full package and monorepo execution validation remains reserved for the later validation gates.
+
+## Step 7 — Completion Record
+
+Step 7 freezes the persistence-neutral Application, Query and Repository boundaries that later Application Service and SQLite implementation steps must consume without redesigning the Warehouse Domain.
+
+Completed actions:
+
+- Added typed Application commands for create/update Warehouse, lifecycle change, organizational-scope change, Zone creation and Location creation.
+- Added `WarehouseDto`, list DTOs, Zone/Location DTOs and generic paged-result contract so UI/Application consumers do not depend directly on persistence rows.
+- Added bounded Warehouse query contracts with explicit paging and selector limits.
+- Added company-scoped list/get/select filters, optional Branch filtering, explicit Company-wide inclusion, classification/status filtering and namespaced external-identifier lookup fields.
+- Added Zone and Location query contracts without adding inventory quantities or movement semantics.
+- Added `WarehouseReader` as the persistence-neutral read boundary for detail, list, selector, Zone and Location projections.
+- Added `WarehousePersistenceState` carrying the organized Warehouse snapshot, normalized external identifiers and optimistic `version`.
+- Added `WarehouseRepository` with company-scoped lookup by durable ID, code and namespaced external identifier, plus `add` and version-aware `update(expectedVersion)` contracts.
+- Added separate `WarehouseZoneRepository` and `WarehouseLocationRepository` contracts so physical master-data persistence does not contaminate the Warehouse aggregate with stock behavior.
+- Added `WarehouseUnitOfWork` / `WarehouseUnitOfWorkContext` covering Warehouse, Zone and Location repositories in one atomic application boundary.
+- Re-exported all Step 7 contracts from `@argin/warehouse` public API.
+- Added focused contract tests verifying immutable bounded query limits and the company-scoped/version-aware repository signature.
+- Added no Application Service orchestration, duplicate lookup workflow, concurrency exception mapping, SQLite implementation, SQL schema, Tauri adapter or live synchronization behavior; those responsibilities remain in Steps 8–11.
+
+### Step 7 Exit Criteria
+
+Step 7 is complete only when all of the following are true:
+
+- Commands, DTOs, queries, Reader, Repository and Unit of Work interfaces are persistence-neutral and exported publicly.
+- Every Warehouse read/write lookup is explicitly company-scoped.
+- Selector and list query limits are bounded by contract.
+- Repository update accepts an `expectedVersion` suitable for optimistic concurrency in Step 8.
+- Warehouse, Zone and Location persistence boundaries are explicit without introducing inventory transactions.
+- External identifiers can be queried through namespace/value without replacing durable `warehouseId` identity.
+- SQLite/Tauri implementation details remain absent from the package contracts.
+- Focused tests lock the query-limit and repository-scope contract.
+
+All Step 7 exit criteria are satisfied by the committed implementation. Full Application behavior and concurrency validation are reserved for Step 8 and later validation gates.
 
 ## Change Requests
 
