@@ -59,3 +59,16 @@ export type {
   WarehouseReference,
   WarehouseZoneSnapshot,
 } from "./domain/warehouse-physical-structure.ts";
+
+export {
+  assertWarehouseIdentifiersUnique,
+  createWarehouseIdentifierSnapshot,
+  normalizeWarehouseCode,
+  normalizeWarehouseExternalIdentifier,
+} from "./domain/warehouse-identifiers.ts";
+
+export type {
+  WarehouseDuplicateCandidate,
+  WarehouseExternalIdentifier,
+  WarehouseIdentifierSnapshot,
+} from "./domain/warehouse-identifiers.ts";
