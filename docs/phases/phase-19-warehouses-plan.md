@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–4 are completed. Steps 5–20 are not started.
+Phase 19 is in progress. Steps 1–5 are completed. Steps 6–20 are not started.
 
 ## Governance
 
@@ -104,7 +104,7 @@ Phase 19 must therefore preserve the platform's forward-sync requirements, inclu
 | 2 | Warehouse Domain Model | Completed |
 | 3 | Warehouse Classification, Lifecycle and Business Rules | Completed |
 | 4 | Company, Branch and Organizational Scope | Completed |
-| 5 | Warehouse Locations and Extensible Physical Structure | Not started |
+| 5 | Warehouse Locations and Extensible Physical Structure | Completed |
 | 6 | Warehouse Codes, Identifiers and Duplicate Rules | Not started |
 | 7 | Application, Query and Repository Contracts | Not started |
 | 8 | Application Services, Validation and Concurrency | Not started |
@@ -279,6 +279,41 @@ Step 4 is complete only when all of the following are true:
 - Responsibilities reserved for Step 5, Step 6 and later inventory phases remain outside this step.
 
 All Step 4 exit criteria are satisfied by the committed implementation. Full monorepo validation remains reserved for the later validation gates.
+
+## Step 5 — Completion Record
+
+Step 5 establishes an extensible physical-location model for Warehouses without introducing inventory quantity, movement, valuation, or document behavior.
+
+Completed actions:
+
+- Added persistence-neutral `WarehouseZoneSnapshot` and `WarehouseLocationSnapshot` Domain contracts with durable `zoneId` and `locationId` identities independent of display codes.
+- Added explicit hierarchy `Warehouse -> Zone -> Location`, while allowing `parentLocationId` on Location so Rack/Shelf/Bin-style nesting can evolve without redesigning Warehouse identity or introducing a rigid fixed-depth tree.
+- Added supported physical location kinds: `bin`, `rack`, `shelf`, `staging`, `receiving`, `dispatch`, and `other`.
+- Added `WarehousePhysicalStatus` with `active`/`inactive` for persisted physical master data; stock availability semantics are intentionally not inferred from this status.
+- Added `WarehouseReference` and `warehouseReferenceFrom` so physical children consume only durable Warehouse/Company identity instead of cloning the Warehouse aggregate.
+- Added `createWarehouseZone`, `rehydrateWarehouseZone`, `createWarehouseLocation`, and `rehydrateWarehouseLocation`.
+- Enforced Company and Warehouse consistency between Zone, Location and their parent Warehouse reference.
+- Enforced Zone-reference consistency during Location rehydration and rejected Location self-parenting.
+- Preserved deterministic normalization for codes/text and UTC timestamps, immutable snapshots, timestamp ordering, and historical inactive physical records during rehydration.
+- Added stable Domain errors for missing Zone/Location identity, Warehouse/Company physical-reference mismatch, Zone-reference mismatch, invalid physical status, invalid location kind, and self-parenting.
+- Added focused tests for Zone creation, nested Rack/Bin-style locations, Company/Warehouse mismatch, invalid kinds, self-parent protection, historical inactive rehydration, timestamp ordering, and mismatched Zone references.
+- Did not add stock balances, capacity consumption, reserved quantity, lot/serial tracking, receipt/issue/transfer operations, costing, physical-count workflows, SQLite persistence, UI, or synchronization-engine behavior.
+- Kept code uniqueness, external identifiers and duplicate-detection policy for Step 6 rather than embedding repository-level uniqueness into the physical Domain model.
+
+### Step 5 Exit Criteria
+
+Step 5 is complete only when all of the following are true:
+
+- Zone and Location have durable identities independent of display codes.
+- Physical children remain bound to the same Company and Warehouse as their parent references.
+- Location belongs to a valid Zone and cannot parent itself.
+- The model supports future nested physical locations without forcing a fixed Rack/Shelf/Bin depth today.
+- Physical snapshots are immutable, persistence-neutral and timestamp-safe.
+- Historical inactive Zone/Location records remain rehydratable.
+- No stock quantity, movement, valuation, purchasing, sales, accounting posting or live synchronization logic is introduced.
+- Duplicate/identifier policy remains reserved for Step 6.
+
+All Step 5 exit criteria are satisfied by the committed implementation. Full package and monorepo execution validation remains reserved for the later validation gates; focused Step 5 tests are included in the `@argin/warehouse` test suite.
 
 ## Change Requests
 
