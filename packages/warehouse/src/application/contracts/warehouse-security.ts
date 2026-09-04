@@ -38,10 +38,7 @@ export interface WarehouseAuthorizationContext {
 }
 
 export interface WarehouseAuthorizationPolicy {
-  require(
-    context: WarehouseAuthorizationContext,
-    permission: WarehousePermission,
-  ): Promise<void>;
+  require(context: WarehouseAuthorizationContext, permission: WarehousePermission): Promise<void>;
 }
 
 export type WarehouseAuditAction =
@@ -50,7 +47,10 @@ export type WarehouseAuditAction =
   | "warehouse.change-status"
   | "warehouse.change-scope"
   | "warehouse.zone.create"
-  | "warehouse.location.create";
+  | "warehouse.location.create"
+  | "warehouse.import"
+  | "warehouse.export"
+  | "warehouse.initial-setup";
 
 export interface WarehouseAuditEvent {
   readonly action: WarehouseAuditAction;
@@ -64,12 +64,8 @@ export interface WarehouseAuditEvent {
   readonly metadata: Readonly<Record<string, string | number | boolean | null>>;
 }
 
-/**
- * Audit persistence must be append-only and idempotent for a repeated
- * (action, requestId, warehouseId, childEntityId) tuple. The Warehouse
- * service already provides request idempotency, so retried mutations must
- * not create duplicate audit facts.
- */
+/** Audit persistence must be append-only and idempotent for a repeated
+ * (action, requestId, warehouseId, childEntityId) tuple. */
 export interface WarehouseAuditSink {
   record(event: WarehouseAuditEvent): Promise<void>;
 }
@@ -87,17 +83,9 @@ export const warehouseCorrelationId = (
   requestId: string,
 ): string => {
   const correlationId = context.correlationId?.trim();
-  return correlationId && correlationId.length > 0
-    ? correlationId
-    : requestId.trim();
+  return correlationId && correlationId.length > 0 ? correlationId : requestId.trim();
 };
 
-/**
- * Phase 19 does not introduce a Warehouse approval workflow. Warehouse
- * master-data mutations are authorization + audit controlled. The generic
- * Approval aggregate remains available to future consumers, but enabling it
- * for Warehouse requires an explicit domain requirement / Change Request.
- */
 export const warehouseApprovalIntegration = Object.freeze({
   mode: "not-required",
   approvalRequestType: null,
