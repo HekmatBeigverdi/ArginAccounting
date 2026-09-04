@@ -32,17 +32,17 @@ export interface ClassifyWarehouseInput {
 const isWarehouseKind = (value: string): value is WarehouseKind =>
   (WAREHOUSE_KINDS as readonly string[]).includes(value);
 
-const assertWarehouseKind = (value: string): asserts value is WarehouseKind => {
+function assertWarehouseKind(value: string): asserts value is WarehouseKind {
   if (!isWarehouseKind(value)) {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.kindInvalid);
   }
-};
+}
 
-const assertWarehouseStatus = (value: string): asserts value is WarehouseStatus => {
+function assertWarehouseStatus(value: string): asserts value is WarehouseStatus {
   if (value !== "active" && value !== "inactive" && value !== "archived") {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.statusInvalid);
   }
-};
+}
 
 const normalizeOccurredAt = (value: string): string => {
   const timestamp = Date.parse(value);
