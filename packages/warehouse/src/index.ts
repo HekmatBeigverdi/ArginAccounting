@@ -40,3 +40,22 @@ export type {
   WarehouseBranchReference,
   WarehouseOrganizationalScope,
 } from "./domain/warehouse-organization.ts";
+
+export {
+  WAREHOUSE_LOCATION_KINDS,
+  createWarehouseLocation,
+  createWarehouseZone,
+  rehydrateWarehouseLocation,
+  rehydrateWarehouseZone,
+  warehouseReferenceFrom,
+} from "./domain/warehouse-physical-structure.ts";
+
+export type {
+  CreateWarehouseLocationInput,
+  CreateWarehouseZoneInput,
+  WarehouseLocationKind,
+  WarehouseLocationSnapshot,
+  WarehousePhysicalStatus,
+  WarehouseReference,
+  WarehouseZoneSnapshot,
+} from "./domain/warehouse-physical-structure.ts";
