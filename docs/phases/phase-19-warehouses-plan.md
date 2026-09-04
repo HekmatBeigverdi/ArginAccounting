@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–11 are completed. Steps 12–20 are not started.
+Phase 19 is in progress. Steps 1–12 are completed. Steps 13–20 are not started.
 
 ## Governance
 
@@ -80,7 +80,7 @@ Phase 19 does not own:
 | 9 | Migration, Schema, Constraints and Indexing | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Completed |
 | 11 | SQLite Repository, Unit of Work and Atomic Transactions | Completed |
-| 12 | Permissions, Audit and Approval Integration | Not started |
+| 12 | Permissions, Audit and Approval Integration | Completed |
 | 13 | Import / Export and Initial Warehouse Setup | Not started |
 | 14 | Persian RTL Warehouse Management UI | Not started |
 | 15 | Warehouse Selector and Future Consumer Contract | Not started |
@@ -196,6 +196,45 @@ Step 11 is complete when:
 - Permission/Audit/Approval, import/export, UI and live synchronization remain outside this step.
 
 All Step 11 implementation artifacts and focused tests are committed. Full executable package/desktop/monorepo validation remains mandatory in Steps 17–19. Because `@argin/warehouse-tauri` is a newly introduced workspace package, the generated `pnpm-lock.yaml` importer must be refreshed by pnpm before the later frozen-lockfile validation gate; no dependency versions beyond already-locked workspace/tooling dependencies are introduced by this adapter package.
+
+### Step 12 — Permissions, Audit and Approval Integration
+
+Step 12 adds the authorization and audit boundary around Warehouse Application operations while preserving the generic Approval subsystem as a separate capability that is not artificially activated without a Warehouse domain workflow requirement.
+
+Completed actions:
+
+- Added `warehousePermissions` with stable Inventory-module permission codes for view, create, update, status change, organizational-scope management, physical-location management, import and export.
+- Seeded all Warehouse permission definitions in the central Security `defaultPermissions` catalog using Persian titles and the existing `inventory` permission module.
+- Added `WarehouseAuthorizationPolicy` and explicit authorization context carrying actor, Company, correlation and request identities.
+- Added `SecuredWarehouseService` so authorization is checked before create/update/status/scope/Zone/Location mutations and denied requests cannot reach the underlying Application service.
+- Added `SecuredWarehouseReader` so get-by-id, get-by-code, list and selector reads require `inventory.warehouses.view` and remain Company-scoped.
+- Added stable `warehouse.application.unauthorized` mapping for infrastructure/security-policy failures without leaking provider-specific errors into Warehouse callers.
+- Added Warehouse Audit contracts with explicit action names for create, update, status change, scope change, Zone creation and Location creation.
+- Audit events carry actor, Company, durable Warehouse id, optional child entity id, request/correlation identity, normalized occurrence time and immutable metadata.
+- Audit persistence is explicitly required to be append-only and idempotent for the same `(action, requestId, warehouseId, childEntityId)` fact so retries cannot duplicate audit history.
+- Successful real mutations emit Audit facts; lifecycle/scope Domain no-ops do not emit a false mutation Audit event.
+- Authorization always precedes mutation, and failed authorization produces neither a data mutation nor a success Audit fact.
+- Added `warehouseApprovalIntegration` with explicit `mode: "not-required"`: Warehouse master-data CRUD/status/scope/location operations do not have an intrinsic approval lifecycle in Phase 19.
+- The generic Phase 8 Approval aggregate remains reusable, but binding Warehouse operations to Approval requires a future explicit domain requirement / Change Request rather than being silently introduced by infrastructure.
+- Added focused security tests covering permission catalog identity, correlation fallback, explicit Approval boundary, authorization-before-mutation, success Audit emission and denial preventing both mutation and Audit.
+- Kept persistent desktop Audit adapter composition, import/export execution, UI permission presentation and any future configurable approval workflow outside this step where their owning phases/steps require them.
+
+### Step 12 Exit Criteria
+
+Step 12 is complete when:
+
+- Stable Warehouse permissions are defined and centrally seeded.
+- Read and mutation Application entry points have reusable authorization wrappers.
+- Authorization is Company-aware and executes before protected operations.
+- Unauthorized infrastructure failures map to a stable Warehouse Application error.
+- Successful Warehouse mutations expose append-only, retry-safe Audit facts with durable identity and request correlation.
+- No-op lifecycle/scope requests do not generate false mutation Audit facts.
+- Warehouse Approval behavior is explicitly defined rather than left ambiguous.
+- No Approval workflow is introduced without a concrete Warehouse business requirement.
+- Focused tests cover authorization, audit and approval-boundary behavior.
+- Import/export implementation, UI wiring and full executable validation remain in their frozen later steps.
+
+All Step 12 implementation artifacts and focused tests are committed. Full executable package/desktop/monorepo validation remains mandatory in Steps 17–19.
 
 ## Change Requests
 
