@@ -104,13 +104,17 @@ const assertTimestampOrder = (createdAt: string, updatedAt: string): void => {
   }
 };
 
-const assertPhysicalStatus = (status: string): asserts status is WarehousePhysicalStatus => {
+const assertPhysicalStatus: (
+  status: string,
+) => asserts status is WarehousePhysicalStatus = (status) => {
   if (status !== "active" && status !== "inactive") {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalStatusInvalid);
   }
 };
 
-const assertLocationKind = (kind: string): asserts kind is WarehouseLocationKind => {
+const assertLocationKind: (
+  kind: string,
+) => asserts kind is WarehouseLocationKind = (kind) => {
   if (!(WAREHOUSE_LOCATION_KINDS as readonly string[]).includes(kind)) {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.locationKindInvalid);
   }

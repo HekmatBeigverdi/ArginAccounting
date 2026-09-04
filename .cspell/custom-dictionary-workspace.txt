@@ -22,6 +22,7 @@ pgdata
 postable
 previewable
 refreshtoken
+rehydratable
 reparents
 Sheetهای
 Tadbir
@@ -303,6 +304,7 @@ Vite
 حلقه
 خارج
 خارجی
+خانه
 خانوادگی
 خدمات
 خدماتی
@@ -404,6 +406,7 @@ Vite
 سازمانی
 سازی
 ساشه
+سالن
 سامانه
 سایت
 سایر
@@ -504,6 +507,7 @@ Vite
 قرقره
 قرمز
 قطعی
+قفسه
 قواعد
 قوطی
 کاراکتر
