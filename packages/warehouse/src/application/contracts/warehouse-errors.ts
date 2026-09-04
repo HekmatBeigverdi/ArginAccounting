@@ -5,6 +5,7 @@ export const WAREHOUSE_APPLICATION_ERROR_CODES = {
   concurrencyConflict: "warehouse.application.concurrency-conflict",
   branchReferenceInvalid: "warehouse.application.branch-reference-invalid",
   archivedMutationForbidden: "warehouse.application.archived-mutation-forbidden",
+  unauthorized: "warehouse.application.unauthorized",
 } as const;
 
 export type WarehouseApplicationErrorCode =
