@@ -72,3 +72,49 @@ export type {
   WarehouseExternalIdentifier,
   WarehouseIdentifierSnapshot,
 } from "./domain/warehouse-identifiers.ts";
+
+export type {
+  ChangeWarehouseScopeCommand,
+  ChangeWarehouseStatusCommand,
+  CreateWarehouseCommand,
+  CreateWarehouseLocationCommand,
+  CreateWarehouseZoneCommand,
+  UpdateWarehouseCommand,
+} from "./application/contracts/warehouse-commands.ts";
+
+export type {
+  WarehouseDto,
+  WarehouseListItemDto,
+  WarehouseLocationDto,
+  WarehousePageDto,
+  WarehouseZoneDto,
+} from "./application/contracts/warehouse-dto.ts";
+
+export { WAREHOUSE_QUERY_LIMITS } from "./application/contracts/warehouse-queries.ts";
+
+export type {
+  GetWarehouseByCodeQuery,
+  GetWarehouseByIdQuery,
+  ListWarehouseLocationsQuery,
+  ListWarehousesQuery,
+  ListWarehouseZonesQuery,
+  WarehouseFilter,
+  WarehousePageRequest,
+  WarehouseSelectorQuery,
+  WarehouseSort,
+  WarehouseSortDirection,
+  WarehouseSortField,
+} from "./application/contracts/warehouse-queries.ts";
+
+export type {
+  WarehouseLocationRepository,
+  WarehousePersistenceState,
+  WarehouseRepository,
+  WarehouseZoneRepository,
+} from "./application/contracts/warehouse-repository.ts";
+
+export type { WarehouseReader } from "./application/contracts/warehouse-reader.ts";
+export type {
+  WarehouseUnitOfWork,
+  WarehouseUnitOfWorkContext,
+} from "./application/contracts/warehouse-unit-of-work.ts";
