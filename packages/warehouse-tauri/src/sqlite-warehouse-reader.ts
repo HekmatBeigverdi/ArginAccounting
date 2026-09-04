@@ -91,17 +91,17 @@ const sortColumn = (field: WarehouseSortField | undefined): string => ({
   status: "w.status",
   createdAt: "w.created_at",
   updatedAt: "w.updated_at",
-}[field ?? "code"]);
+}[field ?? "code"] ?? "w.code");
 
 const buildWarehouseFilter = (input: {
   companyId: string;
-  search?: string | null;
-  kinds?: readonly string[];
-  statuses?: readonly string[];
-  branchId?: string | null;
-  includeCompanyWide?: boolean;
-  externalIdentifierNamespace?: string | null;
-  externalIdentifierValue?: string | null;
+  search?: string | null | undefined;
+  kinds?: readonly string[] | undefined;
+  statuses?: readonly string[] | undefined;
+  branchId?: string | null | undefined;
+  includeCompanyWide?: boolean | undefined;
+  externalIdentifierNamespace?: string | null | undefined;
+  externalIdentifierValue?: string | null | undefined;
 }): { where: string; parameters: DatabaseValue[]; join: string } => {
   const clauses = ["w.company_id = ?"];
   const parameters: DatabaseValue[] = [input.companyId];
