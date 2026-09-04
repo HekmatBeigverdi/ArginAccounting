@@ -263,7 +263,7 @@ export class WarehouseService {
           companyId,
           code: command.code,
           title: command.title,
-          description: command.description,
+          description: command.description ?? null,
           createdAt: normalizeTimestamp(command.occurredAt),
         });
         const classified = classifyWarehouse({ warehouse: base, kind: command.kind });
@@ -418,7 +418,7 @@ export class WarehouseService {
           warehouse: warehouseReferenceFrom(warehouse.warehouse),
           code: command.code,
           title: command.title,
-          description: command.description,
+          description: command.description ?? null,
           createdAt: normalizeTimestamp(command.occurredAt),
         });
         await zones.add(zone);
@@ -467,11 +467,11 @@ export class WarehouseService {
           locationId: command.locationId,
           zone,
           warehouse: warehouseReferenceFrom(warehouse.warehouse),
-          parentLocationId: command.parentLocationId,
+          parentLocationId: command.parentLocationId ?? null,
           code: command.code,
           title: command.title,
           kind: command.kind,
-          description: command.description,
+          description: command.description ?? null,
           createdAt: normalizeTimestamp(command.occurredAt),
         });
         await locations.add(location);
