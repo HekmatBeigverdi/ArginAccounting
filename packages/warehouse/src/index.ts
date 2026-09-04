@@ -129,5 +129,25 @@ export type {
   WarehouseIdempotencyExecutor,
 } from "./application/contracts/warehouse-validation.ts";
 
+export {
+  WAREHOUSE_SYNC_CHANGE_KINDS,
+  WarehouseSyncContractError,
+  createWarehouseSyncTombstoneEnvelope,
+  createWarehouseSyncUpsertEnvelope,
+} from "./application/contracts/warehouse-sync.ts";
+export type {
+  CreateWarehouseSyncTombstoneInput,
+  CreateWarehouseSyncUpsertInput,
+  WarehouseSyncChangeEnvelope,
+  WarehouseSyncChangeKind,
+  WarehouseSyncContractErrorCode,
+  WarehouseSyncEntityReference,
+  WarehouseSyncExternalReference,
+  WarehouseSyncOrigin,
+  WarehouseSyncSnapshot,
+  WarehouseSyncTombstoneEnvelope,
+  WarehouseSyncUpsertEnvelope,
+} from "./application/contracts/warehouse-sync.ts";
+
 export { WarehouseService } from "./application/warehouse-service.ts";
 export type { WarehouseServiceDependencies } from "./application/warehouse-service.ts";
