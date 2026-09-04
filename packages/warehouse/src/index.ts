@@ -26,3 +26,17 @@ export type {
   WarehouseKind,
   WarehouseStatus,
 } from "./domain/warehouse-lifecycle.ts";
+
+export {
+  assignWarehouseOrganizationalScope,
+  changeWarehouseOrganizationalScope,
+  rehydrateOrganizedWarehouse,
+} from "./domain/warehouse-organization.ts";
+
+export type {
+  AssignWarehouseOrganizationalScopeInput,
+  ChangeWarehouseOrganizationalScopeInput,
+  OrganizedWarehouseSnapshot,
+  WarehouseBranchReference,
+  WarehouseOrganizationalScope,
+} from "./domain/warehouse-organization.ts";
