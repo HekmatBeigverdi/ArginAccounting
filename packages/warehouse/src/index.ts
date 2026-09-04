@@ -172,3 +172,23 @@ export {
   SecuredWarehouseReader,
   SecuredWarehouseService,
 } from "./application/secured-warehouse-service.ts";
+export {
+  WarehouseBulkTransferService,
+  WarehouseInitialSetupService,
+  defaultInitialWarehouse,
+  warehouseImportFields,
+} from "./application/warehouse-bulk-transfer.ts";
+export type {
+  WarehouseBulkContext,
+  WarehouseBulkExportReader,
+  WarehouseExportBatchSink,
+  WarehouseExportRow,
+  WarehouseImportColumnMap,
+  WarehouseImportField,
+  WarehouseImportIdGenerator,
+  WarehouseImportIssue,
+  WarehouseImportPreview,
+  WarehouseImportPreviewRow,
+  WarehouseImportResult,
+  WarehouseTabularRow,
+} from "./application/warehouse-bulk-transfer.ts";
