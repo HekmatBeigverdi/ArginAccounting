@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–8 are completed. Steps 9–20 are not started.
+Phase 19 is in progress. Steps 1–9 are completed. Steps 10–20 are not started.
 
 ## Governance
 
@@ -77,7 +77,7 @@ Phase 19 does not own:
 | 6 | Warehouse Codes, Identifiers and Duplicate Rules | Completed |
 | 7 | Application, Query and Repository Contracts | Completed |
 | 8 | Application Services, Validation and Concurrency | Completed |
-| 9 | Migration, Schema, Constraints and Indexing | Not started |
+| 9 | Migration, Schema, Constraints and Indexing | Completed |
 | 10 | Argin Bridge and Future Synchronization Contract | Not started |
 | 11 | SQLite Repository, Unit of Work and Atomic Transactions | Not started |
 | 12 | Permissions, Audit and Approval Integration | Not started |
@@ -145,44 +145,40 @@ Added persistence-neutral commands, DTOs, bounded company-scoped queries, Reader
 
 ### Step 8 — Application Services, Validation and Concurrency
 
-Step 8 implements the orchestration layer over the frozen Step 7 contracts.
+Added `WarehouseService`, request-level idempotency contracts, Branch resolution, duplicate checks, stale-version rejection, real-update version increments, Domain no-op preservation, archived physical-mutation protection, nested-location validation and focused Application tests. SQLite/Tauri persistence remains outside Step 8.
+
+### Step 9 — Migration, Schema, Constraints and Indexing
+
+Step 9 establishes the first production SQLite schema for Warehouse Master Data while preserving Repository and transaction implementation for Step 11.
 
 Completed actions:
 
-- Added `WarehouseService` as the persistence-neutral Application Service for Warehouse creation/update, lifecycle changes, organizational-scope changes, Zone creation and Location creation.
-- Added read delegation for get-by-id, get-by-code, list and bounded selector queries through `WarehouseReader`.
-- Added mandatory `requestId` to all mutation commands so retries can be handled deterministically rather than inferred from mutable business data.
-- Added `WarehouseIdempotencyExecutor` contract and wrapped every mutation in an explicit operation/company/entity idempotency scope.
-- Added `WarehouseBranchResolver` contract so Application validation can consume Branch identity/status without introducing a direct infrastructure dependency.
-- Added stable Application error codes for invalid requests, not-found state, duplicate identifiers, concurrency conflicts, invalid Branch references and forbidden physical mutations after archive.
-- Added duplicate validation against Repository lookups before create/update for company-scoped code and namespaced external identifiers.
-- Added `expectedVersion` validation and pre-write version comparison; stale mutations fail with `warehouse.application.concurrency-conflict` before Repository update.
-- Preserved Repository-level `update(state, expectedVersion)` as the second optimistic-concurrency boundary for SQLite/server implementations.
-- New Warehouse state starts at version `1`; successful real updates/lifecycle/scope mutations advance version by one.
-- Same-state lifecycle and same-scope Domain no-ops do not write or increment version.
-- Warehouse updates rehydrate through Domain canonicalization, preserve immutable snapshots, preserve classification/lifecycle/scope, and reject timestamp regression.
-- Branch-scoped creation/scope changes resolve the Branch and rely on Domain rules for same-company and active-Branch enforcement; historical rehydration can preserve an inactive Branch association.
-- Zone/Location creation requires an existing Warehouse and rejects physical master-data changes after the Warehouse is archived.
-- Location parent validation requires the parent to exist in the same Company, Warehouse and Zone before nested Rack/Shelf/Bin structures can be created.
-- Added focused in-memory Application tests for create/idempotent replay, duplicate company-scoped code, stale version rejection, Branch validation, lifecycle versioning, Zone creation and nested Location parent validation.
-- Public exports were updated for `WarehouseService`, Application errors, idempotency and Branch resolver contracts.
-- No SQLite implementation, schema migration, transaction adapter, Tauri command or live synchronization engine was introduced.
+- Added migration `apps/desktop/src-tauri/migrations/0022_warehouses.sql` and registered it as desktop migration version `22`.
+- Added `warehouses` with durable `id`, mandatory `company_id`, normalized display code/title/description, classification, lifecycle, explicit organizational scope, optional Branch reference, UTC timestamps and optimistic `version`.
+- Enforced company-scoped, case-insensitive Warehouse code uniqueness with SQLite `NOCASE` semantics.
+- Added same-company Branch referential integrity using composite `(company_id, branch_id)` foreign-key semantics; Company-wide Warehouse rows cannot carry a Branch and Branch-scoped rows must carry one.
+- Added check constraints for frozen Warehouse classification vocabulary, `active/inactive/archived` lifecycle, valid organizational-scope combinations, non-empty normalized code/title/description, non-regressing timestamps and `version >= 1`.
+- Added `warehouse_external_identifiers` with same-company Warehouse FK and unique `(company_id, namespace, value)` boundary; namespace comparison is case-insensitive while value remains case-sensitive, matching Step 6 normalization policy.
+- Added `warehouse_zones` with durable identity, same-company Warehouse FK, active/inactive status, Warehouse-scoped code uniqueness and timestamp/text constraints.
+- Added `warehouse_locations` with durable identity, Zone/Warehouse/Company composite scope, optional hierarchical `parent_location_id`, typed location-kind checks, active/inactive status, Zone-scoped code uniqueness, self-parent protection and same-scope parent FK.
+- Added indexes for company/status/title listing, kind/status filtering, Branch/company organizational filtering, updated-time ordering, external-identifier lookup, Zone lookup, Location lookup and parent traversal.
+- Added real `node:sqlite` integration tests that apply migrations `0002` + `0022` in-memory and validate migration registration, company-wide/Branch persistence, case-insensitive code uniqueness, cross-company Branch rejection, scope checks, external-identifier uniqueness, Zone/Location hierarchy integrity, self-parent rejection, classification checks and version checks.
+- Added no SQLite Repository implementation, Unit of Work adapter, transaction orchestration, idempotency storage, tombstone/sync metadata or live synchronization behavior; those remain assigned to Steps 10–11 and later validation gates.
 
-### Step 8 Exit Criteria
+### Step 9 Exit Criteria
 
-Step 8 is complete when:
+Step 9 is complete when:
 
-- Application mutations are orchestrated only through persistence-neutral contracts.
-- Every mutation has an explicit idempotency request key.
-- Duplicate code/external-identifier validation runs before writes.
-- Stale `expectedVersion` values are rejected and Repository optimistic concurrency remains enforceable.
-- Real successful mutations advance version exactly once; Domain no-ops do not.
-- Branch and physical-parent references are validated before mutation.
-- Archived Warehouse restrictions are enforced for later physical master-data creation.
-- Focused tests exist for idempotency, duplicate detection, concurrency and key validation paths.
-- SQLite/Migration/Tauri work remains outside this step.
+- Migration `0022_warehouses.sql` is registered as version 22.
+- Warehouse, external identifier, Zone and Location tables encode the frozen Domain/Application invariants that belong at database level.
+- Company/Branch/physical-child scope leakage is blocked by foreign keys and check constraints.
+- Warehouse code and external identifier hard-duplicate rules have database-level uniqueness protection.
+- Optimistic version state is persisted and constrained.
+- Representative list/select/lookup paths have supporting indexes.
+- A real in-memory SQLite integration test exercises the migration and critical constraints.
+- Repository implementation, atomic Unit of Work behavior, Argin Bridge sync metadata and idempotency storage remain outside this step.
 
-Implementation and focused tests are committed. Direct execution of `test/typecheck/build` could not be performed in the assistant container because the environment could not resolve `github.com` during clone; this is an execution-environment DNS limitation, not a repository/authentication issue. Full executable validation remains mandatory in the later validation gates and can be run locally now.
+All Step 9 implementation artifacts and focused migration tests are committed. Full executable monorepo validation remains mandatory in the later validation gates.
 
 ## Change Requests
 
