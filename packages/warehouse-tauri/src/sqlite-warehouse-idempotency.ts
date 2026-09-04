@@ -25,10 +25,7 @@ export class SqliteWarehouseIdempotencyExecutor implements WarehouseIdempotencyE
     }
 
     if (existing?.status === "in-progress") {
-      throw new WarehouseApplicationError(
-        "warehouse.application.concurrency-conflict",
-        "The same Warehouse request is already in progress.",
-      );
+      throw new WarehouseApplicationError("warehouse.application.concurrency-conflict");
     }
 
     try {
@@ -48,10 +45,7 @@ export class SqliteWarehouseIdempotencyExecutor implements WarehouseIdempotencyE
       if (raced?.status === "completed" && raced.result_json !== null) {
         return JSON.parse(raced.result_json) as T;
       }
-      throw new WarehouseApplicationError(
-        "warehouse.application.concurrency-conflict",
-        "The same Warehouse request is already in progress.",
-      );
+      throw new WarehouseApplicationError("warehouse.application.concurrency-conflict");
     }
 
     try {
