@@ -45,10 +45,7 @@ type LocationRow = {
 const mapWriteError = (error: unknown): never => {
   const text = (error instanceof Error ? error.message : String(error)).toLowerCase();
   if (text.includes("unique constraint failed") || text.includes("uq_warehouse")) {
-    throw new WarehouseApplicationError(
-      "warehouse.application.duplicate-identifier",
-      "Warehouse identifier already exists in its persistence scope.",
-    );
+    throw new WarehouseApplicationError("warehouse.application.duplicate-identifier");
   }
   throw error;
 };
