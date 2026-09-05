@@ -4,6 +4,7 @@ export const WAREHOUSE_DOMAIN_ERROR_CODES = {
   codeRequired: "warehouse.code.required",
   titleRequired: "warehouse.title.required",
   kindInvalid: "warehouse.kind.invalid",
+  restoreRequiresArchived: "warehouse.restore.requires-archived",
   statusInvalid: "warehouse.status.invalid",
   archivedTransitionForbidden: "warehouse.archived-transition.forbidden",
   organizationalScopeInvalid: "warehouse.organizational-scope.invalid",

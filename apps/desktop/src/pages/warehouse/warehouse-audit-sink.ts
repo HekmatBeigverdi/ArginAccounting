@@ -27,6 +27,7 @@ const systemAuditClock: AuditClock = { now: () => new Date().toISOString() };
 const actionMap: Readonly<Record<WarehouseAuditAction, AuditAction>> = Object.freeze({
   "warehouse.create": "create",
   "warehouse.update": "update",
+  "warehouse.restore": "status-change",
   "warehouse.change-status": "status-change",
   "warehouse.change-scope": "update",
   "warehouse.delete": "delete",

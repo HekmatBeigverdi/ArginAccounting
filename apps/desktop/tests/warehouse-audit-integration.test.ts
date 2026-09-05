@@ -75,3 +75,23 @@ test("warehouse audit still reports persistence failures", async () => {
     (error) => error === failure,
   );
 });
+
+test("warehouse restoration persists a status-change audit entry with its specific action", async () => {
+  const writes: (readonly DatabaseValue[])[] = [];
+  const database = createDatabase(async (_sql, parameters = []) => {
+    writes.push(parameters);
+    return { rowsAffected: 1 };
+  });
+  await createPersistentWarehouseAuditSink(database).record({
+    ...baseEvent,
+    action: "warehouse.restore",
+    childEntityId: null,
+    metadata: { previousStatus: "archived", status: "inactive", version: 3 },
+  });
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0]?.[2], "status-change");
+  const metadata = JSON.parse(String(writes[0]?.[19]));
+  assert.equal(metadata.warehouseAction, "warehouse.restore");
+  assert.equal(metadata.previousStatus, "archived");
+  assert.equal(metadata.status, "inactive");
+});

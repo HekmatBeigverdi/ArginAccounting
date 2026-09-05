@@ -37,6 +37,11 @@ import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
 import { createPersistentWarehouseAuditSink } from "./warehouse-audit-sink";
 
+import {
+  WarehouseConfirmationDialog,
+  type WarehouseConfirmation,
+} from "./warehouse-confirmation-dialog";
+
 import "./warehouses-page.css";
 
 type StatusFilter = "all" | WarehouseStatus;
@@ -189,6 +194,8 @@ function errorMessage(reason: unknown): string {
         ? String((reason as { code?: unknown }).code ?? "")
         : "";
   const map: Readonly<Record<string, string>> = Object.freeze({
+    ["warehouse.restore.requires-archived"]:
+      "فقط انبار بایگانی‌شده قابل بازگردانی است؛ فهرست را تازه‌سازی کنید.",
     [WAREHOUSE_APPLICATION_ERROR_CODES.invalidRequest]:
       "اطلاعات واردشده معتبر نیست.",
     [WAREHOUSE_APPLICATION_ERROR_CODES.notFound]:
@@ -279,6 +286,8 @@ export function WarehousesPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmation, setConfirmation] =
+    useState<WarehouseConfirmation | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [warehouseFormOpen, setWarehouseFormOpen] = useState(false);
@@ -416,6 +425,7 @@ export function WarehousesPage() {
   );
 
   useEffect(() => {
+    setConfirmation(null);
     setSelectedId(null);
     setDetail(null);
     setPage(1);
@@ -534,20 +544,38 @@ export function WarehousesPage() {
       await reload();
     } catch (reason) {
       setError(errorMessage(reason));
+      if (targetStatus === "archived") throw reason;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function restoreWarehouse() {
+    if (!detail || !active.companyId) return;
+    setSaving(true);
+    clearFeedback();
+    try {
+      const { service } = await buildAdapters();
+      const restored = await service.restore(securityContext(actorId), {
+        ...requestBase(active.companyId),
+        warehouseId: detail.warehouseId,
+        expectedVersion: detail.version,
+      });
+      setDetail(restored);
+      setMessage(
+        "انبار از بایگانی به حالت غیرفعال بازگردانده شد. فعال‌سازی باید جداگانه انجام شود.",
+      );
+      await reload();
+    } catch (reason) {
+      setError(errorMessage(reason));
+      throw reason;
     } finally {
       setSaving(false);
     }
   }
 
   async function deleteWarehouse() {
-    if (
-      !detail ||
-      !active.companyId ||
-      !confirm(
-        `انبار «${detail.title}» حذف شود؟ این عملیات فقط برای انبار بدون وابستگی مجاز است.`,
-      )
-    )
-      return;
+    if (!detail || !active.companyId) return;
     setSaving(true);
     clearFeedback();
     try {
@@ -561,10 +589,11 @@ export function WarehousesPage() {
       setDetail(null);
       setZones([]);
       setLocations([]);
-      setMessage("انبار حذف شد و Tombstone همگام‌سازی ثبت شد.");
+      setMessage("انبار با موفقیت حذف شد.");
       await reload();
     } catch (reason) {
       setError(errorMessage(reason));
+      throw reason;
     } finally {
       setSaving(false);
     }
@@ -643,13 +672,9 @@ export function WarehousesPage() {
     }
   }
   async function deleteZone(zone: WarehouseZoneDto) {
-    if (
-      !active.companyId ||
-      !confirm(
-        `ناحیه «${zone.title}» حذف شود؟ ناحیه دارای موقعیت قابل حذف نیست.`,
-      )
-    )
-      return;
+    if (!active.companyId) return;
+    setSaving(true);
+    clearFeedback();
     try {
       const { service } = await buildAdapters();
       await service.deleteZone(securityContext(actorId), {
@@ -661,6 +686,9 @@ export function WarehousesPage() {
       await loadDetail(zone.warehouseId);
     } catch (reason) {
       setError(errorMessage(reason));
+      throw reason;
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -760,13 +788,9 @@ export function WarehousesPage() {
     }
   }
   async function deleteLocation(location: WarehouseLocationDto) {
-    if (
-      !active.companyId ||
-      !confirm(
-        `موقعیت «${location.title}» حذف شود؟ موقعیت دارای زیرمجموعه یا وابستگی قابل حذف نیست.`,
-      )
-    )
-      return;
+    if (!active.companyId) return;
+    setSaving(true);
+    clearFeedback();
     try {
       const { service } = await buildAdapters();
       await service.deleteLocation(securityContext(actorId), {
@@ -778,6 +802,9 @@ export function WarehousesPage() {
       await loadDetail(location.warehouseId);
     } catch (reason) {
       setError(errorMessage(reason));
+      throw reason;
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -1076,10 +1103,36 @@ export function WarehousesPage() {
                       فعال
                     </button>
                   ) : null}
+                  {detail.status === "archived" ? (
+                    <button
+                      type="button"
+                      disabled={saving || !can(warehousePermissions.restore)}
+                      onClick={() =>
+                        setConfirmation({
+                          title: "بازگردانی از بایگانی",
+                          message: `انبار «${detail.title}» از بایگانی بازگردانده شود؟ انبار به حالت غیرفعال برمی‌گردد؛ فعال‌سازی مجدد باید جداگانه انجام شود. این عملیات در سوابق ثبت می‌شود.`,
+                          confirmLabel: "تأیید بازگردانی",
+                          execute: restoreWarehouse,
+                        })
+                      }
+                    >
+                      بازگردانی از بایگانی
+                    </button>
+                  ) : null}
                   {detail.status !== "archived" ? (
                     <button
                       type="button"
-                      onClick={() => void changeStatus("archived")}
+                      disabled={
+                        saving || !can(warehousePermissions.changeStatus)
+                      }
+                      onClick={() =>
+                        setConfirmation({
+                          title: "بایگانی انبار",
+                          message: `انبار «${detail.title}» بایگانی شود؟ انبار تا زمان بازگردانی قابل فعال‌سازی یا ویرایش نیست. بازگردانی با مجوز جداگانه انجام می‌شود و انبار را به حالت غیرفعال می‌برد. برای توقف موقت، انبار را غیرفعال کنید.`,
+                          confirmLabel: "تأیید بایگانی",
+                          execute: () => changeStatus("archived"),
+                        })
+                      }
                     >
                       بایگانی
                     </button>
@@ -1087,8 +1140,15 @@ export function WarehousesPage() {
                   <button
                     className="warehouse-button--danger"
                     type="button"
-                    onClick={() => void deleteWarehouse()}
-                    disabled={!can(warehousePermissions.delete)}
+                    onClick={() =>
+                      setConfirmation({
+                        title: "حذف انبار",
+                        message: `انبار «${detail.title}» حذف شود؟ این عملیات قابل بازگشت نیست و فقط برای انبار بدون ناحیه، موقعیت یا وابستگی مجاز است.`,
+                        confirmLabel: "تأیید حذف انبار",
+                        execute: deleteWarehouse,
+                      })
+                    }
+                    disabled={saving || !can(warehousePermissions.delete)}
                   >
                     حذف
                   </button>
@@ -1184,7 +1244,18 @@ export function WarehousesPage() {
                           <button
                             className="warehouse-button--danger"
                             type="button"
-                            onClick={() => void deleteZone(zone)}
+                            disabled={
+                              saving ||
+                              !can(warehousePermissions.manageLocations)
+                            }
+                            onClick={() =>
+                              setConfirmation({
+                                title: "حذف ناحیه",
+                                message: `ناحیه «${zone.title}» حذف شود؟ این عملیات قابل بازگشت نیست. ناحیه دارای موقعیت یا وابستگی قابل حذف نیست.`,
+                                confirmLabel: "تأیید حذف ناحیه",
+                                execute: () => deleteZone(zone),
+                              })
+                            }
                           >
                             حذف
                           </button>
@@ -1239,7 +1310,18 @@ export function WarehousesPage() {
                             <button
                               className="warehouse-button--danger"
                               type="button"
-                              onClick={() => void deleteLocation(location)}
+                              disabled={
+                                saving ||
+                                !can(warehousePermissions.manageLocations)
+                              }
+                              onClick={() =>
+                                setConfirmation({
+                                  title: "حذف موقعیت",
+                                  message: `موقعیت «${location.title}» حذف شود؟ این عملیات قابل بازگشت نیست. موقعیت دارای زیرمجموعه یا وابستگی قابل حذف نیست.`,
+                                  confirmLabel: "تأیید حذف موقعیت",
+                                  execute: () => deleteLocation(location),
+                                })
+                              }
                             >
                               حذف
                             </button>
@@ -1254,6 +1336,14 @@ export function WarehousesPage() {
           )}
         </aside>
       </div>
+
+      {confirmation ? (
+        <WarehouseConfirmationDialog
+          confirmation={confirmation}
+          onClose={() => setConfirmation(null)}
+          formatError={errorMessage}
+        />
+      ) : null}
 
       {warehouseFormOpen ? (
         <Dialog

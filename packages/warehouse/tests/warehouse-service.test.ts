@@ -141,3 +141,24 @@ test("validates warehouse/zone/parent boundaries for physical master data", asyn
   assert.equal(bin.parentLocationId, rack.locationId);
   assert.equal(bin.zoneId, "zone-1");
 });
+
+test("restores an archived warehouse to inactive with version, scope and replay protection", async () => {
+  reset();
+  const created = await service.create({ requestId: "create-restore", warehouseId: "restore-1", companyId: "company-1", code: "RESTORE", title: "انبار", kind: "general", organizationalScope: { mode: "branch", branchId: "branch-1" }, externalIdentifiers: [{ namespace: "ERP", value: "R1" }], occurredAt: "2026-09-04T12:00:00Z" });
+  const archived = await service.changeStatus({ requestId: "archive-restore", companyId: created.companyId, warehouseId: created.warehouseId, targetStatus: "archived", expectedVersion: 1, occurredAt: "2026-09-04T12:01:00Z" });
+  const command = { requestId: "restore", companyId: created.companyId, warehouseId: created.warehouseId, expectedVersion: archived.version, occurredAt: "2026-09-04T12:02:00Z" };
+  await assert.rejects(() => service.restore({ ...command, requestId: "wrong-company", companyId: "company-2" }), /warehouse.application.not-found/u);
+  await assert.rejects(() => service.restore({ ...command, requestId: "stale", expectedVersion: 1 }), /warehouse.application.concurrency-conflict/u);
+  const restored = await service.restore(command);
+  assert.equal(restored.status, "inactive");
+  assert.equal(restored.version, 3);
+  assert.deepEqual(restored.organizationalScope, created.organizationalScope);
+  assert.deepEqual(restored.externalIdentifiers, created.externalIdentifiers);
+  assert.equal(restored.createdAt, created.createdAt);
+  assert.deepEqual(await service.restore(command), restored);
+  assert.equal(states.get(warehouseKey(created.companyId, created.warehouseId))?.version, 3);
+  await assert.rejects(() => service.restore({ ...command, requestId: "restore-again", expectedVersion: 3 }), /warehouse.restore.requires-archived/u);
+  const active = await service.changeStatus({ ...command, requestId: "activate-restored", expectedVersion: 3, targetStatus: "active", occurredAt: "2026-09-04T12:03:00Z" });
+  assert.equal(active.status, "active");
+  assert.equal(active.version, 4);
+});

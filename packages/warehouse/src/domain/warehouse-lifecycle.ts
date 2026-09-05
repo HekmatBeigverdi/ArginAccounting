@@ -139,3 +139,17 @@ export const archiveWarehouse = (
     updatedAt: assertForwardTimestamp(warehouse.updatedAt, occurredAt),
   });
 };
+
+export const restoreWarehouse = (
+  warehouse: ClassifiedWarehouseSnapshot,
+  occurredAt: string,
+): ClassifiedWarehouseSnapshot => {
+  if (warehouse.status !== "archived") {
+    throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.restoreRequiresArchived);
+  }
+  return freezeClassified({
+    ...warehouse,
+    status: "inactive",
+    updatedAt: assertForwardTimestamp(warehouse.updatedAt, occurredAt),
+  });
+};

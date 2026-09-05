@@ -135,3 +135,31 @@ test("authorization failure blocks mutation and audit", async () => {
   assert.equal(createCalls, 0);
   assert.equal(auditCalls, 0);
 });
+
+test("restoration requires its own permission and records the archived-to-inactive transition", async () => {
+  const events: WarehouseAuditEvent[] = [];
+  const permissions: WarehousePermission[] = [];
+  let calls = 0;
+  let allowed = false;
+  const inner = {
+    async restore() { calls += 1; return { ...warehouseDto, status: "inactive", version: 3 }; },
+  } as unknown as WarehouseService;
+  const service = new SecuredWarehouseService(inner, {
+    async require(_context, permission) {
+      permissions.push(permission);
+      if (!allowed) throw new Error("denied");
+    },
+  }, { async record(event) { events.push(event); } });
+  const command = { requestId: "restore-1", companyId: "co-1", warehouseId: "wh-1", expectedVersion: 2, occurredAt: "2026-09-05T12:00:00Z" };
+  await assert.rejects(() => service.restore({ actorId: "user-1" }, command), /warehouse.application.unauthorized/u);
+  assert.equal(calls, 0);
+  assert.equal(events.length, 0);
+  allowed = true;
+  const restored = await service.restore({ actorId: "user-1" }, command);
+  assert.equal(restored.status, "inactive");
+  assert.deepEqual(permissions, [warehousePermissions.restore, warehousePermissions.restore]);
+  assert.equal(events[0]?.action, "warehouse.restore");
+  assert.deepEqual(events[0]?.metadata, { previousStatus: "archived", status: "inactive", version: 3 });
+  assert.equal(events[0]?.actorId, "user-1");
+  assert.equal(events[0]?.requestId, "restore-1");
+});

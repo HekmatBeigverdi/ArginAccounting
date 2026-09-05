@@ -10,6 +10,7 @@ import type {
   DeleteWarehouseLocationCommand,
   DeleteWarehouseZoneCommand,
   MoveWarehouseLocationCommand,
+  RestoreWarehouseCommand,
   UpdateWarehouseCommand,
   UpdateWarehouseLocationCommand,
   UpdateWarehouseZoneCommand,
@@ -19,6 +20,7 @@ export const warehousePermissions = Object.freeze({
   view: "inventory.warehouses.view",
   create: "inventory.warehouses.create",
   update: "inventory.warehouses.update",
+  restore: "inventory.warehouses.restore",
   changeStatus: "inventory.warehouses.change-status",
   manageScope: "inventory.warehouses.manage-scope",
   delete: "inventory.warehouses.delete",
@@ -53,6 +55,7 @@ export interface WarehouseAuthorizationPolicy {
 export type WarehouseAuditAction =
   | "warehouse.create"
   | "warehouse.update"
+  | "warehouse.restore"
   | "warehouse.change-status"
   | "warehouse.change-scope"
   | "warehouse.delete"
@@ -90,6 +93,7 @@ export interface WarehouseAuditSink {
 export type WarehouseMutationCommand =
   | CreateWarehouseCommand
   | UpdateWarehouseCommand
+  | RestoreWarehouseCommand
   | ChangeWarehouseStatusCommand
   | ChangeWarehouseScopeCommand
   | DeleteWarehouseCommand

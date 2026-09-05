@@ -7,6 +7,7 @@ import {
   WarehouseDomainError,
   activateWarehouse,
   archiveWarehouse,
+  restoreWarehouse,
   classifyWarehouse,
   createWarehouse,
   deactivateWarehouse,
@@ -247,7 +248,7 @@ test("treats repeated active/inactive requests as idempotent domain transitions"
   );
 });
 
-test("archives a warehouse as a terminal lifecycle state", () => {
+test("requires explicit restoration before changing an archived warehouse status", () => {
   const active = classifyWarehouse({
     warehouse: createBaseWarehouse(),
     kind: "finished-goods",
@@ -287,4 +288,19 @@ test("rejects lifecycle transitions that move updatedAt backwards", () => {
       error instanceof WarehouseDomainError &&
       error.code === WAREHOUSE_DOMAIN_ERROR_CODES.timestampOrderInvalid,
   );
+});
+
+
+test("restoration only accepts archived warehouses and validates timestamp order", () => {
+  const active = classifyWarehouse({ warehouse: createBaseWarehouse(), kind: "general" });
+  const archived = archiveWarehouse(active, "2026-09-02T01:00:00Z");
+  const restored = restoreWarehouse(archived, "2026-09-02T02:00:00Z");
+  assert.equal(restored.status, "inactive");
+  assert.equal(restored.updatedAt, "2026-09-02T02:00:00.000Z");
+  assert.equal(archived.status, "archived");
+  assert.equal(Object.isFrozen(restored), true);
+  assert.throws(() => restoreWarehouse(active, "2026-09-02T02:00:00Z"), /warehouse.restore.requires-archived/u);
+  assert.throws(() => restoreWarehouse(restored, "2026-09-02T03:00:00Z"), /warehouse.restore.requires-archived/u);
+  assert.throws(() => restoreWarehouse(archived, "2026-09-02T00:00:00Z"), (error: unknown) => error instanceof WarehouseDomainError && error.code === WAREHOUSE_DOMAIN_ERROR_CODES.timestampOrderInvalid);
+  assert.throws(() => restoreWarehouse(archived, "invalid"), (error: unknown) => error instanceof WarehouseDomainError && error.code === WAREHOUSE_DOMAIN_ERROR_CODES.updatedAtInvalid);
 });

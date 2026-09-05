@@ -418,3 +418,27 @@ button:disabled {
   .warehouse-form-grid__wide { grid-column: auto; }
   .warehouse-meta-grid { grid-template-columns: 1fr; }
 }
+
+.warehouse-confirmation {
+  padding: 0;
+  color: inherit;
+}
+
+.warehouse-confirmation::backdrop {
+  background: rgb(16 24 40 / 44%);
+}
+
+.warehouse-confirmation__message {
+  margin: 0;
+  padding: 16px;
+  font-size: .85rem;
+  line-height: 1.9;
+}
+
+.warehouse-confirmation > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--warehouse-border);
+}

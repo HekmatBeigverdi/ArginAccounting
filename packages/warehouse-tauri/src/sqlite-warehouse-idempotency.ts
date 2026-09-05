@@ -9,6 +9,22 @@ interface IdempotencyRow {
   readonly result_json: string | null;
 }
 
+const RESULT_FORMAT = "warehouse-idempotency-v1";
+
+function serializeResult<T>(result: T): string {
+  // Void operations still need non-NULL JSON to satisfy the completed-row constraint.
+  return JSON.stringify({ format: RESULT_FORMAT, result });
+}
+
+function deserializeResult<T>(json: string): T {
+  const stored = JSON.parse(json);
+  if (stored !== null && typeof stored === "object" && stored.format === RESULT_FORMAT) {
+    return stored.result as T;
+  }
+  // Requests completed before the envelope was introduced contain the raw result.
+  return stored as T;
+}
+
 export class SqliteWarehouseIdempotencyExecutor implements WarehouseIdempotencyExecutor {
   constructor(private readonly database: DatabaseSession) {}
 
@@ -21,7 +37,7 @@ export class SqliteWarehouseIdempotencyExecutor implements WarehouseIdempotencyE
     );
 
     if (existing?.status === "completed" && existing.result_json !== null) {
-      return JSON.parse(existing.result_json) as T;
+      return deserializeResult<T>(existing.result_json);
     }
 
     if (existing?.status === "in-progress") {
@@ -43,7 +59,7 @@ export class SqliteWarehouseIdempotencyExecutor implements WarehouseIdempotencyE
         [scope, requestId],
       );
       if (raced?.status === "completed" && raced.result_json !== null) {
-        return JSON.parse(raced.result_json) as T;
+        return deserializeResult<T>(raced.result_json);
       }
       throw new WarehouseApplicationError("warehouse.application.concurrency-conflict");
     }
@@ -54,7 +70,7 @@ export class SqliteWarehouseIdempotencyExecutor implements WarehouseIdempotencyE
         `UPDATE warehouse_idempotency
             SET status = 'completed', result_json = ?, completed_at = datetime('now')
           WHERE scope = ? AND request_id = ?`,
-        [JSON.stringify(result), scope, requestId],
+        [serializeResult(result), scope, requestId],
       );
       return result;
     } catch (error) {

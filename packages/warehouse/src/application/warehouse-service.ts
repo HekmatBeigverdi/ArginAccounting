@@ -5,6 +5,7 @@ import {
 import {
   activateWarehouse,
   archiveWarehouse,
+  restoreWarehouse,
   classifyWarehouse,
   deactivateWarehouse,
   rehydrateClassifiedWarehouse,
@@ -46,6 +47,7 @@ import type {
   DeleteWarehouseLocationCommand,
   DeleteWarehouseZoneCommand,
   MoveWarehouseLocationCommand,
+  RestoreWarehouseCommand,
   UpdateWarehouseCommand,
   UpdateWarehouseLocationCommand,
   UpdateWarehouseZoneCommand,
@@ -234,6 +236,27 @@ export class WarehouseService {
       await warehouses.update(next, command.expectedVersion);
       return toDto(next);
     }));
+  }
+
+  async restore(command: RestoreWarehouseCommand): Promise<WarehouseDto> {
+    const companyId = requireText(command.companyId);
+    const warehouseId = requireText(command.warehouseId);
+    return this.dependencies.idempotency.run(
+      `warehouse:restore:${companyId}:${warehouseId}`,
+      requireText(command.requestId),
+      async () => this.dependencies.unitOfWork.execute(async ({ warehouses }) => {
+        const current = await loadRequired(warehouses, companyId, warehouseId);
+        assertVersion(current, command.expectedVersion);
+        const restored = restoreWarehouse(current.warehouse, command.occurredAt);
+        const next: WarehousePersistenceState = Object.freeze({
+          ...current,
+          warehouse: Object.freeze({ ...restored, organizationalScope: current.warehouse.organizationalScope }),
+          version: current.version + 1,
+        });
+        await warehouses.update(next, command.expectedVersion);
+        return toDto(next);
+      }),
+    );
   }
 
   async changeScope(command: ChangeWarehouseScopeCommand): Promise<WarehouseDto> {

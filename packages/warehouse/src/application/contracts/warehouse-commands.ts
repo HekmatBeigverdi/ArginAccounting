@@ -37,6 +37,14 @@ export interface ChangeWarehouseStatusCommand {
   readonly occurredAt: string;
 }
 
+export interface RestoreWarehouseCommand {
+  readonly requestId: string;
+  readonly warehouseId: string;
+  readonly companyId: string;
+  readonly expectedVersion: number;
+  readonly occurredAt: string;
+}
+
 export interface ChangeWarehouseScopeCommand {
   readonly requestId: string;
   readonly warehouseId: string;

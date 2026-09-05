@@ -16,6 +16,8 @@ class FakeSession implements DatabaseSession {
       if (this.row) throw new Error("UNIQUE constraint failed");
       this.row = { status: "in-progress", result_json: null };
     } else if (sql.includes("UPDATE warehouse_idempotency")) {
+      assert.equal(typeof parameters[0], "string", "completed results must contain JSON text");
+      JSON.parse(String(parameters[0]));
       this.row = { status: "completed", result_json: String(parameters[0]) };
     } else if (sql.includes("DELETE FROM warehouse_idempotency")) {
       this.row = null;
@@ -58,7 +60,38 @@ test("successful operation is persisted as completed and replayable", async () =
   const result = await executor.run("warehouse:create:company-1", "req-3", async () => ({ warehouseId: "w1" }));
   assert.deepEqual(result, { warehouseId: "w1" });
   assert.equal(session.row?.status, "completed");
-  assert.equal(session.row?.result_json, JSON.stringify({ warehouseId: "w1" }));
+  const replayed = await executor.run("warehouse:create:company-1", "req-3", async () => {
+    assert.fail("completed operation must not run again");
+  });
+  assert.deepEqual(replayed, result);
+});
+
+for (const result of [undefined, null, false, 0, "", { warehouseId: "w1" }]) {
+  test(`preserves ${JSON.stringify(result)} on initial execution and replay`, async () => {
+    const session = new FakeSession();
+    const executor = new SqliteWarehouseIdempotencyExecutor(session);
+    let calls = 0;
+    const operation = async () => { calls += 1; return result; };
+    assert.deepEqual(await executor.run("warehouse:test", "req-result", operation), result);
+    assert.deepEqual(await executor.run("warehouse:test", "req-result", operation), result);
+    assert.equal(calls, 1);
+  });
+}
+
+test("replays a void result when another executor completes during the claim race", async () => {
+  const session = new FakeSession();
+  const executor = new SqliteWarehouseIdempotencyExecutor(session);
+  await executor.run("warehouse:zone:delete:company-1:z1", "req-race", async () => {});
+  const completed = session.row;
+  let reads = 0;
+  session.queryOne = async <T>() => {
+    reads += 1;
+    return reads === 1 ? null : completed as T | null;
+  };
+  const result = await executor.run("warehouse:zone:delete:company-1:z1", "req-race", async () => {
+    assert.fail("the completed delete must not run again");
+  });
+  assert.equal(result, undefined);
 });
 
 test("failed operation removes in-progress claim so retry can proceed", async () => {

@@ -71,6 +71,7 @@ export const defaultPermissions: PermissionDefinition[] = [
   { code: "inventory.warehouses.view", module: "inventory", title: "مشاهده انبارها" },
   { code: "inventory.warehouses.create", module: "inventory", title: "ایجاد انبار" },
   { code: "inventory.warehouses.update", module: "inventory", title: "ویرایش اطلاعات انبار" },
+  { code: "inventory.warehouses.restore", module: "inventory", title: "بازگردانی انبار از بایگانی" },
   { code: "inventory.warehouses.change-status", module: "inventory", title: "تغییر وضعیت انبار" },
   { code: "inventory.warehouses.manage-scope", module: "inventory", title: "مدیریت حوزه سازمانی و شعبه انبار" },
   { code: "inventory.warehouses.delete", module: "inventory", title: "حذف انبار اشتباهی و بدون وابستگی" },

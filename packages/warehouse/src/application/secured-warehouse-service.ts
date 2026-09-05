@@ -10,6 +10,7 @@ import type {
   DeleteWarehouseLocationCommand,
   DeleteWarehouseZoneCommand,
   MoveWarehouseLocationCommand,
+  RestoreWarehouseCommand,
   UpdateWarehouseCommand,
   UpdateWarehouseLocationCommand,
   UpdateWarehouseZoneCommand,
@@ -73,6 +74,17 @@ export class SecuredWarehouseService {
     await this.requireMutation(security, command, warehousePermissions.changeStatus);
     const result = await this.inner.changeStatus(command);
     if (result.version !== command.expectedVersion) await this.record("warehouse.change-status", security, command, result.warehouseId, null, { status: result.status, version: result.version });
+    return result;
+  }
+
+  async restore(security: WarehouseSecurityContext, command: RestoreWarehouseCommand): Promise<WarehouseDto> {
+    await this.requireMutation(security, command, warehousePermissions.restore);
+    const result = await this.inner.restore(command);
+    await this.record("warehouse.restore", security, command, result.warehouseId, null, {
+      previousStatus: "archived",
+      status: result.status,
+      version: result.version,
+    });
     return result;
   }
 
