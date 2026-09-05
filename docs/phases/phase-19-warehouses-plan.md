@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–13 are completed. Steps 14–20 are not started.
+Phase 19 is in progress. Steps 1–14 are completed. Steps 15–20 are not started.
 
 ## Governance
 
@@ -73,7 +73,7 @@ Phase 19 does not own stock balances, kardex, receipt/issue/transfer transaction
 | 11 | SQLite Repository, Unit of Work and Atomic Transactions | Completed |
 | 12 | Permissions, Audit and Approval Integration | Completed |
 | 13 | Import / Export and Initial Warehouse Setup | Completed |
-| 14 | Persian RTL Warehouse Management UI | Not started |
+| 14 | Persian RTL Warehouse Management UI | Completed |
 | 15 | Warehouse Selector and Future Consumer Contract | Not started |
 | 16 | Inventory and ERP Integration Boundaries | Not started |
 | 17 | Domain and Application Tests | Not started |
@@ -143,43 +143,55 @@ Added `@argin/warehouse-tauri`, SQLite Warehouse/Zone/Location repositories, Rea
 Added Warehouse permission catalog entries, secured read/mutation wrappers, stable unauthorized error, retry-safe Audit contracts/actions and explicit `approval: not-required` policy for Warehouse master-data operations.
 
 ### Step 13 — Import / Export and Initial Warehouse Setup
+Added persistence-neutral bulk import/export contracts, preview and row issues, persisted/in-batch duplicate checks, atomic and best-effort modes, bounded full-field export, Reader export adapter and deterministic one-time Company default Warehouse setup (`MAIN` / `انبار اصلی`) with Permission/Audit integration. Zone/Location bulk layout remains intentionally separate from root Warehouse import.
 
-Step 13 adds reusable bulk-transfer contracts and deterministic Company onboarding without introducing spreadsheet/UI technology into the Domain/Application package.
+### Step 14 — Persian RTL Warehouse Management UI
+
+Step 14 delivers the production Desktop management surface for Warehouse Master Data while preserving the dense desktop ergonomics established in Phase 14 and keeping future consumer selection behavior in Step 15.
 
 Completed actions:
 
-- Added `WarehouseBulkTransferService` and stable import field contract for `code`, `title`, `description`, `kind`, `status`, organizational scope/Branch and namespaced external identifiers.
-- Added persistence-neutral tabular-row and column-mapping contracts so CSV/Excel adapters can be attached later without coupling Warehouse logic to a specific file library.
-- Added import preview with row numbers, normalized code/title/kind, validity and stable issue information before writes occur.
-- Import validates Warehouse Domain rules, approved classification/status values, Company-vs-Branch scope, resolvable Branch references and external-identifier syntax.
-- Added hard duplicate detection against persisted Company data for Warehouse code and namespaced external identifiers.
-- Added in-batch duplicate detection for case-normalized Warehouse codes and normalized external identifiers so duplicate rows are rejected before persistence.
-- Added both atomic and best-effort execution modes. Atomic mode refuses the batch when preview failures exist and performs valid writes through one Warehouse UoW transaction; best-effort mode isolates each row and reports write failures per row.
-- Imported rows receive fresh durable `warehouseId` values from an injected ID generator and start at persistence `version = 1`; imported business codes never become durable identity.
-- Added bulk Import/Export Audit actions using the Step 12 authorization/audit boundary and existing `inventory.warehouses.import` / `inventory.warehouses.export` permissions.
-- Added bounded paged export with a maximum batch size of 200 and complete root Warehouse fields including durable ID, lifecycle/classification, organizational scope, external identifiers, version and timestamps.
-- Added `WarehouseReaderBulkExportAdapter` so export can retrieve complete Warehouse DTOs through the persistence-neutral Reader rather than depending directly on SQLite/Tauri.
-- Added deterministic `WarehouseInitialSetupService` for Company onboarding. A company with no Warehouse can receive one company-wide active `general` Warehouse with default code `MAIN` and Persian title `انبار اصلی`, with optional code/title/description overrides.
-- Initial setup uses injected durable-ID generation, existing Warehouse Service validation/idempotency, `inventory.warehouses.create` authorization and a dedicated `warehouse.initial-setup` Audit fact.
-- Initial setup never creates a second default Warehouse when Company data already exists.
-- Root Warehouse import/export intentionally does not flatten Zone/Location hierarchy into repeated spreadsheet rows. Physical hierarchy remains separately modeled; any future bulk physical-layout format requires an explicit unambiguous contract rather than implicit row expansion.
-- Added focused tests for stable import fields/default setup policy, in-batch code/external-identifier duplicates, atomic Company/Branch imports, status handling and invalid Branch references.
-- No UI, file picker, XLSX parser, stock quantity, transaction, valuation, posting, Taxpayer submission or synchronization engine was introduced.
+- Added `WarehousesPage` as a Persian `lang="fa"`, `dir="rtl"` Desktop workspace at `/inventory/warehouses`.
+- Added permission-aware navigation entry under `انبار و موجودی`, protected by `inventory.warehouses.view`.
+- Added `@argin/warehouse` and `@argin/warehouse-tauri` as explicit Desktop workspace dependencies so UI composition uses the public Domain/Application and SQLite adapter boundaries.
+- Composed `WarehouseService`, `SqliteWarehouseUnitOfWork`, `SqliteWarehouseReader`, `SqliteWarehouseIdempotencyExecutor` and `SqliteWarehouseBranchResolver` in Desktop rather than embedding persistence behavior in React components.
+- Wrapped reads/mutations through the Step 12 secured Warehouse contracts; action buttons respect create/update/status/scope/location permissions.
+- Added a persistent Warehouse Audit adapter that maps Warehouse Audit facts into the existing shared append-only Audit infrastructure.
+- Added a dense searchable/filterable Warehouse table with 50-row paging, sticky header, keyboard-selectable rows and explicit selected-row state.
+- Added filters for search, Warehouse classification and lifecycle status while keeping results Company-scoped.
+- Added split Desktop workspace with Warehouse list and detail panel to reduce full-page navigation and excessive horizontal/vertical scrolling.
+- Added detail metadata for classification, lifecycle, organizational scope, optimistic version, last update, external identifiers and description.
+- Added Persian labels for all approved Warehouse classifications and lifecycle statuses.
+- Added explicit `dir="ltr"` treatment and monospace presentation for Warehouse codes, versions and external identifiers while the surrounding UI remains RTL.
+- Added Persian-calendar date/time presentation for Warehouse timestamps while persisted values remain canonical Gregorian/UTC strings.
+- Added create/edit dialog for Warehouse code/title/description, classification, organizational scope and external identifiers.
+- Warehouse classification is immutable in edit UI because the current Domain/Application contract does not expose a classification-change mutation; the UI does not bypass Domain rules.
+- Added active Company Branch loading and Branch dropdown selection for Branch-scoped Warehouses instead of exposing raw Branch IDs as the normal user interaction.
+- Added lifecycle controls for activate, deactivate and terminal archive, respecting current Warehouse status and permission availability.
+- Added physical-structure tabs for Zones and Locations inside the selected Warehouse detail panel.
+- Added Zone creation and Location creation dialogs, including Location kind, Zone selection and optional parent Location for extensible Rack/Shelf/Bin-style hierarchy.
+- Archived Warehouses cannot expose edit or physical-structure mutation actions in the UI.
+- Added responsive fallbacks while retaining the primary desktop two-panel dense layout at normal accounting-workstation widths.
+- Added focused Desktop UI contract tests that lock the Warehouse route/permission, Persian RTL surface, explicit LTR identifiers and dense workspace layout tokens.
+- UI copy explicitly states that this screen owns Warehouse/physical master data and does not implement inventory quantities or movements.
+- Step 15 selector behavior, stock transactions, kardex, valuation, posting and synchronization UI remain outside Step 14.
 
-### Step 13 Exit Criteria
+### Step 14 Exit Criteria
 
-Step 13 is complete when:
+Step 14 is complete when:
 
-- Import/export logic is persistence-neutral and does not depend on Excel/CSV libraries.
-- Import has a preview stage and deterministic row-level issue reporting.
-- Existing-data and same-batch hard duplicates are detected before writes.
-- Company/Branch isolation is preserved during import.
-- Atomic and best-effort modes have explicit semantics.
-- Export is paged, bounded and carries durable identity plus master-data fields.
-- Initial Company setup can create one safe default Warehouse without silently creating duplicates.
-- Import/export/setup operations use the established Permission and Audit contracts.
-- Zone/Location bulk-layout design, UI, inventory transactions and live synchronization remain outside this step.
-- Focused Step 13 tests are committed; exhaustive executable validation remains in Steps 17–19.
+- Warehouse management is reachable from Desktop navigation under the correct permission.
+- The page is Persian RTL and codes/identifiers remain explicitly LTR.
+- Company-scoped Warehouse list/search/filter/detail interactions are available in a dense desktop layout.
+- Create/edit/lifecycle/scope mutations use secured Application services rather than direct SQL writes.
+- Active Branches can be selected by user-facing code/title, not raw identifier entry.
+- Zone/Location physical structure can be viewed and extended without introducing inventory state.
+- Archived Warehouse restrictions are reflected in available UI actions.
+- Warehouse Audit events are persisted through the shared Audit subsystem.
+- Focused route/RTL/density UI contract tests are committed.
+- Reusable Warehouse selector behavior remains reserved for Step 15.
+
+All Step 14 implementation artifacts and focused tests are committed. Full executable Desktop/monorepo validation, accessibility review and generated lockfile normalization remain mandatory in Steps 18–19.
 
 ## Change Requests
 
