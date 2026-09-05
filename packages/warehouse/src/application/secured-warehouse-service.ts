@@ -72,9 +72,7 @@ export class SecuredWarehouseService {
   async changeStatus(security: WarehouseSecurityContext, command: ChangeWarehouseStatusCommand): Promise<WarehouseDto> {
     await this.requireMutation(security, command, warehousePermissions.changeStatus);
     const result = await this.inner.changeStatus(command);
-    if (result.version !== command.expectedVersion) {
-      await this.record("warehouse.change-status", security, command, result.warehouseId, null, { status: result.status, version: result.version });
-    }
+    if (result.version !== command.expectedVersion) await this.record("warehouse.change-status", security, command, result.warehouseId, null, { status: result.status, version: result.version });
     return result;
   }
 
@@ -154,20 +152,8 @@ export class SecuredWarehouseService {
 
   async deleteLocation(security: WarehouseSecurityContext, command: DeleteWarehouseLocationCommand): Promise<void> {
     await this.requireMutation(security, command, warehousePermissions.manageLocations);
-    const existing = await this.inner.getById({ companyId: command.companyId, warehouseId: "" }).catch(() => null);
-    void existing;
     await this.inner.deleteLocation(command);
-    await this.audit.record(Object.freeze({
-      action: "warehouse.location.delete",
-      actorId: security.actorId,
-      companyId: command.companyId,
-      warehouseId: "physical",
-      childEntityId: command.locationId,
-      correlationId: warehouseCorrelationId(security, command.requestId),
-      requestId: command.requestId,
-      occurredAt: normalizedOccurredAt(command.occurredAt),
-      metadata: Object.freeze({}),
-    }));
+    await this.record("warehouse.location.delete", security, command, command.warehouseId, command.locationId, {});
   }
 
   private async requireMutation(
