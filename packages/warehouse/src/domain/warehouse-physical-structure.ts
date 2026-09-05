@@ -71,6 +71,31 @@ export interface CreateWarehouseLocationInput {
   readonly createdAt: string;
 }
 
+export interface UpdateWarehouseZoneInput {
+  readonly zone: WarehouseZoneSnapshot;
+  readonly code: string;
+  readonly title: string;
+  readonly description?: string | null;
+  readonly occurredAt: string;
+}
+
+export interface UpdateWarehouseLocationInput {
+  readonly location: WarehouseLocationSnapshot;
+  readonly code: string;
+  readonly title: string;
+  readonly kind: WarehouseLocationKind;
+  readonly description?: string | null;
+  readonly occurredAt: string;
+}
+
+export interface MoveWarehouseLocationInput {
+  readonly location: WarehouseLocationSnapshot;
+  readonly targetZone: WarehouseZoneSnapshot;
+  readonly targetWarehouse: WarehouseReference;
+  readonly parentLocationId?: string | null;
+  readonly occurredAt: string;
+}
+
 const normalizeRequired = (value: string, errorCode: keyof typeof WAREHOUSE_DOMAIN_ERROR_CODES): string => {
   const normalized = value.trim().replace(/\s+/gu, " ");
   if (normalized.length === 0) {
@@ -80,9 +105,7 @@ const normalizeRequired = (value: string, errorCode: keyof typeof WAREHOUSE_DOMA
 };
 
 const normalizeOptional = (value: string | null | undefined): string | null => {
-  if (value == null) {
-    return null;
-  }
+  if (value == null) return null;
   const normalized = value.trim().replace(/\s+/gu, " ");
   return normalized.length === 0 ? null : normalized;
 };
@@ -104,17 +127,21 @@ const assertTimestampOrder = (createdAt: string, updatedAt: string): void => {
   }
 };
 
-const assertPhysicalStatus: (
-  status: string,
-) => asserts status is WarehousePhysicalStatus = (status) => {
+const mutationTimestamp = (currentUpdatedAt: string, occurredAt: string): string => {
+  const normalized = normalizeTimestamp(occurredAt, "updatedAtInvalid");
+  if (Date.parse(normalized) < Date.parse(currentUpdatedAt)) {
+    throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalTimestampRegression);
+  }
+  return normalized;
+};
+
+const assertPhysicalStatus: (status: string) => asserts status is WarehousePhysicalStatus = (status) => {
   if (status !== "active" && status !== "inactive") {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalStatusInvalid);
   }
 };
 
-const assertLocationKind: (
-  kind: string,
-) => asserts kind is WarehouseLocationKind = (kind) => {
+const assertLocationKind: (kind: string) => asserts kind is WarehouseLocationKind = (kind) => {
   if (!(WAREHOUSE_LOCATION_KINDS as readonly string[]).includes(kind)) {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.locationKindInvalid);
   }
@@ -131,7 +158,6 @@ export const warehouseReferenceFrom = (warehouse: WarehouseSnapshot): WarehouseR
 export const createWarehouseZone = (input: CreateWarehouseZoneInput): WarehouseZoneSnapshot => {
   const warehouse = normalizeWarehouseReference(input.warehouse);
   const createdAt = normalizeTimestamp(input.createdAt, "createdAtInvalid");
-
   return Object.freeze({
     zoneId: normalizeRequired(input.zoneId, "zoneIdRequired"),
     warehouseId: warehouse.warehouseId,
@@ -150,7 +176,6 @@ export const rehydrateWarehouseZone = (snapshot: WarehouseZoneSnapshot): Warehou
   const createdAt = normalizeTimestamp(snapshot.createdAt, "createdAtInvalid");
   const updatedAt = normalizeTimestamp(snapshot.updatedAt, "updatedAtInvalid");
   assertTimestampOrder(createdAt, updatedAt);
-
   return Object.freeze({
     zoneId: normalizeRequired(snapshot.zoneId, "zoneIdRequired"),
     warehouseId: normalizeRequired(snapshot.warehouseId, "warehouseReferenceRequired"),
@@ -164,26 +189,43 @@ export const rehydrateWarehouseZone = (snapshot: WarehouseZoneSnapshot): Warehou
   });
 };
 
-export const createWarehouseLocation = (
-  input: CreateWarehouseLocationInput,
-): WarehouseLocationSnapshot => {
+export const updateWarehouseZone = (input: UpdateWarehouseZoneInput): WarehouseZoneSnapshot => {
+  const current = rehydrateWarehouseZone(input.zone);
+  return Object.freeze({
+    ...current,
+    code: normalizeCode(input.code),
+    title: normalizeRequired(input.title, "titleRequired"),
+    description: normalizeOptional(input.description),
+    updatedAt: mutationTimestamp(current.updatedAt, input.occurredAt),
+  });
+};
+
+export const setWarehouseZoneStatus = (
+  zone: WarehouseZoneSnapshot,
+  status: WarehousePhysicalStatus,
+  occurredAt: string,
+): WarehouseZoneSnapshot => {
+  const current = rehydrateWarehouseZone(zone);
+  assertPhysicalStatus(status);
+  if (current.status === status) return current;
+  return Object.freeze({ ...current, status, updatedAt: mutationTimestamp(current.updatedAt, occurredAt) });
+};
+
+export const createWarehouseLocation = (input: CreateWarehouseLocationInput): WarehouseLocationSnapshot => {
   const warehouse = normalizeWarehouseReference(input.warehouse);
   const zone = rehydrateWarehouseZone(input.zone);
-
   if (zone.companyId !== warehouse.companyId) {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalCompanyMismatch);
   }
   if (zone.warehouseId !== warehouse.warehouseId) {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalWarehouseMismatch);
   }
-
   assertLocationKind(input.kind);
   const locationId = normalizeRequired(input.locationId, "locationIdRequired");
   const parentLocationId = normalizeOptional(input.parentLocationId);
   if (parentLocationId === locationId) {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.parentLocationSelfReference);
   }
-
   const createdAt = normalizeTimestamp(input.createdAt, "createdAtInvalid");
   return Object.freeze({
     locationId,
@@ -208,7 +250,6 @@ export const rehydrateWarehouseLocation = (
   const canonicalZone = rehydrateWarehouseZone(zone);
   assertPhysicalStatus(snapshot.status);
   assertLocationKind(snapshot.kind);
-
   const locationId = normalizeRequired(snapshot.locationId, "locationIdRequired");
   const zoneId = normalizeRequired(snapshot.zoneId, "zoneReferenceRequired");
   if (zoneId !== canonicalZone.zoneId) {
@@ -220,16 +261,13 @@ export const rehydrateWarehouseLocation = (
   if (snapshot.warehouseId !== canonicalZone.warehouseId) {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalWarehouseMismatch);
   }
-
   const parentLocationId = normalizeOptional(snapshot.parentLocationId);
   if (parentLocationId === locationId) {
     throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.parentLocationSelfReference);
   }
-
   const createdAt = normalizeTimestamp(snapshot.createdAt, "createdAtInvalid");
   const updatedAt = normalizeTimestamp(snapshot.updatedAt, "updatedAtInvalid");
   assertTimestampOrder(createdAt, updatedAt);
-
   return Object.freeze({
     locationId,
     zoneId,
@@ -244,4 +282,67 @@ export const rehydrateWarehouseLocation = (
     createdAt,
     updatedAt,
   });
+};
+
+export const updateWarehouseLocation = (input: UpdateWarehouseLocationInput): WarehouseLocationSnapshot => {
+  assertLocationKind(input.kind);
+  return Object.freeze({
+    ...input.location,
+    code: normalizeCode(input.code),
+    title: normalizeRequired(input.title, "titleRequired"),
+    kind: input.kind,
+    description: normalizeOptional(input.description),
+    updatedAt: mutationTimestamp(input.location.updatedAt, input.occurredAt),
+  });
+};
+
+export const setWarehouseLocationStatus = (
+  location: WarehouseLocationSnapshot,
+  status: WarehousePhysicalStatus,
+  occurredAt: string,
+): WarehouseLocationSnapshot => {
+  assertPhysicalStatus(status);
+  if (location.status === status) return location;
+  return Object.freeze({ ...location, status, updatedAt: mutationTimestamp(location.updatedAt, occurredAt) });
+};
+
+export const moveWarehouseLocation = (input: MoveWarehouseLocationInput): WarehouseLocationSnapshot => {
+  const targetWarehouse = normalizeWarehouseReference(input.targetWarehouse);
+  const targetZone = rehydrateWarehouseZone(input.targetZone);
+  if (targetZone.companyId !== targetWarehouse.companyId) {
+    throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalCompanyMismatch);
+  }
+  if (targetZone.warehouseId !== targetWarehouse.warehouseId) {
+    throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalWarehouseMismatch);
+  }
+  if (input.location.companyId !== targetWarehouse.companyId) {
+    throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.physicalCompanyMismatch);
+  }
+  const parentLocationId = normalizeOptional(input.parentLocationId);
+  if (parentLocationId === input.location.locationId) {
+    throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.parentLocationSelfReference);
+  }
+  return Object.freeze({
+    ...input.location,
+    warehouseId: targetWarehouse.warehouseId,
+    zoneId: targetZone.zoneId,
+    parentLocationId,
+    updatedAt: mutationTimestamp(input.location.updatedAt, input.occurredAt),
+  });
+};
+
+export const assertLocationParentAcyclic = (
+  locationId: string,
+  parentLocationId: string | null,
+  parentById: ReadonlyMap<string, string | null>,
+): void => {
+  let cursor = parentLocationId;
+  const visited = new Set<string>([locationId]);
+  while (cursor) {
+    if (visited.has(cursor)) {
+      throw new WarehouseDomainError(WAREHOUSE_DOMAIN_ERROR_CODES.parentLocationCycle);
+    }
+    visited.add(cursor);
+    cursor = parentById.get(cursor) ?? null;
+  }
 };
