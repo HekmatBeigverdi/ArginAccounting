@@ -4,12 +4,14 @@ import {
   type AuditClock,
   type AuditIdGenerator,
   type AuditPermissionAuthorizer,
+  type AuditRepositories,
+  type AuditUnitOfWork,
   type CreateAuditEntryInput,
 } from "@argin/audit";
 import {
   DatabaseExecutorAdapter,
+  SqliteApprovalRepository,
   SqliteAuditRepository,
-  SqliteAuditUnitOfWork,
 } from "@argin/audit-tauri";
 import type { DatabaseExecutor } from "@argin/database";
 import type {
@@ -81,8 +83,16 @@ export function createPersistentWarehouseAuditSink(
   database: DatabaseExecutor,
 ): WarehouseAuditSink {
   const sqlite = new DatabaseExecutorAdapter(database);
-  const unitOfWork = new SqliteAuditUnitOfWork(sqlite);
   const auditRepository = new SqliteAuditRepository(sqlite);
+  const approvalRepository = new SqliteApprovalRepository(sqlite);
+  const unitOfWork: AuditUnitOfWork = {
+    run<T>(work: (repositories: AuditRepositories) => Promise<T>): Promise<T> {
+      // Recording an audit entry is one atomic INSERT after the warehouse mutation.
+      // Tauri's SQL pool does not pin commands to one connection, so an explicit
+      // BEGIN can lock the connection used by the following INSERT.
+      return work({ audit: auditRepository, approval: approvalRepository });
+    },
+  };
 
   return Object.freeze({
     async record(event: WarehouseAuditEvent): Promise<void> {
