@@ -40,6 +40,9 @@ test("repository contract remains company scoped and version aware", async () =>
     async update(_state: WarehousePersistenceState, expectedVersion) {
       calls.push(`update:${expectedVersion}`);
     },
+    async markDeleted(companyId, warehouseId, expectedVersion, deletedAt) {
+      calls.push(`delete:${companyId}:${warehouseId}:${expectedVersion}:${deletedAt}`);
+    },
   };
 
   await repository.findById("company-1", "warehouse-1");

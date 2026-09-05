@@ -226,7 +226,11 @@ export class WarehouseService {
             ? archiveWarehouse(current.warehouse, command.occurredAt)
             : (() => { throw new WarehouseApplicationError(WAREHOUSE_APPLICATION_ERROR_CODES.invalidRequest); })();
       if (warehouse === current.warehouse) return toDto(current);
-      const next: WarehousePersistenceState = Object.freeze({ ...current, warehouse, version: current.version + 1 });
+      const next: WarehousePersistenceState = Object.freeze({
+        ...current,
+        warehouse: Object.freeze({ ...warehouse, organizationalScope: current.warehouse.organizationalScope }),
+        version: current.version + 1,
+      });
       await warehouses.update(next, command.expectedVersion);
       return toDto(next);
     }));
