@@ -43,16 +43,25 @@ export type {
 
 export {
   WAREHOUSE_LOCATION_KINDS,
+  assertLocationParentAcyclic,
   createWarehouseLocation,
   createWarehouseZone,
+  moveWarehouseLocation,
   rehydrateWarehouseLocation,
   rehydrateWarehouseZone,
+  setWarehouseLocationStatus,
+  setWarehouseZoneStatus,
+  updateWarehouseLocation,
+  updateWarehouseZone,
   warehouseReferenceFrom,
 } from "./domain/warehouse-physical-structure.ts";
 
 export type {
   CreateWarehouseLocationInput,
   CreateWarehouseZoneInput,
+  MoveWarehouseLocationInput,
+  UpdateWarehouseLocationInput,
+  UpdateWarehouseZoneInput,
   WarehouseLocationKind,
   WarehouseLocationSnapshot,
   WarehousePhysicalStatus,
@@ -74,12 +83,20 @@ export type {
 } from "./domain/warehouse-identifiers.ts";
 
 export type {
+  ChangeWarehouseLocationStatusCommand,
   ChangeWarehouseScopeCommand,
   ChangeWarehouseStatusCommand,
+  ChangeWarehouseZoneStatusCommand,
   CreateWarehouseCommand,
   CreateWarehouseLocationCommand,
   CreateWarehouseZoneCommand,
+  DeleteWarehouseCommand,
+  DeleteWarehouseLocationCommand,
+  DeleteWarehouseZoneCommand,
+  MoveWarehouseLocationCommand,
   UpdateWarehouseCommand,
+  UpdateWarehouseLocationCommand,
+  UpdateWarehouseZoneCommand,
 } from "./application/contracts/warehouse-commands.ts";
 
 export type {
@@ -89,6 +106,17 @@ export type {
   WarehousePageDto,
   WarehouseZoneDto,
 } from "./application/contracts/warehouse-dto.ts";
+
+export {
+  allowUnintegratedWarehouseDependencies,
+} from "./application/contracts/warehouse-dependencies.ts";
+export type {
+  WarehouseDependencyBlocker,
+  WarehouseDependencyCheck,
+  WarehouseDependencyGuard,
+  WarehouseDependencyKind,
+  WarehouseProtectedOperation,
+} from "./application/contracts/warehouse-dependencies.ts";
 
 export {
   WAREHOUSE_APPLICATION_ERROR_CODES,
@@ -145,6 +173,21 @@ export type {
   WarehouseReadSecurityContext,
   WarehouseSecurityContext,
 } from "./application/contracts/warehouse-security.ts";
+
+export {
+  createWarehousePhysicalTombstoneEnvelope,
+  createWarehousePhysicalUpsertEnvelope,
+} from "./application/contracts/warehouse-physical-sync.ts";
+export type {
+  WarehousePhysicalSyncChangeKind,
+  WarehousePhysicalSyncEntityReference,
+  WarehousePhysicalSyncEntityType,
+  WarehousePhysicalSyncEnvelope,
+  WarehousePhysicalSyncEnvelopeBase,
+  WarehousePhysicalSyncOrigin,
+  WarehousePhysicalSyncTombstoneEnvelope,
+  WarehousePhysicalSyncUpsertEnvelope,
+} from "./application/contracts/warehouse-physical-sync.ts";
 
 export {
   WAREHOUSE_SYNC_CHANGE_KINDS,
