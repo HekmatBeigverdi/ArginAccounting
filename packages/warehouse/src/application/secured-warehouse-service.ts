@@ -1,10 +1,18 @@
 import type {
+  ChangeWarehouseLocationStatusCommand,
   ChangeWarehouseScopeCommand,
   ChangeWarehouseStatusCommand,
+  ChangeWarehouseZoneStatusCommand,
   CreateWarehouseCommand,
   CreateWarehouseLocationCommand,
   CreateWarehouseZoneCommand,
+  DeleteWarehouseCommand,
+  DeleteWarehouseLocationCommand,
+  DeleteWarehouseZoneCommand,
+  MoveWarehouseLocationCommand,
   UpdateWarehouseCommand,
+  UpdateWarehouseLocationCommand,
+  UpdateWarehouseZoneCommand,
 } from "./contracts/warehouse-commands.ts";
 import type {
   WarehouseDto,
@@ -47,111 +55,119 @@ export class SecuredWarehouseService {
     private readonly audit: WarehouseAuditSink,
   ) {}
 
-  async create(
-    security: WarehouseSecurityContext,
-    command: CreateWarehouseCommand,
-  ): Promise<WarehouseDto> {
+  async create(security: WarehouseSecurityContext, command: CreateWarehouseCommand): Promise<WarehouseDto> {
     await this.requireMutation(security, command, warehousePermissions.create);
     const result = await this.inner.create(command);
-    await this.record("warehouse.create", security, command, result.warehouseId, null, {
-      code: result.code,
-      kind: result.kind,
-      status: result.status,
-      version: result.version,
-    });
+    await this.record("warehouse.create", security, command, result.warehouseId, null, { code: result.code, kind: result.kind, status: result.status, version: result.version });
     return result;
   }
 
-  async update(
-    security: WarehouseSecurityContext,
-    command: UpdateWarehouseCommand,
-  ): Promise<WarehouseDto> {
+  async update(security: WarehouseSecurityContext, command: UpdateWarehouseCommand): Promise<WarehouseDto> {
     await this.requireMutation(security, command, warehousePermissions.update);
     const result = await this.inner.update(command);
-    await this.record("warehouse.update", security, command, result.warehouseId, null, {
-      code: result.code,
-      version: result.version,
-    });
+    await this.record("warehouse.update", security, command, result.warehouseId, null, { code: result.code, version: result.version });
     return result;
   }
 
-  async changeStatus(
-    security: WarehouseSecurityContext,
-    command: ChangeWarehouseStatusCommand,
-  ): Promise<WarehouseDto> {
+  async changeStatus(security: WarehouseSecurityContext, command: ChangeWarehouseStatusCommand): Promise<WarehouseDto> {
     await this.requireMutation(security, command, warehousePermissions.changeStatus);
     const result = await this.inner.changeStatus(command);
     if (result.version !== command.expectedVersion) {
-      await this.record(
-        "warehouse.change-status",
-        security,
-        command,
-        result.warehouseId,
-        null,
-        { status: result.status, version: result.version },
-      );
+      await this.record("warehouse.change-status", security, command, result.warehouseId, null, { status: result.status, version: result.version });
     }
     return result;
   }
 
-  async changeScope(
-    security: WarehouseSecurityContext,
-    command: ChangeWarehouseScopeCommand,
-  ): Promise<WarehouseDto> {
+  async changeScope(security: WarehouseSecurityContext, command: ChangeWarehouseScopeCommand): Promise<WarehouseDto> {
     await this.requireMutation(security, command, warehousePermissions.manageScope);
     const result = await this.inner.changeScope(command);
     if (result.version !== command.expectedVersion) {
-      await this.record(
-        "warehouse.change-scope",
-        security,
-        command,
-        result.warehouseId,
-        null,
-        {
-          scopeMode: result.organizationalScope.mode,
-          branchId: result.organizationalScope.mode === "branch"
-            ? result.organizationalScope.branchId
-            : null,
-          version: result.version,
-        },
-      );
+      await this.record("warehouse.change-scope", security, command, result.warehouseId, null, {
+        scopeMode: result.organizationalScope.mode,
+        branchId: result.organizationalScope.mode === "branch" ? result.organizationalScope.branchId : null,
+        version: result.version,
+      });
     }
     return result;
   }
 
-  async createZone(
-    security: WarehouseSecurityContext,
-    command: CreateWarehouseZoneCommand,
-  ): Promise<WarehouseZoneDto> {
+  async deleteWarehouse(security: WarehouseSecurityContext, command: DeleteWarehouseCommand): Promise<void> {
+    await this.requireMutation(security, command, warehousePermissions.delete);
+    await this.inner.deleteWarehouse(command);
+    await this.record("warehouse.delete", security, command, command.warehouseId, null, { expectedVersion: command.expectedVersion });
+  }
+
+  async createZone(security: WarehouseSecurityContext, command: CreateWarehouseZoneCommand): Promise<WarehouseZoneDto> {
     await this.requireMutation(security, command, warehousePermissions.manageLocations);
     const result = await this.inner.createZone(command);
-    await this.record("warehouse.zone.create", security, command, command.warehouseId, result.zoneId, {
-      code: result.code,
-      status: result.status,
-    });
+    await this.record("warehouse.zone.create", security, command, command.warehouseId, result.zoneId, { code: result.code, status: result.status });
     return result;
   }
 
-  async createLocation(
-    security: WarehouseSecurityContext,
-    command: CreateWarehouseLocationCommand,
-  ): Promise<WarehouseLocationDto> {
+  async updateZone(security: WarehouseSecurityContext, command: UpdateWarehouseZoneCommand): Promise<WarehouseZoneDto> {
+    await this.requireMutation(security, command, warehousePermissions.manageLocations);
+    const result = await this.inner.updateZone(command);
+    await this.record("warehouse.zone.update", security, command, result.warehouseId, result.zoneId, { code: result.code, status: result.status });
+    return result;
+  }
+
+  async changeZoneStatus(security: WarehouseSecurityContext, command: ChangeWarehouseZoneStatusCommand): Promise<WarehouseZoneDto> {
+    await this.requireMutation(security, command, warehousePermissions.manageLocations);
+    const result = await this.inner.changeZoneStatus(command);
+    await this.record("warehouse.zone.change-status", security, command, result.warehouseId, result.zoneId, { status: result.status });
+    return result;
+  }
+
+  async deleteZone(security: WarehouseSecurityContext, command: DeleteWarehouseZoneCommand): Promise<void> {
+    await this.requireMutation(security, command, warehousePermissions.manageLocations);
+    await this.inner.deleteZone(command);
+    await this.record("warehouse.zone.delete", security, command, command.warehouseId, command.zoneId, {});
+  }
+
+  async createLocation(security: WarehouseSecurityContext, command: CreateWarehouseLocationCommand): Promise<WarehouseLocationDto> {
     await this.requireMutation(security, command, warehousePermissions.manageLocations);
     const result = await this.inner.createLocation(command);
-    await this.record(
-      "warehouse.location.create",
-      security,
-      command,
-      command.warehouseId,
-      result.locationId,
-      {
-        code: result.code,
-        kind: result.kind,
-        zoneId: result.zoneId,
-        parentLocationId: result.parentLocationId,
-      },
-    );
+    await this.record("warehouse.location.create", security, command, command.warehouseId, result.locationId, { code: result.code, kind: result.kind, zoneId: result.zoneId, parentLocationId: result.parentLocationId });
     return result;
+  }
+
+  async updateLocation(security: WarehouseSecurityContext, command: UpdateWarehouseLocationCommand): Promise<WarehouseLocationDto> {
+    await this.requireMutation(security, command, warehousePermissions.manageLocations);
+    const result = await this.inner.updateLocation(command);
+    await this.record("warehouse.location.update", security, command, result.warehouseId, result.locationId, { code: result.code, kind: result.kind, zoneId: result.zoneId });
+    return result;
+  }
+
+  async changeLocationStatus(security: WarehouseSecurityContext, command: ChangeWarehouseLocationStatusCommand): Promise<WarehouseLocationDto> {
+    await this.requireMutation(security, command, warehousePermissions.manageLocations);
+    const result = await this.inner.changeLocationStatus(command);
+    await this.record("warehouse.location.change-status", security, command, result.warehouseId, result.locationId, { status: result.status, zoneId: result.zoneId });
+    return result;
+  }
+
+  async moveLocation(security: WarehouseSecurityContext, command: MoveWarehouseLocationCommand): Promise<WarehouseLocationDto> {
+    await this.requireMutation(security, command, warehousePermissions.manageLocations);
+    const result = await this.inner.moveLocation(command);
+    await this.record("warehouse.location.move", security, command, result.warehouseId, result.locationId, { zoneId: result.zoneId, parentLocationId: result.parentLocationId });
+    return result;
+  }
+
+  async deleteLocation(security: WarehouseSecurityContext, command: DeleteWarehouseLocationCommand): Promise<void> {
+    await this.requireMutation(security, command, warehousePermissions.manageLocations);
+    const existing = await this.inner.getById({ companyId: command.companyId, warehouseId: "" }).catch(() => null);
+    void existing;
+    await this.inner.deleteLocation(command);
+    await this.audit.record(Object.freeze({
+      action: "warehouse.location.delete",
+      actorId: security.actorId,
+      companyId: command.companyId,
+      warehouseId: "physical",
+      childEntityId: command.locationId,
+      correlationId: warehouseCorrelationId(security, command.requestId),
+      requestId: command.requestId,
+      occurredAt: normalizedOccurredAt(command.occurredAt),
+      metadata: Object.freeze({}),
+    }));
   }
 
   private async requireMutation(
@@ -201,25 +217,10 @@ export class SecuredWarehouseReader {
     private readonly context: WarehouseReadSecurityContext,
   ) {}
 
-  async getById(query: GetWarehouseByIdQuery): Promise<WarehouseDto | null> {
-    await this.require(query.companyId);
-    return this.inner.getById(query);
-  }
-
-  async getByCode(query: GetWarehouseByCodeQuery): Promise<WarehouseDto | null> {
-    await this.require(query.companyId);
-    return this.inner.getByCode(query);
-  }
-
-  async list(query: ListWarehousesQuery): Promise<WarehousePageDto<WarehouseListItemDto>> {
-    await this.require(query.filter.companyId);
-    return this.inner.list(query);
-  }
-
-  async select(query: WarehouseSelectorQuery): Promise<readonly WarehouseListItemDto[]> {
-    await this.require(query.companyId);
-    return this.inner.select(query);
-  }
+  async getById(query: GetWarehouseByIdQuery): Promise<WarehouseDto | null> { await this.require(query.companyId); return this.inner.getById(query); }
+  async getByCode(query: GetWarehouseByCodeQuery): Promise<WarehouseDto | null> { await this.require(query.companyId); return this.inner.getByCode(query); }
+  async list(query: ListWarehousesQuery): Promise<WarehousePageDto<WarehouseListItemDto>> { await this.require(query.filter.companyId); return this.inner.list(query); }
+  async select(query: WarehouseSelectorQuery): Promise<readonly WarehouseListItemDto[]> { await this.require(query.companyId); return this.inner.select(query); }
 
   private async require(companyId: string): Promise<void> {
     try {
