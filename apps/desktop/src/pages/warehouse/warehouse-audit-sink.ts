@@ -20,49 +20,39 @@ import type {
   WarehouseAuditSink,
 } from "@argin/warehouse";
 
-const internalAuditAuthorizer: AuditPermissionAuthorizer = {
-  hasPermission: async () => true,
-};
-
-const browserAuditIdGenerator: AuditIdGenerator = {
-  generate: () => crypto.randomUUID(),
-};
-
-const systemAuditClock: AuditClock = {
-  now: () => new Date().toISOString(),
-};
+const internalAuditAuthorizer: AuditPermissionAuthorizer = { hasPermission: async () => true };
+const browserAuditIdGenerator: AuditIdGenerator = { generate: () => crypto.randomUUID() };
+const systemAuditClock: AuditClock = { now: () => new Date().toISOString() };
 
 const actionMap: Readonly<Record<WarehouseAuditAction, AuditAction>> = Object.freeze({
   "warehouse.create": "create",
   "warehouse.update": "update",
   "warehouse.change-status": "status-change",
   "warehouse.change-scope": "update",
+  "warehouse.delete": "delete",
   "warehouse.zone.create": "create",
+  "warehouse.zone.update": "update",
+  "warehouse.zone.change-status": "status-change",
+  "warehouse.zone.delete": "delete",
   "warehouse.location.create": "create",
+  "warehouse.location.update": "update",
+  "warehouse.location.change-status": "status-change",
+  "warehouse.location.move": "update",
+  "warehouse.location.delete": "delete",
   "warehouse.import": "import",
   "warehouse.export": "export",
   "warehouse.initial-setup": "create",
 });
 
-export function toSharedWarehouseAuditEntryInput(
-  event: WarehouseAuditEvent,
-): CreateAuditEntryInput {
+export function toSharedWarehouseAuditEntryInput(event: WarehouseAuditEvent): CreateAuditEntryInput {
   const isChild = event.childEntityId !== null;
   return Object.freeze({
     occurredAt: event.occurredAt,
     action: actionMap[event.action],
     outcome: "success",
     source: "desktop",
-    actor: Object.freeze({
-      type: "user" as const,
-      id: event.actorId,
-      displayName: event.actorId,
-    }),
-    scope: Object.freeze({
-      companyId: event.companyId,
-      branchId: null,
-      fiscalYearId: null,
-    }),
+    actor: Object.freeze({ type: "user" as const, id: event.actorId, displayName: event.actorId }),
+    scope: Object.freeze({ companyId: event.companyId, branchId: null, fiscalYearId: null }),
     target: Object.freeze({
       entityType: isChild ? "warehouse-location-structure" : "warehouse",
       entityId: event.childEntityId ?? event.warehouseId,
@@ -79,17 +69,12 @@ export function toSharedWarehouseAuditEntryInput(
   });
 }
 
-export function createPersistentWarehouseAuditSink(
-  database: DatabaseExecutor,
-): WarehouseAuditSink {
+export function createPersistentWarehouseAuditSink(database: DatabaseExecutor): WarehouseAuditSink {
   const sqlite = new DatabaseExecutorAdapter(database);
   const auditRepository = new SqliteAuditRepository(sqlite);
   const approvalRepository = new SqliteApprovalRepository(sqlite);
   const unitOfWork: AuditUnitOfWork = {
     run<T>(work: (repositories: AuditRepositories) => Promise<T>): Promise<T> {
-      // Recording an audit entry is one atomic INSERT after the warehouse mutation.
-      // Tauri's SQL pool does not pin commands to one connection, so an explicit
-      // BEGIN can lock the connection used by the following INSERT.
       return work({ audit: auditRepository, approval: approvalRepository });
     },
   };
