@@ -8,14 +8,16 @@ Phase 19 is in progress. Steps 1–14 are completed. Steps 15–20 are not start
 
 This 20-step sequence is frozen. Step title, order, scope, or exit criteria may change only through an explicitly approved Change Request.
 
-This file is the canonical Phase 19 record. Cross-cutting governance remains defined by:
+This file is the canonical Phase 19 record. The additional Warehouse/Zone/Location maintenance work recorded under Step 14 is completion of previously agreed Phase 19 scope, not a sequence change.
+
+Cross-cutting governance remains defined by:
 
 - `docs/development/documentation-governance.md`
 - `docs/development/github-publishing-workflow.md`
 
 ## Objective
 
-Deliver canonical Warehouse Master Data and desktop management with durable identity, company/branch-aware organizational scope, lifecycle, classification, extensible physical-location boundaries, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, and future Argin Bridge compatibility.
+Deliver canonical Warehouse Master Data and desktop management with durable identity, company/branch-aware organizational scope, lifecycle, classification, extensible physical-location boundaries, dependency-safe maintenance, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, and future Argin Bridge compatibility.
 
 Future topology remains:
 
@@ -34,27 +36,34 @@ Full synchronization is outside Phase 19.
 
 Phase 19 owns Warehouse Master Data and future-consumer contracts, including:
 
-- durable `warehouseId`
+- durable `warehouseId`, `zoneId` and `locationId`
 - company/branch organizational scope
-- warehouse classification and lifecycle
-- Zone/Location physical master data
+- Warehouse classification and lifecycle
+- Zone/Location physical master data and nested Location parentage
+- edit/status/delete/move maintenance rules for physical structure
 - code/external-identifier normalization and duplicate rules
+- dependency guards for destructive/status/move operations
 - persistence-neutral Application/Query/Repository/UoW contracts
 - validation, idempotency and optimistic concurrency
-- SQLite persistence and atomic transactions
+- SQLite persistence, atomic transactions and tombstone-compatible deletion
 - permissions/audit, import/export, dense Persian RTL UI, selectors and integration boundaries
-- Argin Bridge compatibility without implementing the sync engine
+- Argin Bridge-compatible Warehouse and physical-structure change contracts without implementing the sync engine
 
 ## Explicit Non-Scope
 
-Phase 19 does not own stock balances, kardex, receipt/issue/transfer transactions, stock count, valuation/cost layers, inventory accounting postings, purchasing/sales documents and prices, manufacturing transactional logic, Taxpayer submission/signing/inquiry, or live synchronization/conflict-resolution UI.
+Phase 19 does not implement stock balances, kardex, receipt/issue/transfer transactions, stock count, valuation/cost layers, inventory accounting postings, purchasing/sales document logic, manufacturing transactions, Taxpayer submission/signing/inquiry, or live synchronization/conflict-resolution UI.
+
+Those future modules must plug their real dependency probes into the Warehouse dependency-guard contract before destructive/status/move operations are allowed against referenced master data.
 
 ## Identity and Argin Bridge Rules
 
-- `warehouseId` is the durable downstream identity.
+- `warehouseId`, `zoneId` and `locationId` are durable identities; codes/titles are mutable business metadata.
 - Warehouse code/title/Branch title/external identifier/UI labels are not foreign identity.
 - Product identity remains owned by Phase 18 and is consumed through public contracts.
-- Warehouse remains compatible with durable IDs, optimistic versions, deterministic timestamps, idempotent mutations, Company isolation, future tombstones, origin metadata and optional server revision.
+- Warehouse remains compatible with durable IDs, optimistic versions, deterministic timestamps, idempotent mutations, Company isolation, tombstones, origin metadata and future server revisions.
+- Root Warehouse deletion uses the existing `warehouses.deleted_at` tombstone.
+- Zone and Location deletion uses migration `0025_warehouse_maintenance_tombstones.sql` and remains excluded from ordinary reads.
+- Physical Argin Bridge envelopes support `upsert` and `tombstone`; actual outbox, transport, retry, acknowledgement and conflict resolution remain in the synchronization phase.
 
 ## Step Status
 
@@ -113,7 +122,7 @@ Established the Phase 19 branch, canonical plan, frozen sequence, scope/non-scop
 Added independent `@argin/warehouse`, immutable Warehouse snapshots, durable Warehouse identity, Company ownership and normalized core fields/timestamps.
 
 ### Step 3 — Warehouse Classification, Lifecycle and Business Rules
-Added approved Warehouse classifications and `active/inactive/archived` lifecycle with terminal archive semantics and idempotent same-state transitions.
+Added approved classifications and `active/inactive/archived` lifecycle with terminal archive semantics and idempotent same-state transitions.
 
 ### Step 4 — Company, Branch and Organizational Scope
 Added company-wide or single-Branch discriminated scope, same-company active-Branch validation and archived-scope-change protection.
@@ -122,7 +131,7 @@ Added company-wide or single-Branch discriminated scope, same-company active-Bra
 Added durable Zone/Location hierarchy with optional nested Location parentage and no inventory-state leakage.
 
 ### Step 6 — Warehouse Codes, Identifiers and Duplicate Rules
-Added Company-scoped normalized code uniqueness, namespaced external identifiers and deterministic duplicate rules while preserving `warehouseId` as durable identity.
+Added Company-scoped normalized code uniqueness, namespaced external identifiers and deterministic duplicate rules while preserving durable IDs as identity.
 
 ### Step 7 — Application, Query and Repository Contracts
 Added persistence-neutral commands, DTOs, bounded queries, Reader, Warehouse/Zone/Location repositories, version-aware updates and UoW contracts.
@@ -143,38 +152,62 @@ Added `@argin/warehouse-tauri`, SQLite Warehouse/Zone/Location repositories, Rea
 Added Warehouse permission catalog entries, secured read/mutation wrappers, stable unauthorized error, retry-safe Audit contracts/actions and explicit `approval: not-required` policy for Warehouse master-data operations.
 
 ### Step 13 — Import / Export and Initial Warehouse Setup
-Added persistence-neutral bulk import/export contracts, preview and row issues, persisted/in-batch duplicate checks, atomic and best-effort modes, bounded full-field export, Reader export adapter and deterministic one-time Company default Warehouse setup (`MAIN` / `انبار اصلی`) with Permission/Audit integration. Zone/Location bulk layout remains intentionally separate from root Warehouse import.
+Added persistence-neutral bulk import/export contracts, preview and row issues, persisted/in-batch duplicate checks, atomic and best-effort modes, bounded full-field export, Reader export adapter and deterministic one-time Company default Warehouse setup (`MAIN` / `انبار اصلی`) with Permission/Audit integration.
 
 ### Step 14 — Persian RTL Warehouse Management UI
 
-Step 14 delivers the production Desktop management surface for Warehouse Master Data while preserving the dense desktop ergonomics established in Phase 14 and keeping future consumer selection behavior in Step 15.
+Step 14 delivers the production Persian RTL Desktop management surface and completes the previously agreed maintenance rules for Warehouse, Zone and Location.
 
 Completed actions:
 
-- Added `WarehousesPage` as a Persian `lang="fa"`, `dir="rtl"` Desktop workspace at `/inventory/warehouses`.
-- Added permission-aware navigation entry under `انبار و موجودی`, protected by `inventory.warehouses.view`.
-- Added `@argin/warehouse` and `@argin/warehouse-tauri` as explicit Desktop workspace dependencies so UI composition uses the public Domain/Application and SQLite adapter boundaries.
-- Composed `WarehouseService`, `SqliteWarehouseUnitOfWork`, `SqliteWarehouseReader`, `SqliteWarehouseIdempotencyExecutor` and `SqliteWarehouseBranchResolver` in Desktop rather than embedding persistence behavior in React components.
-- Wrapped reads/mutations through the Step 12 secured Warehouse contracts; action buttons respect create/update/status/scope/location permissions.
-- Added a persistent Warehouse Audit adapter that maps Warehouse Audit facts into the existing shared append-only Audit infrastructure.
-- Added a dense searchable/filterable Warehouse table with 50-row paging, sticky header, keyboard-selectable rows and explicit selected-row state.
-- Added filters for search, Warehouse classification and lifecycle status while keeping results Company-scoped.
-- Added split Desktop workspace with Warehouse list and detail panel to reduce full-page navigation and excessive horizontal/vertical scrolling.
-- Added detail metadata for classification, lifecycle, organizational scope, optimistic version, last update, external identifiers and description.
-- Added Persian labels for all approved Warehouse classifications and lifecycle statuses.
-- Added explicit `dir="ltr"` treatment and monospace presentation for Warehouse codes, versions and external identifiers while the surrounding UI remains RTL.
-- Added Persian-calendar date/time presentation for Warehouse timestamps while persisted values remain canonical Gregorian/UTC strings.
-- Added create/edit dialog for Warehouse code/title/description, classification, organizational scope and external identifiers.
-- Warehouse classification is immutable in edit UI because the current Domain/Application contract does not expose a classification-change mutation; the UI does not bypass Domain rules.
-- Added active Company Branch loading and Branch dropdown selection for Branch-scoped Warehouses instead of exposing raw Branch IDs as the normal user interaction.
-- Added lifecycle controls for activate, deactivate and terminal archive, respecting current Warehouse status and permission availability.
-- Added physical-structure tabs for Zones and Locations inside the selected Warehouse detail panel.
-- Added Zone creation and Location creation dialogs, including Location kind, Zone selection and optional parent Location for extensible Rack/Shelf/Bin-style hierarchy.
-- Archived Warehouses cannot expose edit or physical-structure mutation actions in the UI.
-- Added responsive fallbacks while retaining the primary desktop two-panel dense layout at normal accounting-workstation widths.
-- Added focused Desktop UI contract tests that lock the Warehouse route/permission, Persian RTL surface, explicit LTR identifiers and dense workspace layout tokens.
-- UI copy explicitly states that this screen owns Warehouse/physical master data and does not implement inventory quantities or movements.
-- Step 15 selector behavior, stock transactions, kardex, valuation, posting and synchronization UI remain outside Step 14.
+- Added `WarehousesPage` at `/inventory/warehouses`, navigation integration, Company-scoped dense list/detail workspace, Persian labels, Persian-calendar display and explicit LTR code/identifier rendering.
+- Composed secured Application services and SQLite adapters instead of direct SQL mutation from React.
+- Added Warehouse create/edit, lifecycle controls, Branch/company scope selection, external identifiers, optimistic version display and persistent Audit integration.
+- Added Zone and Location tabs inside Warehouse detail.
+- Added create and **edit** for Zone code, title and description.
+- Added create and **edit** for Location code, title, description and Location kind.
+- Added Zone **activate/deactivate** operations.
+- Added Location **activate/deactivate** operations.
+- Added `inventory.warehouses.delete` as a separate permission for destructive Warehouse deletion; Zone/Location maintenance continues under `inventory.warehouses.manage-locations`.
+- Added dependency-safe user Delete operations for Warehouse, Zone and Location. User-facing Delete is persisted as tombstone-compatible soft deletion rather than unrecoverable row destruction.
+- Warehouse deletion is blocked while non-deleted Zones/Locations exist and also invokes the future-consumer dependency guard.
+- Zone deletion is blocked while Locations remain underneath it and also invokes the dependency guard.
+- Location deletion is blocked while it has child Locations and also invokes the dependency guard.
+- Added `WarehouseDependencyGuard` for future stock/document/reference probes with blocker kinds covering stock balance, Inventory documents, Purchase documents, Sales documents, Manufacturing documents, accounting references and other consumers.
+- Warehouse deactivate/archive/delete, Zone deactivate/delete, and Location deactivate/delete/move call the dependency guard. The default pre-Inventory implementation has no external blockers because those modules do not yet exist; future modules must supply concrete probes without changing the Warehouse public contract.
+- Zone deactivation is blocked while active Locations exist under the Zone.
+- Location deactivation is blocked while active descendants exist below it.
+- Added Location parent-change support as a controlled move operation rather than direct field mutation.
+- Added ancestry traversal and cycle detection; a Location cannot become its own parent or be moved below one of its descendants.
+- Added independent Location transfer to another Zone or another Warehouse. Target Warehouse must be usable, target Zone must be active and belong to the target Warehouse, and optional parent must be active and belong to the same target Zone.
+- Cross-Zone/Cross-Warehouse transfer of a Location that still has descendants is intentionally blocked; Phase 19 does not silently move an entire subtree as a side effect of moving one node.
+- Added migration `0025_warehouse_maintenance_tombstones.sql` with `deleted_at` for Zone/Location, tombstone indexes and active lookup indexes; registered as desktop migration version 25.
+- Updated SQLite repositories/readers so tombstoned Warehouse/Zone/Location records are excluded from normal reads and move/delete writes are scope-safe.
+- Root Warehouse uses the Step 10 `warehouses.deleted_at` field and increments Warehouse version on deletion with optimistic-CAS semantics.
+- Added retry-safe Audit actions for Warehouse delete, Zone update/status/delete and Location update/status/move/delete.
+- Added transport-neutral `WarehousePhysicalSyncEnvelope` contracts for Zone/Location `upsert` and `tombstone` changes, carrying Company/Warehouse/entity identity, request/idempotency identity, origin and change timestamp.
+- Actual Argin Bridge outbox/transport, server acknowledgement, retry scheduling and conflict resolution remain outside Phase 19's sync implementation scope.
+- Added focused maintenance Domain tests for edit/status/move/cycle rules and Desktop contract tests for migration-25 registration, tombstones and agreed UI maintenance actions.
+- Existing in-memory test repositories were updated to satisfy the expanded persistence contract so Step 14 does not invalidate earlier Step 8/13 test fixtures.
+
+### Step 14 Maintenance Rules
+
+| Operation | Phase 19 rule |
+| --- | --- |
+| Edit Warehouse | Existing optimistic-version rule applies. |
+| Edit Zone | Code/title/description may change through Application service. |
+| Edit Location | Code/title/description/kind may change through Application service. |
+| Deactivate Warehouse | Dependency guard must allow it. |
+| Archive Warehouse | Dependency guard must allow it; archive remains distinct from delete/tombstone. |
+| Deactivate Zone | No active Locations beneath it + dependency guard allows. |
+| Deactivate Location | No active descendants + dependency guard allows. |
+| Delete Warehouse | No structural Zone/Location dependency + external dependency guard allows; write tombstone. |
+| Delete Zone | No Location under Zone + external dependency guard allows; write tombstone. |
+| Delete Location | No child Location + external dependency guard allows; write tombstone. |
+| Change Location parent | Same controlled move command; ancestry cycle is rejected. |
+| Move Location to another Zone/Warehouse | Explicit operation; target scope validated; external dependency guard checked; implicit subtree transfer is rejected. |
+| Inventory/document dependency check | Public guard contract is frozen now; concrete probes are supplied when Inventory/Purchase/Sales/Manufacturing consumers exist. |
+| Argin Bridge propagation | Warehouse and physical upsert/tombstone contracts are prepared now; actual sync engine remains future scope. |
 
 ### Step 14 Exit Criteria
 
@@ -182,16 +215,17 @@ Step 14 is complete when:
 
 - Warehouse management is reachable from Desktop navigation under the correct permission.
 - The page is Persian RTL and codes/identifiers remain explicitly LTR.
-- Company-scoped Warehouse list/search/filter/detail interactions are available in a dense desktop layout.
-- Create/edit/lifecycle/scope mutations use secured Application services rather than direct SQL writes.
-- Active Branches can be selected by user-facing code/title, not raw identifier entry.
-- Zone/Location physical structure can be viewed and extended without introducing inventory state.
-- Archived Warehouse restrictions are reflected in available UI actions.
-- Warehouse Audit events are persisted through the shared Audit subsystem.
-- Focused route/RTL/density UI contract tests are committed.
-- Reusable Warehouse selector behavior remains reserved for Step 15.
+- Company-scoped list/search/filter/detail interactions use a dense desktop layout.
+- Warehouse/Zone/Location mutations use secured Application services rather than direct SQL writes.
+- Zone/Location can be edited, activated/deactivated and safely deleted under explicit structural/dependency rules.
+- Location parent changes prevent cycles.
+- Location transfer is an explicit validated operation rather than unrestricted field editing.
+- Destructive/status/move operations expose the future stock/document dependency boundary now.
+- Warehouse/Zone/Location deletions are tombstone-compatible for future Argin Bridge propagation.
+- Focused maintenance/UI contract tests are committed.
+- Reusable future-consumer Warehouse selector behavior remains reserved for Step 15.
 
-All Step 14 implementation artifacts and focused tests are committed. Full executable Desktop/monorepo validation, accessibility review and generated lockfile normalization remain mandatory in Steps 18–19.
+All Step 14 implementation artifacts and focused tests are committed. Full executable Domain/Application/Desktop/monorepo validation and accessibility review remain mandatory in Steps 17–19.
 
 ## Change Requests
 
