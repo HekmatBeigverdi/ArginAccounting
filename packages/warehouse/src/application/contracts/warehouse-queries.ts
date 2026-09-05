@@ -30,6 +30,7 @@ export interface WarehouseFilter {
   readonly statuses?: readonly WarehouseStatus[];
   readonly branchId?: string | null;
   readonly includeCompanyWide?: boolean;
+  readonly companyWideOnly?: boolean;
   readonly externalIdentifierNamespace?: string | null;
   readonly externalIdentifierValue?: string | null;
 }
@@ -57,6 +58,7 @@ export interface WarehouseSelectorQuery {
   readonly kinds?: readonly WarehouseKind[];
   readonly statuses?: readonly WarehouseStatus[];
   readonly includeCompanyWide?: boolean;
+  readonly companyWideOnly?: boolean;
   readonly limit: number;
 }
 
