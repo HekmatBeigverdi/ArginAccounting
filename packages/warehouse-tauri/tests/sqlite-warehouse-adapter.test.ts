@@ -24,7 +24,9 @@ class RecordingDatabase implements DatabaseExecutor {
   }
   async query<T>(_sql: string, _parameters: readonly DatabaseValue[] = []): Promise<T[]> { return []; }
   async queryOne<T>(sql: string, _parameters: readonly DatabaseValue[] = []): Promise<T | null> {
-    if (sql.includes("SELECT id FROM warehouses") && this.existingOnConflict) return { id: "warehouse-1" } as T;
+    if (sql.includes("FROM warehouses") && sql.includes("SELECT id") && this.existingOnConflict) {
+      return { id: "warehouse-1", version: 1, deleted_at: null } as T;
+    }
     return null;
   }
   async transaction<T>(operation: (transaction: DatabaseSession) => Promise<T>): Promise<T> {
