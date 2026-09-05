@@ -1,10 +1,18 @@
 import type {
+  ChangeWarehouseLocationStatusCommand,
   ChangeWarehouseScopeCommand,
   ChangeWarehouseStatusCommand,
+  ChangeWarehouseZoneStatusCommand,
   CreateWarehouseCommand,
   CreateWarehouseLocationCommand,
   CreateWarehouseZoneCommand,
+  DeleteWarehouseCommand,
+  DeleteWarehouseLocationCommand,
+  DeleteWarehouseZoneCommand,
+  MoveWarehouseLocationCommand,
   UpdateWarehouseCommand,
+  UpdateWarehouseLocationCommand,
+  UpdateWarehouseZoneCommand,
 } from "./warehouse-commands.ts";
 
 export const warehousePermissions = Object.freeze({
@@ -13,6 +21,7 @@ export const warehousePermissions = Object.freeze({
   update: "inventory.warehouses.update",
   changeStatus: "inventory.warehouses.change-status",
   manageScope: "inventory.warehouses.manage-scope",
+  delete: "inventory.warehouses.delete",
   manageLocations: "inventory.warehouses.manage-locations",
   import: "inventory.warehouses.import",
   export: "inventory.warehouses.export",
@@ -46,8 +55,16 @@ export type WarehouseAuditAction =
   | "warehouse.update"
   | "warehouse.change-status"
   | "warehouse.change-scope"
+  | "warehouse.delete"
   | "warehouse.zone.create"
+  | "warehouse.zone.update"
+  | "warehouse.zone.change-status"
+  | "warehouse.zone.delete"
   | "warehouse.location.create"
+  | "warehouse.location.update"
+  | "warehouse.location.change-status"
+  | "warehouse.location.move"
+  | "warehouse.location.delete"
   | "warehouse.import"
   | "warehouse.export"
   | "warehouse.initial-setup";
@@ -75,8 +92,16 @@ export type WarehouseMutationCommand =
   | UpdateWarehouseCommand
   | ChangeWarehouseStatusCommand
   | ChangeWarehouseScopeCommand
+  | DeleteWarehouseCommand
   | CreateWarehouseZoneCommand
-  | CreateWarehouseLocationCommand;
+  | UpdateWarehouseZoneCommand
+  | ChangeWarehouseZoneStatusCommand
+  | DeleteWarehouseZoneCommand
+  | CreateWarehouseLocationCommand
+  | UpdateWarehouseLocationCommand
+  | ChangeWarehouseLocationStatusCommand
+  | MoveWarehouseLocationCommand
+  | DeleteWarehouseLocationCommand;
 
 export const warehouseCorrelationId = (
   context: WarehouseSecurityContext,
