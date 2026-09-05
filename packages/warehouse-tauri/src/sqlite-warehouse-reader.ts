@@ -103,7 +103,7 @@ const buildWarehouseFilter = (input: {
   externalIdentifierNamespace?: string | null | undefined;
   externalIdentifierValue?: string | null | undefined;
 }): { where: string; parameters: DatabaseValue[]; join: string } => {
-  const clauses = ["w.company_id = ?"];
+  const clauses = ["w.company_id = ?", "w.deleted_at IS NULL"];
   const parameters: DatabaseValue[] = [input.companyId];
   let join = "";
 
