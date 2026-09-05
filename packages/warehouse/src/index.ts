@@ -109,9 +109,7 @@ export type {
   WarehouseZoneDto,
 } from "./application/contracts/warehouse-dto.ts";
 
-export {
-  allowUnintegratedWarehouseDependencies,
-} from "./application/contracts/warehouse-dependencies.ts";
+export { allowUnintegratedWarehouseDependencies } from "./application/contracts/warehouse-dependencies.ts";
 export type {
   WarehouseDependencyBlocker,
   WarehouseDependencyCheck,
@@ -127,7 +125,6 @@ export {
 export type { WarehouseApplicationErrorCode } from "./application/contracts/warehouse-errors.ts";
 
 export { WAREHOUSE_QUERY_LIMITS } from "./application/contracts/warehouse-queries.ts";
-
 export type {
   GetWarehouseByCodeQuery,
   GetWarehouseByIdQuery,
@@ -148,7 +145,6 @@ export type {
   WarehouseRepository,
   WarehouseZoneRepository,
 } from "./application/contracts/warehouse-repository.ts";
-
 export type { WarehouseReader } from "./application/contracts/warehouse-reader.ts";
 export type {
   WarehouseUnitOfWork,
@@ -211,12 +207,29 @@ export type {
   WarehouseSyncUpsertEnvelope,
 } from "./application/contracts/warehouse-sync.ts";
 
+export {
+  WAREHOUSE_SELECTOR_CONSUMERS,
+  WarehouseSelectionContractError,
+  buildWarehouseLocationSelectorQuery,
+  buildWarehouseSelectorQuery,
+  buildWarehouseZoneSelectorQuery,
+  isWarehouseVisibleToBranch,
+  toWarehouseLocationSelectionReference,
+  toWarehouseSelectionReference,
+  toWarehouseZoneSelectionReference,
+} from "./application/warehouse-selection.ts";
+export type {
+  WarehouseLocationSelectionReference,
+  WarehouseSelectionContractErrorCode,
+  WarehouseSelectionPolicy,
+  WarehouseSelectionReference,
+  WarehouseSelectorConsumer,
+  WarehouseZoneSelectionReference,
+} from "./application/warehouse-selection.ts";
+
 export { WarehouseService } from "./application/warehouse-service.ts";
 export type { WarehouseServiceDependencies } from "./application/warehouse-service.ts";
-export {
-  SecuredWarehouseReader,
-  SecuredWarehouseService,
-} from "./application/secured-warehouse-service.ts";
+export { SecuredWarehouseReader, SecuredWarehouseService } from "./application/secured-warehouse-service.ts";
 export {
   WarehouseBulkTransferService,
   WarehouseInitialSetupService,
