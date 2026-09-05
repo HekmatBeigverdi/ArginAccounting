@@ -22,6 +22,7 @@ import { CodingTemplatesPage } from "../../pages/accounting/coding-templates-pag
 import { JournalVouchersRoute } from "../../pages/accounting/journal-vouchers-route";
 import { PartiesPage } from "../../pages/party/parties-page";
 import { ProductsPage } from "../../pages/product/products-page";
+import { WarehousesPage } from "../../pages/warehouse/warehouses-page";
 
 export function AppRouter() {
   return (
@@ -38,6 +39,7 @@ export function AppRouter() {
           <Route path="/company/setup" element={<CompanySetupPage />} />
           <Route path="/master-data/parties" element={<PartiesPage />} />
           <Route path="/master-data/products" element={<ProductsPage />} />
+          <Route path="/inventory/warehouses" element={<WarehousesPage />} />
           <Route path="/fiscal/years" element={<FiscalYearsPage />} />
           <Route path="/fiscal/years/new" element={<NewFiscalYearPage />} />
           <Route path="/approval/requests" element={<ApprovalRequestsPage />} />
