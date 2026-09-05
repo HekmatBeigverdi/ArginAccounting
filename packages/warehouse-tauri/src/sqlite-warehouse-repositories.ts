@@ -16,30 +16,21 @@ import {
 } from "@argin/warehouse";
 
 type WarehouseRow = {
-  id: string;
-  company_id: string;
-  code: string;
-  title: string;
-  description: string | null;
-  kind: WarehousePersistenceState["warehouse"]["kind"];
-  status: WarehousePersistenceState["warehouse"]["status"];
-  organizational_scope: "company" | "branch";
-  branch_id: string | null;
-  created_at: string;
-  updated_at: string;
-  version: number;
+  id: string; company_id: string; code: string; title: string; description: string | null;
+  kind: WarehousePersistenceState["warehouse"]["kind"]; status: WarehousePersistenceState["warehouse"]["status"];
+  organizational_scope: "company" | "branch"; branch_id: string | null;
+  created_at: string; updated_at: string; version: number; deleted_at: string | null;
 };
-
 type ExternalRow = { namespace: string; value: string };
 type BranchRow = { id: string; company_id: string; status: "active" | "inactive" };
 type ZoneRow = {
   id: string; company_id: string; warehouse_id: string; code: string; title: string;
-  description: string | null; status: "active" | "inactive"; created_at: string; updated_at: string;
+  description: string | null; status: "active" | "inactive"; created_at: string; updated_at: string; deleted_at: string | null;
 };
 type LocationRow = {
   id: string; company_id: string; warehouse_id: string; zone_id: string; parent_location_id: string | null;
   code: string; title: string; kind: WarehouseLocationSnapshot["kind"]; description: string | null;
-  status: "active" | "inactive"; created_at: string; updated_at: string;
+  status: "active" | "inactive"; created_at: string; updated_at: string; deleted_at: string | null;
 };
 
 const mapWriteError = (error: unknown): never => {
@@ -75,18 +66,11 @@ const hydrateWarehouse = async (db: DatabaseSession, row: WarehouseRow): Promise
     "SELECT namespace, value FROM warehouse_external_identifiers WHERE company_id = ? AND warehouse_id = ? ORDER BY namespace, value",
     [row.company_id, row.id],
   );
-  return Object.freeze({
-    warehouse,
-    externalIdentifiers: Object.freeze(externalIdentifiers.map((item) => Object.freeze({ ...item }))),
-    version: row.version,
-  });
+  return Object.freeze({ warehouse, externalIdentifiers: Object.freeze(externalIdentifiers.map((item) => Object.freeze({ ...item }))), version: row.version });
 };
 
 const replaceExternalIdentifiers = async (db: DatabaseSession, state: WarehousePersistenceState): Promise<void> => {
-  await db.execute(
-    "DELETE FROM warehouse_external_identifiers WHERE company_id = ? AND warehouse_id = ?",
-    [state.warehouse.companyId, state.warehouse.warehouseId],
-  );
+  await db.execute("DELETE FROM warehouse_external_identifiers WHERE company_id = ? AND warehouse_id = ?", [state.warehouse.companyId, state.warehouse.warehouseId]);
   for (const identifier of state.externalIdentifiers) {
     await db.execute(
       "INSERT INTO warehouse_external_identifiers (company_id, warehouse_id, namespace, value) VALUES (?, ?, ?, ?)",
@@ -99,12 +83,12 @@ export class SqliteWarehouseRepository implements WarehouseRepository {
   constructor(private readonly db: DatabaseSession) {}
 
   async findById(companyId: string, warehouseId: string): Promise<WarehousePersistenceState | null> {
-    const row = await this.db.queryOne<WarehouseRow>("SELECT * FROM warehouses WHERE company_id = ? AND id = ?", [companyId, warehouseId]);
+    const row = await this.db.queryOne<WarehouseRow>("SELECT * FROM warehouses WHERE company_id = ? AND id = ? AND deleted_at IS NULL", [companyId, warehouseId]);
     return row ? hydrateWarehouse(this.db, row) : null;
   }
 
   async findByCode(companyId: string, code: string): Promise<WarehousePersistenceState | null> {
-    const row = await this.db.queryOne<WarehouseRow>("SELECT * FROM warehouses WHERE company_id = ? AND code = ? COLLATE NOCASE", [companyId, code]);
+    const row = await this.db.queryOne<WarehouseRow>("SELECT * FROM warehouses WHERE company_id = ? AND code = ? COLLATE NOCASE AND deleted_at IS NULL", [companyId, code]);
     return row ? hydrateWarehouse(this.db, row) : null;
   }
 
@@ -112,7 +96,7 @@ export class SqliteWarehouseRepository implements WarehouseRepository {
     const row = await this.db.queryOne<WarehouseRow>(
       `SELECT w.* FROM warehouses w
        JOIN warehouse_external_identifiers i ON i.company_id = w.company_id AND i.warehouse_id = w.id
-       WHERE i.company_id = ? AND i.namespace = ? COLLATE NOCASE AND i.value = ?`,
+       WHERE i.company_id = ? AND i.namespace = ? COLLATE NOCASE AND i.value = ? AND w.deleted_at IS NULL`,
       [companyId, namespace, value],
     );
     return row ? hydrateWarehouse(this.db, row) : null;
@@ -138,24 +122,35 @@ export class SqliteWarehouseRepository implements WarehouseRepository {
     try {
       const result = await this.db.execute(
         `UPDATE warehouses SET code=?, title=?, description=?, kind=?, status=?, organizational_scope=?, branch_id=?, updated_at=?, version=?
-         WHERE company_id=? AND id=? AND version=?`,
+         WHERE company_id=? AND id=? AND version=? AND deleted_at IS NULL`,
         [state.warehouse.code, state.warehouse.title, state.warehouse.description, state.warehouse.kind,
           state.warehouse.status, scope.mode, scope.mode === "branch" ? scope.branchId : null,
           state.warehouse.updatedAt, state.version, state.warehouse.companyId, state.warehouse.warehouseId, expectedVersion],
       );
       if (result.rowsAffected !== 1) {
-        const exists = await this.db.queryOne<{ id: string }>(
-          "SELECT id FROM warehouses WHERE company_id=? AND id=?",
+        const exists = await this.db.queryOne<{ id: string; version: number; deleted_at: string | null }>(
+          "SELECT id,version,deleted_at FROM warehouses WHERE company_id=? AND id=?",
           [state.warehouse.companyId, state.warehouse.warehouseId],
         );
-        throw new WarehouseApplicationError(
-          exists ? "warehouse.application.concurrency-conflict" : "warehouse.application.not-found",
-        );
+        throw new WarehouseApplicationError(exists && exists.deleted_at === null ? "warehouse.application.concurrency-conflict" : "warehouse.application.not-found");
       }
       await replaceExternalIdentifiers(this.db, state);
     } catch (error) {
       if (error instanceof WarehouseApplicationError) throw error;
       mapWriteError(error);
+    }
+  }
+
+  async markDeleted(companyId: string, warehouseId: string, expectedVersion: number, deletedAt: string): Promise<void> {
+    const result = await this.db.execute(
+      `UPDATE warehouses
+       SET deleted_at=?, updated_at=?, version=version+1
+       WHERE company_id=? AND id=? AND version=? AND deleted_at IS NULL`,
+      [deletedAt, deletedAt, companyId, warehouseId, expectedVersion],
+    );
+    if (result.rowsAffected !== 1) {
+      const exists = await this.db.queryOne<{ id: string; deleted_at: string | null }>("SELECT id,deleted_at FROM warehouses WHERE company_id=? AND id=?", [companyId, warehouseId]);
+      throw new WarehouseApplicationError(exists && exists.deleted_at === null ? "warehouse.application.concurrency-conflict" : "warehouse.application.not-found");
     }
   }
 }
@@ -169,11 +164,11 @@ const mapZone = (row: ZoneRow): WarehouseZoneSnapshot => rehydrateWarehouseZone(
 export class SqliteWarehouseZoneRepository implements WarehouseZoneRepository {
   constructor(private readonly db: DatabaseSession) {}
   async findById(companyId: string, zoneId: string): Promise<WarehouseZoneSnapshot | null> {
-    const row = await this.db.queryOne<ZoneRow>("SELECT * FROM warehouse_zones WHERE company_id=? AND id=?", [companyId, zoneId]);
+    const row = await this.db.queryOne<ZoneRow>("SELECT * FROM warehouse_zones WHERE company_id=? AND id=? AND deleted_at IS NULL", [companyId, zoneId]);
     return row ? mapZone(row) : null;
   }
   async listByWarehouse(companyId: string, warehouseId: string): Promise<readonly WarehouseZoneSnapshot[]> {
-    const rows = await this.db.query<ZoneRow>("SELECT * FROM warehouse_zones WHERE company_id=? AND warehouse_id=? ORDER BY code,id", [companyId, warehouseId]);
+    const rows = await this.db.query<ZoneRow>("SELECT * FROM warehouse_zones WHERE company_id=? AND warehouse_id=? AND deleted_at IS NULL ORDER BY code,id", [companyId, warehouseId]);
     return Object.freeze(rows.map(mapZone));
   }
   async add(zone: WarehouseZoneSnapshot): Promise<void> {
@@ -189,7 +184,7 @@ export class SqliteWarehouseZoneRepository implements WarehouseZoneRepository {
     try {
       const result = await this.db.execute(
         `UPDATE warehouse_zones SET code=?,title=?,description=?,status=?,updated_at=?
-         WHERE company_id=? AND warehouse_id=? AND id=?`,
+         WHERE company_id=? AND warehouse_id=? AND id=? AND deleted_at IS NULL`,
         [zone.code, zone.title, zone.description, zone.status, zone.updatedAt, zone.companyId, zone.warehouseId, zone.zoneId],
       );
       if (result.rowsAffected !== 1) throw new WarehouseApplicationError("warehouse.application.not-found");
@@ -197,6 +192,14 @@ export class SqliteWarehouseZoneRepository implements WarehouseZoneRepository {
       if (error instanceof WarehouseApplicationError) throw error;
       mapWriteError(error);
     }
+  }
+  async markDeleted(companyId: string, warehouseId: string, zoneId: string, deletedAt: string): Promise<void> {
+    const result = await this.db.execute(
+      `UPDATE warehouse_zones SET deleted_at=?,updated_at=?
+       WHERE company_id=? AND warehouse_id=? AND id=? AND deleted_at IS NULL`,
+      [deletedAt, deletedAt, companyId, warehouseId, zoneId],
+    );
+    if (result.rowsAffected !== 1) throw new WarehouseApplicationError("warehouse.application.not-found");
   }
 }
 
@@ -210,22 +213,22 @@ export class SqliteWarehouseLocationRepository implements WarehouseLocationRepos
   constructor(private readonly db: DatabaseSession) {}
   private async hydrate(row: LocationRow): Promise<WarehouseLocationSnapshot> {
     const zone = await this.db.queryOne<ZoneRow>(
-      "SELECT * FROM warehouse_zones WHERE company_id=? AND warehouse_id=? AND id=?",
+      "SELECT * FROM warehouse_zones WHERE company_id=? AND warehouse_id=? AND id=? AND deleted_at IS NULL",
       [row.company_id, row.warehouse_id, row.zone_id],
     );
     if (!zone) throw new WarehouseApplicationError("warehouse.application.not-found");
     return rehydrateWarehouseLocation(locationSnapshot(row), mapZone(zone));
   }
   async findById(companyId: string, locationId: string): Promise<WarehouseLocationSnapshot | null> {
-    const row = await this.db.queryOne<LocationRow>("SELECT * FROM warehouse_locations WHERE company_id=? AND id=?", [companyId, locationId]);
+    const row = await this.db.queryOne<LocationRow>("SELECT * FROM warehouse_locations WHERE company_id=? AND id=? AND deleted_at IS NULL", [companyId, locationId]);
     return row ? this.hydrate(row) : null;
   }
   async listByWarehouse(companyId: string, warehouseId: string): Promise<readonly WarehouseLocationSnapshot[]> {
-    const rows = await this.db.query<LocationRow>("SELECT * FROM warehouse_locations WHERE company_id=? AND warehouse_id=? ORDER BY zone_id,code,id", [companyId, warehouseId]);
+    const rows = await this.db.query<LocationRow>("SELECT * FROM warehouse_locations WHERE company_id=? AND warehouse_id=? AND deleted_at IS NULL ORDER BY zone_id,code,id", [companyId, warehouseId]);
     return Object.freeze(await Promise.all(rows.map((row) => this.hydrate(row))));
   }
   async listByZone(companyId: string, warehouseId: string, zoneId: string): Promise<readonly WarehouseLocationSnapshot[]> {
-    const rows = await this.db.query<LocationRow>("SELECT * FROM warehouse_locations WHERE company_id=? AND warehouse_id=? AND zone_id=? ORDER BY code,id", [companyId, warehouseId, zoneId]);
+    const rows = await this.db.query<LocationRow>("SELECT * FROM warehouse_locations WHERE company_id=? AND warehouse_id=? AND zone_id=? AND deleted_at IS NULL ORDER BY code,id", [companyId, warehouseId, zoneId]);
     return Object.freeze(await Promise.all(rows.map((row) => this.hydrate(row))));
   }
   async add(location: WarehouseLocationSnapshot): Promise<void> {
@@ -243,7 +246,7 @@ export class SqliteWarehouseLocationRepository implements WarehouseLocationRepos
     try {
       const result = await this.db.execute(
         `UPDATE warehouse_locations SET parent_location_id=?,code=?,title=?,kind=?,description=?,status=?,updated_at=?
-         WHERE company_id=? AND warehouse_id=? AND zone_id=? AND id=?`,
+         WHERE company_id=? AND warehouse_id=? AND zone_id=? AND id=? AND deleted_at IS NULL`,
         [location.parentLocationId, location.code, location.title, location.kind, location.description, location.status,
           location.updatedAt, location.companyId, location.warehouseId, location.zoneId, location.locationId],
       );
@@ -252,5 +255,29 @@ export class SqliteWarehouseLocationRepository implements WarehouseLocationRepos
       if (error instanceof WarehouseApplicationError) throw error;
       mapWriteError(error);
     }
+  }
+  async move(location: WarehouseLocationSnapshot, previousWarehouseId: string, previousZoneId: string): Promise<void> {
+    try {
+      const result = await this.db.execute(
+        `UPDATE warehouse_locations
+         SET warehouse_id=?,zone_id=?,parent_location_id=?,code=?,title=?,kind=?,description=?,status=?,updated_at=?
+         WHERE company_id=? AND warehouse_id=? AND zone_id=? AND id=? AND deleted_at IS NULL`,
+        [location.warehouseId, location.zoneId, location.parentLocationId, location.code, location.title, location.kind,
+          location.description, location.status, location.updatedAt, location.companyId, previousWarehouseId,
+          previousZoneId, location.locationId],
+      );
+      if (result.rowsAffected !== 1) throw new WarehouseApplicationError("warehouse.application.not-found");
+    } catch (error) {
+      if (error instanceof WarehouseApplicationError) throw error;
+      mapWriteError(error);
+    }
+  }
+  async markDeleted(companyId: string, locationId: string, deletedAt: string): Promise<void> {
+    const result = await this.db.execute(
+      `UPDATE warehouse_locations SET deleted_at=?,updated_at=?
+       WHERE company_id=? AND id=? AND deleted_at IS NULL`,
+      [deletedAt, deletedAt, companyId, locationId],
+    );
+    if (result.rowsAffected !== 1) throw new WarehouseApplicationError("warehouse.application.not-found");
   }
 }
