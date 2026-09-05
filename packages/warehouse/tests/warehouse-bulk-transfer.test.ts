@@ -22,6 +22,7 @@ class MemoryWarehouseRepository implements WarehouseRepository {
   async findByExternalIdentifier(companyId: string, namespace: string, value: string) { return this.states.find((x) => x.warehouse.companyId === companyId && x.externalIdentifiers.some((id) => id.namespace === namespace && id.value === value)) ?? null; }
   async add(state: WarehousePersistenceState) { this.states.push(state); }
   async update(): Promise<void> { throw new Error("not-used"); }
+  async markDeleted(): Promise<void> { throw new Error("not-used"); }
 }
 
 const repository = new MemoryWarehouseRepository();
