@@ -5,6 +5,9 @@ export const WAREHOUSE_APPLICATION_ERROR_CODES = {
   concurrencyConflict: "warehouse.application.concurrency-conflict",
   branchReferenceInvalid: "warehouse.application.branch-reference-invalid",
   archivedMutationForbidden: "warehouse.application.archived-mutation-forbidden",
+  dependencyBlocked: "warehouse.application.dependency-blocked",
+  structuralDependencyBlocked: "warehouse.application.structural-dependency-blocked",
+  moveCycle: "warehouse.application.move-cycle",
   unauthorized: "warehouse.application.unauthorized",
 } as const;
 
