@@ -100,6 +100,7 @@ const buildWarehouseFilter = (input: {
   statuses?: readonly string[] | undefined;
   branchId?: string | null | undefined;
   includeCompanyWide?: boolean | undefined;
+  companyWideOnly?: boolean | undefined;
   externalIdentifierNamespace?: string | null | undefined;
   externalIdentifierValue?: string | null | undefined;
 }): { where: string; parameters: DatabaseValue[]; join: string } => {
@@ -120,7 +121,9 @@ const buildWarehouseFilter = (input: {
     clauses.push(`w.status IN (${placeholders(input.statuses.length)})`);
     parameters.push(...input.statuses);
   }
-  if (input.branchId) {
+  if (input.companyWideOnly) {
+    clauses.push("w.organizational_scope = 'company'");
+  } else if (input.branchId) {
     clauses.push(input.includeCompanyWide
       ? "((w.organizational_scope = 'branch' AND w.branch_id = ?) OR w.organizational_scope = 'company')"
       : "(w.organizational_scope = 'branch' AND w.branch_id = ?)");
@@ -195,6 +198,7 @@ export class SqliteWarehouseReader implements WarehouseReader {
       statuses: query.statuses,
       branchId: query.branchId,
       includeCompanyWide: query.includeCompanyWide,
+      companyWideOnly: query.companyWideOnly,
     });
     const rows = await this.database.query<WarehouseListRow>(
       `SELECT DISTINCT w.id,w.code,w.title,w.kind,w.status,w.organizational_scope,w.branch_id,w.version
