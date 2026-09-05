@@ -57,10 +57,9 @@ export interface WarehouseLocationSelectionReference {
 
 export type WarehouseSelectionContractErrorCode =
   | "warehouse.selection.company-id.required"
-  | "warehouse.selection.branch-id.required"
   | "warehouse.selection.warehouse-id.required"
-  | "warehouse.selection.zone-id.required"
-  | "warehouse.selection.limit.invalid";
+  | "warehouse.selection.limit.invalid"
+  | "warehouse.selection.inactive";
 
 export class WarehouseSelectionContractError extends Error {
   constructor(
@@ -72,6 +71,12 @@ export class WarehouseSelectionContractError extends Error {
   }
 }
 
+/**
+ * Builds the stable query consumed by Inventory/Purchases/Sales/Manufacturing/
+ * Transfer/Adjustment. No branchId means company-wide Warehouses only. When a
+ * branchId is supplied, that Branch is visible plus company-wide Warehouses by
+ * default. Consumers never receive inactive/archived Warehouses.
+ */
 export function buildWarehouseSelectorQuery(
   companyId: string,
   search: string | null | undefined,
@@ -93,11 +98,11 @@ export function buildWarehouseSelectorQuery(
 
   return Object.freeze({
     companyId: normalizedCompanyId,
-    ...(branchId ? { branchId } : {}),
+    ...(branchId ? { branchId } : { companyWideOnly: true }),
     ...(normalizedSearch ? { search: normalizedSearch } : {}),
     ...(kinds.length > 0 ? { kinds } : {}),
     statuses: Object.freeze(["active"] as const),
-    includeCompanyWide,
+    ...(branchId ? { includeCompanyWide } : {}),
     limit,
   });
 }
@@ -142,8 +147,8 @@ export function toWarehouseSelectionReference(
 ): WarehouseSelectionReference {
   if (item.status !== "active") {
     throw new WarehouseSelectionContractError(
-      "warehouse.selection.warehouse-id.required",
-      "Only active warehouses can be selected by future consumers.",
+      "warehouse.selection.inactive",
+      "Only active Warehouses can be selected by future consumers.",
     );
   }
   return Object.freeze({
@@ -158,6 +163,9 @@ export function toWarehouseSelectionReference(
 export function toWarehouseZoneSelectionReference(
   zone: WarehouseZoneDto,
 ): WarehouseZoneSelectionReference {
+  if (zone.status !== "active") {
+    throw new WarehouseSelectionContractError("warehouse.selection.inactive", "Only active Zones can be selected.");
+  }
   return Object.freeze({
     warehouseId: zone.warehouseId,
     zoneId: zone.zoneId,
@@ -169,6 +177,9 @@ export function toWarehouseZoneSelectionReference(
 export function toWarehouseLocationSelectionReference(
   location: WarehouseLocationDto,
 ): WarehouseLocationSelectionReference {
+  if (location.status !== "active") {
+    throw new WarehouseSelectionContractError("warehouse.selection.inactive", "Only active Locations can be selected.");
+  }
   return Object.freeze({
     warehouseId: location.warehouseId,
     zoneId: location.zoneId,
@@ -186,9 +197,10 @@ export function isWarehouseVisibleToBranch(
   includeCompanyWide = true,
 ): boolean {
   if (item.status !== "active") return false;
-  if (item.organizationalScope.mode === "company") return includeCompanyWide;
   const normalizedBranchId = branchId?.trim();
-  return Boolean(normalizedBranchId) && item.organizationalScope.branchId === normalizedBranchId;
+  if (!normalizedBranchId) return item.organizationalScope.mode === "company";
+  if (item.organizationalScope.mode === "company") return includeCompanyWide;
+  return item.organizationalScope.branchId === normalizedBranchId;
 }
 
 function required(value: string, code: WarehouseSelectionContractErrorCode): string {
