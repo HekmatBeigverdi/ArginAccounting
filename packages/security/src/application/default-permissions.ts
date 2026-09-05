@@ -73,6 +73,7 @@ export const defaultPermissions: PermissionDefinition[] = [
   { code: "inventory.warehouses.update", module: "inventory", title: "ویرایش اطلاعات انبار" },
   { code: "inventory.warehouses.change-status", module: "inventory", title: "تغییر وضعیت انبار" },
   { code: "inventory.warehouses.manage-scope", module: "inventory", title: "مدیریت حوزه سازمانی و شعبه انبار" },
+  { code: "inventory.warehouses.delete", module: "inventory", title: "حذف انبار اشتباهی و بدون وابستگی" },
   { code: "inventory.warehouses.manage-locations", module: "inventory", title: "مدیریت ناحیه‌ها و مکان‌های فیزیکی انبار" },
   { code: "inventory.warehouses.import", module: "inventory", title: "ورود گروهی انبارها" },
   { code: "inventory.warehouses.export", module: "inventory", title: "خروجی‌گرفتن از انبارها" },
