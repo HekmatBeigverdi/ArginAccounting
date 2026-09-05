@@ -18,6 +18,7 @@ export interface WarehouseRepository {
   ): Promise<WarehousePersistenceState | null>;
   add(state: WarehousePersistenceState): Promise<void>;
   update(state: WarehousePersistenceState, expectedVersion: number): Promise<void>;
+  markDeleted(companyId: string, warehouseId: string, expectedVersion: number, deletedAt: string): Promise<void>;
 }
 
 export interface WarehouseZoneRepository {
@@ -25,6 +26,7 @@ export interface WarehouseZoneRepository {
   listByWarehouse(companyId: string, warehouseId: string): Promise<readonly WarehouseZoneSnapshot[]>;
   add(zone: WarehouseZoneSnapshot): Promise<void>;
   update(zone: WarehouseZoneSnapshot): Promise<void>;
+  markDeleted(companyId: string, warehouseId: string, zoneId: string, deletedAt: string): Promise<void>;
 }
 
 export interface WarehouseLocationRepository {
@@ -33,4 +35,6 @@ export interface WarehouseLocationRepository {
   listByZone(companyId: string, warehouseId: string, zoneId: string): Promise<readonly WarehouseLocationSnapshot[]>;
   add(location: WarehouseLocationSnapshot): Promise<void>;
   update(location: WarehouseLocationSnapshot): Promise<void>;
+  move(location: WarehouseLocationSnapshot, previousWarehouseId: string, previousZoneId: string): Promise<void>;
+  markDeleted(companyId: string, locationId: string, deletedAt: string): Promise<void>;
 }
