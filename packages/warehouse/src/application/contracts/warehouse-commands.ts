@@ -139,6 +139,7 @@ export interface MoveWarehouseLocationCommand {
 export interface DeleteWarehouseLocationCommand {
   readonly requestId: string;
   readonly locationId: string;
+  readonly warehouseId: string;
   readonly companyId: string;
   readonly occurredAt: string;
 }
