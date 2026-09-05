@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–14 are completed. Steps 15–20 are not started.
+Phase 19 is in progress. Steps 1–15 are completed. Steps 16–20 are not started.
 
 ## Governance
 
@@ -83,7 +83,7 @@ Those future modules must plug their real dependency probes into the Warehouse d
 | 12 | Permissions, Audit and Approval Integration | Completed |
 | 13 | Import / Export and Initial Warehouse Setup | Completed |
 | 14 | Persian RTL Warehouse Management UI | Completed |
-| 15 | Warehouse Selector and Future Consumer Contract | Not started |
+| 15 | Warehouse Selector and Future Consumer Contract | Completed |
 | 16 | Inventory and ERP Integration Boundaries | Not started |
 | 17 | Domain and Application Tests | Not started |
 | 18 | Repository, Migration, Import/Export and Desktop Tests | Not started |
@@ -164,31 +164,13 @@ Completed actions:
 - Composed secured Application services and SQLite adapters instead of direct SQL mutation from React.
 - Added Warehouse create/edit, lifecycle controls, Branch/company scope selection, external identifiers, optimistic version display and persistent Audit integration.
 - Added Zone and Location tabs inside Warehouse detail.
-- Added create and **edit** for Zone code, title and description.
-- Added create and **edit** for Location code, title, description and Location kind.
-- Added Zone **activate/deactivate** operations.
-- Added Location **activate/deactivate** operations.
-- Added `inventory.warehouses.delete` as a separate permission for destructive Warehouse deletion; Zone/Location maintenance continues under `inventory.warehouses.manage-locations`.
-- Added dependency-safe user Delete operations for Warehouse, Zone and Location. User-facing Delete is persisted as tombstone-compatible soft deletion rather than unrecoverable row destruction.
-- Warehouse deletion is blocked while non-deleted Zones/Locations exist and also invokes the future-consumer dependency guard.
-- Zone deletion is blocked while Locations remain underneath it and also invokes the dependency guard.
-- Location deletion is blocked while it has child Locations and also invokes the dependency guard.
-- Added `WarehouseDependencyGuard` for future stock/document/reference probes with blocker kinds covering stock balance, Inventory documents, Purchase documents, Sales documents, Manufacturing documents, accounting references and other consumers.
-- Warehouse deactivate/archive/delete, Zone deactivate/delete, and Location deactivate/delete/move call the dependency guard. The default pre-Inventory implementation has no external blockers because those modules do not yet exist; future modules must supply concrete probes without changing the Warehouse public contract.
-- Zone deactivation is blocked while active Locations exist under the Zone.
-- Location deactivation is blocked while active descendants exist below it.
-- Added Location parent-change support as a controlled move operation rather than direct field mutation.
-- Added ancestry traversal and cycle detection; a Location cannot become its own parent or be moved below one of its descendants.
-- Added independent Location transfer to another Zone or another Warehouse. Target Warehouse must be usable, target Zone must be active and belong to the target Warehouse, and optional parent must be active and belong to the same target Zone.
-- Cross-Zone/Cross-Warehouse transfer of a Location that still has descendants is intentionally blocked; Phase 19 does not silently move an entire subtree as a side effect of moving one node.
-- Added migration `0025_warehouse_maintenance_tombstones.sql` with `deleted_at` for Zone/Location, tombstone indexes and active lookup indexes; registered as desktop migration version 25.
-- Updated SQLite repositories/readers so tombstoned Warehouse/Zone/Location records are excluded from normal reads and move/delete writes are scope-safe.
-- Root Warehouse uses the Step 10 `warehouses.deleted_at` field and increments Warehouse version on deletion with optimistic-CAS semantics.
-- Added retry-safe Audit actions for Warehouse delete, Zone update/status/delete and Location update/status/move/delete.
-- Added transport-neutral `WarehousePhysicalSyncEnvelope` contracts for Zone/Location `upsert` and `tombstone` changes, carrying Company/Warehouse/entity identity, request/idempotency identity, origin and change timestamp.
-- Actual Argin Bridge outbox/transport, server acknowledgement, retry scheduling and conflict resolution remain outside Phase 19's sync implementation scope.
-- Added focused maintenance Domain tests for edit/status/move/cycle rules and Desktop contract tests for migration-25 registration, tombstones and agreed UI maintenance actions.
-- Existing in-memory test repositories were updated to satisfy the expanded persistence contract so Step 14 does not invalidate earlier Step 8/13 test fixtures.
+- Added create/edit/status/delete operations for Zone and Location.
+- Added controlled Location parent change and explicit Location transfer across Zone/Warehouse with cycle prevention and target-scope validation.
+- Added `inventory.warehouses.delete` as a separate permission for destructive Warehouse deletion; physical maintenance remains under `inventory.warehouses.manage-locations`.
+- Added `WarehouseDependencyGuard` for future stock/document/reference probes and enforced it on destructive/status/move operations.
+- Added tombstone-compatible deletion for Warehouse, Zone and Location, migration `0025_warehouse_maintenance_tombstones.sql`, ordinary-read filtering and physical Argin Bridge upsert/tombstone envelopes.
+- Added restoration support completed in the subsequent Step 14 corrections without changing the frozen sequence.
+- Added focused maintenance/UI contract tests and aligned earlier in-memory repository fixtures with the expanded contracts.
 
 ### Step 14 Maintenance Rules
 
@@ -209,23 +191,44 @@ Completed actions:
 | Inventory/document dependency check | Public guard contract is frozen now; concrete probes are supplied when Inventory/Purchase/Sales/Manufacturing consumers exist. |
 | Argin Bridge propagation | Warehouse and physical upsert/tombstone contracts are prepared now; actual sync engine remains future scope. |
 
-### Step 14 Exit Criteria
+### Step 15 — Warehouse Selector and Future Consumer Contract
 
-Step 14 is complete when:
+Step 15 freezes the reusable selection boundary that future ERP modules consume instead of inventing module-specific Warehouse lookup rules.
 
-- Warehouse management is reachable from Desktop navigation under the correct permission.
-- The page is Persian RTL and codes/identifiers remain explicitly LTR.
-- Company-scoped list/search/filter/detail interactions use a dense desktop layout.
-- Warehouse/Zone/Location mutations use secured Application services rather than direct SQL writes.
-- Zone/Location can be edited, activated/deactivated and safely deleted under explicit structural/dependency rules.
-- Location parent changes prevent cycles.
-- Location transfer is an explicit validated operation rather than unrestricted field editing.
-- Destructive/status/move operations expose the future stock/document dependency boundary now.
-- Warehouse/Zone/Location deletions are tombstone-compatible for future Argin Bridge propagation.
-- Focused maintenance/UI contract tests are committed.
-- Reusable future-consumer Warehouse selector behavior remains reserved for Step 15.
+Completed actions:
 
-All Step 14 implementation artifacts and focused tests are committed. Full executable Domain/Application/Desktop/monorepo validation and accessibility review remain mandatory in Steps 17–19.
+- Added `WAREHOUSE_SELECTOR_CONSUMERS` with the approved future consumers: `inventory`, `purchases`, `sales`, `manufacturing`, `transfer`, and `adjustment`.
+- Added `WarehouseSelectionPolicy`, `WarehouseSelectionReference`, `WarehouseZoneSelectionReference`, and `WarehouseLocationSelectionReference` as persistence-neutral contracts.
+- Selection references preserve durable `warehouseId`, `zoneId`, and `locationId`; codes and titles remain display metadata and never become foreign identity.
+- Added `buildWarehouseSelectorQuery` with normalized Company/search/kind/limit handling and default active-only eligibility.
+- Branch visibility is fail-safe: without `branchId`, selector queries expose only company-wide Warehouses. With `branchId`, only that Branch plus company-wide Warehouses are eligible by default; `includeCompanyWide=false` can explicitly restrict to the Branch only.
+- Added `companyWideOnly` to the shared Warehouse query contract and SQLite reader so Branch isolation is enforced by the persistence query itself rather than only by UI filtering.
+- Added active-only Zone and Location selector builders. Inactive/tombstoned physical nodes are not eligible for normal future-document selection.
+- Added conversion helpers that reject inactive entities and produce immutable durable selection references.
+- Added `isWarehouseVisibleToBranch` as a deterministic policy helper for consumers/tests that need eligibility checks outside persistence.
+- Existing bounded selector limit remains 1–100 with default 20.
+- Added reusable Persian RTL `WarehouseSelector` Desktop component following the existing Party selector interaction pattern: deferred search, race-safe async requests, keyboard navigation, combobox/listbox accessibility, clear action, dense layout and explicit LTR code rendering.
+- `WarehouseSelector` accepts `companyId`, optional `branchId`, consumer context, kind restrictions and `includeCompanyWide`, and emits `WarehouseSelectionReference` rather than raw display text.
+- The shared selector is intentionally not tied to Inventory/Purchase/Sales document state; future modules compose it with their own transactional rules while preserving the frozen Warehouse eligibility contract.
+- Added focused Application contract tests for consumer list, active-only behavior, Company/Branch visibility, durable identity, Zone/Location queries and limit validation.
+- Added focused Desktop contract tests for shared contract consumption, RTL/LTR behavior, combobox/listbox semantics and dense sizing.
+- No stock balance, document transaction, transfer workflow, costing, posting or synchronization implementation was introduced in Step 15.
+
+### Step 15 Exit Criteria
+
+Step 15 is complete when:
+
+- Future ERP consumers share one Warehouse selector contract rather than querying codes/titles directly.
+- `warehouseId`/`zoneId`/`locationId` remain the only durable selection identities.
+- Inactive/archived/tombstoned entities are excluded from normal selector eligibility.
+- Company/Branch visibility cannot expose Warehouses from an unrelated Branch.
+- Company-context selection without Branch is company-wide-only by default.
+- Zone/Location selection remains scoped under a selected Warehouse and returns only active physical nodes.
+- A reusable accessible Persian RTL Desktop Warehouse selector is available for future document screens.
+- Focused selector contract/UI tests are committed.
+- Inventory/Purchase/Sales/Manufacturing transactional integration remains reserved for Step 16 and the later module phases.
+
+All Step 15 implementation artifacts and focused tests are committed. Full executable Domain/Application/Desktop/monorepo validation and accessibility review remain mandatory in Steps 17–19.
 
 ## Change Requests
 
