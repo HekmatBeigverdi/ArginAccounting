@@ -74,6 +74,12 @@ importers:
       '@argin/security-tauri':
         specifier: workspace:*
         version: link:../../packages/security-tauri
+      '@argin/warehouse':
+        specifier: workspace:*
+        version: link:../../packages/warehouse
+      '@argin/warehouse-tauri':
+        specifier: workspace:*
+        version: link:../../packages/warehouse-tauri
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1

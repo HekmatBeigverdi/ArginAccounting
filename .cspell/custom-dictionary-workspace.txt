@@ -12,6 +12,7 @@ describedby
 filterbar
 finaliz
 irreproducible
+kardex
 NOCASE
 noopener
 noreferrer
@@ -674,6 +675,7 @@ Vite
 موفقیت
 موقت
 موقتاً
+موقعیت
 میلادی
 ناحیه
 نادرست

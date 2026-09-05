@@ -23,7 +23,7 @@ test("warehouse management UI is registered behind warehouse view permission", a
     readFile(navigationPath, "utf8"),
   ]);
 
-  assert.match(router, /path="\/inventory\/warehouses" element={<WarehousesPage \/>}/u);
+  assert.match(router, /path="\/inventory\/warehouses" element=\{<WarehousesPage \/>\}/u);
   assert.match(navigation, /requiredPermission: "inventory\.warehouses\.view"/u);
 });
 
