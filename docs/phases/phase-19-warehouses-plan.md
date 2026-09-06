@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–16 are completed. Steps 17–20 are not started.
+Phase 19 is in progress. Steps 1–17 are completed. Steps 18–20 are not started.
 
 ## Governance
 
@@ -85,7 +85,7 @@ Those future modules must plug their real dependency probes into the Warehouse d
 | 14 | Persian RTL Warehouse Management UI | Completed |
 | 15 | Warehouse Selector and Future Consumer Contract | Completed |
 | 16 | Inventory and ERP Integration Boundaries | Completed |
-| 17 | Domain and Application Tests | Not started |
+| 17 | Domain and Application Tests | Completed |
 | 18 | Repository, Migration, Import/Export and Desktop Tests | Not started |
 | 19 | Performance, Accessibility, Monorepo Quality and Documentation | Not started |
 | 20 | Final Review, Merge and Release | Not started |
@@ -268,6 +268,42 @@ Step 16 is complete when:
 - Architecture documentation and regression tests lock these boundaries.
 
 All Step 16 implementation artifacts and focused tests are committed. Full executable Domain/Application/Desktop/monorepo validation remains mandatory in Steps 17–19.
+
+### Step 17 — Domain and Application Tests
+
+Step 17 consolidates and strengthens persistence-neutral regression coverage for the complete Warehouse Domain/Application surface before repository/Desktop validation begins.
+
+Completed actions:
+
+- Retained and consolidated existing Domain coverage for Warehouse normalization/immutability, classification/lifecycle, Company/Branch scope, identifiers, Zone/Location hierarchy, maintenance rules, cycle prevention, selector contracts, sync contracts and ERP ownership boundaries.
+- Retained Application coverage for create/update/status/scope, restore, physical-structure creation, security/audit, bulk transfer, selector eligibility and integration references.
+- Added `warehouse-domain-application-regression.test.ts` as a focused cross-feature Application regression suite.
+- Added explicit wrong-Company mutation coverage: a request scoped to another Company receives `not-found` and cannot mutate the owning Company's Warehouse state.
+- Added strict optimistic-version-chain coverage across consecutive update, lifecycle and scope mutations, followed by rejection of a stale version.
+- Added invalid outer-context coverage proving an empty Company scope is rejected before Unit of Work entry.
+- Added Dependency Guard coverage proving a stock/document blocker prevents protected lifecycle mutation, receives durable Company/Warehouse identity and leaves the persisted version unchanged.
+- Added idempotency-scope coverage proving the same `requestId` can safely exist in different Company and mutation scopes without replaying an unrelated result.
+- Added structural-first dependency coverage proving an active child Location blocks Zone deactivation before an external dependency probe can authorize it.
+- Existing restore coverage continues to lock archived-only restoration, stale-version rejection, Company isolation, idempotent replay, preservation of scope/identifiers/createdAt and explicit reactivation after restore-to-inactive.
+- Existing physical-maintenance coverage continues to lock edit/status/delete/move semantics, descendant protection and cycle rejection without SQLite dependencies.
+- Existing selector tests continue to lock active-only eligibility, Branch visibility and durable reference identity.
+- Existing security tests continue to lock authorization-before-mutation and retry-safe Audit behavior.
+- No SQLite, migration, Tauri or Desktop assertions were added to this step; those remain Step 18.
+
+### Step 17 Exit Criteria
+
+Step 17 is complete when:
+
+- Core Warehouse business rules are independently testable without SQLite or Desktop composition.
+- Company isolation is explicitly covered for mutation paths.
+- Optimistic concurrency is covered across a multi-mutation version chain and stale writes are rejected.
+- Request idempotency cannot collide across unrelated Company/operation scopes.
+- Invalid outer context is rejected before Unit of Work entry.
+- Dependency Guard and structural blockers are both covered, including their precedence.
+- Restore, selector, maintenance, security/audit, sync and ERP-boundary regressions remain represented in the Domain/Application suite.
+- Repository, migration, import/export persistence and Desktop execution remain reserved for Step 18.
+
+All Step 17 test artifacts are committed. These tests were not executed in the assistant environment because the repository cannot be cloned there due DNS/network resolution; executable validation remains required locally and is carried forward into Steps 18–19.
 
 ## Change Requests
 
