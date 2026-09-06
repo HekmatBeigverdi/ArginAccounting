@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–19 are completed. Step 20 is not started.
+Phase 19 is complete. Steps 1–20 are completed. Tag and GitHub Release publication remain manual release actions after promotion to `main`.
 
 ## Governance
 
@@ -88,7 +88,7 @@ Future Inventory/Purchase/Sales/Manufacturing modules must plug concrete depende
 | 17 | Domain and Application Tests | Completed |
 | 18 | Repository, Migration, Import/Export and Desktop Tests | Completed |
 | 19 | Performance, Accessibility, Monorepo Quality and Documentation | Completed |
-| 20 | Final Review, Merge and Release | Not started |
+| 20 | Final Review, Merge and Release | Completed |
 
 ## Fixed Execution Sequence
 
@@ -206,36 +206,21 @@ Future Inventory/Purchase/Sales/Manufacturing modules must plug concrete depende
 
 - Added `@argin/warehouse-tauri validate:performance` via `scripts/validate-warehouse-performance.ts`.
 - Performance validation builds a representative dataset of 50,000 Warehouses, including 40,000 Company-scoped test rows, plus 5,000 Zones and 20,000 Locations.
-- SQLite `EXPLAIN QUERY PLAN` must use accepted indexes for:
-  - Company/status Warehouse list
-  - Branch-scoped Warehouse selector
-  - external-identifier duplicate lookup
-  - Zone lookup
-  - Location lookup
+- SQLite `EXPLAIN QUERY PLAN` must use accepted indexes for Company/status Warehouse list, Branch-scoped selector, external-identifier duplicate lookup, Zone lookup and Location lookup.
 - Performance acceptance is based on bounded queries and expected index use, not hardware-specific wall-clock timing.
-- Added `warehouse-step19-quality.test.ts` covering Persian RTL, explicit LTR identifiers, Persian-calendar presentation, focus-visible behavior, Warehouse selector keyboard/ARIA semantics, semantic confirmation dialog behavior, dense sizing, local overflow, responsive collapse, loading/empty/error/success feedback and race-safe bounded selector lookup.
-- Added root `pnpm validate:phase19` as the canonical Phase 19 quality gate. It runs Warehouse and Warehouse-Tauri typecheck/tests, Warehouse performance validation, Security/Audit checks, Desktop typecheck/test/build, then full monorepo typecheck/test/build/lint.
-- Updated `ROADMAP.md` with Phase 19 implementation/quality status while retaining Phase 19 as the current target until Step 20 promotion.
-- Updated `docs/glossary/domain-glossary.md` with canonical Warehouse/Zone/Location/selector/operational-reference/dependency-guard/tombstone terminology.
-- Updated `docs/database/database-design.md` with migrations 22–25, Warehouse persistence boundaries, indexing/performance rules, transaction semantics and future PostgreSQL/Argin Bridge compatibility.
-- Existing architecture records remain canonical:
-  - `docs/architecture/warehouse-sync-contract.md`
-  - `docs/architecture/warehouse-inventory-erp-integration.md`
-- No new ADR is required: Phase 19 follows existing offline-first, Master Data, shared security/audit, database abstraction, Phase 14 UI and future-sync decisions.
-- No stock transaction, valuation, posting, Taxpayer transport or live synchronization behavior was introduced by the quality/documentation step.
+- Added `warehouse-step19-quality.test.ts` covering Persian RTL, explicit LTR identifiers, Persian-calendar presentation, focus-visible behavior, selector keyboard/ARIA semantics, semantic confirmation dialog behavior, dense sizing, local overflow, responsive collapse, feedback and race-safe bounded lookup.
+- Added root `pnpm validate:phase19` covering Warehouse, infrastructure, Desktop and full monorepo quality gates.
+- Updated Roadmap, glossary and canonical database/architecture documentation for Phase 19.
 
-### Step 19 Exit Criteria
+### Step 20 — Final Review, Merge and Release
 
-Step 19 is complete when:
-
-- a representative Warehouse/Zone/Location SQLite performance validator is committed;
-- critical list/selector/duplicate/physical lookup plans require accepted indexes;
-- Warehouse Desktop quality contracts cover RTL/LTR, dense layout, focus, responsive behavior, feedback and reusable selector accessibility;
-- one root `validate:phase19` command covers Warehouse, infrastructure, Desktop and full monorepo quality gates;
-- Roadmap, glossary and canonical database documentation reflect Phase 19 architecture and persistence;
-- Step 20 remains the only unfinished phase step.
-
-All Step 19 implementation and documentation artifacts are committed. The assistant environment could not execute the repository validation commands because network/DNS prevents cloning/installing the repository there. Therefore this record does **not** claim a passing runtime result; local execution of the gate below is required before final merge/release acceptance.
+- Repository owner accepted Step 19 and authorized final Phase 19 closure.
+- Final review used the latest Phase 19 head after post-Step-19 corrections, including commit `6e6300d27f4b5b742dca679d64946b72265e8e9b`.
+- Compared `phase/19-warehouses` against `develop`: the phase branch was 161 commits ahead and 0 commits behind before promotion.
+- Opened PR #17 from `phase/19-warehouses` to `develop` and merged it with merge commit `d63e00631457b0ef34ef38f21fd3651a9c4460a5`.
+- Final documentation records Phase 19 as complete before `develop -> main` promotion.
+- Semantic release target remains `v0.19.0` with title `ArginAccounting v0.19.0 — Warehouses`.
+- Tag creation and GitHub Release publication are intentionally manual per repository-owner request and are not performed by the assistant.
 
 ## Validation Gate
 
@@ -246,8 +231,8 @@ pnpm install --frozen-lockfile
 pnpm validate:phase19
 ```
 
-If the lockfile changes because the Phase 19 workspace packages were not previously captured, run `pnpm install`, review and commit the legitimate `pnpm-lock.yaml` update, then rerun the frozen-lockfile command.
+The repository owner accepted Step 19 after local corrections/validation. The assistant does not independently claim execution of the local validation gate.
 
 ## Change Requests
 
-No Change Request is currently approved for Phase 19.
+No Change Request was approved for Phase 19.
