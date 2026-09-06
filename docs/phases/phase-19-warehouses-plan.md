@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–17 are completed. Steps 18–20 are not started.
+Phase 19 is in progress. Steps 1–18 are completed. Steps 19–20 are not started.
 
 ## Governance
 
@@ -86,7 +86,7 @@ Those future modules must plug their real dependency probes into the Warehouse d
 | 15 | Warehouse Selector and Future Consumer Contract | Completed |
 | 16 | Inventory and ERP Integration Boundaries | Completed |
 | 17 | Domain and Application Tests | Completed |
-| 18 | Repository, Migration, Import/Export and Desktop Tests | Not started |
+| 18 | Repository, Migration, Import/Export and Desktop Tests | Completed |
 | 19 | Performance, Accessibility, Monorepo Quality and Documentation | Not started |
 | 20 | Final Review, Merge and Release | Not started |
 
@@ -304,6 +304,42 @@ Step 17 is complete when:
 - Repository, migration, import/export persistence and Desktop execution remain reserved for Step 18.
 
 All Step 17 test artifacts are committed. These tests were not executed in the assistant environment because the repository cannot be cloned there due DNS/network resolution; executable validation remains required locally and is carried forward into Steps 18–19.
+
+### Step 18 — Repository, Migration, Import/Export and Desktop Tests
+
+Step 18 validates the persistence and Desktop composition boundaries on top of the Domain/Application coverage frozen in Step 17.
+
+Completed actions:
+
+- Retained existing `@argin/warehouse-tauri` adapter tests for one-transaction UoW behavior, rollback propagation, SQL optimistic-CAS predicates, stale-write conflict mapping, missing-row mapping and durable idempotency replay/cleanup semantics.
+- Retained existing Desktop migration tests for base Warehouse schema/company scope/code uniqueness/Branch foreign keys/physical hierarchy and durable idempotency state constraints.
+- Added `warehouse-step18-migrations.test.ts` to execute migrations `0022` through `0025` sequentially on a real in-memory `node:sqlite` database after Company/Branch setup.
+- The Step 18 migration suite verifies Tauri runner registration for versions 22, 23, 24 and 25, required Warehouse/Zone/Location/sync/idempotency tables and sync/tombstone columns.
+- Added real SQLite validation for Company-scoped sync external-reference uniqueness and coexistence of maintenance tombstones with durable idempotency constraints.
+- Added `warehouse-step18-sqlite-integration.test.ts` with a `DatabaseExecutor` adapter over `node:sqlite` to exercise production Warehouse repositories/readers/UoW rather than SQL-only fixtures.
+- Added real transaction rollback coverage proving a failed `SqliteWarehouseUnitOfWork` callback leaves no partial Warehouse row persisted.
+- Added real Import → SQLite persistence → paged Export coverage using `WarehouseBulkTransferService`, `SqliteWarehouseUnitOfWork`, `SqliteWarehouseBranchResolver`, `SqliteWarehouseReader` and `WarehouseReaderBulkExportAdapter` together.
+- The bulk integration test preserves Company scope, Branch scope, descriptions and namespaced external identifiers, and asserts Import/Export Audit facts.
+- Added ordinary-read tombstone regression proving deleted Warehouse, Zone and Location records are excluded by `SqliteWarehouseReader` after migrations 23/25.
+- Added persistence-level selector regression proving Company-wide-only and Branch+company-wide visibility are applied before `LIMIT` and cannot leak an unrelated Branch.
+- Retained focused Desktop route/RTL/density/maintenance/selector contracts and added `warehouse-step18-desktop-regression.test.ts` as a composition regression gate.
+- The Desktop regression verifies `WarehousesPage` composes public `WarehouseService`/secured service and SQLite adapter boundaries, and contains no embedded Warehouse SQL.
+- Desktop regression also locks loading/error/empty states, reusable combobox/listbox selector semantics, explicit LTR code rendering, deferred/race-safe search behavior, Warehouse route/permission wiring and explicit Desktop workspace dependencies on `@argin/warehouse` and `@argin/warehouse-tauri`.
+- No new Warehouse business behavior was introduced by Step 18; all changes are regression/integration tests and canonical evidence.
+
+### Step 18 Exit Criteria
+
+Step 18 is complete when:
+
+- Warehouse migrations 22–25 apply sequentially against real SQLite and remain registered in the Desktop runner.
+- Repository/UoW behavior is exercised through production SQLite adapters, including atomic rollback and tombstone-aware ordinary reads.
+- Import/export is exercised end-to-end against real SQLite with Company/Branch/external-identifier preservation and Audit facts.
+- Selector Branch isolation is verified at persistence level before result limiting.
+- Desktop composition remains service/adapter-based with no direct Warehouse SQL in React.
+- Desktop route/permissions, loading/error/empty states and reusable selector contracts remain covered.
+- No persistence/Desktop test introduces Inventory transaction, costing, posting or live-sync scope.
+
+All Step 18 test artifacts are committed. The assistant environment did not execute these tests, so no passing runtime result is claimed here. Local execution is required before Step 19's full monorepo quality gate.
 
 ## Change Requests
 
