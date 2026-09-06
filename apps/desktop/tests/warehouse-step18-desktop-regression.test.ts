@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import ts from "typescript";
 
 const read = (path: string) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -11,14 +12,22 @@ test("Warehouse Desktop page composes public services/adapters and never embeds 
   assert.match(page, /SqliteWarehouseUnitOfWork/u);
   assert.match(page, /SqliteWarehouseReader/u);
   assert.match(page, /SqliteWarehouseIdempotencyExecutor/u);
-  assert.doesNotMatch(page, /\bSELECT\b|\bINSERT\s+INTO\b|\bUPDATE\s+warehouses\b|\bDELETE\s+FROM\b/iu);
+  const source = ts.createSourceFile("warehouses-page.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  // Inspect strings and template fragments so JSX <select> controls are allowed.
+  const checkSql = (node: ts.Node): void => {
+    if (ts.isStringLiteral(node) || ts.isTemplateLiteralToken(node)) {
+      assert.doesNotMatch(node.text, /\bSELECT\b|\bINSERT\s+INTO\b|\bUPDATE\s+warehouses\b|\bDELETE\s+FROM\b/iu);
+    }
+    ts.forEachChild(node, checkSql);
+  };
+  checkSql(source);
 });
 
 test("Warehouse Desktop surface retains explicit error, loading and empty-state handling", async () => {
   const page = await read("../src/pages/warehouse/warehouses-page.tsx");
   assert.match(page, /loading/u);
   assert.match(page, /error/u);
-  assert.match(page, /هیچ انباری/u);
+  assert.match(page, /!loading && items\.length === 0\s*\?\s*\([\s\S]*?<td colSpan=\{5\}>\s*انبار ثبت‌شده‌ای مطابق فیلتر وجود ندارد\./u);
   assert.match(page, /setError/u);
 });
 

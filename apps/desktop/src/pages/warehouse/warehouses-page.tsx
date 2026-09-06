@@ -30,6 +30,7 @@ import {
   SqliteWarehouseUnitOfWork,
 } from "@argin/warehouse-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
+import { SqliteBranchRepository } from "@argin/company-tauri";
 
 import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
@@ -342,11 +343,15 @@ export function WarehousesPage() {
     if (!active.companyId) return setBranches([]);
     try {
       const database = await getDesktopDatabase();
+      const companyBranches = await new SqliteBranchRepository(database)
+        .findByCompanyId(active.companyId);
       setBranches(
-        await database.query<BranchOption>(
-          `SELECT id, code, name FROM branches WHERE company_id = ? AND status = 'active' ORDER BY is_head_office DESC, code COLLATE NOCASE ASC`,
-          [active.companyId],
-        ),
+        companyBranches
+          .filter((branch) => branch.status === "active")
+          .sort((left, right) =>
+            Number(right.isHeadOffice) - Number(left.isHeadOffice) ||
+            left.code.localeCompare(right.code, "en", { sensitivity: "accent" }),
+          ),
       );
     } catch (reason) {
       setError(errorMessage(reason));
