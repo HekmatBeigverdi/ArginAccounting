@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–15 are completed. Steps 16–20 are not started.
+Phase 19 is in progress. Steps 1–16 are completed. Steps 17–20 are not started.
 
 ## Governance
 
@@ -17,7 +17,7 @@ Cross-cutting governance remains defined by:
 
 ## Objective
 
-Deliver canonical Warehouse Master Data and desktop management with durable identity, company/branch-aware organizational scope, lifecycle, classification, extensible physical-location boundaries, dependency-safe maintenance, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, and future Argin Bridge compatibility.
+Deliver canonical Warehouse Master Data and desktop management with durable identity, company/branch-aware organizational scope, lifecycle, classification, extensible physical-location boundaries, dependency-safe maintenance, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, explicit ERP ownership boundaries, and future Argin Bridge compatibility.
 
 Future topology remains:
 
@@ -46,7 +46,7 @@ Phase 19 owns Warehouse Master Data and future-consumer contracts, including:
 - persistence-neutral Application/Query/Repository/UoW contracts
 - validation, idempotency and optimistic concurrency
 - SQLite persistence, atomic transactions and tombstone-compatible deletion
-- permissions/audit, import/export, dense Persian RTL UI, selectors and integration boundaries
+- permissions/audit, import/export, dense Persian RTL UI, selectors and ERP integration boundaries
 - Argin Bridge-compatible Warehouse and physical-structure change contracts without implementing the sync engine
 
 ## Explicit Non-Scope
@@ -84,7 +84,7 @@ Those future modules must plug their real dependency probes into the Warehouse d
 | 13 | Import / Export and Initial Warehouse Setup | Completed |
 | 14 | Persian RTL Warehouse Management UI | Completed |
 | 15 | Warehouse Selector and Future Consumer Contract | Completed |
-| 16 | Inventory and ERP Integration Boundaries | Not started |
+| 16 | Inventory and ERP Integration Boundaries | Completed |
 | 17 | Domain and Application Tests | Not started |
 | 18 | Repository, Migration, Import/Export and Desktop Tests | Not started |
 | 19 | Performance, Accessibility, Monorepo Quality and Documentation | Not started |
@@ -228,7 +228,46 @@ Step 15 is complete when:
 - Focused selector contract/UI tests are committed.
 - Inventory/Purchase/Sales/Manufacturing transactional integration remains reserved for Step 16 and the later module phases.
 
-All Step 15 implementation artifacts and focused tests are committed. Full executable Domain/Application/Desktop/monorepo validation and accessibility review remain mandatory in Steps 17–19.
+### Step 16 — Inventory and ERP Integration Boundaries
+
+Step 16 freezes ownership and dependency direction between Warehouse Master Data and the ERP transaction contexts that consume it.
+
+Completed actions:
+
+- Added `WarehouseOperationalReference` as the canonical downstream persistence reference carrying durable `warehouseId` and optional `zoneId`/`locationId`; code/title/display labels are deliberately absent.
+- Added `createWarehouseOperationalReference(...)` validation. A Location reference cannot exist without its Zone context.
+- Added `WAREHOUSE_ERP_CONSUMERS` for Inventory, Purchases, Sales, Transfer, Adjustment, Manufacturing, Cost Accounting, Accounting and Taxpayer consumers.
+- Added executable `WAREHOUSE_ERP_OWNERSHIP` boundaries instead of relying only on prose architecture notes.
+- Warehouse owns Warehouse/Zone/Location master definitions, organizational scope, lifecycle, physical hierarchy and selector/reference eligibility only.
+- Inventory owns stock balances, quantities, stock movements, kardex, reservations and stock count.
+- Inventory valuation owns cost layers, FIFO/moving-average behavior and valuation.
+- Purchases/Sales own their documents, receipt/dispatch workflow and transactional prices.
+- Transfer and Adjustment own transaction documents/workflow state; moving a Location master record is explicitly not an inventory-transfer transaction.
+- Manufacturing owns material consumption, production output and WIP transactions; Cost Accounting owns production-cost/allocation workflows.
+- Accounting owns posting rules, Journal postings and inventory accounting entries. Warehouse does not generate accounting documents.
+- Taxpayer owns projection/signing/submission/inquiry. Warehouse does not receive Product's official 13-digit goods/service identifier or Taxpayer unit identity.
+- Synchronization/Argin Bridge owns outbox, transport, retries, acknowledgement and conflict resolution; Phase 19 only exposes sync-compatible master-data contracts.
+- Reaffirmed Company/Branch visibility from Step 15 as the only supported consumer lookup path; future modules must not bypass it with direct Warehouse table queries.
+- Reaffirmed `WarehouseDependencyGuard` as the extension point for future Inventory/Purchase/Sales/Manufacturing blockers before destructive/status/move master-data operations.
+- Added forward-only dependency rule: future ERP modules may depend on public `@argin/warehouse` reference/selector/guard contracts; `@argin/warehouse` must not import their transactional models.
+- Added `warehouseIntegrationDirection` with reverse dependency explicitly forbidden and mutable display metadata forbidden as foreign identity.
+- Added `docs/architecture/warehouse-inventory-erp-integration.md` as the canonical cross-context architecture record.
+- Added architecture regression tests covering durable-only operational references, required Zone context for Location, ownership allocation and absence of runtime Warehouse-package dependencies on future ERP transaction packages.
+- No stock quantity, movement, receipt/issue/transfer, adjustment, valuation, pricing, posting, manufacturing transaction, Taxpayer transport or live synchronization implementation was introduced.
+
+### Step 16 Exit Criteria
+
+Step 16 is complete when:
+
+- ERP consumers have a durable Warehouse/Zone/Location reference contract that excludes mutable display identity.
+- Ownership of stock, movement, valuation, documents, pricing, manufacturing, costing, posting and Taxpayer transport is explicitly outside Warehouse.
+- Dependency direction is forward-only from Warehouse Master Data contracts to future consumers.
+- Future destructive/status/move protection can be supplied through `WarehouseDependencyGuard` without Warehouse importing future modules.
+- Company/Branch selector rules remain the supported consumption path.
+- Argin Bridge transport/conflict behavior remains outside Phase 19 implementation.
+- Architecture documentation and regression tests lock these boundaries.
+
+All Step 16 implementation artifacts and focused tests are committed. Full executable Domain/Application/Desktop/monorepo validation remains mandatory in Steps 17–19.
 
 ## Change Requests
 
