@@ -78,7 +78,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - CSV/XLSX import/export, Persian RTL desktop workspace and bounded future-module selector contracts
    - Repository/migration/Desktop regression coverage plus representative 50,000-row query-plan validation gate
    - Implementation, documentation and final merge preparation complete; semantic release `v0.18.0` prepared for manual publication
-19. 🚧 Warehouses
+19. ✅ Warehouses
    - Canonical company-scoped Warehouse Master Data with durable `warehouseId`, classification, lifecycle and company/Branch organizational scope
    - Extensible `Warehouse -> Zone -> Location` physical hierarchy with nested Location parentage, edit/status/delete/restore/move rules and cycle prevention
    - SQLite persistence, optimistic concurrency, durable idempotency, dependency guards, tombstone-compatible deletion and Argin Bridge-ready change contracts
@@ -86,11 +86,15 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Persian RTL dense Warehouse workspace plus bounded Company/Branch-aware reusable selectors for future ERP consumers
    - Explicit Inventory/ERP ownership boundaries: stock, movement, valuation, documents, posting, manufacturing and Taxpayer workflow remain in their owning phases
    - Domain/Application and SQLite/Migration/Desktop regression suites plus representative 50,000-Warehouse query-plan performance validation
-   - Steps 1–19 complete on the phase branch; final review, merge and semantic release preparation remain Step 20
+   - Steps 1–20 complete per the canonical Phase 19 record; Tag/GitHub Release publication remains manual
 
 ## Inventory
 
-20. ⏳ Inventory Documents
+20. 🚧 Inventory Documents
+   - Fixed 22-step plan recorded; implementation not started
+   - Quantity documents, atomic transfers/reversals, movement ledger, on-hand balances and quantity kardex
+   - Shared master-data dependency guards, Persian RTL desktop workflows and Argin Bridge-compatible contracts
+   - Valuation remains Phase 21; live synchronization remains Phase 45
 21. ⏳ Inventory Valuation
 
 ## Purchases
@@ -164,8 +168,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 19 — Warehouses.
+[Phase 20 — Inventory Documents](docs/phases/phase-20-inventory-documents-plan.md), planning complete; implementation not started.
 
 ## Latest Completed Master Data Milestone
 
-Phase 18 — Products and Services, implementation and merge preparation completed; semantic release `v0.18.0` prepared for manual GitHub publication.
+Phase 19 — Warehouses, Steps 1–20 complete per the canonical phase record; semantic release `v0.19.0` remains subject to manual Tag/GitHub Release publication.

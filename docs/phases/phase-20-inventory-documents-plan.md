@@ -1,0 +1,249 @@
+# Phase 20 — Inventory Documents — Fixed Implementation Plan
+
+## Status
+
+Planning complete; implementation not started. This kickoff establishes the canonical fixed plan. All execution steps remain Not started until their exit criteria are met.
+
+## Governance
+
+This 22-step sequence is frozen. Titles, order, scope and exit criteria change only through an explicitly approved Change Request. Update Step Status and evidence in this same file after every step; distinguish implemented, actually validated and owner-accepted work. Do not create routine step-status files.
+
+Mandatory references:
+- [Documentation Governance](../development/documentation-governance.md)
+- [GitHub Publishing Workflow](../development/github-publishing-workflow.md)
+- [Phase Definition of Done](../development/phase-definition-of-done.md)
+- [Contributing](../../CONTRIBUTING.md)
+
+## Overview and Objectives
+
+Deliver the offline quantity-document foundation: receipts, issues, opening quantities, atomic transfers, reasoned quantity adjustments, controlled confirmation/reversal, append-only stock movements, rebuildable on-hand balances and quantity kardex. Preserve future Argin Bridge compatibility from the start.
+
+The canonical [roadmap](../../ROADMAP.md) places Inventory Documents at Phase 20, Inventory Valuation at Phase 21 and Purchase Workflow at Phase 22. Older offline guide numbering must not override this source.
+
+## Baseline and Release Target
+
+- Planning baseline: develop at `3f20840a2617873be7f954db99f4da52ce61b6c7`.
+- Phase 19 canonical record marks Steps 1–20 complete and records its merge to develop. This kickoff reconciles stale roadmap/index labels with that record; it does not certify a GitHub Release.
+- Branch: `phase/20-inventory-documents`, created from the current develop baseline.
+- Target version/tag: `0.20.0` / `v0.20.0`.
+- Release title: `ArginAccounting v0.20.0 — Inventory Documents`.
+- Tag and GitHub Release publication remain manual owner actions.
+
+## Scope
+
+### Included
+
+- Quantity receipt/issue/opening/transfer/adjustment documents with stable line identities.
+- Fiscal and organizational eligibility, numbering, approval, confirmation and linked reversal.
+- Exact unit conversion snapshots, stock ledger, on-hand balance projection and quantity kardex.
+- Inventory-backed master-data dependency guards.
+- SQLite persistence, permission/audit integration, draft import, export, print/PDF and Persian RTL desktop UI.
+- Persistence-neutral future-consumer and Argin Bridge change contracts.
+
+### Excluded and Deferred
+
+- Phase 21: FIFO/moving-average valuation, cost layers, landed costs, monetary revaluation and valuation reports.
+- Phase 22 onward: Purchase/Sales commercial workflows, invoices, transactional prices and taxes; owning modules consume Inventory confirmation ports.
+- Owning posting phases: accounting entries/posting rules. Inventory confirmation is not Journal posting.
+- Full stock-count sessions, reservations/available-to-promise, lot/serial/expiry tracking and in-transit two-stage transfers require explicit later planning; no claim of delivery here.
+- Phase 45: live Bridge transport, outbox processing, acknowledgement, retries, checkpoints, PostgreSQL/.NET implementation and conflict-resolution UI.
+- Taxpayer submission/signing/inquiry and Manufacturing workflows remain outside this phase.
+
+## Architecture
+
+Suggested package boundary: `@argin/inventory` for Domain/Application and `@argin/inventory-tauri` for SQLite adapters, to be confirmed against the package registry in Step 1. UI consumes public Application services through Desktop composition.
+
+Reuse Company/Branch, Fiscal, Product units/selectors, Warehouse operational references/selectors, Security, Audit/Approval, Number Series, shared UoW and query infrastructure. Never write another module's tables directly.
+
+References:
+- [Warehouse ERP ownership](../architecture/warehouse-inventory-erp-integration.md)
+- [Warehouse synchronization](../architecture/warehouse-sync-contract.md)
+- [Party Argin Bridge](../architecture/party-argin-bridge-contract.md)
+
+### Argin Bridge Rules
+
+Target topology: `Argin Desktop -> SQLite -> Argin Bridge -> .NET API / PostgreSQL -> Synchronization`.
+
+Document/line/movement/transfer/reversal identities remain stable across stores; display numbers, codes and SQLite row positions are never foreign identity. Company isolation is mandatory. UTC metadata and local optimistic version are distinct from optional server revision. Request replay must not double-decrease stock, even after restart.
+
+Only eligible unconfirmed document deletion may produce a tombstone. Confirmed movements remain immutable and are corrected by linked compensating facts; cancellation, reversal and deletion are different operations. Atomic transfer/reversal grouping and dependency ordering must survive future delivery. Balances are derived locally from accepted movement facts, not an independently editable synchronized stock value. Phase 20 defines contracts and supporting local metadata, not a running synchronization service.
+
+## Domain Model
+
+Planned concepts: InventoryDocument, InventoryDocumentLine, DocumentType, DocumentStatus, StockMovement, StockKey, OnHandBalance projection, Quantity, UnitConversionSnapshot, SourceReference, TransferGroup and ReversalReference. Concrete names/schema are implementation decisions within the frozen scope.
+
+A physical reference includes warehouseId and optional zoneId/locationId under the existing hierarchy contract. Historical references remain resolvable when master data changes. No mutable title/code is identity.
+
+## Application Services
+
+Document create/edit/submit/approve/confirm/cancel/reverse, bounded queries, opening/transfer/adjustment orchestration, quantity ledger/rebuild, draft import/export and future-source confirmation ports. Security, validation, fiscal locks and stock checks are authoritative at the Application/transaction boundary.
+
+## Data and Migrations
+
+Inventory the actual migration registry before assigning numbers; 0025 is the latest observed migration at planning time. Store exact quantities/conversion data, durable identity, scoped uniqueness, optimistic versions, immutable movement/source links, idempotency fingerprints and synchronization metadata. Multi-write confirmation is atomic. A projection can be rebuilt and reconciled to ledger facts.
+
+## Security and Permissions
+
+Use shared application authorization and approval. Confirm/reverse are separate from edit rights; cross-Branch transfers require access to both ends. Record actor/reason/correlation and lifecycle history. Validate permissions before exposing replayed outcomes or scoped documents.
+
+## User Interface
+
+Persian RTL and Phase 14 density/accessibility; Jalali business dates with Gregorian internal values and UTC system timestamps. Reuse selectors and report/print tooling. Define loading, empty, error, validation, focus, stale-version and responsive behavior. Do not expose implementation-only sync controls.
+
+## Step Status
+
+| Step | Title | Status |
+| --- | --- | --- |
+| 1 | Baseline, Branch, Scope and Plan Freeze | Not started |
+| 2 | Inventory Document Domain Model | Not started |
+| 3 | Quantity, Units and Operational References | Not started |
+| 4 | Company, Branch, Fiscal Scope and Numbering | Not started |
+| 5 | Document Lifecycle, Approval and Correction Rules | Not started |
+| 6 | Stock Movement Ledger and Balance Rules | Not started |
+| 7 | Receipt, Issue and Opening Balance Workflows | Not started |
+| 8 | Atomic Transfer and Quantity Adjustment Workflows | Not started |
+| 9 | Application, Query and Repository Contracts | Not started |
+| 10 | Application Services, Idempotency and Concurrency | Not started |
+| 11 | Migration, Schema, Constraints and Indexing | Not started |
+| 12 | Argin Bridge and Future Synchronization Contract | Not started |
+| 13 | SQLite Repository, Unit of Work and Atomic Confirmation | Not started |
+| 14 | Permissions, Audit and Shared Approval Integration | Not started |
+| 15 | Master Data Dependency Guards and ERP Integration | Not started |
+| 16 | Persian RTL Inventory Document Workspace | Not started |
+| 17 | Quantity Kardex, Stock Balances and Source Drill-down | Not started |
+| 18 | Import, Export, Print and PDF | Not started |
+| 19 | Domain and Application Tests | Not started |
+| 20 | SQLite, Migration and Desktop Integration Tests | Not started |
+| 21 | Performance, Accessibility, Quality and Documentation | Not started |
+| 22 | Final Review, Merge and Release Preparation | Not started |
+
+## Fixed Execution Sequence and Exit Criteria
+
+### Step 1 — Baseline, Branch, Scope and Plan Freeze
+
+Record the current develop baseline, create the phase branch, reconcile Phase 19 status and freeze this numbered plan. Planning does not mark implementation steps complete.
+
+### Step 2 — Inventory Document Domain Model
+
+Define immutable document/header/line identities and receipt, issue, opening, transfer and quantity-adjustment types; separate business date, record timestamp, display number and durable source references.
+
+### Step 3 — Quantity, Units and Operational References
+
+Use exact decimal quantities and Phase 18 conversion rules; snapshot entered/base quantities, unit identity and conversion so later master edits cannot rewrite history. Reject services and ineligible products. Validate Warehouse/Zone/Location durable references.
+
+### Step 4 — Company, Branch, Fiscal Scope and Numbering
+
+Enforce Company isolation, actor Branch access, active fiscal period/date rules and shared Number Series uniqueness. Cross-Company transfers are excluded; explicit cross-Branch transfer policy must authorize both ends.
+
+### Step 5 — Document Lifecycle, Approval and Correction Rules
+
+Define draft, submitted, approved, confirmed, cancelled and reversed transitions with an explicit transition matrix. Only confirmation affects stock; approval alone does not. Reject direct edit/delete of confirmed facts. Draft tombstones and linked reversal are distinct. Editing approval-relevant data invalidates prior approval.
+
+### Step 6 — Stock Movement Ledger and Balance Rules
+
+Define append-only quantity movement facts and rebuildable balances by durable stock key. Default to rejecting negative stock, including effects of backdated operations in deterministic business-date/order sequence. Do not use floating point or mutable balances as the only source of truth.
+
+### Step 7 — Receipt, Issue and Opening Balance Workflows
+
+Define manual quantity receipts/issues, traceable opening quantities and duplicate-opening guards. Revalidate eligibility and stock at confirmation. Opening and imported documents use the same lifecycle; no import bypass may alter stock.
+
+### Step 8 — Atomic Transfer and Quantity Adjustment Workflows
+
+Specify linked source/destination movements with one transfer identity and atomic conservation. Cover intra-Warehouse physical transfer and inter-Warehouse transfer, compatible base units, distinct stock keys and failure rollback. Adjustment requires reason and signed quantity effect. Full stock-count sessions and in-transit/two-stage logistics are deferred.
+
+### Step 9 — Application, Query and Repository Contracts
+
+Define persistence-neutral commands, bounded list/detail/kardex/balance readers, ports, UoW, typed errors and future source-consumer contracts. Product/Warehouse remain upstream public dependencies; no SQL, Tauri or HTTP dependencies in Domain.
+
+### Step 10 — Application Services, Idempotency and Concurrency
+
+Orchestrate validation, numbering, transitions and confirmation. Persist scoped request keys and payload fingerprints; replay returns the original outcome, changed payload conflicts. Compare expected versions and validate balance within the committing transaction, including concurrent issues from different documents.
+
+### Step 11 — Migration, Schema, Constraints and Indexing
+
+Allocate the next unused migration after baseline inventory (latest observed: 0025). Define scoped keys, line/movement/source uniqueness, precision encoding, versions, tombstones, sync metadata, balance projection and durable idempotency; update database dictionary. Released migrations remain immutable.
+
+### Step 12 — Argin Bridge and Future Synchronization Contract
+
+Freeze versioned document and movement envelopes: durable IDs, Company/Branch, operation/request/idempotency IDs, payload fingerprint, local version, optional server revision, UTC change metadata, origin and external references. Transfer/reversal batches cannot be applied partially or twice. Do not merge confirmed movements with last-write-wins or synchronize derived balances as independent authoritative facts.
+
+### Step 13 — SQLite Repository, Unit of Work and Atomic Confirmation
+
+Implement schema and adapters with real SQLite transactions. Commit document version, numbering, movements, balance projection, idempotency and required audit/workflow writes atomically through shared ports. Rollback leaves no partial stock effect. Events are emitted only after commit with replay-safe semantics.
+
+### Step 14 — Permissions, Audit and Shared Approval Integration
+
+Implement separate view/create/edit/submit/approve/confirm/reverse/import/export permissions with Company/Branch enforcement. Integrate Phase 8 approval without inventing a parallel engine. Record actor, reason, source, correlation, before/after and lifecycle history; suppress duplicate success records on replay.
+
+### Step 15 — Master Data Dependency Guards and ERP Integration
+
+Register concrete Inventory probes for Warehouse/Zone/Location maintenance: nonzero stock, open documents and historical movement references; protect delete/deactivate/archive/move semantics as appropriate. Preserve historical references and Product unit history. Supply public quantity-confirmation contracts for future Purchase/Sales/Manufacturing and stable movement feeds for Phase 21.
+
+### Step 16 — Persian RTL Inventory Document Workspace
+
+Build dense Phase 14 list/detail/line editor and selectors with Persian messages, Jalali input/display, explicit LTR codes and exact quantity display. Support lifecycle actions, approval/history, stale-version recovery, keyboard access, field errors and bounded lookup. Iranian Rial conventions apply to any displayed monetary metadata; valuation is excluded.
+
+### Step 17 — Quantity Kardex, Stock Balances and Source Drill-down
+
+Deliver bounded, permission-scoped quantity kardex and balances with opening/in/out/closing reconciliation and document/line drill-down. Explain business-date ordering, same-date tie breaks and backdated effects; distinguish on-hand quantity from future reserved/available-to-promise stock.
+
+### Step 18 — Import, Export, Print and PDF
+
+Provide preview/validation and retry-safe draft import, Excel export, and native print/PDF for documents and quantity reports using shared tooling. Preserve Persian RTL, page orientation, printable pagination, full-screen preview and bottom spacing established in Phase 16. Confirmation remains explicit and authorized.
+
+### Step 19 — Domain and Application Tests
+
+Execute focused tests for lifecycle/approval, exact conversion, scope, negative-stock and backdated rules, opening uniqueness, transfer conservation, reversal links, idempotency conflicts, optimistic races, dependency probes and Bridge contract invariants. Include concurrent issues against the same stock key.
+
+### Step 20 — SQLite, Migration and Desktop Integration Tests
+
+Execute real SQLite migration/upgrade, constraint, atomic rollback, durable retry/restart and balance-rebuild tests; test transfers/reversals as indivisible operations and cross-Company isolation. Exercise import/export, Desktop composition and master-data guard wiring; do not substitute source-text checks for transaction behavior.
+
+### Step 21 — Performance, Accessibility, Quality and Documentation
+
+Validate representative large document/movement data with bounded queries and EXPLAIN QUERY PLAN. Run focused and full monorepo gates plus Rust checks, regenerate documentation index, check links and record actual results. Complete canonical architecture/database/security/glossary/module records and manual Desktop acceptance.
+
+### Step 22 — Final Review, Merge and Release Preparation
+
+Reconcile Step Status with actual evidence and owner acceptance, review deferred scope, and promote through phase -> develop -> main only when finalization is authorized. Prepare v0.20.0; owner creates Tag/GitHub Release manually. No merge or release occurs during planning.
+
+## Testing
+
+Cover domain transitions, precise units, fiscal locks, scope, concurrent stock updates, retry payload conflicts, same-day/backdated ordering, no negative historical balances under the default policy, reversal over-consumption, transfer conservation, dependency guard behavior, and stock reconstruction. A posted/confirmed source may not be silently replaced or applied twice by future consumers.
+
+Representative acceptance: receipt 10 units, issue 3, transfer 2 to another eligible Warehouse -> source 5, destination 2, company total 7. Repeating the transfer request leaves those values unchanged. A failed destination write changes neither side. Reversing a receipt after its stock was consumed must respect negative-stock/fiscal rules rather than deleting its movement.
+
+## Validation Evidence
+
+Planning only: current develop roadmap, Phase 18/19 records, governance and public integration/Bridge documents reviewed. No application code or migration is added in this kickoff. Runtime tests, builds, performance checks and manual Desktop acceptance have not been run.
+
+Required implementation gates, to be executed and recorded at Steps 19–21:
+- Frozen dependency install.
+- Inventory and SQLite adapter tests/typechecks.
+- Related Product/Warehouse/Fiscal/Security/Audit and Desktop regression suites.
+- Full monorepo lint, typecheck, test and build.
+- Desktop Rust `cargo check` and applicable repository Rust gates.
+- Documentation index generation/link checks and manual Desktop/print acceptance.
+- Add `pnpm validate:phase20` in Step 21; this command does not exist yet.
+
+## Documentation Impact
+
+Kickoff: this record, root roadmap, roadmap compatibility page, phase index, changelog and generated documentation index.
+
+During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Add an ADR for consequential movement/lifecycle/stock-policy decisions and link it here when accepted. Keep all repository documentation and commits in English.
+
+## Related ADRs
+
+Follow [Offline First](../adr/ADR-0001-offline-first.md), [Database-independent Domain](../adr/ADR-0002-database-independent-domain.md), [UoW](../adr/ADR-0005-repository-unit-of-work.md), [Application Services](../adr/ADR-0006-application-services.md), [Approval Concurrency](../adr/ADR-0008-approval-optimistic-concurrency.md) and [Shared Platform](../adr/ADR-0009-platform-infrastructure-first.md).
+
+## Exit Criteria
+
+All fixed steps have implementation and actual validation evidence; quantity ledger reconciles with balances; retries and races cannot duplicate/lose stock; transfer/reversal are atomic and traceable; master-data guards are wired; UI/manual acceptance is recorded; documentation is current; final merge is explicitly authorized. Manual tag/release state is reported separately and truthfully.
+
+## Next Phase
+
+Phase 21 — Inventory Valuation consumes immutable movements and source/reversal/transfer links; it must not rewrite Phase 20 quantity facts.
+
+## Change Requests
+
+None. No implicit renumbering or step substitution is permitted.

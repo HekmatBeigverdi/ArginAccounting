@@ -6,6 +6,17 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.20.0] - Unreleased
+
+### Planning
+
+- Established the fixed 22-step Inventory Documents plan and Argin Bridge compatibility requirements; implementation has not started.
+- Planned exact quantity receipts/issues/opening, atomic transfers/adjustments/reversals, movement ledger, on-hand balances, quantity kardex and Inventory-backed master-data dependency guards.
+- Kept valuation in Phase 21 and live synchronization in Phase 45.
+- Reconciled stale roadmap and phase-index labels with the canonical completed Phase 19 record; no new release publication is claimed.
+
+---
+
 ## [0.18.0] - 2026-09-01
 
 ### Added
