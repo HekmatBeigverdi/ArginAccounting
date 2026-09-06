@@ -22,6 +22,7 @@ payables
 pgdata
 postable
 previewable
+rebuildable
 refreshtoken
 rehydratable
 reparents
@@ -30,6 +31,7 @@ Tadbir
 tauri
 topbar
 transactionally
+typechecks
 Unintegrated
 unpost
 unposted

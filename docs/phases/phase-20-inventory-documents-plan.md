@@ -9,6 +9,7 @@ In Progress. Steps 1–2 are complete. The structural Inventory draft Domain mod
 This 22-step sequence is frozen. Titles, order, scope and exit criteria change only through an explicitly approved Change Request. Update Step Status and evidence in this same file after every step; distinguish implemented, actually validated and owner-accepted work. Do not create routine step-status files.
 
 Mandatory references:
+
 - [Documentation Governance](../development/documentation-governance.md)
 - [GitHub Publishing Workflow](../development/github-publishing-workflow.md)
 - [Phase Definition of Done](../development/phase-definition-of-done.md)
@@ -291,6 +292,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 Planning/Step 1 checks and actual Step 2 Domain validation are recorded above. The Step 2 package tests, typecheck and build passed. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
+
 - Frozen dependency install.
 - Inventory and SQLite adapter tests/typechecks.
 - Related Product/Warehouse/Fiscal/Security/Audit and Desktop regression suites.
