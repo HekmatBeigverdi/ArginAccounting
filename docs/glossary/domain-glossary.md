@@ -51,3 +51,13 @@ This glossary defines canonical English repository terms and their Persian UI me
 | Taxpayer Goods/Service ID | شناسه کالا/خدمت مودیان | Official 13-digit Iranian Taxpayer System goods/service identifier stored as Product master metadata. |
 | Product Selector | انتخابگر کالا/خدمت | Bounded persistence-neutral lookup contract that returns durable Product ID plus display metadata for future ERP consumers. |
 | Product Tombstone | نشان حذف همگام‌سازی کالا/خدمت | Deletion/change-propagation metadata reserved for synchronization; distinct from ordinary active/inactive business status. |
+| Warehouse Master | انبار | Canonical company-scoped Warehouse Master Data record describing a storage/operational place independently of stock quantity, movement, valuation, documents, posting, or synchronization workflow. |
+| Warehouse ID | شناسه پایدار انبار | Durable cross-store identity used by Inventory and later ERP documents. Warehouse code/title are mutable display metadata and must not be persisted as foreign identity. |
+| Warehouse Code | کد انبار | Human-readable company-scoped Warehouse code used for search/display and duplicate control, not durable downstream identity. |
+| Warehouse Organizational Scope | محدوده سازمانی انبار | Either company-wide availability or assignment to one Branch. A Warehouse remains company-owned even when Branch-scoped. |
+| Warehouse Zone | ناحیه انبار | Optional durable physical subdivision directly under one Warehouse. Zones model layout, not inventory quantity or transaction state. |
+| Warehouse Location | موقعیت انبار | Optional durable physical node under a Zone; may have a parent Location for nested rack/shelf/bin-style structure. |
+| Warehouse Selector | انتخابگر انبار | Bounded Company/Branch-aware lookup that exposes only eligible Warehouse master records and returns durable Warehouse identity plus display metadata. |
+| Warehouse Operational Reference | مرجع عملیاتی انبار | Minimal downstream reference containing durable `warehouseId` and optional `zoneId`/`locationId`; it intentionally excludes mutable code/title metadata. |
+| Warehouse Dependency Guard | کنترل وابستگی انبار | Extension contract used by future Inventory/Purchase/Sales/Manufacturing modules to block destructive/status/move Master Data operations when stock/documents/references exist. |
+| Warehouse Tombstone | نشان حذف همگام‌سازی انبار | Soft-deletion/change-propagation metadata for Warehouse/Zone/Location retained for Audit and future Argin Bridge synchronization; distinct from lifecycle archive/inactive state. |

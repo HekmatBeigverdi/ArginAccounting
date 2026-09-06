@@ -41,6 +41,15 @@ Phase 18 adds:
 
 Product durable identity uses stable TEXT `productId` values independent from Product code, SKU, barcode, title, and Taxpayer identifiers. Product persistence is company-scoped rather than branch-owned. Branch-specific stock, availability, pricing, and transactional behavior belong to their later owning modules.
 
+Phase 19 adds:
+
+- `0022_warehouses.sql` for Warehouse master rows, external identifiers, Zone/Location physical hierarchy, company/Branch scope constraints, optimistic `version`, and bounded lookup indexes;
+- `0023_warehouse_sync_metadata.sql` for nullable Warehouse tombstones, origin/server-revision metadata and future Argin Bridge source mappings;
+- `0024_warehouse_idempotency.sql` for durable Warehouse mutation request-scope idempotency claims/results;
+- `0025_warehouse_maintenance_tombstones.sql` for Zone/Location tombstones and active/tombstone lookup indexes used by safe maintenance and future synchronization.
+
+Warehouse, Zone and Location use stable TEXT durable IDs independent from mutable code/title metadata. Warehouse is always company-owned; Branch assignment is an organizational visibility rule rather than separate Warehouse identity. Stock quantities, movements, reservations, cost layers and Inventory documents are deliberately absent from Phase 19 persistence.
+
 ## Indexing
 
 Indexes are driven by real query paths. Company, branch, fiscal year, status, document number, date, correlation ID, and foreign-key access paths must be reviewed for each module.
@@ -55,6 +64,8 @@ These indexes support the set-based Accounting Report reader. Step 17 validates 
 Phase 17 Party read paths use bounded SQL paging/selectors and indexed duplicate lookup. The Phase 17 performance validator builds a representative 50,000-Party dataset and requires SQLite query plans to use the accepted Party list/status, role-selector, and official-identity indexes. Runtime latency is diagnostic only; index use and bounded behavior are the portable quality gates.
 
 Phase 18 Product/Service read paths use bounded paging/selectors and indexed strong-duplicate lookup. `@argin/product-tauri` provides `validate:performance`, which builds a representative 50,000-row Product/Service dataset and requires SQLite query plans to use the company/status/title list index, kind/status/title selector index, and company/SKU hard-duplicate index. Runtime latency is diagnostic only; bounded access and expected index use are the portable quality gates.
+
+Phase 19 Warehouse read paths use bounded paging and Company/Branch-aware selectors. `@argin/warehouse-tauri` provides `validate:performance`, which builds a representative 50,000-Warehouse dataset plus 5,000 Zones and 20,000 Locations. SQLite `EXPLAIN QUERY PLAN` must use accepted indexes for company/status list reads, Branch-scoped selectors, external-identifier duplicate lookup, Zone lookup and Location lookup. Runtime latency is diagnostic only; bounded access and expected index use are the portable quality gates.
 
 ## Reporting Read Model
 
@@ -80,14 +91,28 @@ Product Units keep internal `unitId`/code separate from the official Taxpayer un
 
 Product readers and selectors are bounded. Multi-table Product writes use the shared database transaction abstraction through `SqliteProductUnitOfWork`; optimistic updates gate parent mutation by company/id/version before rewriting child state. SQLite uniqueness races are mapped to stable Product Application conflicts rather than being exposed as raw SQL errors.
 
+## Warehouse Master Data
+
+Warehouse persistence is normalized across `warehouses`, `warehouse_external_identifiers`, `warehouse_zones`, `warehouse_locations`, `warehouse_sync_external_references`, and `warehouse_idempotency`. Same-company composite foreign keys keep Branch assignment and physical hierarchy inside the owning Company/Warehouse scope.
+
+Warehouse code is unique within Company scope and external namespace/value identities are unique within Company scope. Durable `warehouseId`, `zoneId`, and `locationId` remain the downstream reference identity; mutable codes/titles never replace those IDs.
+
+Warehouse lifecycle (`active` / `inactive` / `archived`) is separate from `deleted_at` tombstone semantics. Zone/Location use `active` / `inactive` status plus tombstones. Ordinary repository/read paths exclude tombstoned rows, while future synchronization can still observe deletion metadata.
+
+`Warehouse -> Zone -> Location` models optional physical structure only. Parent Location foreign keys preserve same Warehouse/Zone scope; higher-order cycle prevention remains a Domain/Application responsibility because SQL self-reference constraints alone cannot detect arbitrary ancestry cycles.
+
+Warehouse reads/selectors are bounded and Company/Branch-aware. Without Branch context, future-consumer selection is company-wide-only by default; with Branch context, the selected Branch plus optional company-wide Warehouses are eligible. These visibility rules are applied in persistence queries before `LIMIT`.
+
+Multi-write Warehouse operations use `SqliteWarehouseUnitOfWork`; root optimistic updates use version-aware compare-and-swap semantics. `warehouse_idempotency` stores durable completed request results so retries do not duplicate successful mutations. External Inventory/Purchase/Sales/Manufacturing references remain outside this schema and must later plug into the Warehouse dependency-guard contract rather than creating reverse Warehouse dependencies.
+
 ## Transactions
 
 Use explicit Unit of Work boundaries for operations that write multiple aggregates, history records, audit entries, number-series values, or posting results. Phase 16 report execution is read-only and does not introduce a report-write transaction.
 
-Party parent/role/contact/address writes use one Party Unit of Work transaction. Product parent/identifier/unit/master-data writes use one Product Unit of Work transaction. Shared Audit is composed as a cross-cutting successful-mutation consequence; neither Party nor Product claims a distributed cross-store transaction with Audit.
+Party parent/role/contact/address writes use one Party Unit of Work transaction. Product parent/identifier/unit/master-data writes use one Product Unit of Work transaction. Warehouse root/external-identifier/physical writes use the Warehouse Unit of Work where atomic composition is required. Shared Audit is composed as a cross-cutting successful-mutation consequence; Party, Product and Warehouse do not claim a distributed cross-store transaction with Audit.
 
 ## Future Compatibility
 
 SQL dialect-specific logic must stay inside infrastructure packages. Domain contracts must not expose SQLite-specific types or syntax. Future PostgreSQL/API report adapters must preserve the same normalized query and canonical result semantics.
 
-Future Party and Product PostgreSQL/HTTP/Argin Bridge adapters must preserve durable identity, company scope, optimistic versioning, tombstone semantics, external-reference uniqueness, bounded selection contracts, idempotency expectations, and stable Application errors. Full synchronization remains Phase 45.
+Future Party, Product and Warehouse PostgreSQL/HTTP/Argin Bridge adapters must preserve durable identity, company scope, Branch visibility semantics where applicable, optimistic versioning, tombstone semantics, external-reference uniqueness, bounded selection contracts, idempotency expectations, dependency boundaries and stable Application errors. Full synchronization remains Phase 45.
