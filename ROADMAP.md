@@ -91,7 +91,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 ## Inventory
 
 20. 🚧 Inventory Documents
-   - Fixed 22-step plan recorded; implementation not started
+   - Step 1 complete: baseline, branch and fixed 22-step plan verified; Step 2 is next
    - Quantity documents, atomic transfers/reversals, movement ledger, on-hand balances and quantity kardex
    - Shared master-data dependency guards, Persian RTL desktop workflows and Argin Bridge-compatible contracts
    - Valuation remains Phase 21; live synchronization remains Phase 45
@@ -168,7 +168,7 @@ A phase is complete only when:
 
 ## Current Target
 
-[Phase 20 — Inventory Documents](docs/phases/phase-20-inventory-documents-plan.md), planning complete; implementation not started.
+[Phase 20 — Inventory Documents](docs/phases/phase-20-inventory-documents-plan.md), Step 1 complete; domain implementation starts at Step 2.
 
 ## Latest Completed Master Data Milestone
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Planning complete; implementation not started. This kickoff establishes the canonical fixed plan. All execution steps remain Not started until their exit criteria are met.
+In Progress. Step 1 is complete: baseline, branch, scope and plan freeze are verified and recorded. Steps 2–22 are Not started; runtime implementation has not started.
 
 ## Governance
 
@@ -51,7 +51,7 @@ The canonical [roadmap](../../ROADMAP.md) places Inventory Documents at Phase 20
 
 ## Architecture
 
-Suggested package boundary: `@argin/inventory` for Domain/Application and `@argin/inventory-tauri` for SQLite adapters, to be confirmed against the package registry in Step 1. UI consumes public Application services through Desktop composition.
+Confirmed planned package boundary (Step 1): `@argin/inventory` for Domain/Application and `@argin/inventory-tauri` for SQLite adapters, registered as planned in the [module registry](../registries/module-registry.md). The packages are not yet created. UI consumes public Application services through Desktop composition.
 
 Reuse Company/Branch, Fiscal, Product units/selectors, Warehouse operational references/selectors, Security, Audit/Approval, Number Series, shared UoW and query infrastructure. Never write another module's tables directly.
 
@@ -94,7 +94,7 @@ Persian RTL and Phase 14 density/accessibility; Jalali business dates with Grego
 
 | Step | Title | Status |
 | --- | --- | --- |
-| 1 | Baseline, Branch, Scope and Plan Freeze | Not started |
+| 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Inventory Document Domain Model | Not started |
 | 3 | Quantity, Units and Operational References | Not started |
 | 4 | Company, Branch, Fiscal Scope and Numbering | Not started |
@@ -207,6 +207,43 @@ Validate representative large document/movement data with bounded queries and EX
 
 Reconcile Step Status with actual evidence and owner acceptance, review deferred scope, and promote through phase -> develop -> main only when finalization is authorized. Prepare v0.20.0; owner creates Tag/GitHub Release manually. No merge or release occurs during planning.
 
+## Consolidated Completion Records
+
+### Step 1 — Baseline, Branch, Scope and Plan Freeze — Completed
+
+- The repository owner requested Step 1 execution after receiving the fixed 22-step plan.
+- Verified remote phase head `83346bb6a3d682cd9458db9516a4d8db5c3486f4` and its single parent `3f20840a2617873be7f954db99f4da52ce61b6c7`, which is still the current `develop` head. The branch therefore starts from current develop with exactly the planning commit on top; no baseline merge is needed.
+- Reused the existing `phase/20-inventory-documents` branch. The workspace contains no local checkout or pending local project edits; publication uses the authenticated connector and a non-forced ref update based on the inspected remote head.
+- Confirmed the Phase 19 completion record and the already-reconciled roadmap/phase-index labels. No assertion about manual tag/release publication is added.
+- Confirmed `packages/*` workspace discovery and absence of existing Inventory package directories. Registered `@argin/inventory` and `@argin/inventory-tauri` as planned, without adding empty runtime packages or changing dependencies.
+- Confirmed the existing Product exports for units/conversion and selectors, and Warehouse exports for operational references, selectors, dependency guards and synchronization envelopes.
+- Inspected the migration file inventory: 25 numbered SQL migrations, ending at `0025_warehouse_maintenance_tombstones.sql`. Migration numbering must be checked again in Step 11; no number is permanently reserved now.
+- Reaffirmed the exact scope and all 22 step titles/order/exit criteria without modification. Domain implementation starts in Step 2. Runtime implementation and validation remain pending.
+- Updated the phase status, roadmap, phase index, changelog, module registry and module map in this Step 1 checkpoint.
+
+#### Baseline Integration Inventory
+
+| Provider | Observed baseline | Phase 20 consumption |
+| --- | --- | --- |
+| Product | `@argin/product` exports `convertProductQuantity`, `ProductUnitProfile`, `ProductSelectorService` | Exact quantity conversion, history snapshots and inventory eligibility in Steps 3/9/16; inspect concrete precision/rounding behavior before implementation |
+| Warehouse | `WarehouseOperationalReference`, `createWarehouseOperationalReference`, Company/Branch-aware selectors | Durable warehouse/zone/location references in Steps 3/4/9/16; location requires zone |
+| Warehouse maintenance | Public `WarehouseDependencyGuard`; unintegrated fallback is still exported | Wire real Inventory blockers in Step 15 and test Desktop composition in Step 20 |
+| Shared platform | Company, Fiscal, Security, Audit/Approval, Platform and Database packages exist | Reuse published ports for scope, numbering, authorization, approval and transactions; concrete composition in owning steps |
+| Synchronization preparation | Product and Warehouse upsert/tombstone public contracts exist | Preserve durable IDs and metadata; freeze Inventory transaction-aware Bridge contract in Step 12 |
+| Persistence/runtime | `packages/*` workspace pattern; migrations 0001–0025; `validate:phase19` exists | Introduce Inventory runtime pieces in their owning steps; `validate:phase20` is still planned for Step 21 |
+
+These are source/baseline inspections, not claims of executed runtime integration tests. Existing contract presence does not mean Inventory dependency guards or stock operations are already wired.
+
+#### Step 1 Validation and Handoff
+
+- Checked remote head/parent ancestry against current develop.
+- Checked that the fixed execution sequence and exit-criteria text are unchanged.
+- Checked Step Status contains exactly one Completed row (Step 1) and 21 Not started rows.
+- Checked relative Markdown links in this checkpoint against the repository tree.
+- Existing documentation paths and H1 titles are unchanged, so generated index entries do not change.
+- No production code, migration, lockfile or package manifest changes are part of this step. Application tests/builds and manual Desktop acceptance were not run.
+- Next executable step: Step 2 — Inventory Document Domain Model.
+
 ## Testing
 
 Cover domain transitions, precise units, fiscal locks, scope, concurrent stock updates, retry payload conflicts, same-day/backdated ordering, no negative historical balances under the default policy, reversal over-consumption, transfer conservation, dependency guard behavior, and stock reconstruction. A posted/confirmed source may not be silently replaced or applied twice by future consumers.
@@ -215,7 +252,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-Planning only: current develop roadmap, Phase 18/19 records, governance and public integration/Bridge documents reviewed. No application code or migration is added in this kickoff. Runtime tests, builds, performance checks and manual Desktop acceptance have not been run.
+Planning and Step 1 baseline/documentation checks are recorded above. No application code or migration is added in these checkpoints. Runtime tests, builds, performance checks and manual Desktop acceptance have not been run.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 - Frozen dependency install.
@@ -229,6 +266,8 @@ Required implementation gates, to be executed and recorded at Steps 19–21:
 ## Documentation Impact
 
 Kickoff: this record, root roadmap, roadmap compatibility page, phase index, changelog and generated documentation index.
+
+Step 1: updated this record, roadmap, phase index, changelog, module registry and module map; no new document paths or titles.
 
 During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Add an ADR for consequential movement/lifecycle/stock-policy decisions and link it here when accepted. Keep all repository documentation and commits in English.
 

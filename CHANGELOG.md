@@ -15,6 +15,13 @@ The project follows Semantic Versioning where practical during phased developmen
 - Kept valuation in Phase 21 and live synchronization in Phase 45.
 - Reconciled stale roadmap and phase-index labels with the canonical completed Phase 19 record; no new release publication is claimed.
 
+### Step 1 — Baseline and Plan Freeze
+
+- Verified the phase branch descends directly from current develop and retained the fixed 22-step sequence without scope changes.
+- Inspected Product/Warehouse public integration contracts, workspace layout and migration inventory through 0025.
+- Registered planned Inventory Domain/Application and SQLite adapter boundaries; no runtime packages or migrations were created.
+- Marked Step 1 complete in the canonical record, roadmap and phase index; runtime implementation and validation remain pending.
+
 ---
 
 ## [0.18.0] - 2026-09-01
