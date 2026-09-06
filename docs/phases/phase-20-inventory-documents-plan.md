@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Step 1 is complete: baseline, branch, scope and plan freeze are verified and recorded. Steps 2–22 are Not started; runtime implementation has not started.
+In Progress. Steps 1–2 are complete. The structural Inventory draft Domain model and its focused tests are implemented. Steps 3–22 are Not started; stock operations, persistence and Desktop integration remain pending.
 
 ## Governance
 
@@ -51,7 +51,7 @@ The canonical [roadmap](../../ROADMAP.md) places Inventory Documents at Phase 20
 
 ## Architecture
 
-Confirmed planned package boundary (Step 1): `@argin/inventory` for Domain/Application and `@argin/inventory-tauri` for SQLite adapters, registered as planned in the [module registry](../registries/module-registry.md). The packages are not yet created. UI consumes public Application services through Desktop composition.
+Confirmed planned package boundary (Step 1): `@argin/inventory` for Domain/Application and `@argin/inventory-tauri` for SQLite adapters, registered as planned in the [module registry](../registries/module-registry.md). `@argin/inventory` was created in Step 2; the SQLite adapter remains planned. UI consumes public Application services through Desktop composition.
 
 Reuse Company/Branch, Fiscal, Product units/selectors, Warehouse operational references/selectors, Security, Audit/Approval, Number Series, shared UoW and query infrastructure. Never write another module's tables directly.
 
@@ -70,7 +70,9 @@ Only eligible unconfirmed document deletion may produce a tombstone. Confirmed m
 
 ## Domain Model
 
-Planned concepts: InventoryDocument, InventoryDocumentLine, DocumentType, DocumentStatus, StockMovement, StockKey, OnHandBalance projection, Quantity, UnitConversionSnapshot, SourceReference, TransferGroup and ReversalReference. Concrete names/schema are implementation decisions within the frozen scope.
+Implemented at Step 2: InventoryDocumentSnapshot, InventoryDocumentLineSnapshot, InventoryDocumentType, InventorySourceReference and structured InventoryDomainError, with immutable draft factories and validated rehydration. See the [canonical Domain foundation](../architecture/inventory-documents.md).
+
+Still planned in owning steps: full DocumentStatus transitions, StockMovement, StockKey, OnHandBalance projection, Quantity, UnitConversionSnapshot, TransferGroup and ReversalReference.
 
 A physical reference includes warehouseId and optional zoneId/locationId under the existing hierarchy contract. Historical references remain resolvable when master data changes. No mutable title/code is identity.
 
@@ -95,7 +97,7 @@ Persian RTL and Phase 14 density/accessibility; Jalali business dates with Grego
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
-| 2 | Inventory Document Domain Model | Not started |
+| 2 | Inventory Document Domain Model | Completed |
 | 3 | Quantity, Units and Operational References | Not started |
 | 4 | Company, Branch, Fiscal Scope and Numbering | Not started |
 | 5 | Document Lifecycle, Approval and Correction Rules | Not started |
@@ -244,6 +246,40 @@ These are source/baseline inspections, not claims of executed runtime integratio
 - No production code, migration, lockfile or package manifest changes are part of this step. Application tests/builds and manual Desktop acceptance were not run.
 - Next executable step: Step 2 — Inventory Document Domain Model.
 
+### Step 2 — Inventory Document Domain Model — Completed
+
+- Added `@argin/inventory` version `0.20.0` as an independent strict TypeScript package with public Domain exports, package scripts and a workspace lockfile importer reusing existing resolved development dependencies.
+- Added immutable draft document/header and owned line snapshots with separate durable IDs, display number and positive display positions. Duplicate normalized line IDs and positions are rejected; repeated Product IDs on distinct lines are valid.
+- Added all five fixed document types: receipt, issue, opening, transfer and adjustment. Factories create structural drafts at version 1; no stock effect, Number Series allocation or lifecycle action is implied.
+- Added real Gregorian business-date validation and explicit UTC recording timestamps with canonical millisecond serialization and chronological rehydration checks. Business dates remain independent from recording dates.
+- Added durable Company/source-system/document-type/document/optional-line source references; cross-Company header/line sources and self-sourcing within the Inventory namespace are rejected.
+- Added defensive copy/freeze for every owned object and collection, safe persisted draft rehydration, stable error codes and field identifiers. Domain reads neither the system clock nor random IDs and imports no runtime dependency.
+- Added 20 Domain tests covering identity/order separation, all types, duplicate lines, source isolation, calendar edges, invalid timestamps/versions/statuses, nested immutability, malformed runtime inputs and serialized round trips.
+- Added canonical architecture documentation and glossary terms; updated module registry/map, roadmap, phase index and changelog. Generated the documentation index with the repository script.
+- No migration, permission catalog, event, Application service, SQLite adapter or Desktop screen was changed. Quantity/UoM/physical references remain Step 3, fiscal rules Step 4, lifecycle Step 5, and later stock operations retain their existing step numbers.
+
+#### Step 2 Validation Evidence
+
+Environment: Node `v24.19.0`, available pnpm `11.19.0`, TypeScript `5.9.3`. The repository packageManager field remains unchanged at pnpm `12.3.4`; this checkpoint does not claim a run with that pinned manager version.
+
+| Executed command/check | Result |
+| --- | --- |
+| `pnpm --filter @argin/inventory install --frozen-lockfile --ignore-scripts` | Passed; existing dependency resolutions reused |
+| `pnpm --filter @argin/inventory test` | Passed: 20 tests, 0 failures |
+| `pnpm --filter @argin/inventory typecheck` | Passed |
+| `pnpm --filter @argin/inventory build` | Passed (`tsc --noEmit`, matching adjacent Domain package convention) |
+| `node scripts/generate-doc-index.mjs` | Generated canonical index |
+| Changed-document relative links, unchanged fixed sequence, Step Status counts and `git diff --check` | Checked for this checkpoint |
+
+Full monorepo/Rust/Desktop gates were not run for this isolated, unconsumed Domain package; they remain required in the later quality steps. The 20 tests do not certify quantity, stock, approval, idempotency or persistence behaviors that are not yet implemented.
+
+#### Step 3 Handoff
+
+- Preserve the delivered document/line/source identities when adding exact quantities, unit snapshots and physical references.
+- Inspect the existing Product unit implementation carefully: `convertProductQuantity` and `ratioToBase` currently use JavaScript `number`. Adapt the precision boundary explicitly before exact Inventory stock calculations; do not silently inherit floating-point arithmetic.
+- Product ownership/existence/eligibility and Warehouse hierarchy eligibility remain upstream contract checks; Step 2 only validates structural identity and source Company consistency.
+- Frozen step titles, order, scope and exit criteria are unchanged. Next executable step: Step 3 — Quantity, Units and Operational References.
+
 ## Testing
 
 Cover domain transitions, precise units, fiscal locks, scope, concurrent stock updates, retry payload conflicts, same-day/backdated ordering, no negative historical balances under the default policy, reversal over-consumption, transfer conservation, dependency guard behavior, and stock reconstruction. A posted/confirmed source may not be silently replaced or applied twice by future consumers.
@@ -252,7 +288,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-Planning and Step 1 baseline/documentation checks are recorded above. No application code or migration is added in these checkpoints. Runtime tests, builds, performance checks and manual Desktop acceptance have not been run.
+Planning/Step 1 checks and actual Step 2 Domain validation are recorded above. The Step 2 package tests, typecheck and build passed. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 - Frozen dependency install.
@@ -268,6 +304,8 @@ Required implementation gates, to be executed and recorded at Steps 19–21:
 Kickoff: this record, root roadmap, roadmap compatibility page, phase index, changelog and generated documentation index.
 
 Step 1: updated this record, roadmap, phase index, changelog, module registry and module map; no new document paths or titles.
+
+Step 2: added the Inventory Domain architecture record and glossary terms, updated package/module registration and phase status, and regenerated the documentation index.
 
 During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Add an ADR for consequential movement/lifecycle/stock-policy decisions and link it here when accepted. Keep all repository documentation and commits in English.
 

@@ -22,6 +22,14 @@ The project follows Semantic Versioning where practical during phased developmen
 - Registered planned Inventory Domain/Application and SQLite adapter boundaries; no runtime packages or migrations were created.
 - Marked Step 1 complete in the canonical record, roadmap and phase index; runtime implementation and validation remain pending.
 
+### Step 2 — Inventory Document Domain Model
+
+- Added `@argin/inventory` with immutable draft document/line snapshots and receipt, issue, opening, transfer and adjustment types.
+- Separated durable identity, display numbering/line position, Gregorian business date and UTC recording timestamps.
+- Added Company-scoped durable source references, typed field errors, defensive nested freezing and validated persisted draft rehydration.
+- Added 20 passing Domain tests; focused typecheck/build passed. Updated workspace lockfile, architecture, module registration, glossary and phase evidence.
+- Quantity/units, fiscal/lifecycle/stock behavior, SQLite and Desktop integration remain in their fixed later steps.
+
 ---
 
 ## [0.18.0] - 2026-09-01

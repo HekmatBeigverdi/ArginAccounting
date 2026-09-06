@@ -24,7 +24,7 @@
 ## Operational Modules
 
 - Master Data
-- Inventory — [Phase 20 Inventory Documents](../phases/phase-20-inventory-documents-plan.md): baseline complete; planned `@argin/inventory` Domain/Application and `@argin/inventory-tauri` adapter. Runtime implementation starts in subsequent steps.
+- Inventory — [Phase 20 Inventory Documents](../phases/phase-20-inventory-documents-plan.md): `@argin/inventory` structural draft Domain implemented at Step 2; Application services, `@argin/inventory-tauri` adapter and Desktop integration remain planned.
 - Purchases
 - Sales
 - Treasury

@@ -61,3 +61,12 @@ This glossary defines canonical English repository terms and their Persian UI me
 | Warehouse Operational Reference | مرجع عملیاتی انبار | Minimal downstream reference containing durable `warehouseId` and optional `zoneId`/`locationId`; it intentionally excludes mutable code/title metadata. |
 | Warehouse Dependency Guard | کنترل وابستگی انبار | Extension contract used by future Inventory/Purchase/Sales/Manufacturing modules to block destructive/status/move Master Data operations when stock/documents/references exist. |
 | Warehouse Tombstone | نشان حذف همگام‌سازی انبار | Soft-deletion/change-propagation metadata for Warehouse/Zone/Location retained for Audit and future Argin Bridge synchronization; distinct from lifecycle archive/inactive state. |
+| Inventory Document | سند انبار | Company-owned quantity-document aggregate with durable identity; the Step 2 foundation represents structural drafts only. |
+| Inventory Document Line | ردیف سند انبار | Owned record with durable line ID and Product reference; display position does not define identity. |
+| Inventory Receipt | رسید انبار | Quantity-document type for incoming stock; stock effects require the later confirmation workflow. |
+| Inventory Issue | حواله انبار | Quantity-document type for outgoing stock; distinct from a commercial sales invoice. |
+| Inventory Opening Document | سند موجودی ابتدای دوره | Quantity-document type for initial stock, distinct from an accounting opening balance. |
+| Inventory Transfer | سند انتقال انبار | Quantity-document type linking source and destination stock effects; atomic behavior belongs to the later transfer workflow. |
+| Inventory Adjustment | سند تعدیل موجودی | Quantity-document type for a reasoned correction to stock quantity; distinct from monetary valuation. |
+| Inventory Source Reference | مرجع مبدأ سند انبار | Company/source-system/type/document/optional-line durable reference; display number and row position are excluded. |
+| Inventory Business Date | تاریخ عملیاتی سند انبار | Gregorian internal business date presented as Jalali in UI, independent of UTC recording timestamps. |

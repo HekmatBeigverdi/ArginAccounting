@@ -12,17 +12,16 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Accounting — Chart of Accounts | `@argin/accounting`, `@argin/accounting-tauri`, Desktop | Implemented | 10 | `docs/phases/phase-10-chart-of-accounts.md` |
 | Accounting Dimensions | `@argin/accounting`, `@argin/accounting-tauri`, Desktop | Implemented | 11 | `docs/phases/phase-11-accounting-dimensions.md` |
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
-
-| Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop (planned; packages not created) | Baseline complete; runtime planned | 20 | [Phase 20 fixed plan](../phases/phase-20-inventory-documents-plan.md) |
+| Inventory Documents | `@argin/inventory`; SQLite adapter and Desktop integration planned | Draft Domain foundation implemented | 20 | [Phase 20 fixed plan](../phases/phase-20-inventory-documents-plan.md) |
 
 ## Inventory Documents — Phase 20 Baseline
 
 - Purpose/ownership: quantity documents, immutable stock movements, on-hand projections and quantity kardex; scope and exclusions are authoritative in the linked phase record.
-- Domain/Application: planned `packages/inventory`; SQLite adapter: planned `packages/inventory-tauri`; UI uses Desktop composition.
+- Domain foundation: `packages/inventory` created at Step 2; Application ports/services remain planned. SQLite adapter: planned `packages/inventory-tauri`; UI uses Desktop composition.
 - Migrations: none introduced; existing baseline ends at 0025. Allocate at Step 11 after rechecking the registry.
 - Permissions: planned `inventory` namespace; exact catalog and shared approval integration belong to Step 14.
-- Public contracts: planned at Steps 9/12; upstream Product and Warehouse public ports remain the source of master identity and eligibility.
-- Lifecycle: Step 1 baseline complete; no runtime Inventory implementation or deprecation.
+- Public Domain factories/snapshots: [Inventory document foundation](../architecture/inventory-documents.md). Application/Bridge contracts remain planned at Steps 9/12; upstream Product and Warehouse public ports remain the source of master identity and eligibility.
+- Lifecycle: Steps 1–2 complete; only structural drafts are implemented. No stock-changing workflow, SQLite adapter or deprecation.
 
 ## Required Fields for Future Entries
 
