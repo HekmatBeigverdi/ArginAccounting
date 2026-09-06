@@ -227,6 +227,19 @@ export type {
   WarehouseZoneSelectionReference,
 } from "./application/warehouse-selection.ts";
 
+export {
+  WAREHOUSE_ERP_CONSUMERS,
+  WAREHOUSE_ERP_OWNERSHIP,
+  WarehouseIntegrationContractError,
+  createWarehouseOperationalReference,
+  warehouseIntegrationDirection,
+} from "./application/warehouse-integration.ts";
+export type {
+  WarehouseErpConsumer,
+  WarehouseIntegrationContractErrorCode,
+  WarehouseOperationalReference,
+} from "./application/warehouse-integration.ts";
+
 export { WarehouseService } from "./application/warehouse-service.ts";
 export type { WarehouseServiceDependencies } from "./application/warehouse-service.ts";
 export { SecuredWarehouseReader, SecuredWarehouseService } from "./application/secured-warehouse-service.ts";
