@@ -23,6 +23,12 @@ export const navigationItems: NavigationItem[] = [
     group: "اطلاعات پایه",
     requiredPermission: "master-data.products.view",
   },
+  {
+    label: "انبارها",
+    path: "/inventory/warehouses",
+    group: "انبار و موجودی",
+    requiredPermission: "inventory.warehouses.view",
+  },
   { label: "سال‌های مالی", path: "/fiscal/years", group: "مدیریت مالی" },
   {
     label: "اسناد حسابداری",

@@ -79,6 +79,14 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Repository/migration/Desktop regression coverage plus representative 50,000-row query-plan validation gate
    - Implementation, documentation and final merge preparation complete; semantic release `v0.18.0` prepared for manual publication
 19. 🚧 Warehouses
+   - Canonical company-scoped Warehouse Master Data with durable `warehouseId`, classification, lifecycle and company/Branch organizational scope
+   - Extensible `Warehouse -> Zone -> Location` physical hierarchy with nested Location parentage, edit/status/delete/restore/move rules and cycle prevention
+   - SQLite persistence, optimistic concurrency, durable idempotency, dependency guards, tombstone-compatible deletion and Argin Bridge-ready change contracts
+   - Import/export and deterministic initial Warehouse setup without stock balances or inventory transactions
+   - Persian RTL dense Warehouse workspace plus bounded Company/Branch-aware reusable selectors for future ERP consumers
+   - Explicit Inventory/ERP ownership boundaries: stock, movement, valuation, documents, posting, manufacturing and Taxpayer workflow remain in their owning phases
+   - Domain/Application and SQLite/Migration/Desktop regression suites plus representative 50,000-Warehouse query-plan performance validation
+   - Steps 1–19 complete on the phase branch; final review, merge and semantic release preparation remain Step 20
 
 ## Inventory
 
