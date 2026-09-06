@@ -2,13 +2,13 @@
 
 ## Status
 
-Phase 19 is in progress. Steps 1–18 are completed. Steps 19–20 are not started.
+Phase 19 is in progress. Steps 1–19 are completed. Step 20 is not started.
 
 ## Governance
 
 This 20-step sequence is frozen. Step title, order, scope, or exit criteria may change only through an explicitly approved Change Request.
 
-This file is the canonical Phase 19 record. The additional Warehouse/Zone/Location maintenance work recorded under Step 14 is completion of previously agreed Phase 19 scope, not a sequence change.
+This file is the canonical Phase 19 record. The additional Warehouse/Zone/Location maintenance completed under Step 14 was previously agreed Phase 19 scope and did not alter the frozen sequence.
 
 Cross-cutting governance remains defined by:
 
@@ -17,15 +17,15 @@ Cross-cutting governance remains defined by:
 
 ## Objective
 
-Deliver canonical Warehouse Master Data and desktop management with durable identity, company/branch-aware organizational scope, lifecycle, classification, extensible physical-location boundaries, dependency-safe maintenance, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, explicit ERP ownership boundaries, and future Argin Bridge compatibility.
+Deliver canonical Warehouse Master Data and desktop management with durable identity, company/Branch-aware organizational scope, lifecycle, classification, extensible physical structure, dependency-safe maintenance, duplicate-safe identifiers, persistence-neutral Domain/Application contracts, SQLite persistence, authorization/audit, import/export, reusable selectors, explicit ERP ownership boundaries, quality gates and future Argin Bridge compatibility.
 
 Future topology remains:
 
 `Argin Desktop -> SQLite -> Argin Bridge -> .NET API / PostgreSQL -> Synchronization`
 
-Full synchronization is outside Phase 19.
+Full synchronization remains outside Phase 19.
 
-## Baseline
+## Baseline and Release Target
 
 - Branch: `phase/19-warehouses`
 - Version: `0.19.0`
@@ -37,33 +37,33 @@ Full synchronization is outside Phase 19.
 Phase 19 owns Warehouse Master Data and future-consumer contracts, including:
 
 - durable `warehouseId`, `zoneId` and `locationId`
-- company/branch organizational scope
+- Company/Branch organizational scope
 - Warehouse classification and lifecycle
-- Zone/Location physical master data and nested Location parentage
-- edit/status/delete/move maintenance rules for physical structure
+- optional `Warehouse -> Zone -> Location` physical hierarchy with nested Locations
+- edit/status/delete/restore/move maintenance rules
 - code/external-identifier normalization and duplicate rules
 - dependency guards for destructive/status/move operations
 - persistence-neutral Application/Query/Repository/UoW contracts
 - validation, idempotency and optimistic concurrency
 - SQLite persistence, atomic transactions and tombstone-compatible deletion
-- permissions/audit, import/export, dense Persian RTL UI, selectors and ERP integration boundaries
-- Argin Bridge-compatible Warehouse and physical-structure change contracts without implementing the sync engine
+- permissions/audit, import/export, Persian RTL desktop management and selectors
+- Inventory/ERP integration boundaries
+- Argin Bridge-compatible Warehouse and physical-structure change contracts without the live sync engine
 
 ## Explicit Non-Scope
 
-Phase 19 does not implement stock balances, kardex, receipt/issue/transfer transactions, stock count, valuation/cost layers, inventory accounting postings, purchasing/sales document logic, manufacturing transactions, Taxpayer submission/signing/inquiry, or live synchronization/conflict-resolution UI.
+Phase 19 does not implement stock balances, kardex, receipt/issue/transfer transactions, stock count, valuation/cost layers, inventory accounting postings, purchasing/sales document workflow, manufacturing transactions, Taxpayer submission/signing/inquiry, or live synchronization/conflict-resolution UI.
 
-Those future modules must plug their real dependency probes into the Warehouse dependency-guard contract before destructive/status/move operations are allowed against referenced master data.
+Future Inventory/Purchase/Sales/Manufacturing modules must plug concrete dependency probes into the Warehouse dependency-guard contract before destructive/status/move operations are allowed against referenced master data.
 
 ## Identity and Argin Bridge Rules
 
 - `warehouseId`, `zoneId` and `locationId` are durable identities; codes/titles are mutable business metadata.
-- Warehouse code/title/Branch title/external identifier/UI labels are not foreign identity.
-- Product identity remains owned by Phase 18 and is consumed through public contracts.
+- Warehouse code/title/Branch title/external identifier/UI labels are never downstream foreign identity.
+- Product identity remains owned by Phase 18.
 - Warehouse remains compatible with durable IDs, optimistic versions, deterministic timestamps, idempotent mutations, Company isolation, tombstones, origin metadata and future server revisions.
-- Root Warehouse deletion uses the existing `warehouses.deleted_at` tombstone.
-- Zone and Location deletion uses migration `0025_warehouse_maintenance_tombstones.sql` and remains excluded from ordinary reads.
-- Physical Argin Bridge envelopes support `upsert` and `tombstone`; actual outbox, transport, retry, acknowledgement and conflict resolution remain in the synchronization phase.
+- Root Warehouse deletion uses `warehouses.deleted_at`; Zone/Location deletion uses migration `0025_warehouse_maintenance_tombstones.sql`.
+- Physical Argin Bridge envelopes support `upsert` and `tombstone`; outbox, transport, retry, acknowledgement and conflict resolution remain the synchronization phase.
 
 ## Step Status
 
@@ -87,7 +87,7 @@ Those future modules must plug their real dependency probes into the Warehouse d
 | 16 | Inventory and ERP Integration Boundaries | Completed |
 | 17 | Domain and Application Tests | Completed |
 | 18 | Repository, Migration, Import/Export and Desktop Tests | Completed |
-| 19 | Performance, Accessibility, Monorepo Quality and Documentation | Not started |
+| 19 | Performance, Accessibility, Monorepo Quality and Documentation | Completed |
 | 20 | Final Review, Merge and Release | Not started |
 
 ## Fixed Execution Sequence
@@ -113,233 +113,140 @@ Those future modules must plug their real dependency probes into the Warehouse d
 19. Performance, Accessibility, Monorepo Quality and Documentation
 20. Final Review, Merge and Release
 
-## Completion Records
+## Consolidated Completion Records
 
-### Step 1 — Baseline, Branch, Scope and Plan Freeze
-Established the Phase 19 branch, canonical plan, frozen sequence, scope/non-scope, release target, Phase 18 dependency boundary and mandatory Argin Bridge compatibility.
+### Steps 1–6 — Domain and Master-Data Foundation
 
-### Step 2 — Warehouse Domain Model
-Added independent `@argin/warehouse`, immutable Warehouse snapshots, durable Warehouse identity, Company ownership and normalized core fields/timestamps.
+- Froze Phase 19 scope and branch/release target.
+- Added independent `@argin/warehouse` with immutable Warehouse snapshots and durable Company-owned identity.
+- Added Warehouse classifications and `active/inactive/archived` lifecycle.
+- Added company-wide or single-Branch organizational scope with same-Company active-Branch validation.
+- Added durable Zone/Location hierarchy with optional nested Location parentage.
+- Added Company-scoped Warehouse code uniqueness and namespaced external identifiers while preserving durable IDs as identity.
 
-### Step 3 — Warehouse Classification, Lifecycle and Business Rules
-Added approved classifications and `active/inactive/archived` lifecycle with terminal archive semantics and idempotent same-state transitions.
+### Steps 7–11 — Application and Persistence
 
-### Step 4 — Company, Branch and Organizational Scope
-Added company-wide or single-Branch discriminated scope, same-company active-Branch validation and archived-scope-change protection.
-
-### Step 5 — Warehouse Locations and Extensible Physical Structure
-Added durable Zone/Location hierarchy with optional nested Location parentage and no inventory-state leakage.
-
-### Step 6 — Warehouse Codes, Identifiers and Duplicate Rules
-Added Company-scoped normalized code uniqueness, namespaced external identifiers and deterministic duplicate rules while preserving durable IDs as identity.
-
-### Step 7 — Application, Query and Repository Contracts
-Added persistence-neutral commands, DTOs, bounded queries, Reader, Warehouse/Zone/Location repositories, version-aware updates and UoW contracts.
-
-### Step 8 — Application Services, Validation and Concurrency
-Added `WarehouseService`, request idempotency, Branch resolution, duplicate checks, optimistic concurrency, lifecycle/scope orchestration and focused Application tests.
-
-### Step 9 — Migration, Schema, Constraints and Indexing
-Added migration `0022_warehouses.sql`, Warehouse/identifier/Zone/Location schema, Company/Branch/physical FKs, uniqueness/check constraints, indexes and migration tests.
-
-### Step 10 — Argin Bridge and Future Synchronization Contract
-Added persistence-neutral Warehouse upsert/tombstone contracts, origin/server-revision metadata, sync external references, migration `0023_warehouse_sync_metadata.sql` and architecture tests/docs without implementing live synchronization.
-
-### Step 11 — SQLite Repository, Unit of Work and Atomic Transactions
-Added `@argin/warehouse-tauri`, SQLite Warehouse/Zone/Location repositories, Reader, Branch resolver, atomic UoW, SQL optimistic concurrency and durable request idempotency through migration `0024_warehouse_idempotency.sql`.
+- Added persistence-neutral commands, DTOs, bounded queries, Reader, repositories and Unit of Work contracts.
+- Added `WarehouseService` with request idempotency, duplicate checks, optimistic concurrency, Branch resolution and lifecycle/scope orchestration.
+- Added migrations `0022_warehouses.sql`, `0023_warehouse_sync_metadata.sql` and `0024_warehouse_idempotency.sql`.
+- Added Warehouse/Zone/Location SQLite repositories, bounded Reader, Branch resolver, SQL compare-and-swap optimistic updates, atomic UoW and durable replay-safe idempotency.
+- Added Warehouse Argin Bridge `upsert`/`tombstone` contracts without implementing network synchronization.
 
 ### Step 12 — Permissions, Audit and Approval Integration
-Added Warehouse permission catalog entries, secured read/mutation wrappers, stable unauthorized error, retry-safe Audit contracts/actions and explicit `approval: not-required` policy for Warehouse master-data operations.
+
+- Added Warehouse permission catalog entries and secured read/mutation wrappers.
+- Added retry-safe Warehouse Audit events and stable unauthorized error mapping.
+- Warehouse Master Data does not intrinsically require Approval; `warehouseApprovalIntegration.mode` remains `not-required` unless a future explicit domain requirement changes it.
 
 ### Step 13 — Import / Export and Initial Warehouse Setup
-Added persistence-neutral bulk import/export contracts, preview and row issues, persisted/in-batch duplicate checks, atomic and best-effort modes, bounded full-field export, Reader export adapter and deterministic one-time Company default Warehouse setup (`MAIN` / `انبار اصلی`) with Permission/Audit integration.
+
+- Added previewable Warehouse bulk import with atomic and best-effort modes.
+- Added persisted and in-batch duplicate detection for code/external identifiers.
+- Added bounded export through `WarehouseReaderBulkExportAdapter`.
+- Added deterministic one-time default Company Warehouse setup (`MAIN` / `انبار اصلی`) without creating stock state.
 
 ### Step 14 — Persian RTL Warehouse Management UI
 
-Step 14 delivers the production Persian RTL Desktop management surface and completes the previously agreed maintenance rules for Warehouse, Zone and Location.
-
-Completed actions:
-
-- Added `WarehousesPage` at `/inventory/warehouses`, navigation integration, Company-scoped dense list/detail workspace, Persian labels, Persian-calendar display and explicit LTR code/identifier rendering.
-- Composed secured Application services and SQLite adapters instead of direct SQL mutation from React.
-- Added Warehouse create/edit, lifecycle controls, Branch/company scope selection, external identifiers, optimistic version display and persistent Audit integration.
-- Added Zone and Location tabs inside Warehouse detail.
-- Added create/edit/status/delete operations for Zone and Location.
-- Added controlled Location parent change and explicit Location transfer across Zone/Warehouse with cycle prevention and target-scope validation.
-- Added `inventory.warehouses.delete` as a separate permission for destructive Warehouse deletion; physical maintenance remains under `inventory.warehouses.manage-locations`.
-- Added `WarehouseDependencyGuard` for future stock/document/reference probes and enforced it on destructive/status/move operations.
-- Added tombstone-compatible deletion for Warehouse, Zone and Location, migration `0025_warehouse_maintenance_tombstones.sql`, ordinary-read filtering and physical Argin Bridge upsert/tombstone envelopes.
-- Added restoration support completed in the subsequent Step 14 corrections without changing the frozen sequence.
-- Added focused maintenance/UI contract tests and aligned earlier in-memory repository fixtures with the expanded contracts.
+- Added `WarehousesPage` at `/inventory/warehouses` with Phase 14 dense Persian RTL layout, Persian-calendar display and explicit LTR code/identifier rendering.
+- Added create/edit/status/archive/restore/delete operations for Warehouse.
+- Added create/edit/activate/deactivate/delete for Zone and Location.
+- Added controlled Location parent change and explicit cross-Zone/cross-Warehouse Location move with ancestry-cycle prevention.
+- Added `WarehouseDependencyGuard` and protected destructive/status/move operations.
+- Added tombstone-compatible Warehouse/Zone/Location deletion and migration `0025_warehouse_maintenance_tombstones.sql`.
+- Added physical `upsert`/`tombstone` sync envelopes for future Argin Bridge propagation.
 
 ### Step 14 Maintenance Rules
 
 | Operation | Phase 19 rule |
 | --- | --- |
-| Edit Warehouse | Existing optimistic-version rule applies. |
+| Edit Warehouse | Optimistic Warehouse version rules apply. |
 | Edit Zone | Code/title/description may change through Application service. |
 | Edit Location | Code/title/description/kind may change through Application service. |
-| Deactivate Warehouse | Dependency guard must allow it. |
-| Archive Warehouse | Dependency guard must allow it; archive remains distinct from delete/tombstone. |
-| Deactivate Zone | No active Locations beneath it + dependency guard allows. |
-| Deactivate Location | No active descendants + dependency guard allows. |
+| Deactivate/Archive Warehouse | Dependency guard must allow the operation. |
+| Deactivate Zone | No active Location below it + dependency guard allows. |
+| Deactivate Location | No active descendant + dependency guard allows. |
 | Delete Warehouse | No structural Zone/Location dependency + external dependency guard allows; write tombstone. |
 | Delete Zone | No Location under Zone + external dependency guard allows; write tombstone. |
 | Delete Location | No child Location + external dependency guard allows; write tombstone. |
-| Change Location parent | Same controlled move command; ancestry cycle is rejected. |
-| Move Location to another Zone/Warehouse | Explicit operation; target scope validated; external dependency guard checked; implicit subtree transfer is rejected. |
-| Inventory/document dependency check | Public guard contract is frozen now; concrete probes are supplied when Inventory/Purchase/Sales/Manufacturing consumers exist. |
-| Argin Bridge propagation | Warehouse and physical upsert/tombstone contracts are prepared now; actual sync engine remains future scope. |
+| Change Location parent | Controlled move; ancestry cycle is rejected. |
+| Move Location to another Zone/Warehouse | Explicit validated operation; implicit subtree transfer is rejected. |
+| Inventory/document dependency check | Contract is frozen now; future owning modules supply concrete probes. |
+| Argin Bridge propagation | Upsert/tombstone contracts exist; live sync remains future scope. |
 
 ### Step 15 — Warehouse Selector and Future Consumer Contract
 
-Step 15 freezes the reusable selection boundary that future ERP modules consume instead of inventing module-specific Warehouse lookup rules.
-
-Completed actions:
-
-- Added `WAREHOUSE_SELECTOR_CONSUMERS` with the approved future consumers: `inventory`, `purchases`, `sales`, `manufacturing`, `transfer`, and `adjustment`.
-- Added `WarehouseSelectionPolicy`, `WarehouseSelectionReference`, `WarehouseZoneSelectionReference`, and `WarehouseLocationSelectionReference` as persistence-neutral contracts.
-- Selection references preserve durable `warehouseId`, `zoneId`, and `locationId`; codes and titles remain display metadata and never become foreign identity.
-- Added `buildWarehouseSelectorQuery` with normalized Company/search/kind/limit handling and default active-only eligibility.
-- Branch visibility is fail-safe: without `branchId`, selector queries expose only company-wide Warehouses. With `branchId`, only that Branch plus company-wide Warehouses are eligible by default; `includeCompanyWide=false` can explicitly restrict to the Branch only.
-- Added `companyWideOnly` to the shared Warehouse query contract and SQLite reader so Branch isolation is enforced by the persistence query itself rather than only by UI filtering.
-- Added active-only Zone and Location selector builders. Inactive/tombstoned physical nodes are not eligible for normal future-document selection.
-- Added conversion helpers that reject inactive entities and produce immutable durable selection references.
-- Added `isWarehouseVisibleToBranch` as a deterministic policy helper for consumers/tests that need eligibility checks outside persistence.
-- Existing bounded selector limit remains 1–100 with default 20.
-- Added reusable Persian RTL `WarehouseSelector` Desktop component following the existing Party selector interaction pattern: deferred search, race-safe async requests, keyboard navigation, combobox/listbox accessibility, clear action, dense layout and explicit LTR code rendering.
-- `WarehouseSelector` accepts `companyId`, optional `branchId`, consumer context, kind restrictions and `includeCompanyWide`, and emits `WarehouseSelectionReference` rather than raw display text.
-- The shared selector is intentionally not tied to Inventory/Purchase/Sales document state; future modules compose it with their own transactional rules while preserving the frozen Warehouse eligibility contract.
-- Added focused Application contract tests for consumer list, active-only behavior, Company/Branch visibility, durable identity, Zone/Location queries and limit validation.
-- Added focused Desktop contract tests for shared contract consumption, RTL/LTR behavior, combobox/listbox semantics and dense sizing.
-- No stock balance, document transaction, transfer workflow, costing, posting or synchronization implementation was introduced in Step 15.
-
-### Step 15 Exit Criteria
-
-Step 15 is complete when:
-
-- Future ERP consumers share one Warehouse selector contract rather than querying codes/titles directly.
-- `warehouseId`/`zoneId`/`locationId` remain the only durable selection identities.
-- Inactive/archived/tombstoned entities are excluded from normal selector eligibility.
-- Company/Branch visibility cannot expose Warehouses from an unrelated Branch.
-- Company-context selection without Branch is company-wide-only by default.
-- Zone/Location selection remains scoped under a selected Warehouse and returns only active physical nodes.
-- A reusable accessible Persian RTL Desktop Warehouse selector is available for future document screens.
-- Focused selector contract/UI tests are committed.
-- Inventory/Purchase/Sales/Manufacturing transactional integration remains reserved for Step 16 and the later module phases.
+- Added approved selector consumers: Inventory, Purchases, Sales, Manufacturing, Transfer and Adjustment.
+- Added immutable Warehouse/Zone/Location selection references based on durable IDs.
+- Normal selection is active-only and tombstones are excluded.
+- Without `branchId`, selection is company-wide-only; with `branchId`, the selected Branch plus optional company-wide Warehouses are eligible.
+- Added reusable accessible Persian RTL `WarehouseSelector` with bounded results, deferred/race-safe search and keyboard combobox/listbox behavior.
 
 ### Step 16 — Inventory and ERP Integration Boundaries
 
-Step 16 freezes ownership and dependency direction between Warehouse Master Data and the ERP transaction contexts that consume it.
-
-Completed actions:
-
-- Added `WarehouseOperationalReference` as the canonical downstream persistence reference carrying durable `warehouseId` and optional `zoneId`/`locationId`; code/title/display labels are deliberately absent.
-- Added `createWarehouseOperationalReference(...)` validation. A Location reference cannot exist without its Zone context.
-- Added `WAREHOUSE_ERP_CONSUMERS` for Inventory, Purchases, Sales, Transfer, Adjustment, Manufacturing, Cost Accounting, Accounting and Taxpayer consumers.
-- Added executable `WAREHOUSE_ERP_OWNERSHIP` boundaries instead of relying only on prose architecture notes.
-- Warehouse owns Warehouse/Zone/Location master definitions, organizational scope, lifecycle, physical hierarchy and selector/reference eligibility only.
-- Inventory owns stock balances, quantities, stock movements, kardex, reservations and stock count.
-- Inventory valuation owns cost layers, FIFO/moving-average behavior and valuation.
-- Purchases/Sales own their documents, receipt/dispatch workflow and transactional prices.
-- Transfer and Adjustment own transaction documents/workflow state; moving a Location master record is explicitly not an inventory-transfer transaction.
-- Manufacturing owns material consumption, production output and WIP transactions; Cost Accounting owns production-cost/allocation workflows.
-- Accounting owns posting rules, Journal postings and inventory accounting entries. Warehouse does not generate accounting documents.
-- Taxpayer owns projection/signing/submission/inquiry. Warehouse does not receive Product's official 13-digit goods/service identifier or Taxpayer unit identity.
-- Synchronization/Argin Bridge owns outbox, transport, retries, acknowledgement and conflict resolution; Phase 19 only exposes sync-compatible master-data contracts.
-- Reaffirmed Company/Branch visibility from Step 15 as the only supported consumer lookup path; future modules must not bypass it with direct Warehouse table queries.
-- Reaffirmed `WarehouseDependencyGuard` as the extension point for future Inventory/Purchase/Sales/Manufacturing blockers before destructive/status/move master-data operations.
-- Added forward-only dependency rule: future ERP modules may depend on public `@argin/warehouse` reference/selector/guard contracts; `@argin/warehouse` must not import their transactional models.
-- Added `warehouseIntegrationDirection` with reverse dependency explicitly forbidden and mutable display metadata forbidden as foreign identity.
-- Added `docs/architecture/warehouse-inventory-erp-integration.md` as the canonical cross-context architecture record.
-- Added architecture regression tests covering durable-only operational references, required Zone context for Location, ownership allocation and absence of runtime Warehouse-package dependencies on future ERP transaction packages.
-- No stock quantity, movement, receipt/issue/transfer, adjustment, valuation, pricing, posting, manufacturing transaction, Taxpayer transport or live synchronization implementation was introduced.
-
-### Step 16 Exit Criteria
-
-Step 16 is complete when:
-
-- ERP consumers have a durable Warehouse/Zone/Location reference contract that excludes mutable display identity.
-- Ownership of stock, movement, valuation, documents, pricing, manufacturing, costing, posting and Taxpayer transport is explicitly outside Warehouse.
-- Dependency direction is forward-only from Warehouse Master Data contracts to future consumers.
-- Future destructive/status/move protection can be supplied through `WarehouseDependencyGuard` without Warehouse importing future modules.
-- Company/Branch selector rules remain the supported consumption path.
-- Argin Bridge transport/conflict behavior remains outside Phase 19 implementation.
-- Architecture documentation and regression tests lock these boundaries.
-
-All Step 16 implementation artifacts and focused tests are committed. Full executable Domain/Application/Desktop/monorepo validation remains mandatory in Steps 17–19.
+- Added `WarehouseOperationalReference` containing durable `warehouseId` and optional `zoneId`/`locationId`, deliberately excluding mutable display identity.
+- Warehouse owns master definitions/scope/lifecycle/physical hierarchy/selection eligibility only.
+- Inventory owns balances/movements/kardex/reservations/counts; valuation owns cost layers; Purchases/Sales own documents/prices; Transfer/Adjustment own their transaction workflows; Manufacturing/Cost Accounting own production/cost workflows; Accounting owns posting; Taxpayer owns projection/signing/submission/inquiry.
+- Dependency direction is forward-only: future ERP modules consume public Warehouse contracts; `@argin/warehouse` must not import their transactional models.
+- Canonical architecture record: `docs/architecture/warehouse-inventory-erp-integration.md`.
 
 ### Step 17 — Domain and Application Tests
 
-Step 17 consolidates and strengthens persistence-neutral regression coverage for the complete Warehouse Domain/Application surface before repository/Desktop validation begins.
-
-Completed actions:
-
-- Retained and consolidated existing Domain coverage for Warehouse normalization/immutability, classification/lifecycle, Company/Branch scope, identifiers, Zone/Location hierarchy, maintenance rules, cycle prevention, selector contracts, sync contracts and ERP ownership boundaries.
-- Retained Application coverage for create/update/status/scope, restore, physical-structure creation, security/audit, bulk transfer, selector eligibility and integration references.
-- Added `warehouse-domain-application-regression.test.ts` as a focused cross-feature Application regression suite.
-- Added explicit wrong-Company mutation coverage: a request scoped to another Company receives `not-found` and cannot mutate the owning Company's Warehouse state.
-- Added strict optimistic-version-chain coverage across consecutive update, lifecycle and scope mutations, followed by rejection of a stale version.
-- Added invalid outer-context coverage proving an empty Company scope is rejected before Unit of Work entry.
-- Added Dependency Guard coverage proving a stock/document blocker prevents protected lifecycle mutation, receives durable Company/Warehouse identity and leaves the persisted version unchanged.
-- Added idempotency-scope coverage proving the same `requestId` can safely exist in different Company and mutation scopes without replaying an unrelated result.
-- Added structural-first dependency coverage proving an active child Location blocks Zone deactivation before an external dependency probe can authorize it.
-- Existing restore coverage continues to lock archived-only restoration, stale-version rejection, Company isolation, idempotent replay, preservation of scope/identifiers/createdAt and explicit reactivation after restore-to-inactive.
-- Existing physical-maintenance coverage continues to lock edit/status/delete/move semantics, descendant protection and cycle rejection without SQLite dependencies.
-- Existing selector tests continue to lock active-only eligibility, Branch visibility and durable reference identity.
-- Existing security tests continue to lock authorization-before-mutation and retry-safe Audit behavior.
-- No SQLite, migration, Tauri or Desktop assertions were added to this step; those remain Step 18.
-
-### Step 17 Exit Criteria
-
-Step 17 is complete when:
-
-- Core Warehouse business rules are independently testable without SQLite or Desktop composition.
-- Company isolation is explicitly covered for mutation paths.
-- Optimistic concurrency is covered across a multi-mutation version chain and stale writes are rejected.
-- Request idempotency cannot collide across unrelated Company/operation scopes.
-- Invalid outer context is rejected before Unit of Work entry.
-- Dependency Guard and structural blockers are both covered, including their precedence.
-- Restore, selector, maintenance, security/audit, sync and ERP-boundary regressions remain represented in the Domain/Application suite.
-- Repository, migration, import/export persistence and Desktop execution remain reserved for Step 18.
-
-All Step 17 test artifacts are committed. These tests were not executed in the assistant environment because the repository cannot be cloned there due DNS/network resolution; executable validation remains required locally and is carried forward into Steps 18–19.
+- Consolidated persistence-neutral coverage for lifecycle, scope, identifiers, hierarchy, maintenance, cycle prevention, restore, selectors, security/audit, sync and ERP boundaries.
+- Added explicit wrong-Company mutation isolation, multi-step optimistic-version chains, invalid-context-before-UoW checks, idempotency scope isolation and dependency-guard precedence regressions.
 
 ### Step 18 — Repository, Migration, Import/Export and Desktop Tests
 
-Step 18 validates the persistence and Desktop composition boundaries on top of the Domain/Application coverage frozen in Step 17.
+- Added real `node:sqlite` migration coverage for migrations 22–25 and Desktop runner registration.
+- Added real SQLite UoW rollback and Import → persistence → Export integration coverage.
+- Added tombstone exclusion for Warehouse/Zone/Location ordinary reads.
+- Added persistence-level Company/Branch selector regression before `LIMIT`.
+- Added Desktop composition regression ensuring Warehouse UI uses public Application/SQLite adapter boundaries rather than direct Warehouse SQL.
 
-Completed actions:
+### Step 19 — Performance, Accessibility, Monorepo Quality and Documentation
 
-- Retained existing `@argin/warehouse-tauri` adapter tests for one-transaction UoW behavior, rollback propagation, SQL optimistic-CAS predicates, stale-write conflict mapping, missing-row mapping and durable idempotency replay/cleanup semantics.
-- Retained existing Desktop migration tests for base Warehouse schema/company scope/code uniqueness/Branch foreign keys/physical hierarchy and durable idempotency state constraints.
-- Added `warehouse-step18-migrations.test.ts` to execute migrations `0022` through `0025` sequentially on a real in-memory `node:sqlite` database after Company/Branch setup.
-- The Step 18 migration suite verifies Tauri runner registration for versions 22, 23, 24 and 25, required Warehouse/Zone/Location/sync/idempotency tables and sync/tombstone columns.
-- Added real SQLite validation for Company-scoped sync external-reference uniqueness and coexistence of maintenance tombstones with durable idempotency constraints.
-- Added `warehouse-step18-sqlite-integration.test.ts` with a `DatabaseExecutor` adapter over `node:sqlite` to exercise production Warehouse repositories/readers/UoW rather than SQL-only fixtures.
-- Added real transaction rollback coverage proving a failed `SqliteWarehouseUnitOfWork` callback leaves no partial Warehouse row persisted.
-- Added real Import → SQLite persistence → paged Export coverage using `WarehouseBulkTransferService`, `SqliteWarehouseUnitOfWork`, `SqliteWarehouseBranchResolver`, `SqliteWarehouseReader` and `WarehouseReaderBulkExportAdapter` together.
-- The bulk integration test preserves Company scope, Branch scope, descriptions and namespaced external identifiers, and asserts Import/Export Audit facts.
-- Added ordinary-read tombstone regression proving deleted Warehouse, Zone and Location records are excluded by `SqliteWarehouseReader` after migrations 23/25.
-- Added persistence-level selector regression proving Company-wide-only and Branch+company-wide visibility are applied before `LIMIT` and cannot leak an unrelated Branch.
-- Retained focused Desktop route/RTL/density/maintenance/selector contracts and added `warehouse-step18-desktop-regression.test.ts` as a composition regression gate.
-- The Desktop regression verifies `WarehousesPage` composes public `WarehouseService`/secured service and SQLite adapter boundaries, and contains no embedded Warehouse SQL.
-- Desktop regression also locks loading/error/empty states, reusable combobox/listbox selector semantics, explicit LTR code rendering, deferred/race-safe search behavior, Warehouse route/permission wiring and explicit Desktop workspace dependencies on `@argin/warehouse` and `@argin/warehouse-tauri`.
-- No new Warehouse business behavior was introduced by Step 18; all changes are regression/integration tests and canonical evidence.
+- Added `@argin/warehouse-tauri validate:performance` via `scripts/validate-warehouse-performance.ts`.
+- Performance validation builds a representative dataset of 50,000 Warehouses, including 40,000 Company-scoped test rows, plus 5,000 Zones and 20,000 Locations.
+- SQLite `EXPLAIN QUERY PLAN` must use accepted indexes for:
+  - Company/status Warehouse list
+  - Branch-scoped Warehouse selector
+  - external-identifier duplicate lookup
+  - Zone lookup
+  - Location lookup
+- Performance acceptance is based on bounded queries and expected index use, not hardware-specific wall-clock timing.
+- Added `warehouse-step19-quality.test.ts` covering Persian RTL, explicit LTR identifiers, Persian-calendar presentation, focus-visible behavior, Warehouse selector keyboard/ARIA semantics, semantic confirmation dialog behavior, dense sizing, local overflow, responsive collapse, loading/empty/error/success feedback and race-safe bounded selector lookup.
+- Added root `pnpm validate:phase19` as the canonical Phase 19 quality gate. It runs Warehouse and Warehouse-Tauri typecheck/tests, Warehouse performance validation, Security/Audit checks, Desktop typecheck/test/build, then full monorepo typecheck/test/build/lint.
+- Updated `ROADMAP.md` with Phase 19 implementation/quality status while retaining Phase 19 as the current target until Step 20 promotion.
+- Updated `docs/glossary/domain-glossary.md` with canonical Warehouse/Zone/Location/selector/operational-reference/dependency-guard/tombstone terminology.
+- Updated `docs/database/database-design.md` with migrations 22–25, Warehouse persistence boundaries, indexing/performance rules, transaction semantics and future PostgreSQL/Argin Bridge compatibility.
+- Existing architecture records remain canonical:
+  - `docs/architecture/warehouse-sync-contract.md`
+  - `docs/architecture/warehouse-inventory-erp-integration.md`
+- No new ADR is required: Phase 19 follows existing offline-first, Master Data, shared security/audit, database abstraction, Phase 14 UI and future-sync decisions.
+- No stock transaction, valuation, posting, Taxpayer transport or live synchronization behavior was introduced by the quality/documentation step.
 
-### Step 18 Exit Criteria
+### Step 19 Exit Criteria
 
-Step 18 is complete when:
+Step 19 is complete when:
 
-- Warehouse migrations 22–25 apply sequentially against real SQLite and remain registered in the Desktop runner.
-- Repository/UoW behavior is exercised through production SQLite adapters, including atomic rollback and tombstone-aware ordinary reads.
-- Import/export is exercised end-to-end against real SQLite with Company/Branch/external-identifier preservation and Audit facts.
-- Selector Branch isolation is verified at persistence level before result limiting.
-- Desktop composition remains service/adapter-based with no direct Warehouse SQL in React.
-- Desktop route/permissions, loading/error/empty states and reusable selector contracts remain covered.
-- No persistence/Desktop test introduces Inventory transaction, costing, posting or live-sync scope.
+- a representative Warehouse/Zone/Location SQLite performance validator is committed;
+- critical list/selector/duplicate/physical lookup plans require accepted indexes;
+- Warehouse Desktop quality contracts cover RTL/LTR, dense layout, focus, responsive behavior, feedback and reusable selector accessibility;
+- one root `validate:phase19` command covers Warehouse, infrastructure, Desktop and full monorepo quality gates;
+- Roadmap, glossary and canonical database documentation reflect Phase 19 architecture and persistence;
+- Step 20 remains the only unfinished phase step.
 
-All Step 18 test artifacts are committed. The assistant environment did not execute these tests, so no passing runtime result is claimed here. Local execution is required before Step 19's full monorepo quality gate.
+All Step 19 implementation and documentation artifacts are committed. The assistant environment could not execute the repository validation commands because network/DNS prevents cloning/installing the repository there. Therefore this record does **not** claim a passing runtime result; local execution of the gate below is required before final merge/release acceptance.
+
+## Validation Gate
+
+Canonical Phase 19 validation commands:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm validate:phase19
+```
+
+If the lockfile changes because the Phase 19 workspace packages were not previously captured, run `pnpm install`, review and commit the legitimate `pnpm-lock.yaml` update, then rerun the frozen-lockfile command.
 
 ## Change Requests
 
