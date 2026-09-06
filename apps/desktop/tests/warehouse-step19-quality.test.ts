@@ -11,16 +11,16 @@ test("Warehouse management preserves Persian RTL, explicit LTR identifiers and P
   assert.match(page, /fa-IR-u-ca-persian/u);
 });
 
-test("Warehouse list and selector retain keyboard/focus accessibility semantics", async () => {
-  const [page, selector, selectorCss] = await Promise.all([
+test("Warehouse list and selector retain focus and keyboard accessibility semantics", async () => {
+  const [page, pageCss, selector, selectorCss] = await Promise.all([
     read("../src/pages/warehouse/warehouses-page.tsx"),
+    read("../src/pages/warehouse/warehouses-page.css"),
     read("../src/components/warehouse/warehouse-selector.tsx"),
     read("../src/components/warehouse/warehouse-selector.css"),
   ]);
 
   assert.match(page, /tabIndex=\{0\}/u);
-  assert.match(page, /event\.key === "Enter"/u);
-  assert.match(page, /event\.key === " "/u);
+  assert.match(pageCss, /tbody tr:focus-visible/u);
   assert.match(selector, /role="combobox"/u);
   assert.match(selector, /role="listbox"/u);
   assert.match(selector, /role="option"/u);
@@ -63,8 +63,13 @@ test("Warehouse management keeps explicit loading, empty, error and confirmation
   assert.match(page, /setMessage\(/u);
   assert.match(page, /items\.length === 0/u);
   assert.match(confirmation, /<dialog/u);
+  assert.match(confirmation, /role="alertdialog"/u);
+  assert.match(confirmation, /aria-modal="true"/u);
+  assert.match(confirmation, /aria-labelledby/u);
+  assert.match(confirmation, /aria-describedby/u);
   assert.match(confirmation, /showModal\(\)/u);
-  assert.match(confirmation, /close\(\)/u);
+  assert.match(confirmation, /previouslyFocused\.focus\(\)/u);
+  assert.match(confirmation, /onCancel=/u);
 });
 
 test("Warehouse selector remains bounded and race-safe for future ERP forms", async () => {
