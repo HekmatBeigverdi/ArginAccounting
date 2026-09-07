@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–2 are complete. The structural Inventory draft Domain model and its focused tests are implemented. Steps 3–22 are Not started; stock operations, persistence and Desktop integration remain pending.
+In Progress. Steps 1–3 are complete. Draft documents now support exact quantity/unit snapshots and validated operational references. Steps 4–22 are Not started; stock posting, persistence and Desktop integration remain pending.
 
 ## Governance
 
@@ -73,7 +73,9 @@ Only eligible unconfirmed document deletion may produce a tombstone. Confirmed m
 
 Implemented at Step 2: InventoryDocumentSnapshot, InventoryDocumentLineSnapshot, InventoryDocumentType, InventorySourceReference and structured InventoryDomainError, with immutable draft factories and validated rehydration. See the [canonical Domain foundation](../architecture/inventory-documents.md).
 
-Still planned in owning steps: full DocumentStatus transitions, StockMovement, StockKey, OnHandBalance projection, Quantity, UnitConversionSnapshot, TransferGroup and ReversalReference.
+Implemented at Step 3: InventoryQuantitySnapshot, InventoryUnitSnapshot and InventoryLineOperationSnapshot with exact conversion, current master eligibility checks and historical rehydration.
+
+Still planned in owning steps: full DocumentStatus transitions, StockMovement, StockKey, OnHandBalance projection, TransferGroup and ReversalReference.
 
 A physical reference includes warehouseId and optional zoneId/locationId under the existing hierarchy contract. Historical references remain resolvable when master data changes. No mutable title/code is identity.
 
@@ -99,7 +101,7 @@ Persian RTL and Phase 14 density/accessibility; Jalali business dates with Grego
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Inventory Document Domain Model | Completed |
-| 3 | Quantity, Units and Operational References | Not started |
+| 3 | Quantity, Units and Operational References | Completed |
 | 4 | Company, Branch, Fiscal Scope and Numbering | Not started |
 | 5 | Document Lifecycle, Approval and Correction Rules | Not started |
 | 6 | Stock Movement Ledger and Balance Rules | Not started |
@@ -281,6 +283,42 @@ Full monorepo/Rust/Desktop gates were not run for this isolated, unconsumed Doma
 - Product ownership/existence/eligibility and Warehouse hierarchy eligibility remain upstream contract checks; Step 2 only validates structural identity and source Company consistency.
 - Frozen step titles, order, scope and exit criteria are unchanged. Next executable step: Step 3 — Quantity, Units and Operational References.
 
+### Step 3 — Quantity, Units and Operational References — Completed
+
+- Started from remote `e5dd3d5e8da112ac88ec4d8bd09d3438e049b66b`, preserving the owner's Step 2 documentation/dictionary corrections.
+- Added canonical decimal-string quantities and conversion with BigInt coefficient arithmetic. Stock quantities do not pass through JavaScript floating-point multiplication. Inputs/outputs are bounded and JSON-safe; selected-unit precision and Phase 18 signed rounding semantics are enforced.
+- Adapted public Product unit profiles by preserving their numeric ratio's decimal spelling, expanding supported exponents and rejecting unsafe/out-of-range ratios. Product module code and existing unit identities are unchanged.
+- Added immutable snapshots of entered/base quantities and both units' IDs, labels, codes, ratio, precision, rounding mode and Taxpayer unit mapping. Rehydration verifies stored arithmetic without reading current units, so later unit edits/removal cannot rewrite document meaning.
+- Added current Product validation for durable ID/Company, active physical stock-tracked status, unit profile and positive version. Services, deleted/inactive/non-stock products and deferred serial/lot/shelf-life tracking requirements are rejected explicitly.
+- Added requested-versus-resolved Warehouse/Zone/Location validation for Company, identity, active/non-deleted state and ancestry using the public Warehouse reference contract. Missing/mismatched parents or unexpected children fail; Location requires Zone.
+- Added source and optional destination references to immutable line operation snapshots, with same-Company and distinct-position validation. Draft composition rejects Company/Product mismatches, inappropriate negative quantities and destination/type mismatches. Transfer execution remains Step 8.
+- Preserved incomplete drafts with `operation: null`; supplied operations are fully structurally validated. Historical rehydration does not establish current master eligibility or permission to confirm; future Application services must resolve/recheck actual masters within transaction boundaries.
+- Extracted the shared Domain error catalog into `inventory-errors.ts` without changing existing public error exports. Added only forward public dependencies on Product and Warehouse and corresponding workspace lockfile links.
+- Updated canonical Inventory architecture, ADR-0018, decision/module registries, glossary, roadmap, phase index and changelog; retained the fixed 22-step sequence.
+
+#### Step 3 Validation Evidence
+
+Environment: Node `v24.19.0`, available pnpm `11.19.0`, TypeScript `5.9.3`. The pinned repository manager remains unchanged at `12.3.4`.
+
+| Executed command/check | Result |
+| --- | --- |
+| `pnpm --filter @argin/inventory install --frozen-lockfile --ignore-scripts` | Passed with workspace Product/Warehouse links; no dependency resolution changes |
+| `pnpm --filter @argin/inventory test` | Passed: 44 tests, 0 failures (20 prior + 24 Step 3 tests) |
+| `pnpm --filter @argin/inventory typecheck` | Passed |
+| `pnpm --filter @argin/inventory build` | Passed |
+| `node scripts/generate-doc-index.mjs` | Regenerated canonical index |
+| Frozen sequence, Step Status, changed-document relative links and `git diff --check` | Checked for this checkpoint |
+
+An initial 42-test run had one test expecting a unit-mismatch error while its fixture first triggered the legitimate precision error. The fixture was narrowed to test unit-metadata mismatch independently; no production invariant was relaxed. Two additional integration/defensive-copy cases bring the final suite to 44 passing tests.
+
+Coverage includes exact values above the number safe-integer range, `0.1 × 0.2`, all rounding modes for both signs, zero/underflow/overflow, legacy exponent ratios, invalid profiles, unit-history serialization/drift, real public Product/Warehouse factories, ineligible masters, hierarchy isolation, historical reads, transfer reference shape and document composition.
+
+No migration, permission, stock ledger, SQLite service or Desktop UI was added. Full monorepo/Rust/manual Desktop gates were not run; focused public-master integration cases are part of the passing Inventory suite.
+
+#### Step 4 Handoff
+
+Keep stored unit/quantity snapshots stable. Add Company/Branch/fiscal eligibility and numbering through shared contracts. Current master projections must originate from actual scoped readers and be revalidated by authoritative mutation services; supplied or rehydrated snapshots are not authorization. Step 3 defines reference/quantity invariants, not stock confirmation or transfer execution.
+
 ## Testing
 
 Cover domain transitions, precise units, fiscal locks, scope, concurrent stock updates, retry payload conflicts, same-day/backdated ordering, no negative historical balances under the default policy, reversal over-consumption, transfer conservation, dependency guard behavior, and stock reconstruction. A posted/confirmed source may not be silently replaced or applied twice by future consumers.
@@ -289,7 +327,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-Planning/Step 1 checks and actual Step 2 Domain validation are recorded above. The Step 2 package tests, typecheck and build passed. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
+Planning/Step 1 checks and actual Steps 2–3 validation are recorded above. The current Inventory suite has 44 passing tests; focused typecheck and build passed. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -312,6 +350,8 @@ Step 2: added the Inventory Domain architecture record and glossary terms, updat
 During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Add an ADR for consequential movement/lifecycle/stock-policy decisions and link it here when accepted. Keep all repository documentation and commits in English.
 
 ## Related ADRs
+
+[ADR-0018 — Exact Inventory Quantities and Historical Unit Snapshots](../adr/ADR-0018-inventory-quantity-snapshots.md) records the Step 3 representation decision.
 
 Follow [Offline First](../adr/ADR-0001-offline-first.md), [Database-independent Domain](../adr/ADR-0002-database-independent-domain.md), [UoW](../adr/ADR-0005-repository-unit-of-work.md), [Application Services](../adr/ADR-0006-application-services.md), [Approval Concurrency](../adr/ADR-0008-approval-optimistic-concurrency.md) and [Shared Platform](../adr/ADR-0009-platform-infrastructure-first.md).
 

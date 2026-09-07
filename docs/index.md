@@ -27,6 +27,7 @@
 - [ADR-0015 — Journal Lifecycle Architecture](adr/ADR-0015-journal-lifecycle.md)
 - [ADR-0016 — Accounting Reports Architecture](adr/ADR-0016-accounting-reports.md)
 - [ADR-0017 — Party Master Data Model](adr/ADR-0017-party-master-data-model.md)
+- [ADR-0018 — Exact Inventory Quantities and Historical Unit Snapshots](adr/ADR-0018-inventory-quantity-snapshots.md)
 - [Architecture Decision Records](adr/README.md)
 
 ## architecture

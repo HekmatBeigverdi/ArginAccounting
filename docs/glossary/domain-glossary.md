@@ -70,3 +70,5 @@ This glossary defines canonical English repository terms and their Persian UI me
 | Inventory Adjustment | سند تعدیل موجودی | Quantity-document type for a reasoned correction to stock quantity; distinct from monetary valuation. |
 | Inventory Source Reference | مرجع مبدأ سند انبار | Company/source-system/type/document/optional-line durable reference; display number and row position are excluded. |
 | Inventory Business Date | تاریخ عملیاتی سند انبار | Gregorian internal business date presented as Jalali in UI, independent of UTC recording timestamps. |
+| Inventory Quantity Snapshot | تصویر مقدار و واحد سند انبار | Immutable entered/base decimal quantities and copied unit conversion metadata that preserve historical interpretation after Product edits. |
+| Inventory Operation Reference | مرجع عملیاتی ردیف انبار | Company/Product/version, quantity snapshot and durable source/optional destination Warehouse hierarchy references; not a posted stock movement. |

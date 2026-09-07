@@ -1,3 +1,10 @@
+import { INVENTORY_DOMAIN_ERROR_CODES, InventoryDomainError } from "./inventory-errors.ts";
+import type { InventoryDomainErrorCode } from "./inventory-errors.ts";
+import { rehydrateInventoryLineOperation } from "./inventory-operation.ts";
+import type { InventoryLineOperationSnapshot } from "./inventory-operation.ts";
+export { INVENTORY_DOMAIN_ERROR_CODES, InventoryDomainError } from "./inventory-errors.ts";
+export type { InventoryDomainErrorCode } from "./inventory-errors.ts";
+
 /** Phase 20 Step 2: structural draft model; no stock or lifecycle operations. */
 export const INVENTORY_DOCUMENT_TYPES = Object.freeze([
   "receipt",
@@ -8,38 +15,6 @@ export const INVENTORY_DOCUMENT_TYPES = Object.freeze([
 ] as const);
 
 export type InventoryDocumentType = (typeof INVENTORY_DOCUMENT_TYPES)[number];
-
-export const INVENTORY_DOMAIN_ERROR_CODES = Object.freeze({
-  inputInvalid: "inventory.input.invalid",
-  identityRequired: "inventory.identity.required",
-  documentTypeInvalid: "inventory.document-type.invalid",
-  businessDateInvalid: "inventory.business-date.invalid",
-  timestampInvalid: "inventory.timestamp.invalid",
-  timestampOrderInvalid: "inventory.timestamp-order.invalid",
-  versionInvalid: "inventory.version.invalid",
-  statusInvalid: "inventory.status.invalid",
-  linesInvalid: "inventory.lines.invalid",
-  linePositionInvalid: "inventory.line-position.invalid",
-  duplicateLineId: "inventory.line-id.duplicate",
-  duplicateLinePosition: "inventory.line-position.duplicate",
-  sourceCompanyMismatch: "inventory.source.company-mismatch",
-  sourceSelfReference: "inventory.source.self-reference",
-} as const);
-
-export type InventoryDomainErrorCode =
-  (typeof INVENTORY_DOMAIN_ERROR_CODES)[keyof typeof INVENTORY_DOMAIN_ERROR_CODES];
-
-export class InventoryDomainError extends Error {
-  readonly code: InventoryDomainErrorCode;
-  readonly field: string;
-
-  constructor(code: InventoryDomainErrorCode, field: string) {
-    super(code);
-    this.name = "InventoryDomainError";
-    this.code = code;
-    this.field = field;
-  }
-}
 
 /** Source identities never contain a display number or a database row position. */
 export interface InventorySourceReference {
@@ -60,6 +35,7 @@ export interface CreateInventorySourceReferenceInput {
 
 /** Owned by its document; position is ordering metadata, never line identity. */
 export interface InventoryDocumentLineSnapshot {
+  readonly operation: InventoryLineOperationSnapshot | null;
   readonly lineId: string;
   readonly position: number;
   readonly productId: string;
@@ -68,6 +44,7 @@ export interface InventoryDocumentLineSnapshot {
 }
 
 export interface CreateInventoryDocumentLineInput {
+  readonly operation?: InventoryLineOperationSnapshot | null;
   readonly lineId: string;
   readonly position: number;
   readonly productId: string;
@@ -76,7 +53,7 @@ export interface CreateInventoryDocumentLineInput {
 }
 
 /**
- * Draft foundation only. Quantity/UoM and physical references arrive in Step 3;
+ * Draft model with optional validated quantity/UoM and physical reference snapshots;
  * fiscal eligibility/number allocation in Step 4; lifecycle in Step 5.
  */
 export interface InventoryDocumentSnapshot {
@@ -174,10 +151,14 @@ export function createInventoryDocumentLine(
   if (!Number.isSafeInteger(input.position) || input.position < 1) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.linePositionInvalid, "line.position");
   }
+  const operation = input.operation == null ? null : rehydrateInventoryLineOperation(input.operation);
+  const productId = identity(input.productId, "line.productId");
+  if (operation && operation.productId !== productId) return fail(INVENTORY_DOMAIN_ERROR_CODES.operationMismatch, "line.operation.productId");
   return Object.freeze({
+    operation,
     lineId: identity(input.lineId, "line.lineId"),
     position: input.position,
-    productId: identity(input.productId, "line.productId"),
+    productId,
     description: optionalText(input.description, "line.description"),
     sourceReference: input.sourceReference == null
       ? null : createInventorySourceReference(input.sourceReference),
@@ -229,6 +210,14 @@ function normalizeDocument(
     const line = createInventoryDocumentLine(raw);
     if (ids.has(line.lineId)) return fail(INVENTORY_DOMAIN_ERROR_CODES.duplicateLineId, "line.lineId");
     if (positions.has(line.position)) return fail(INVENTORY_DOMAIN_ERROR_CODES.duplicateLinePosition, "line.position");
+    if (line.operation) {
+      const operation = line.operation;
+      if (operation.companyId !== companyId || operation.productId !== line.productId ||
+          (input.documentType !== "adjustment" && operation.quantity.enteredQuantity.startsWith("-")) ||
+          (input.documentType === "transfer") !== (operation.destination !== null)) {
+        return fail(INVENTORY_DOMAIN_ERROR_CODES.operationMismatch, "line.operation");
+      }
+    }
     ids.add(line.lineId);
     positions.add(line.position);
     lines.push(Object.freeze({ ...line, sourceReference: normalizeSource(line.sourceReference) }));

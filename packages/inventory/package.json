@@ -13,6 +13,10 @@
     "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts",
     "clean": "rimraf dist"
   },
+  "dependencies": {
+    "@argin/product": "workspace:*",
+    "@argin/warehouse": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^20",
     "rimraf": "^6.0.0",

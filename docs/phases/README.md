@@ -33,7 +33,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 
 ## Current Phase
 
-20. [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md) — Steps 1–2 complete; fixed 22-step sequence preserved; Step 3 is next
+20. [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md) — Steps 1–3 complete; fixed 22-step sequence preserved; Step 4 is next
 
 ## Renumbering Rule
 

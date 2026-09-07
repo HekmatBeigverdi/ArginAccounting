@@ -450,6 +450,13 @@ importers:
         version: 5.9.3
 
   packages/inventory:
+    dependencies:
+      '@argin/product':
+        specifier: workspace:*
+        version: link:../product
+      '@argin/warehouse':
+        specifier: workspace:*
+        version: link:../warehouse
     devDependencies:
       '@types/node':
         specifier: ^20

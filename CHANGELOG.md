@@ -30,6 +30,14 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added 20 passing Domain tests; focused typecheck/build passed. Updated workspace lockfile, architecture, module registration, glossary and phase evidence.
 - Quantity/units, fiscal/lifecycle/stock behavior, SQLite and Desktop integration remain in their fixed later steps.
 
+### Step 3 — Quantity, Units and Operational References
+
+- Added exact decimal-string quantity conversion using BigInt internally and historical unit/conversion snapshots, preserving Phase 18 precision/rounding and durable identities.
+- Added current Product eligibility and Warehouse/Zone/Location identity, Company, status and hierarchy validation through public upstream contracts.
+- Integrated immutable operation snapshots with draft lines and validated historical rehydration without rereading mutable masters.
+- Added 24 tests (44 total passing); focused typecheck/build and frozen dependency install passed. Added ADR-0018 and updated canonical docs/status.
+- Company/Branch/fiscal orchestration, stock mutations, persistence and Desktop integration remain in later fixed steps.
+
 ---
 
 ## [0.18.0] - 2026-09-01

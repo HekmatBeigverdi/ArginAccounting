@@ -16,5 +16,6 @@
 | ADR-0012 | Versioned, previewable, and atomic coding templates | Accepted | Phase 12 |
 | ADR-0013 | Draft Journal Voucher aggregate, validation, numbering, persistence, and portability boundary | Accepted | Phase 13 |
 | ADR-0014 | Five-layer Persian RTL desktop UI foundation with global Compact/Comfortable/Spacious display density | Accepted | Phase 14 |
+| [ADR-0018](../adr/ADR-0018-inventory-quantity-snapshots.md) | Exact Inventory quantities and historical unit snapshots | Accepted | Phase 20 Step 3 |
 
 The detailed records live under `docs/adr/`. This registry must be updated in the same commit as any ADR addition, supersession, or deprecation.
