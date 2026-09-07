@@ -91,7 +91,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 ## Inventory
 
 20. 🚧 Inventory Documents
-   - Steps 1–3 complete: draft Domain, exact quantity/unit snapshots and operational references; Step 4 is next
+   - Steps 1–4 complete: draft Domain, exact quantities, operational references, scope checks and numbering; Step 5 is next
    - Quantity documents, atomic transfers/reversals, movement ledger, on-hand balances and quantity kardex
    - Shared master-data dependency guards, Persian RTL desktop workflows and Argin Bridge-compatible contracts
    - Valuation remains Phase 21; live synchronization remains Phase 45
@@ -168,7 +168,7 @@ A phase is complete only when:
 
 ## Current Target
 
-[Phase 20 — Inventory Documents](docs/phases/phase-20-inventory-documents-plan.md), Steps 1–3 complete; Company/Branch/fiscal scope and numbering are next at Step 4.
+[Phase 20 — Inventory Documents](docs/phases/phase-20-inventory-documents-plan.md), Steps 1–4 complete; Company/Branch/fiscal scope and numbering are implemented; lifecycle is next at Step 5.
 
 ## Latest Completed Master Data Milestone
 

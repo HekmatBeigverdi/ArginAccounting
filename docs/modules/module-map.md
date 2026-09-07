@@ -24,7 +24,7 @@
 ## Operational Modules
 
 - Master Data
-- Inventory — [Phase 20 Inventory Documents](../phases/phase-20-inventory-documents-plan.md): `@argin/inventory` draft Domain with exact quantity/unit snapshots and operational references implemented through Step 3; Application services, `@argin/inventory-tauri` adapter and Desktop integration remain planned.
+- Inventory — [Phase 20 Inventory Documents](../phases/phase-20-inventory-documents-plan.md): `@argin/inventory` draft Domain with exact quantity/unit snapshots and operational references, Company/Branch/fiscal checks and shared number reservation implemented through Step 4; Application services, `@argin/inventory-tauri` adapter and Desktop integration remain planned.
 - Purchases
 - Sales
 - Treasury

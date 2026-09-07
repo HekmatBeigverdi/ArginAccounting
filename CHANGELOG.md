@@ -38,6 +38,13 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added 24 tests (44 total passing); focused typecheck/build and frozen dependency install passed. Added ADR-0018 and updated canonical docs/status.
 - Company/Branch/fiscal orchestration, stock mutations, persistence and Desktop integration remain in later fixed steps.
 
+### Step 4 — Company, Branch, Fiscal Scope and Numbering
+
+- Added immutable fiscal/Branch scope, trusted Company/actor checks, explicit cross-Branch transfer policy, open year/period date validation and applicable historical locks through public upstream readers.
+- Rechecked current Warehouse eligibility at both transfer endpoints and reserved numbers through the shared Platform engine, scoped by Company/year/origin Branch/type.
+- Preserved durable Argin Bridge identities independently from display numbers; transactional persistence and replay handling retain their later owning steps.
+- Added 28 tests (72 total passing), including 50 concurrent reservations; focused typecheck/build and frozen dependency install passed. Updated the canonical Step Status and architecture.
+
 ---
 
 ## [0.18.0] - 2026-09-01

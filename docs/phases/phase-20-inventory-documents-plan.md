@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–3 are complete. Draft documents now support exact quantity/unit snapshots and validated operational references. Steps 4–22 are Not started; stock posting, persistence and Desktop integration remain pending.
+In Progress. Steps 1–4 are complete. Draft documents support exact quantities, operational references, Company/Branch/fiscal validation and shared number reservation. Steps 5–22 are Not started; stock posting, persistence and Desktop integration remain pending.
 
 ## Governance
 
@@ -103,7 +103,7 @@ Persian RTL and Phase 14 density/accessibility; Jalali business dates with Grego
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Inventory Document Domain Model | Completed |
 | 3 | Quantity, Units and Operational References | Completed |
-| 4 | Company, Branch, Fiscal Scope and Numbering | Not started |
+| 4 | Company, Branch, Fiscal Scope and Numbering | Completed |
 | 5 | Document Lifecycle, Approval and Correction Rules | Not started |
 | 6 | Stock Movement Ledger and Balance Rules | Not started |
 | 7 | Receipt, Issue and Opening Balance Workflows | Not started |
@@ -320,6 +320,38 @@ No migration, permission, stock ledger, SQLite service or Desktop UI was added. 
 
 Keep stored unit/quantity snapshots stable. Add Company/Branch/fiscal eligibility and numbering through shared contracts. Current master projections must originate from actual scoped readers and be revalidated by authoritative mutation services; supplied or rehydrated snapshots are not authorization. Step 3 defines reference/quantity invariants, not stock confirmation or transfer execution.
 
+### Step 4 — Company, Branch, Fiscal Scope and Numbering — Completed
+
+- Preserved the owner's Step 3 corrections at `3f1a30cad63c43c135a5a2044f7efc9cc0cf2e2f`; owner accepted Step 3 before this work. Step 4 implementation/validation is complete; owner acceptance remains separate.
+- Added immutable optional draft scope with origin/destination Branch and fiscal year/period identities. Current eligibility requires scope; historical draft reads remain independent from current masters. Wildcard scope IDs are rejected to avoid collisions with shared Number Series missing-scope keys.
+- Added current Company/Branch/Fiscal/Warehouse validation through public upstream readers. Trusted authenticated Company must match; Company and both transfer branches must be active and Company-owned. Actor membership is checked at both ends. Cross-Branch transfer is disabled unless trusted policy explicitly enables it; cross-Company transfer remains excluded.
+- Enforced open Company-owned year and nested open period, valid inclusive Gregorian date ranges, year closure marker, and Company-wide or applicable Branch inventory/all historical locks. Full-access permission bypasses Branch membership only.
+- Rechecked populated line Warehouse endpoints against current scoped readers and the shared Warehouse Branch visibility policy. Incomplete drafts are retained; confirmation completeness remains a lifecycle/service responsibility.
+- Added five default series definitions and reservation through shared Platform Number Series. Company/year/origin Branch/document type define the counter; period and destination Branch do not restart it. Allocation follows validation, rejects already-numbered inputs and validates provider output without mutating the document.
+- Added public Company/Fiscal/Security/Platform dependencies using existing workspace links. No private upstream imports, database counter implementation, migrations or permission catalog changes.
+- Preserved Argin Bridge identity/snapshot boundaries: display numbers are not durable document IDs. Future authoritative services must resolve trusted context, revalidate masters, enforce durable uniqueness and reserve/save within the same UoW after idempotency lookup. No persistence, retries, stock posting or live Bridge endpoint is claimed here.
+
+#### Step 4 Validation Evidence
+
+Environment: Node `v24.19.0`, available pnpm `11.19.0`, TypeScript `5.9.3`. Repository pnpm pin remains `12.3.4`; that version was not used here.
+
+| Executed command/check | Result |
+| --- | --- |
+| `pnpm --filter @argin/inventory install --frozen-lockfile --ignore-scripts` | Passed; reused resolved dependencies and workspace links |
+| `pnpm --filter @argin/inventory test` | Passed: 72 tests, 0 failures (44 prior + 28 Step 4) |
+| `pnpm --filter @argin/inventory typecheck` | Passed |
+| `pnpm --filter @argin/inventory build` | Passed |
+| `node scripts/generate-doc-index.mjs` | Regenerated canonical index |
+| Fixed sequence, Step Status, changed-document relative links and `git diff --check` | Checked for this checkpoint |
+
+Coverage includes scope immutability/wildcards, Company isolation, actor access at both transfer ends, explicit cross-Branch policy, fiscal status/date/ownership, inclusive historical locks, live Warehouse eligibility, 50 concurrent unique reservations with the public in-memory Platform store, numbering partition boundaries and malformed allocator output. The first Warehouse test fixture lacked required DTO version/external identifiers; completing the fixture resolved typecheck without weakening production contracts.
+
+Concurrent in-memory allocation does not certify durable SQLite uniqueness or transaction rollback. SQLite/full monorepo/Rust/manual Desktop gates remain in their fixed owning steps. There is no new UI in this checkpoint.
+
+#### Step 5 Handoff
+
+Next: Step 5 — preserve the frozen lifecycle step below. Compose these scope checks with current Product/physical-reference checks and transaction-bound readers in later authoritative services. Number reservation alone does not authorize confirmation or guarantee retry idempotency; failed commits require shared UoW rollback. Existing unit snapshots and durable IDs must remain stable.
+
 ## Testing
 
 Cover domain transitions, precise units, fiscal locks, scope, concurrent stock updates, retry payload conflicts, same-day/backdated ordering, no negative historical balances under the default policy, reversal over-consumption, transfer conservation, dependency guard behavior, and stock reconstruction. A posted/confirmed source may not be silently replaced or applied twice by future consumers.
@@ -328,7 +360,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-Planning/Step 1 checks and actual Steps 2–3 validation are recorded above. The current Inventory suite has 44 passing tests; focused typecheck and build passed. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
+Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The current Inventory suite has 72 passing tests; focused typecheck and build passed. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 

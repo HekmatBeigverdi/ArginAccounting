@@ -72,3 +72,7 @@ This glossary defines canonical English repository terms and their Persian UI me
 | Inventory Business Date | تاریخ عملیاتی سند انبار | Gregorian internal business date presented as Jalali in UI, independent of UTC recording timestamps. |
 | Inventory Quantity Snapshot | تصویر مقدار و واحد سند انبار | Immutable entered/base decimal quantities and copied unit conversion metadata that preserve historical interpretation after Product edits. |
 | Inventory Operation Reference | مرجع عملیاتی ردیف انبار | Company/Product/version, quantity snapshot and durable source/optional destination Warehouse hierarchy references; not a posted stock movement. |
+
+## Inventory Fiscal Scope and Number Reservation
+
+Inventory fiscal scope binds a quantity document to a fiscal year/period and origin Branch, with an optional transfer destination Branch. Number reservation uses the shared series partition of Company, year, origin Branch and document type; the display number is not the durable document identity. See [Inventory scope and numbering](../architecture/inventory-documents.md).

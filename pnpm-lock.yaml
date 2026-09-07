@@ -451,9 +451,21 @@ importers:
 
   packages/inventory:
     dependencies:
+      '@argin/company':
+        specifier: workspace:*
+        version: link:../company
+      '@argin/fiscal':
+        specifier: workspace:*
+        version: link:../fiscal
+      '@argin/platform':
+        specifier: workspace:*
+        version: link:../platform
       '@argin/product':
         specifier: workspace:*
         version: link:../product
+      '@argin/security':
+        specifier: workspace:*
+        version: link:../security
       '@argin/warehouse':
         specifier: workspace:*
         version: link:../warehouse

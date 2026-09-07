@@ -1,3 +1,5 @@
+import { createInventoryDocumentScope } from "./inventory-scope.ts";
+import type { InventoryDocumentScope, CreateInventoryDocumentScopeInput } from "./inventory-scope.ts";
 import { INVENTORY_DOMAIN_ERROR_CODES, InventoryDomainError } from "./inventory-errors.ts";
 import type { InventoryDomainErrorCode } from "./inventory-errors.ts";
 import { rehydrateInventoryLineOperation } from "./inventory-operation.ts";
@@ -57,6 +59,7 @@ export interface CreateInventoryDocumentLineInput {
  * fiscal eligibility/number allocation in Step 4; lifecycle in Step 5.
  */
 export interface InventoryDocumentSnapshot {
+  readonly scope: InventoryDocumentScope | null;
   readonly documentId: string;
   readonly companyId: string;
   readonly documentType: InventoryDocumentType;
@@ -72,6 +75,7 @@ export interface InventoryDocumentSnapshot {
 }
 
 export interface CreateInventoryDocumentInput {
+  readonly scope?: CreateInventoryDocumentScopeInput | null;
   readonly documentId: string;
   readonly companyId: string;
   readonly documentType: InventoryDocumentType;
@@ -178,6 +182,10 @@ function normalizeDocument(
   if (!Number.isSafeInteger(version) || version < 1) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.versionInvalid, "version");
   }
+  const scope = input.scope == null ? null : createInventoryDocumentScope(input.scope);
+  if (scope?.destinationBranchId !== null && scope?.destinationBranchId !== undefined && input.documentType !== "transfer") {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.scopeInvalid, "destinationBranchId");
+  }
   const createdAt = timestamp(input.createdAt, "createdAt");
   const updatedAt = timestamp(updatedAtInput, "updatedAt");
   if (updatedAt < createdAt) {
@@ -224,6 +232,7 @@ function normalizeDocument(
   }
   lines.sort((a, b) => a.position - b.position);
   return Object.freeze({
+    scope,
     documentId,
     companyId,
     documentType: input.documentType,

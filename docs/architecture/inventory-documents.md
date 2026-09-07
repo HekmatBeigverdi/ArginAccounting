@@ -2,7 +2,7 @@
 
 ## Status and Ownership
 
-Phase 20 Steps 2–3 deliver the draft model, exact quantity/unit snapshots and operational references in `@argin/inventory`.
+Phase 20 Steps 2–4 deliver the draft model, exact quantity/unit snapshots, operational references, scope validation and number reservation in `@argin/inventory`.
 The [fixed phase record](../phases/phase-20-inventory-documents-plan.md) owns step status and validation evidence.
 
 Inventory owns quantity documents and their future stock effects. Product owns master definitions/units; Warehouse owns physical master data; Purchases and Sales own their commercial source workflows. The package consumes public `@argin/product` types and the public `@argin/warehouse` operational-reference factory; it has no infrastructure dependency.
@@ -34,7 +34,7 @@ Public factories: `createInventoryDocument`, `createInventoryDocumentLine`, `cre
 
 `createdAt` and `updatedAt` require explicit UTC ISO input: `YYYY-MM-DDTHH:mm:ss[.SSS]Z` (one to three fractional digits when present). They normalize to millisecond ISO UTC strings. Implicit local time and numeric-offset inputs are rejected; adapters normalize offsets before invoking Domain. Updated time cannot precede creation time.
 
-These are syntax/calendar invariants only. Fiscal-period eligibility, historical locks and backdated stock effects belong to Steps 4/6 and the transactional services.
+These are syntax/calendar invariants only. Current fiscal-period eligibility and historical locks are checked by Step 4 scope validation; backdated stock effects remain Step 6 and transactional service responsibilities.
 
 ## Source References and Argin Bridge
 
@@ -46,7 +46,7 @@ Sources are traceability references, not proof that a source exists or is eligib
 
 - Empty draft line collections are allowed; this model cannot confirm a document or change stock.
 - Step 3 adds the quantity and physical-reference contracts below. A draft may keep `operation: null` while incomplete; supplying an operation requires complete, validated quantity/reference structure. A future confirmation service must reject incomplete lines.
-- Step 4 adds fiscal/Branch eligibility and numbering orchestration.
+- Step 4 provides fiscal/Branch eligibility and shared number reservation; durable orchestration remains in later services.
 - Step 5 adds the lifecycle transition matrix; Step 2 rehydration explicitly rejects non-draft statuses.
 - Steps 6–8 add movements, stock policy and transaction workflows. Step 9 adds Application/repository ports, Step 10 orchestration, Step 11 migrations, Step 12 Bridge envelopes and Step 13 SQLite implementation.
 - No new permission, migration, database table, event, Desktop screen, valuation or posting behavior is delivered by Steps 2–3.
@@ -79,4 +79,22 @@ The operation snapshot stores Company, Product ID/version, historical quantity/u
 
 ## Authoritative Write Boundary
 
-Historical rehydration and the structural document factories do not establish current master eligibility. Later Application services must resolve actual masters and revalidate their current eligibility under the committing transaction; never trust caller-provided master projections or treat rehydration as authorization. Branch access and fiscal eligibility remain Step 4; stock confirmation, guards, persistence and Bridge envelopes remain in their existing owning steps.
+Historical rehydration and the structural document factories do not establish current master eligibility. Later Application services must resolve actual masters and revalidate their current eligibility under the committing transaction; never trust caller-provided master projections or treat rehydration as authorization. Branch access and fiscal eligibility use the Step 4 helper; stock confirmation, guards, persistence and Bridge envelopes remain in their existing owning steps.
+
+## Company, Branch and Fiscal Scope
+
+`InventoryDocumentScope` stores `branchId`, `destinationBranchId`, `fiscalYearId` and `fiscalPeriodId`. The whole scope can be null on an incomplete draft; `validateInventoryDocumentScope` requires a complete scope for current eligibility. A null origin means Company-wide scope. A null destination means reuse the origin Branch; an explicit destination is accepted only for transfers. Literal `*` and empty scope IDs are prohibited because the shared numbering key reserves a missing-component marker.
+
+`InventoryScopeReaders` consumes public Company, Branch, Fiscal Year, Fiscal Period, Historical Lock and Warehouse reader contracts. `InventoryScopeContext` is trusted authenticated context, never a client-provided authorization assertion. Company selection must match the document. The Company and both effective Branches must be active and owned by that Company. Actor Branch membership is required at both ends; `system.full-access` bypasses membership only. Cross-Branch transfers require explicit trusted `allowCrossBranchTransfers: true`; cross-Company transfers are excluded. Company-wide warehouses can serve an authorized Branch; Branch-specific warehouses must match the corresponding endpoint. Scope checks capture document and actor data before asynchronous reads.
+
+The selected Company-owned fiscal year must be open with no closure timestamp. Its open period must belong to that year and remain within the year's date interval; both intervals include the business date. Active Company-wide and applicable endpoint Branch locks for `inventory` or `all` reject dates up to and including `lockedThroughDate`. Unrelated locks do not block the operation. Current eligibility is separate from historical rehydration.
+
+## Shared Number Reservation
+
+`reserveInventoryDocumentNumber` validates current scope before calling the public Platform `NumberSeries`. `DEFAULT_INVENTORY_NUMBER_SERIES_DEFINITIONS` provides `inventory.receipt`, `inventory.issue`, `inventory.opening`, `inventory.transfer` and `inventory.adjustment`, starting at 1, incrementing by 1 and padding to six digits. Definitions are supplied to the shared engine by composition; no independent Inventory counter exists.
+
+Uniqueness is scoped by Company + fiscal year + origin Branch (omitted for Company-wide) + document type. Fiscal period and destination Branch are not counter dimensions. Identical display numbers across different scopes are valid. The helper rejects already-numbered documents and mismatched provider scope/type or invalid sequence/format, returns a frozen reservation, and does not modify or save the document.
+
+Steps 10–13 must enforce durable document uniqueness in this same scope, bind readers and number storage to the committing UoW, look up idempotency before allocation and roll back failed reservation/save transactions. The in-memory concurrency test verifies the shared allocator contract only; it does not establish SQLite atomicity, gapless numbering or retry safety. Supplied number strings on structural/historical drafts are not proof of an authorized reservation.
+
+For Argin Bridge, preserve scope and stable document/line/source IDs independently of display numbering. Future Bridge mutations must obtain trusted context server-side and pass the same authoritative services; they must not treat supplied snapshots as permission or replay authority. Formal envelopes remain Step 12.

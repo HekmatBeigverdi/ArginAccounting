@@ -14,7 +14,11 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
+    "@argin/company": "workspace:*",
+    "@argin/fiscal": "workspace:*",
+    "@argin/platform": "workspace:*",
     "@argin/product": "workspace:*",
+    "@argin/security": "workspace:*",
     "@argin/warehouse": "workspace:*"
   },
   "devDependencies": {
