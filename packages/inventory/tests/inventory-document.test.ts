@@ -40,6 +40,11 @@ test("creates every fixed document type as a draft without allocating a number",
     assert.deepEqual(document.lines, []);
     assert.equal(document.sourceReference, null);
     assert.equal(document.description, null);
+    assert.equal(document.approvedAt, null);
+    assert.equal(document.approvedByUserId, null);
+    assert.equal(document.cancelledAt, null);
+    assert.equal(document.cancelledByUserId, null);
+    assert.equal(document.correctionOfDocumentId, null);
   }
 });
 
@@ -159,16 +164,17 @@ test("rehydrates a serialized draft without replacing IDs or resetting version/t
   assert.equal(Object.isFrozen(restored.lines[0]?.sourceReference), true);
 });
 
-test("rehydration rejects invalid version, timestamp order and unsupported lifecycle states", () => {
+test("rehydration rejects invalid version, timestamp order and malformed lifecycle state", () => {
   const document = createInventoryDocument(base);
   for (const version of [0, -1, 1.1, Infinity, NaN, Number.MAX_SAFE_INTEGER + 1]) {
     rejects(() => rehydrateInventoryDocument({ ...document, version }), codes.versionInvalid);
   }
   rejects(() => rehydrateInventoryDocument({ ...document, updatedAt: "2026-09-05T00:00:00Z" }), codes.timestampOrderInvalid);
   rejects(() => rehydrateInventoryDocument({ ...document, updatedAt: "invalid" }), codes.timestampInvalid);
-  for (const status of ["confirmed", "approved", "deleted"]) {
+  for (const status of ["confirmed", "deleted"]) {
     rejects(() => rehydrateInventoryDocument({ ...document, status: status as never }), codes.statusInvalid);
   }
+  rejects(() => rehydrateInventoryDocument({ ...document, status: "approved" }), codes.lifecycleMetadataInvalid);
 });
 
 test("rehydration applies line and source invariants to persisted data", () => {
