@@ -57,6 +57,7 @@ Confirmed planned package boundary (Step 1): `@argin/inventory` for Domain/Appli
 Reuse Company/Branch, Fiscal, Product units/selectors, Warehouse operational references/selectors, Security, Audit/Approval, Number Series, shared UoW and query infrastructure. Never write another module's tables directly.
 
 References:
+
 - [Warehouse ERP ownership](../architecture/warehouse-inventory-erp-integration.md)
 - [Warehouse synchronization](../architecture/warehouse-sync-contract.md)
 - [Party Argin Bridge](../architecture/party-argin-bridge-contract.md)
