@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–4 are complete. Draft documents support exact quantities, operational references, Company/Branch/fiscal validation and shared number reservation. Steps 5–22 are Not started; stock posting, persistence and Desktop integration remain pending.
+In Progress. Steps 1–4 are complete. Step 5 implementation and focused test coverage are complete, with executable validation awaiting an environment that can run the repository. Steps 6–22 are Not started; stock posting, persistence and Desktop integration remain pending.
 
 ## Governance
 
@@ -76,7 +76,9 @@ Implemented at Step 2: InventoryDocumentSnapshot, InventoryDocumentLineSnapshot,
 
 Implemented at Step 3: InventoryQuantitySnapshot, InventoryUnitSnapshot and InventoryLineOperationSnapshot with exact conversion, current master eligibility checks and historical rehydration.
 
-Still planned in owning steps: full DocumentStatus transitions, StockMovement, StockKey, OnHandBalance projection, TransferGroup and ReversalReference.
+Implemented at Step 5: the six-state InventoryDocumentStatus contract, explicit transition matrix, immutable lifecycle history, Draft-only edit/delete guards, approval invalidation before correction and confirmed-document reversal linkage.
+
+Still planned in owning steps: StockMovement, StockKey, OnHandBalance projection, TransferGroup and stock-effective ReversalReference behavior.
 
 A physical reference includes warehouseId and optional zoneId/locationId under the existing hierarchy contract. Historical references remain resolvable when master data changes. No mutable title/code is identity.
 
@@ -104,7 +106,7 @@ Persian RTL and Phase 14 density/accessibility; Jalali business dates with Grego
 | 2 | Inventory Document Domain Model | Completed |
 | 3 | Quantity, Units and Operational References | Completed |
 | 4 | Company, Branch, Fiscal Scope and Numbering | Completed |
-| 5 | Document Lifecycle, Approval and Correction Rules | Not started |
+| 5 | Document Lifecycle, Approval and Correction Rules | Implemented — validation pending |
 | 6 | Stock Movement Ledger and Balance Rules | Not started |
 | 7 | Receipt, Issue and Opening Balance Workflows | Not started |
 | 8 | Atomic Transfer and Quantity Adjustment Workflows | Not started |
@@ -352,6 +354,36 @@ Concurrent in-memory allocation does not certify durable SQLite uniqueness or tr
 
 Next: Step 5 — preserve the frozen lifecycle step below. Compose these scope checks with current Product/physical-reference checks and transaction-bound readers in later authoritative services. Number reservation alone does not authorize confirmation or guarantee retry idempotency; failed commits require shared UoW rollback. Existing unit snapshots and durable IDs must remain stable.
 
+### Step 5 — Document Lifecycle, Approval and Correction Rules — Implemented; Validation Pending
+
+- Reconciled implementation against the frozen Step 5 text before closure. The canonical six-state vocabulary is `draft`, `submitted`, `approved`, `confirmed`, `cancelled`, `reversed`; an earlier intermediate three-state implementation was replaced before this checkpoint and is not the accepted contract.
+- Added/exported `INVENTORY_DOCUMENT_TRANSITIONS` with explicit legal edges: Draft submit/cancel; Submitted return/approve/cancel; Approved return/confirm/cancel; Confirmed reverse; Cancelled/Reversed terminal.
+- Added immutable `InventoryLifecycleTransitionSnapshot` history to the aggregate. Every transition records from/to state, actor, UTC timestamp, optional reason and only-for-reversal related document ID; successful transitions increment local version and advance `updatedAt` monotonically. Rehydration validates the complete transition chain and rejects forged status/history combinations.
+- Submission requires current structural completeness: scope, display number, at least one line and an operation snapshot on every line. This is a Domain completeness gate only; current master/fiscal/security revalidation remains an authoritative Application/UoW responsibility.
+- Kept Approval and Confirmation separate. `approveInventoryDocument` only permits `submitted -> approved`; `confirmInventoryDocument` only permits `approved -> confirmed`. Step 5 creates no movement or balance writes, so approval has no stock effect and confirmation is only the lifecycle gate consumed by later stock-transaction steps.
+- Ordinary mutation is Draft-only. Submitted documents can explicitly return to Draft. Approved documents require an explicit reason for `approved -> draft`; this invalidates the current approval before approval-relevant data can be edited, forcing a new submit/approve path before confirmation.
+- Added a distinct Draft-only deletion guard. Cancellation is a retained terminal lifecycle fact and does not represent deletion or a synchronization tombstone. Confirmed documents cannot be cancelled or directly edited/deleted.
+- Added linked reversal semantics: only a Confirmed original may become Reversed, with a non-empty reason and a distinct durable `reversalDocumentId`. Step 5 does not create inverse stock movements; compensating movement creation, negative-stock/fiscal checks, idempotency and atomic UoW behavior remain in Steps 6–13.
+- Preserved Argin Bridge preparation: lifecycle version/history and reversal links use durable identities and UTC metadata, while display numbers and SQLite positions remain non-identities. This does not claim the Step 12 synchronization envelope or live transport.
+- Updated the canonical Inventory architecture document and public package exports. No migration, persistence adapter, permission catalog, shared Audit/Approval composition, event or Desktop UI was added; those remain in their frozen owning steps.
+- Reworked focused lifecycle tests to cover the six-state matrix, completeness, approval/confirmation separation, approval invalidation, Draft deletion versus cancellation, confirmed reversal linkage, terminal immutability, monotonic timestamps and persisted-history tamper rejection. Existing document regression tests were aligned with lifecycle history while retaining Step 2 structural assertions.
+
+#### Step 5 Validation Evidence
+
+| Check | Result |
+| --- | --- |
+| Frozen Step 5 wording vs implementation | Reconciled; all six required states and required distinctions are represented |
+| Public exports and old Step 2 document tests | Updated to the six-state/history contract |
+| Focused lifecycle tests | Added/rewritten in `packages/inventory/tests/inventory-lifecycle.test.ts`; execution not observed in this environment |
+| GitHub Check Runs on the working Step 5 commit | No check runs are configured/reported for the branch head during this checkpoint |
+| Assistant-side clone/test attempt | Could not start: execution environment failed DNS resolution for `github.com` before clone, so no test result is claimed |
+
+Implementation and test definitions are complete, but the repository governance distinguishes that from executable validation and owner acceptance. Do not promote this row to `Completed` until focused Inventory test/typecheck/build are actually run successfully (locally or by CI) and recorded.
+
+#### Step 6 Handoff
+
+After Step 5 validation/acceptance, Step 6 consumes only the Confirmed lifecycle gate to define append-only StockMovement facts and rebuildable balances. Do not make Approval stock-effective. Do not delete or rewrite confirmed history; future reversal produces compensating facts linked through the separate reversal document identity.
+
 ## Testing
 
 Cover domain transitions, precise units, fiscal locks, scope, concurrent stock updates, retry payload conflicts, same-day/backdated ordering, no negative historical balances under the default policy, reversal over-consumption, transfer conservation, dependency guard behavior, and stock reconstruction. A posted/confirmed source may not be silently replaced or applied twice by future consumers.
@@ -360,7 +392,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The current Inventory suite has 72 passing tests; focused typecheck and build passed. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
+Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The last actually executed Inventory suite remains the Step 4 result: 72 passing tests. Step 5 adds focused lifecycle/regression tests but their execution has not been observed in the assistant environment because repository checkout could not start and the branch reports no GitHub Check Runs. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -379,6 +411,8 @@ Kickoff: this record, root roadmap, roadmap compatibility page, phase index, cha
 Step 1: updated this record, roadmap, phase index, changelog, module registry and module map; no new document paths or titles.
 
 Step 2: added the Inventory Domain architecture record and glossary terms, updated package/module registration and phase status, and regenerated the documentation index.
+
+Step 5: updated this canonical record and the Inventory Domain architecture record for the six-state lifecycle, approval invalidation, Draft deletion/cancellation separation and linked reversal boundary. No new documentation path or H1 title was introduced.
 
 During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Add an ADR for consequential movement/lifecycle/stock-policy decisions and link it here when accepted. Keep all repository documentation and commits in English.
 
