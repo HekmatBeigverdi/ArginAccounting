@@ -230,6 +230,16 @@ test("lifecycle timestamps cannot travel backwards and tampered persisted metada
     approvedByUserId: "approver",
   }), codes.timestampOrderInvalid);
 
+  const editedDraft = rehydrateInventoryDocument({
+    ...draft,
+    version: 2,
+    updatedAt: "2026-09-07T09:30:00Z",
+  });
+  rejects(() => approveInventoryDocument(editedDraft, {
+    approvedAt: "2026-09-07T09:00:00Z",
+    approvedByUserId: "approver",
+  }), codes.timestampOrderInvalid);
+
   const approved = approveInventoryDocument(draft, {
     approvedAt: "2026-09-07T09:00:00Z",
     approvedByUserId: "approver",
