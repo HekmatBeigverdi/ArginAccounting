@@ -2,22 +2,24 @@
 
 ## Status and Ownership
 
-Phase 20 Steps 2–4 deliver the draft model, exact quantity/unit snapshots, operational references, scope validation and number reservation in `@argin/inventory`.
+Phase 20 Steps 2–5 deliver the document model, exact quantity/unit snapshots, operational references, scope/numbering and the frozen document lifecycle contract in `@argin/inventory`.
 The [fixed phase record](../phases/phase-20-inventory-documents-plan.md) owns step status and validation evidence.
 
-Inventory owns quantity documents and their future stock effects. Product owns master definitions/units; Warehouse owns physical master data; Purchases and Sales own their commercial source workflows. The package consumes public `@argin/product` types and the public `@argin/warehouse` operational-reference factory; it has no infrastructure dependency.
+Inventory owns quantity documents and their future stock effects. Product owns master definitions/units; Warehouse owns physical master data; Purchases and Sales own their commercial source workflows. The package consumes public upstream contracts and has no infrastructure dependency.
 
 ## Public Model
 
 | Type | Responsibility |
 | --- | --- |
-| `InventoryDocumentSnapshot` | Immutable draft aggregate with document/company IDs, document type, optional display number, business date, description, source, ordered lines, version and recording timestamps |
+| `InventoryDocumentSnapshot` | Immutable aggregate with document/company IDs, document type, lifecycle status/history, optional display number, business date, description, source, ordered lines, version and recording timestamps |
 | `InventoryDocumentLineSnapshot` | Owned line with durable line ID, display position, Product ID, description, optional source reference and optional validated operation snapshot |
 | `InventoryDocumentType` | `receipt`, `issue`, `opening`, `transfer`, `adjustment` |
+| `InventoryDocumentStatus` | `draft`, `submitted`, `approved`, `confirmed`, `cancelled`, `reversed` |
+| `InventoryLifecycleTransitionSnapshot` | Immutable transition evidence with from/to state, UTC time, actor, optional reason and reversal-document link |
 | `InventorySourceReference` | Company + source system + source document type + durable document ID + optional durable line ID |
 | `InventoryDomainError` | Stable code plus field; consumers never parse prose error messages |
 
-Public factories: `createInventoryDocument`, `createInventoryDocumentLine`, `createInventorySourceReference`; persisted drafts use `rehydrateInventoryDocument`. Public types/constants are exported through `src/index.ts`.
+Public structural factories are `createInventoryDocument`, `createInventoryDocumentLine` and `createInventorySourceReference`; persisted snapshots use `rehydrateInventoryDocument`. Step 5 exports the transition matrix and lifecycle operations through `src/index.ts`.
 
 ## Identity and Immutability
 
@@ -25,14 +27,14 @@ Public factories: `createInventoryDocument`, `createInventoryDocumentLine`, `cre
 - Document numbers remain strings, preserving leading zeroes. A missing number is `null`; the factory does not allocate a Number Series value or enforce its future uniqueness policy.
 - Lines belong to the aggregate. Line IDs and positive safe-integer positions must each be unique within a document. Position gaps are permitted in drafts; output is sorted by position without renumbering/re-identifying lines or mutating caller arrays.
 - The same Product ID may occur on multiple distinct lines. Step 3 validates resolved Product identity, Company, stock eligibility and units through `createInventoryLineOperation`; authoritative reads and transaction-time rechecks remain later Application responsibilities.
-- Header, source references, line objects and line arrays are defensively copied and frozen. Returned snapshots never share mutable child records with caller input.
-- Creation starts at version 1 and status `draft`. Rehydration validates a positive safe-integer version and preserves it; it never increments a version or authorizes a mutation.
+- Header, source references, line objects, line arrays and lifecycle history are defensively copied and frozen. Returned snapshots never share mutable child records with caller input.
+- Creation starts at version 1 and status `draft`. Rehydration validates a positive safe-integer version and the complete lifecycle-history chain; it never invents a transition or authorizes a mutation.
 
 ## Date Contract
 
 `businessDate` is a real Gregorian `YYYY-MM-DD` calendar date, independent of recording time. Invalid days, leap-day rollover and localized input are rejected. UI Jalali conversion belongs at the boundary.
 
-`createdAt` and `updatedAt` require explicit UTC ISO input: `YYYY-MM-DDTHH:mm:ss[.SSS]Z` (one to three fractional digits when present). They normalize to millisecond ISO UTC strings. Implicit local time and numeric-offset inputs are rejected; adapters normalize offsets before invoking Domain. Updated time cannot precede creation time.
+`createdAt` and `updatedAt` require explicit UTC ISO input: `YYYY-MM-DDTHH:mm:ss[.SSS]Z` (one to three fractional digits when present). They normalize to millisecond ISO UTC strings. Implicit local time and numeric-offset inputs are rejected; adapters normalize offsets before invoking Domain. Updated time cannot precede creation time. Lifecycle transition times are monotonic and cannot precede the prior aggregate update.
 
 These are syntax/calendar invariants only. Current fiscal-period eligibility and historical locks are checked by Step 4 scope validation; backdated stock effects remain Step 6 and transactional service responsibilities.
 
@@ -40,16 +42,37 @@ These are syntax/calendar invariants only. Current fiscal-period eligibility and
 
 Source references persist durable IDs, never display numbers, product codes or array positions. Header and line sources must match the aggregate Company. `sourceSystem: "inventory"` denotes this bounded context; an Inventory source pointing to the same document ID is rejected. Identical opaque IDs in a different source namespace are not assumed to identify the same entity.
 
-Sources are traceability references, not proof that a source exists or is eligible. They do not perform idempotent delivery, authorization or synchronization. Version, durable header/line identity and UTC metadata support the later [Argin Bridge contract step](../phases/phase-20-inventory-documents-plan.md); source metadata alone does not constitute the final change envelope.
+Sources are traceability references, not proof that a source exists or is eligible. They do not perform idempotent delivery, authorization or synchronization. Version, durable header/line identity, lifecycle history and UTC metadata support the later [Argin Bridge contract step](../phases/phase-20-inventory-documents-plan.md); source metadata alone does not constitute the final change envelope.
+
+## Document Lifecycle, Approval and Correction Rules
+
+Step 5 freezes the Domain transition vocabulary and keeps approval separate from stock confirmation.
+
+| Current state | Legal next state(s) | Meaning |
+| --- | --- | --- |
+| `draft` | `submitted`, `cancelled` | Ordinary field/line editing and eligible deletion/tombstone preparation are Draft-only |
+| `submitted` | `draft`, `approved`, `cancelled` | Submission awaits approval; returning to Draft enables correction before approval |
+| `approved` | `draft`, `confirmed`, `cancelled` | Approval alone has no stock effect; returning to Draft explicitly invalidates the current approval before editing |
+| `confirmed` | `reversed` | Confirmed facts cannot be edited, deleted or cancelled; later services make confirmation atomically stock-effective |
+| `cancelled` | none | Terminal unconfirmed cancellation; it is not deletion/tombstone and has no stock effect |
+| `reversed` | none | Terminal original-document state linked to a distinct compensating reversal document |
+
+`INVENTORY_DOCUMENT_TRANSITIONS` is the canonical explicit matrix. `submitInventoryDocument` requires scope, document number, at least one line and complete line operations. `approveInventoryDocument` only performs `submitted -> approved`; integration with the reusable Phase 8 Approval engine and authorization is owned by Step 14. `confirmInventoryDocument` only performs `approved -> confirmed`. Step 5 deliberately creates no `StockMovement`, balance update, transaction or persistence effect; confirmation is only the lifecycle gate that Steps 6–13 later make stock-effective atomically.
+
+Ordinary edits require `assertInventoryDocumentEditable`, which accepts only Draft. `returnInventoryDocumentToDraft` is the explicit correction path for submitted/approved documents. An approved document requires a non-empty reason for `approved -> draft`; this state change invalidates the approval before any approval-relevant field or line is changed. A subsequent confirmation therefore requires a new submit/approve cycle.
+
+`assertInventoryDocumentDeletable` also accepts only Draft. Cancellation is a retained lifecycle fact and never masquerades as deletion or a synchronization tombstone. Confirmed documents cannot be cancelled. `reverseInventoryDocument` requires `confirmed -> reversed`, a non-empty reason and a distinct durable `reversalDocumentId`. This link identifies the separate compensating document; inverse movement creation, stock-policy checks, atomicity and idempotency belong to later movement/workflow/UoW steps. The original confirmed history is never destructively rewritten.
+
+Every transition appends immutable evidence containing prior/new status, actor, UTC time, optional reason and (only for reversal) the related document ID; it increments aggregate version and advances `updatedAt`. Rehydration validates that the history starts conceptually from Draft, follows only legal edges, is time-ordered, ends at the persisted current status and never uses an unrelated-document link on non-reversal transitions. These durable facts are synchronization-friendly but do not replace the shared Audit subsystem wired in Step 14.
 
 ## Deliberate Step Boundaries
 
-- Empty draft line collections are allowed; this model cannot confirm a document or change stock.
-- Step 3 adds the quantity and physical-reference contracts below. A draft may keep `operation: null` while incomplete; supplying an operation requires complete, validated quantity/reference structure. A future confirmation service must reject incomplete lines.
+- Empty draft line collections are allowed. Submission rejects incomplete documents; Step 5 itself cannot write stock.
+- Step 3 adds the quantity and physical-reference contracts. A draft may keep `operation: null` while incomplete; supplying an operation requires complete, validated quantity/reference structure.
 - Step 4 provides fiscal/Branch eligibility and shared number reservation; durable orchestration remains in later services.
-- Step 5 adds the lifecycle transition matrix; Step 2 rehydration explicitly rejects non-draft statuses.
+- Step 5 owns lifecycle state/invariants only. Shared authorization/Audit/Approval composition remains Step 14, while persistent transactions/idempotency/concurrency remain Steps 9–13.
 - Steps 6–8 add movements, stock policy and transaction workflows. Step 9 adds Application/repository ports, Step 10 orchestration, Step 11 migrations, Step 12 Bridge envelopes and Step 13 SQLite implementation.
-- No new permission, migration, database table, event, Desktop screen, valuation or posting behavior is delivered by Steps 2–3.
+- No migration, database table, event, Desktop screen, valuation or accounting posting behavior is delivered by Step 5.
 
 This foundation follows the existing offline-first, independent Domain and modular ownership ADRs; it does not introduce a new transport or persistence architecture decision.
 
