@@ -4,17 +4,23 @@ import { createProduct, createProductMasterDataProfile, createProductUnitProfile
 import { createWarehouse, classifyWarehouse } from "@argin/warehouse";
 import {
   INVENTORY_DOCUMENT_STATUSES,
+  INVENTORY_DOCUMENT_TRANSITIONS,
   INVENTORY_DOMAIN_ERROR_CODES as codes,
   InventoryDomainError,
   approveInventoryDocument,
+  assertInventoryDocumentDeletable,
   assertInventoryDocumentEditable,
+  canTransitionInventoryDocument,
   cancelInventoryDocument,
+  confirmInventoryDocument,
   createInventoryDocument,
-  createInventoryDocumentCorrection,
   createInventoryLineOperation,
   rehydrateInventoryDocument,
+  returnInventoryDocumentToDraft,
+  reverseInventoryDocument,
+  submitInventoryDocument,
 } from "../src/index.ts";
-import type { InventoryDomainErrorCode } from "../src/index.ts";
+import type { InventoryDocumentStatus, InventoryDomainErrorCode } from "../src/index.ts";
 
 const companyId = "company-1";
 const createdAt = "2026-09-07T08:00:00Z";
@@ -36,10 +42,7 @@ const product = () => ({
   }),
   version: 1,
   units: units(),
-  masterData: createProductMasterDataProfile({
-    kind: "product",
-    operational: { stockTracking: true },
-  }),
+  masterData: createProductMasterDataProfile({ kind: "product", operational: { stockTracking: true } }),
 });
 
 const warehouse = classifyWarehouse({
@@ -78,34 +81,37 @@ function rejects(action: () => unknown, code: InventoryDomainErrorCode): void {
   assert.throws(action, (error: unknown) => error instanceof InventoryDomainError && error.code === code);
 }
 
-test("Step 5 exposes a closed lifecycle state set independent from future posting state", () => {
-  assert.deepEqual(INVENTORY_DOCUMENT_STATUSES, ["draft", "approved", "cancelled"]);
-  const draft = readyDraft();
-  assert.equal(draft.status, "draft");
-  assert.equal(draft.approvedAt, null);
-  assert.equal(draft.approvedByUserId, null);
-  assert.equal(draft.cancelledAt, null);
-  assert.equal(draft.cancelledByUserId, null);
-  assert.equal(draft.correctionOfDocumentId, null);
+const action = (hour: number, reason?: string) => ({
+  occurredAt: `2026-09-07T${String(hour).padStart(2, "0")}:00:00Z`,
+  actorUserId: `user-${hour}`,
+  ...(reason === undefined ? {} : { reason }),
 });
 
-test("approves only a complete draft and persists actor/time/version evidence", () => {
-  const draft = readyDraft();
-  const approved = approveInventoryDocument(draft, {
-    approvedAt: "2026-09-07T09:00:00Z",
-    approvedByUserId: " user-approve ",
+test("Step 5 freezes all six states and the explicit transition matrix", () => {
+  assert.deepEqual(INVENTORY_DOCUMENT_STATUSES, ["draft", "submitted", "approved", "confirmed", "cancelled", "reversed"]);
+  assert.deepEqual(INVENTORY_DOCUMENT_TRANSITIONS, {
+    draft: ["submitted", "cancelled"],
+    submitted: ["draft", "approved", "cancelled"],
+    approved: ["draft", "confirmed", "cancelled"],
+    confirmed: ["reversed"],
+    cancelled: [],
+    reversed: [],
   });
-  assert.equal(approved.status, "approved");
-  assert.equal(approved.approvedAt, "2026-09-07T09:00:00.000Z");
-  assert.equal(approved.approvedByUserId, "user-approve");
-  assert.equal(approved.version, 2);
-  assert.equal(approved.updatedAt, approved.approvedAt);
-  assert.equal(Object.isFrozen(approved), true);
-  assert.deepEqual(rehydrateInventoryDocument(JSON.parse(JSON.stringify(approved))), approved);
-  assert.deepEqual(draft, readyDraft());
+
+  const expected = new Set([
+    "draft->submitted", "draft->cancelled",
+    "submitted->draft", "submitted->approved", "submitted->cancelled",
+    "approved->draft", "approved->confirmed", "approved->cancelled",
+    "confirmed->reversed",
+  ]);
+  for (const from of INVENTORY_DOCUMENT_STATUSES) {
+    for (const to of INVENTORY_DOCUMENT_STATUSES) {
+      assert.equal(canTransitionInventoryDocument(from, to), expected.has(`${from}->${to}`));
+    }
+  }
 });
 
-test("rejects confirmation of structurally incomplete drafts", () => {
+test("submission requires a complete numbered scoped document with operational lines", () => {
   const incomplete = createInventoryDocument({
     documentId: "incomplete",
     companyId,
@@ -113,10 +119,7 @@ test("rejects confirmation of structurally incomplete drafts", () => {
     businessDate: "2026-09-07",
     createdAt,
   });
-  rejects(() => approveInventoryDocument(incomplete, {
-    approvedAt: "2026-09-07T09:00:00Z",
-    approvedByUserId: "user-1",
-  }), codes.approvalIncomplete);
+  rejects(() => submitInventoryDocument(incomplete, action(9)), codes.submissionIncomplete);
 
   const missingOperation = createInventoryDocument({
     scope,
@@ -128,132 +131,145 @@ test("rejects confirmation of structurally incomplete drafts", () => {
     lines: [{ lineId: "line-1", position: 1, productId: "product-1" }],
     createdAt,
   });
-  rejects(() => approveInventoryDocument(missingOperation, {
-    approvedAt: "2026-09-07T09:00:00Z",
-    approvedByUserId: "user-1",
-  }), codes.approvalIncomplete);
+  rejects(() => submitInventoryDocument(missingOperation, action(9)), codes.submissionIncomplete);
 });
 
-test("approved and cancelled documents are immutable and invalid transitions are rejected", () => {
+test("happy path keeps submit, approval and confirmation as distinct immutable transitions", () => {
   const draft = readyDraft();
-  const approved = approveInventoryDocument(draft, {
-    approvedAt: "2026-09-07T09:00:00Z",
-    approvedByUserId: "approver",
-  });
-  assert.equal(assertInventoryDocumentEditable(draft).status, "draft");
+  const submitted = submitInventoryDocument(draft, action(9));
+  const approved = approveInventoryDocument(submitted, action(10));
+  const confirmed = confirmInventoryDocument(approved, action(11));
+
+  assert.deepEqual([draft.status, submitted.status, approved.status, confirmed.status], ["draft", "submitted", "approved", "confirmed"]);
+  assert.deepEqual([draft.version, submitted.version, approved.version, confirmed.version], [1, 2, 3, 4]);
+  assert.equal(draft.lifecycleHistory.length, 0);
+  assert.equal(approved.lifecycleHistory.length, 2);
+  assert.equal(confirmed.lifecycleHistory.length, 3);
+  assert.deepEqual(confirmed.lifecycleHistory.map(item => `${item.fromStatus}->${item.toStatus}`), [
+    "draft->submitted",
+    "submitted->approved",
+    "approved->confirmed",
+  ]);
+  assert.equal(confirmed.lifecycleHistory[2]?.actorUserId, "user-11");
+  assert.equal(confirmed.updatedAt, "2026-09-07T11:00:00.000Z");
+  assert.deepEqual(rehydrateInventoryDocument(JSON.parse(JSON.stringify(confirmed))), confirmed);
+  assert.deepEqual(draft, readyDraft());
+});
+
+test("approval alone never makes a document confirmed and confirmation cannot bypass approval", () => {
+  const submitted = submitInventoryDocument(readyDraft(), action(9));
+  const approved = approveInventoryDocument(submitted, action(10));
+  assert.equal(approved.status, "approved");
+  assert.notEqual(approved.status as InventoryDocumentStatus, "confirmed");
+  rejects(() => confirmInventoryDocument(submitted, action(10)), codes.lifecycleTransitionInvalid);
+  rejects(() => approveInventoryDocument(readyDraft(), action(9)), codes.lifecycleTransitionInvalid);
+});
+
+test("approval-relevant editing explicitly invalidates approval before Draft becomes editable", () => {
+  const submitted = submitInventoryDocument(readyDraft(), action(9));
+  const approved = approveInventoryDocument(submitted, action(10));
+
   rejects(() => assertInventoryDocumentEditable(approved), codes.documentImmutable);
-  rejects(() => approveInventoryDocument(approved, {
-    approvedAt: "2026-09-07T10:00:00Z",
-    approvedByUserId: "other",
-  }), codes.lifecycleTransitionInvalid);
-  rejects(() => cancelInventoryDocument(draft, {
-    cancelledAt: "2026-09-07T10:00:00Z",
-    cancelledByUserId: "canceller",
-  }), codes.lifecycleTransitionInvalid);
+  rejects(() => returnInventoryDocumentToDraft(approved, action(11)), codes.lifecycleMetadataInvalid);
 
-  const cancelled = cancelInventoryDocument(approved, {
-    cancelledAt: "2026-09-07T10:00:00Z",
-    cancelledByUserId: "canceller",
-  });
-  assert.equal(cancelled.status, "cancelled");
-  assert.equal(cancelled.approvedByUserId, "approver");
-  assert.equal(cancelled.cancelledByUserId, "canceller");
-  assert.equal(cancelled.version, 3);
-  assert.equal(cancelled.updatedAt, "2026-09-07T10:00:00.000Z");
-  rejects(() => assertInventoryDocumentEditable(cancelled), codes.documentImmutable);
-  rejects(() => cancelInventoryDocument(cancelled, {
-    cancelledAt: "2026-09-07T11:00:00Z",
-    cancelledByUserId: "again",
-  }), codes.lifecycleTransitionInvalid);
+  const returned = returnInventoryDocumentToDraft(approved, action(11, "quantity needs correction"));
+  assert.equal(returned.status, "draft");
+  assert.equal(returned.version, 4);
+  assert.equal(returned.lifecycleHistory.at(-1)?.fromStatus, "approved");
+  assert.equal(returned.lifecycleHistory.at(-1)?.toStatus, "draft");
+  assert.equal(returned.lifecycleHistory.at(-1)?.reason, "quantity needs correction");
+  assert.equal(assertInventoryDocumentEditable(returned).status, "draft");
+
+  const resubmitted = submitInventoryDocument(returned, action(12));
+  rejects(() => confirmInventoryDocument(resubmitted, action(13)), codes.lifecycleTransitionInvalid);
 });
 
-test("correction never rewrites an approved document and links a new draft by durable ID", () => {
-  const original = approveInventoryDocument(readyDraft(), {
-    approvedAt: "2026-09-07T09:00:00Z",
-    approvedByUserId: "approver",
-  });
-  const correction = createInventoryDocumentCorrection(original, {
-    scope,
-    documentId: "doc-2",
-    documentNumber: "000002",
-    businessDate: "2026-09-07",
-    description: "اصلاح سند اولیه",
-    lines: [{ lineId: "line-2", position: 1, productId: "product-1", operation: operation() }],
-    createdAt: "2026-09-07T10:00:00Z",
-  });
-
-  assert.equal(original.status, "approved");
-  assert.equal(original.correctionOfDocumentId, null);
-  assert.equal(correction.status, "draft");
-  assert.equal(correction.documentId, "doc-2");
-  assert.equal(correction.companyId, original.companyId);
-  assert.equal(correction.documentType, original.documentType);
-  assert.equal(correction.correctionOfDocumentId, original.documentId);
-  assert.equal(correction.version, 1);
-  assert.equal(correction.approvedAt, null);
-  assert.equal(Object.isFrozen(correction), true);
+test("submitted documents may return to Draft without pretending an approval existed", () => {
+  const submitted = submitInventoryDocument(readyDraft(), action(9));
+  const returned = returnInventoryDocumentToDraft(submitted, action(10));
+  assert.equal(returned.status, "draft");
+  assert.equal(returned.lifecycleHistory.at(-1)?.fromStatus, "submitted");
+  assert.equal(returned.lifecycleHistory.at(-1)?.reason, null);
 });
 
-test("correction requires an approved original and a distinct durable identity", () => {
+test("cancellation remains distinct from Draft deletion and is forbidden after confirmation", () => {
   const draft = readyDraft();
-  const correctionInput = {
-    scope,
-    documentId: "doc-2",
-    businessDate: "2026-09-07",
-    createdAt: "2026-09-07T10:00:00Z",
-  };
-  rejects(() => createInventoryDocumentCorrection(draft, correctionInput), codes.correctionOriginalInvalid);
+  assert.equal(assertInventoryDocumentDeletable(draft).status, "draft");
 
-  const approved = approveInventoryDocument(draft, {
-    approvedAt: "2026-09-07T09:00:00Z",
-    approvedByUserId: "approver",
-  });
-  rejects(() => createInventoryDocumentCorrection(approved, {
-    ...correctionInput,
-    documentId: approved.documentId,
-  }), codes.correctionSelfReference);
+  const cancelledDraft = cancelInventoryDocument(draft, action(9, "entry abandoned"));
+  assert.equal(cancelledDraft.status, "cancelled");
+  rejects(() => assertInventoryDocumentDeletable(cancelledDraft), codes.documentDeleteDenied);
+  rejects(() => assertInventoryDocumentEditable(cancelledDraft), codes.documentImmutable);
 
-  const cancelled = cancelInventoryDocument(approved, {
-    cancelledAt: "2026-09-07T10:00:00Z",
-    cancelledByUserId: "canceller",
-  });
-  rejects(() => createInventoryDocumentCorrection(cancelled, {
-    ...correctionInput,
-    createdAt: "2026-09-07T11:00:00Z",
-  }), codes.correctionOriginalInvalid);
+  const approved = approveInventoryDocument(submitInventoryDocument(readyDraft(), action(9)), action(10));
+  const confirmed = confirmInventoryDocument(approved, action(11));
+  rejects(() => cancelInventoryDocument(confirmed, action(12)), codes.lifecycleTransitionInvalid);
+  rejects(() => assertInventoryDocumentDeletable(confirmed), codes.documentDeleteDenied);
 });
 
-test("lifecycle timestamps cannot travel backwards and tampered persisted metadata is rejected", () => {
+test("confirmed facts can only become reversed through a linked separate compensating document", () => {
+  const confirmed = confirmInventoryDocument(
+    approveInventoryDocument(submitInventoryDocument(readyDraft(), action(9)), action(10)),
+    action(11),
+  );
+  rejects(() => reverseInventoryDocument(confirmed, { ...action(12, "wrong receipt"), reversalDocumentId: confirmed.documentId }), codes.reversalReferenceInvalid);
+  rejects(() => reverseInventoryDocument(confirmed, { ...action(12), reversalDocumentId: "reversal-1" }), codes.lifecycleMetadataInvalid);
+
+  const reversed = reverseInventoryDocument(confirmed, {
+    ...action(12, "wrong receipt"),
+    reversalDocumentId: "reversal-1",
+  });
+  assert.equal(reversed.status, "reversed");
+  assert.equal(reversed.version, 5);
+  assert.equal(reversed.lifecycleHistory.at(-1)?.relatedDocumentId, "reversal-1");
+  assert.equal(reversed.lifecycleHistory.at(-1)?.reason, "wrong receipt");
+  rejects(() => reverseInventoryDocument(reversed, { ...action(13, "again"), reversalDocumentId: "reversal-2" }), codes.lifecycleTransitionInvalid);
+  rejects(() => assertInventoryDocumentEditable(reversed), codes.documentImmutable);
+});
+
+test("all terminal/confirmed states reject direct ordinary mutation", () => {
+  const submitted = submitInventoryDocument(readyDraft(), action(9));
+  const approved = approveInventoryDocument(submitted, action(10));
+  const confirmed = confirmInventoryDocument(approved, action(11));
+  const cancelled = cancelInventoryDocument(submitted, action(10));
+  const reversed = reverseInventoryDocument(confirmed, { ...action(12, "reverse"), reversalDocumentId: "reversal-1" });
+
+  for (const document of [submitted, approved, confirmed, cancelled, reversed]) {
+    rejects(() => assertInventoryDocumentEditable(document), codes.documentImmutable);
+  }
+});
+
+test("lifecycle timestamps are monotonic and persisted history cannot be forged", () => {
   const draft = readyDraft();
-  rejects(() => approveInventoryDocument(draft, {
-    approvedAt: "2026-09-07T07:59:59Z",
-    approvedByUserId: "approver",
+  rejects(() => submitInventoryDocument(draft, {
+    occurredAt: "2026-09-07T07:59:59Z",
+    actorUserId: "user",
   }), codes.timestampOrderInvalid);
 
-  const editedDraft = rehydrateInventoryDocument({
-    ...draft,
-    version: 2,
-    updatedAt: "2026-09-07T09:30:00Z",
-  });
-  rejects(() => approveInventoryDocument(editedDraft, {
-    approvedAt: "2026-09-07T09:00:00Z",
-    approvedByUserId: "approver",
+  const submitted = submitInventoryDocument(draft, action(9));
+  rejects(() => approveInventoryDocument(submitted, {
+    occurredAt: "2026-09-07T08:59:59Z",
+    actorUserId: "user",
   }), codes.timestampOrderInvalid);
 
-  const approved = approveInventoryDocument(draft, {
-    approvedAt: "2026-09-07T09:00:00Z",
-    approvedByUserId: "approver",
-  });
-  rejects(() => cancelInventoryDocument(approved, {
-    cancelledAt: "2026-09-07T08:59:59Z",
-    cancelledByUserId: "canceller",
-  }), codes.timestampOrderInvalid);
   rejects(() => rehydrateInventoryDocument({
-    ...draft,
-    approvedAt: "2026-09-07T09:00:00Z",
+    ...submitted,
+    status: "approved",
+  }), codes.lifecycleHistoryInvalid);
+
+  rejects(() => rehydrateInventoryDocument({
+    ...submitted,
+    lifecycleHistory: [{
+      ...submitted.lifecycleHistory[0]!,
+      fromStatus: "approved",
+    }],
+  }), codes.lifecycleHistoryInvalid);
+
+  rejects(() => rehydrateInventoryDocument({
+    ...submitted,
+    lifecycleHistory: [{
+      ...submitted.lifecycleHistory[0]!,
+      relatedDocumentId: "unexpected",
+    }],
   }), codes.lifecycleMetadataInvalid);
-  rejects(() => rehydrateInventoryDocument({
-    ...approved,
-    correctionOfDocumentId: approved.documentId,
-  }), codes.correctionSelfReference);
 });
