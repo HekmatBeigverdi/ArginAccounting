@@ -1,32 +1,37 @@
 export {
   INVENTORY_DOCUMENT_TYPES,
   INVENTORY_DOCUMENT_STATUSES,
+  INVENTORY_DOCUMENT_TRANSITIONS,
   INVENTORY_DOMAIN_ERROR_CODES,
   InventoryDomainError,
   approveInventoryDocument,
+  assertInventoryDocumentDeletable,
   assertInventoryDocumentEditable,
+  canTransitionInventoryDocument,
   cancelInventoryDocument,
+  confirmInventoryDocument,
   createInventoryDocument,
-  createInventoryDocumentCorrection,
   createInventoryDocumentLine,
   createInventorySourceReference,
   rehydrateInventoryDocument,
+  returnInventoryDocumentToDraft,
+  reverseInventoryDocument,
+  submitInventoryDocument,
 } from "./domain/inventory-document.ts";
 
 export type {
-  ApproveInventoryDocumentInput,
-  CancelInventoryDocumentInput,
-  CreateInventoryDocumentCorrectionInput,
   CreateInventoryDocumentInput,
   CreateInventoryDocumentLineInput,
   CreateInventorySourceReferenceInput,
-  InventoryDocumentLifecycleSnapshot,
   InventoryDocumentLineSnapshot,
   InventoryDocumentSnapshot,
   InventoryDocumentStatus,
   InventoryDocumentType,
   InventoryDomainErrorCode,
+  InventoryLifecycleActionInput,
+  InventoryLifecycleTransitionSnapshot,
   InventorySourceReference,
+  ReverseInventoryDocumentInput,
 } from "./domain/inventory-document.ts";
 
 export { normalizeInventoryQuantity, createInventoryQuantitySnapshot, rehydrateInventoryQuantitySnapshot } from "./domain/inventory-quantity.ts";
