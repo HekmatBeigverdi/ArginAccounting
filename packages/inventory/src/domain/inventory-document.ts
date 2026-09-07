@@ -17,16 +17,40 @@ export const INVENTORY_DOCUMENT_TYPES = Object.freeze([
 
 export type InventoryDocumentType = (typeof INVENTORY_DOCUMENT_TYPES)[number];
 
-/** Step 5 lifecycle is intentionally independent from future stock-posting state. */
 export const INVENTORY_DOCUMENT_STATUSES = Object.freeze([
   "draft",
+  "submitted",
   "approved",
+  "confirmed",
   "cancelled",
+  "reversed",
 ] as const);
 
 export type InventoryDocumentStatus = (typeof INVENTORY_DOCUMENT_STATUSES)[number];
 
-/** Source identities never contain a display number or a database row position. */
+/**
+ * Frozen Step 5 transition matrix. Approval and confirmation are deliberately distinct:
+ * only confirmation is the lifecycle gate that later stock-ledger services may make effective.
+ */
+export const INVENTORY_DOCUMENT_TRANSITIONS: Readonly<Record<InventoryDocumentStatus, readonly InventoryDocumentStatus[]>> = Object.freeze({
+  draft: Object.freeze(["submitted", "cancelled"]),
+  submitted: Object.freeze(["draft", "approved", "cancelled"]),
+  approved: Object.freeze(["draft", "confirmed", "cancelled"]),
+  confirmed: Object.freeze(["reversed"]),
+  cancelled: Object.freeze([]),
+  reversed: Object.freeze([]),
+});
+
+export interface InventoryLifecycleTransitionSnapshot {
+  readonly fromStatus: InventoryDocumentStatus;
+  readonly toStatus: InventoryDocumentStatus;
+  readonly occurredAt: string;
+  readonly actorUserId: string;
+  readonly reason: string | null;
+  /** Used only for a confirmed -> reversed link to the separate compensating document. */
+  readonly relatedDocumentId: string | null;
+}
+
 export interface InventorySourceReference {
   readonly companyId: string;
   readonly sourceSystem: string;
@@ -43,7 +67,6 @@ export interface CreateInventorySourceReferenceInput {
   readonly lineId?: string | null;
 }
 
-/** Owned by its document; position is ordering metadata, never line identity. */
 export interface InventoryDocumentLineSnapshot {
   readonly operation: InventoryLineOperationSnapshot | null;
   readonly lineId: string;
@@ -62,29 +85,13 @@ export interface CreateInventoryDocumentLineInput {
   readonly sourceReference?: CreateInventorySourceReferenceInput | null;
 }
 
-/**
- * Persisted lifecycle metadata is part of the document snapshot so approvals remain
- * deterministic offline and across Argin Bridge synchronization boundaries.
- */
-export interface InventoryDocumentLifecycleSnapshot {
-  readonly status: InventoryDocumentStatus;
-  readonly approvedAt: string | null;
-  readonly approvedByUserId: string | null;
-  readonly cancelledAt: string | null;
-  readonly cancelledByUserId: string | null;
-  /** Durable identity of the approved document this draft corrects; never a display number. */
-  readonly correctionOfDocumentId: string | null;
-}
-
-/**
- * Structural model with validated quantity/UoM, physical references and fiscal scope.
- * Lifecycle is modeled here; stock mutation/posting remains outside Step 5.
- */
-export interface InventoryDocumentSnapshot extends InventoryDocumentLifecycleSnapshot {
+export interface InventoryDocumentSnapshot {
   readonly scope: InventoryDocumentScope | null;
   readonly documentId: string;
   readonly companyId: string;
   readonly documentType: InventoryDocumentType;
+  readonly status: InventoryDocumentStatus;
+  readonly lifecycleHistory: readonly InventoryLifecycleTransitionSnapshot[];
   readonly documentNumber: string | null;
   readonly businessDate: string;
   readonly description: string | null;
@@ -108,19 +115,14 @@ export interface CreateInventoryDocumentInput {
   readonly createdAt: string;
 }
 
-export type CreateInventoryDocumentCorrectionInput = Omit<
-  CreateInventoryDocumentInput,
-  "companyId" | "documentType"
->;
-
-export interface ApproveInventoryDocumentInput {
-  readonly approvedAt: string;
-  readonly approvedByUserId: string;
+export interface InventoryLifecycleActionInput {
+  readonly occurredAt: string;
+  readonly actorUserId: string;
+  readonly reason?: string | null;
 }
 
-export interface CancelInventoryDocumentInput {
-  readonly cancelledAt: string;
-  readonly cancelledByUserId: string;
+export interface ReverseInventoryDocumentInput extends InventoryLifecycleActionInput {
+  readonly reversalDocumentId: string;
 }
 
 const fail = (code: InventoryDomainErrorCode, field: string): never => {
@@ -146,6 +148,12 @@ function optionalText(value: string | null | undefined, field: string): string |
   return value.trim() || null;
 }
 
+function requiredReason(value: string | null | undefined, field: string): string {
+  const normalized = optionalText(value, field);
+  if (normalized === null) return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, field);
+  return normalized;
+}
+
 function businessDate(value: string, field: string): string {
   if (typeof value !== "string" || !/^(?!0000)\d{4}-\d{2}-\d{2}$/u.test(value)) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.businessDateInvalid, field);
@@ -167,6 +175,17 @@ function timestamp(value: string, field: string): string {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampInvalid, field);
   }
   return parsed.toISOString();
+}
+
+function isStatus(value: unknown): value is InventoryDocumentStatus {
+  return typeof value === "string" && INVENTORY_DOCUMENT_STATUSES.includes(value as InventoryDocumentStatus);
+}
+
+export function canTransitionInventoryDocument(
+  fromStatus: InventoryDocumentStatus,
+  toStatus: InventoryDocumentStatus,
+): boolean {
+  return INVENTORY_DOCUMENT_TRANSITIONS[fromStatus].includes(toStatus);
 }
 
 export function createInventorySourceReference(
@@ -191,104 +210,91 @@ export function createInventoryDocumentLine(
   }
   const operation = input.operation == null ? null : rehydrateInventoryLineOperation(input.operation);
   const productId = identity(input.productId, "line.productId");
-  if (operation && operation.productId !== productId) return fail(INVENTORY_DOMAIN_ERROR_CODES.operationMismatch, "line.operation.productId");
+  if (operation && operation.productId !== productId) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.operationMismatch, "line.operation.productId");
+  }
   return Object.freeze({
     operation,
     lineId: identity(input.lineId, "line.lineId"),
     position: input.position,
     productId,
     description: optionalText(input.description, "line.description"),
-    sourceReference: input.sourceReference == null
-      ? null : createInventorySourceReference(input.sourceReference),
+    sourceReference: input.sourceReference == null ? null : createInventorySourceReference(input.sourceReference),
   });
 }
 
-const newDraftLifecycle = (correctionOfDocumentId: string | null = null): InventoryDocumentLifecycleSnapshot => Object.freeze({
-  status: "draft",
-  approvedAt: null,
-  approvedByUserId: null,
-  cancelledAt: null,
-  cancelledByUserId: null,
-  correctionOfDocumentId,
-});
-
-function normalizeLifecycle(
-  lifecycle: InventoryDocumentLifecycleSnapshot,
+function normalizeLifecycleHistory(
+  rawHistory: readonly InventoryLifecycleTransitionSnapshot[],
   documentId: string,
+  expectedStatus: InventoryDocumentStatus,
   createdAt: string,
   updatedAt: string,
-): InventoryDocumentLifecycleSnapshot {
-  if (!INVENTORY_DOCUMENT_STATUSES.includes(lifecycle.status)) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.statusInvalid, "status");
-  }
-  const correctionOfDocumentId = lifecycle.correctionOfDocumentId == null
-    ? null
-    : identity(lifecycle.correctionOfDocumentId, "correctionOfDocumentId");
-  if (correctionOfDocumentId === documentId) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.correctionSelfReference, "correctionOfDocumentId");
-  }
+): readonly InventoryLifecycleTransitionSnapshot[] {
+  if (!Array.isArray(rawHistory)) return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleHistoryInvalid, "lifecycleHistory");
+  let current: InventoryDocumentStatus = "draft";
+  let previousAt = createdAt;
+  const history: InventoryLifecycleTransitionSnapshot[] = [];
 
-  const approvalIsEmpty = lifecycle.approvedAt == null && lifecycle.approvedByUserId == null;
-  const cancellationIsEmpty = lifecycle.cancelledAt == null && lifecycle.cancelledByUserId == null;
-  if (lifecycle.status === "draft") {
-    if (!approvalIsEmpty || !cancellationIsEmpty) {
-      return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "status");
+  for (const raw of rawHistory) {
+    assertObject(raw, "lifecycleHistory");
+    if (!isStatus(raw.fromStatus) || !isStatus(raw.toStatus)) {
+      return fail(INVENTORY_DOMAIN_ERROR_CODES.statusInvalid, "lifecycleHistory.status");
     }
-    return newDraftLifecycle(correctionOfDocumentId);
-  }
-
-  if (lifecycle.approvedAt == null || lifecycle.approvedByUserId == null) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "approvedAt");
-  }
-  const approvedAt = timestamp(lifecycle.approvedAt, "approvedAt");
-  const approvedByUserId = identity(lifecycle.approvedByUserId, "approvedByUserId");
-  if (approvedAt < createdAt || approvedAt > updatedAt) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "approvedAt");
-  }
-
-  if (lifecycle.status === "approved") {
-    if (!cancellationIsEmpty) {
-      return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "cancelledAt");
+    if (raw.fromStatus !== current || !canTransitionInventoryDocument(raw.fromStatus, raw.toStatus)) {
+      return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleHistoryInvalid, "lifecycleHistory.transition");
     }
-    return Object.freeze({
-      status: "approved",
-      approvedAt,
-      approvedByUserId,
-      cancelledAt: null,
-      cancelledByUserId: null,
-      correctionOfDocumentId,
-    });
+    const occurredAt = timestamp(raw.occurredAt, "lifecycleHistory.occurredAt");
+    if (occurredAt < previousAt || occurredAt > updatedAt) {
+      return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "lifecycleHistory.occurredAt");
+    }
+    const actorUserId = identity(raw.actorUserId, "lifecycleHistory.actorUserId");
+    const reason = optionalText(raw.reason, "lifecycleHistory.reason");
+    const relatedDocumentId = raw.relatedDocumentId == null
+      ? null
+      : identity(raw.relatedDocumentId, "lifecycleHistory.relatedDocumentId");
+
+    if (raw.fromStatus === "approved" && raw.toStatus === "draft" && reason === null) {
+      return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "lifecycleHistory.reason");
+    }
+    if (raw.toStatus === "reversed") {
+      if (relatedDocumentId === null || relatedDocumentId === documentId) {
+        return fail(INVENTORY_DOMAIN_ERROR_CODES.reversalReferenceInvalid, "lifecycleHistory.relatedDocumentId");
+      }
+    } else if (relatedDocumentId !== null) {
+      return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "lifecycleHistory.relatedDocumentId");
+    }
+
+    history.push(Object.freeze({
+      fromStatus: raw.fromStatus,
+      toStatus: raw.toStatus,
+      occurredAt,
+      actorUserId,
+      reason,
+      relatedDocumentId,
+    }));
+    current = raw.toStatus;
+    previousAt = occurredAt;
   }
 
-  if (lifecycle.cancelledAt == null || lifecycle.cancelledByUserId == null) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "cancelledAt");
+  if (current !== expectedStatus) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleHistoryInvalid, "status");
   }
-  const cancelledAt = timestamp(lifecycle.cancelledAt, "cancelledAt");
-  const cancelledByUserId = identity(lifecycle.cancelledByUserId, "cancelledByUserId");
-  if (cancelledAt < approvedAt || cancelledAt > updatedAt) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "cancelledAt");
-  }
-  return Object.freeze({
-    status: "cancelled",
-    approvedAt,
-    approvedByUserId,
-    cancelledAt,
-    cancelledByUserId,
-    correctionOfDocumentId,
-  });
+  return Object.freeze(history);
 }
 
 function normalizeDocument(
   input: CreateInventoryDocumentInput,
   version: number,
   updatedAtInput: string,
-  lifecycle: InventoryDocumentLifecycleSnapshot,
+  status: InventoryDocumentStatus,
+  lifecycleHistory: readonly InventoryLifecycleTransitionSnapshot[],
 ): InventoryDocumentSnapshot {
   const documentId = identity(input.documentId, "documentId");
   const companyId = identity(input.companyId, "companyId");
   if (!INVENTORY_DOCUMENT_TYPES.includes(input.documentType)) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.documentTypeInvalid, "documentType");
   }
+  if (!isStatus(status)) return fail(INVENTORY_DOMAIN_ERROR_CODES.statusInvalid, "status");
   if (!Number.isSafeInteger(version) || version < 1) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.versionInvalid, "version");
   }
@@ -298,13 +304,10 @@ function normalizeDocument(
   }
   const createdAt = timestamp(input.createdAt, "createdAt");
   const updatedAt = timestamp(updatedAtInput, "updatedAt");
-  if (updatedAt < createdAt) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "updatedAt");
-  }
-  const normalizedLifecycle = normalizeLifecycle(lifecycle, documentId, createdAt, updatedAt);
-  const normalizeSource = (
-    source: CreateInventorySourceReferenceInput | null | undefined,
-  ): InventorySourceReference | null => {
+  if (updatedAt < createdAt) return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "updatedAt");
+  const normalizedHistory = normalizeLifecycleHistory(lifecycleHistory, documentId, status, createdAt, updatedAt);
+
+  const normalizeSource = (source: CreateInventorySourceReferenceInput | null | undefined): InventorySourceReference | null => {
     if (source == null) return null;
     const reference = createInventorySourceReference(source);
     if (reference.companyId !== companyId) {
@@ -315,11 +318,10 @@ function normalizeDocument(
     }
     return reference;
   };
+
   const sourceReference = normalizeSource(input.sourceReference);
   const sourceLines = input.lines === undefined ? [] : input.lines;
-  if (!Array.isArray(sourceLines)) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.linesInvalid, "lines");
-  }
+  if (!Array.isArray(sourceLines)) return fail(INVENTORY_DOMAIN_ERROR_CODES.linesInvalid, "lines");
   const ids = new Set<string>();
   const positions = new Set<number>();
   const lines: InventoryDocumentLineSnapshot[] = [];
@@ -340,12 +342,14 @@ function normalizeDocument(
     lines.push(Object.freeze({ ...line, sourceReference: normalizeSource(line.sourceReference) }));
   }
   lines.sort((a, b) => a.position - b.position);
+
   return Object.freeze({
     scope,
     documentId,
     companyId,
     documentType: input.documentType,
-    ...normalizedLifecycle,
+    status,
+    lifecycleHistory: normalizedHistory,
     documentNumber: optionalText(input.documentNumber, "documentNumber"),
     businessDate: businessDate(input.businessDate, "businessDate"),
     description: optionalText(input.description, "description"),
@@ -359,108 +363,140 @@ function normalizeDocument(
 
 export function createInventoryDocument(input: CreateInventoryDocumentInput): InventoryDocumentSnapshot {
   assertObject(input, "document");
-  return normalizeDocument(input, 1, input.createdAt, newDraftLifecycle());
+  return normalizeDocument(input, 1, input.createdAt, "draft", Object.freeze([]));
 }
 
-/** Revalidates persisted structure and lifecycle metadata; never authorizes a stock mutation. */
 export function rehydrateInventoryDocument(snapshot: InventoryDocumentSnapshot): InventoryDocumentSnapshot {
   assertObject(snapshot, "document");
   if (!Array.isArray(snapshot.lines)) return fail(INVENTORY_DOMAIN_ERROR_CODES.linesInvalid, "lines");
-  return normalizeDocument(snapshot, snapshot.version, snapshot.updatedAt, {
-    status: snapshot.status,
-    approvedAt: snapshot.approvedAt,
-    approvedByUserId: snapshot.approvedByUserId,
-    cancelledAt: snapshot.cancelledAt,
-    cancelledByUserId: snapshot.cancelledByUserId,
-    correctionOfDocumentId: snapshot.correctionOfDocumentId,
-  });
+  return normalizeDocument(snapshot, snapshot.version, snapshot.updatedAt, snapshot.status, snapshot.lifecycleHistory);
 }
 
-/** All destructive edits are restricted to drafts. */
-export function assertInventoryDocumentEditable(snapshot: InventoryDocumentSnapshot): InventoryDocumentSnapshot {
-  const document = rehydrateInventoryDocument(snapshot);
-  if (document.status !== "draft") {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.documentImmutable, "status");
-  }
-  return document;
-}
-
-/** Approves a complete draft; authorization remains an application-layer concern. */
-export function approveInventoryDocument(
+function transitionInventoryDocument(
   snapshot: InventoryDocumentSnapshot,
-  input: ApproveInventoryDocumentInput,
+  toStatus: InventoryDocumentStatus,
+  input: InventoryLifecycleActionInput,
+  relatedDocumentId: string | null = null,
+  forceReason = false,
 ): InventoryDocumentSnapshot {
-  assertObject(input, "approval");
+  assertObject(input, "lifecycleAction");
   const document = rehydrateInventoryDocument(snapshot);
-  if (document.status !== "draft") {
+  if (!canTransitionInventoryDocument(document.status, toStatus)) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleTransitionInvalid, "status");
   }
+  const occurredAt = timestamp(input.occurredAt, "occurredAt");
+  if (occurredAt < document.updatedAt) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "occurredAt");
+  }
+  const actorUserId = identity(input.actorUserId, "actorUserId");
+  const reason = forceReason
+    ? requiredReason(input.reason, "reason")
+    : optionalText(input.reason, "reason");
+  const normalizedRelatedDocumentId = relatedDocumentId === null ? null : identity(relatedDocumentId, "relatedDocumentId");
+  if (toStatus === "reversed" && (normalizedRelatedDocumentId === null || normalizedRelatedDocumentId === document.documentId)) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.reversalReferenceInvalid, "relatedDocumentId");
+  }
+
+  const history = Object.freeze([
+    ...document.lifecycleHistory,
+    Object.freeze({
+      fromStatus: document.status,
+      toStatus,
+      occurredAt,
+      actorUserId,
+      reason,
+      relatedDocumentId: normalizedRelatedDocumentId,
+    }),
+  ]);
+  return normalizeDocument(document, document.version + 1, occurredAt, toStatus, history);
+}
+
+function assertSubmissionComplete(document: InventoryDocumentSnapshot): void {
   if (
     document.scope === null ||
     document.documentNumber === null ||
     document.lines.length === 0 ||
     document.lines.some(line => line.operation === null)
   ) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.approvalIncomplete, "document");
+    fail(INVENTORY_DOMAIN_ERROR_CODES.submissionIncomplete, "document");
   }
-  const approvedAt = timestamp(input.approvedAt, "approvedAt");
-  if (approvedAt < document.updatedAt) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "approvedAt");
-  }
-  const approvedByUserId = identity(input.approvedByUserId, "approvedByUserId");
-  return normalizeDocument(document, document.version + 1, approvedAt, {
-    status: "approved",
-    approvedAt,
-    approvedByUserId,
-    cancelledAt: null,
-    cancelledByUserId: null,
-    correctionOfDocumentId: document.correctionOfDocumentId,
-  });
 }
 
-/** Cancellation records lifecycle evidence; future posting/reversal logic consumes it separately. */
-export function cancelInventoryDocument(
-  snapshot: InventoryDocumentSnapshot,
-  input: CancelInventoryDocumentInput,
-): InventoryDocumentSnapshot {
-  assertObject(input, "cancellation");
+/** Ordinary field/line mutation is Draft-only. Approved data must first invalidate approval by returning to Draft. */
+export function assertInventoryDocumentEditable(snapshot: InventoryDocumentSnapshot): InventoryDocumentSnapshot {
   const document = rehydrateInventoryDocument(snapshot);
-  if (document.status !== "approved") {
+  if (document.status !== "draft") return fail(INVENTORY_DOMAIN_ERROR_CODES.documentImmutable, "status");
+  return document;
+}
+
+/** Deletion/tombstone eligibility is separate from cancellation and is restricted to Draft documents. */
+export function assertInventoryDocumentDeletable(snapshot: InventoryDocumentSnapshot): InventoryDocumentSnapshot {
+  const document = rehydrateInventoryDocument(snapshot);
+  if (document.status !== "draft") return fail(INVENTORY_DOMAIN_ERROR_CODES.documentDeleteDenied, "status");
+  return document;
+}
+
+export function submitInventoryDocument(
+  snapshot: InventoryDocumentSnapshot,
+  input: InventoryLifecycleActionInput,
+): InventoryDocumentSnapshot {
+  const document = rehydrateInventoryDocument(snapshot);
+  if (document.status !== "draft") return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleTransitionInvalid, "status");
+  assertSubmissionComplete(document);
+  return transitionInventoryDocument(document, "submitted", input);
+}
+
+/** Domain state change only. Shared Phase 8 approval authorization/orchestration belongs to Step 14. */
+export function approveInventoryDocument(
+  snapshot: InventoryDocumentSnapshot,
+  input: InventoryLifecycleActionInput,
+): InventoryDocumentSnapshot {
+  return transitionInventoryDocument(snapshot, "approved", input);
+}
+
+/**
+ * This is the sole lifecycle transition that may become stock-effective in later authoritative services.
+ * Step 5 itself writes no StockMovement or balance rows.
+ */
+export function confirmInventoryDocument(
+  snapshot: InventoryDocumentSnapshot,
+  input: InventoryLifecycleActionInput,
+): InventoryDocumentSnapshot {
+  return transitionInventoryDocument(snapshot, "confirmed", input);
+}
+
+/**
+ * Submitted data can be returned for editing. Approved data follows the same explicit transition,
+ * which invalidates the current approval before any approval-relevant field/line may be edited.
+ */
+export function returnInventoryDocumentToDraft(
+  snapshot: InventoryDocumentSnapshot,
+  input: InventoryLifecycleActionInput,
+): InventoryDocumentSnapshot {
+  const document = rehydrateInventoryDocument(snapshot);
+  if (document.status !== "submitted" && document.status !== "approved") {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleTransitionInvalid, "status");
   }
-  const cancelledAt = timestamp(input.cancelledAt, "cancelledAt");
-  if (cancelledAt < document.updatedAt) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "cancelledAt");
-  }
-  const cancelledByUserId = identity(input.cancelledByUserId, "cancelledByUserId");
-  return normalizeDocument(document, document.version + 1, cancelledAt, {
-    status: "cancelled",
-    approvedAt: document.approvedAt,
-    approvedByUserId: document.approvedByUserId,
-    cancelledAt,
-    cancelledByUserId,
-    correctionOfDocumentId: document.correctionOfDocumentId,
-  });
+  return transitionInventoryDocument(document, "draft", input, null, document.status === "approved");
 }
 
-/** Creates a new correction draft and never rewrites the approved original. */
-export function createInventoryDocumentCorrection(
-  originalSnapshot: InventoryDocumentSnapshot,
-  input: CreateInventoryDocumentCorrectionInput,
+/** Cancellation is only for unconfirmed documents; confirmed facts require a linked reversal. */
+export function cancelInventoryDocument(
+  snapshot: InventoryDocumentSnapshot,
+  input: InventoryLifecycleActionInput,
 ): InventoryDocumentSnapshot {
-  assertObject(input, "correction");
-  const original = rehydrateInventoryDocument(originalSnapshot);
-  if (original.status !== "approved") {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.correctionOriginalInvalid, "status");
-  }
-  const correctionId = identity(input.documentId, "documentId");
-  if (correctionId === original.documentId) {
-    return fail(INVENTORY_DOMAIN_ERROR_CODES.correctionSelfReference, "documentId");
-  }
-  return normalizeDocument({
-    ...input,
-    documentId: correctionId,
-    companyId: original.companyId,
-    documentType: original.documentType,
-  }, 1, input.createdAt, newDraftLifecycle(original.documentId));
+  return transitionInventoryDocument(snapshot, "cancelled", input);
+}
+
+/**
+ * Marks a confirmed original as reversed and links it to a distinct compensating document identity.
+ * Creation/confirmation of inverse StockMovements is owned by later movement/workflow/UoW steps.
+ */
+export function reverseInventoryDocument(
+  snapshot: InventoryDocumentSnapshot,
+  input: ReverseInventoryDocumentInput,
+): InventoryDocumentSnapshot {
+  assertObject(input, "reversal");
+  const reversalDocumentId = identity(input.reversalDocumentId, "reversalDocumentId");
+  return transitionInventoryDocument(snapshot, "reversed", input, reversalDocumentId, true);
 }
