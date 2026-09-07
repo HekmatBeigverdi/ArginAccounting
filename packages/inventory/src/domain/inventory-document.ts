@@ -7,7 +7,6 @@ import type { InventoryLineOperationSnapshot } from "./inventory-operation.ts";
 export { INVENTORY_DOMAIN_ERROR_CODES, InventoryDomainError } from "./inventory-errors.ts";
 export type { InventoryDomainErrorCode } from "./inventory-errors.ts";
 
-/** Phase 20 Step 2: structural draft model; no stock or lifecycle operations. */
 export const INVENTORY_DOCUMENT_TYPES = Object.freeze([
   "receipt",
   "issue",
@@ -17,6 +16,15 @@ export const INVENTORY_DOCUMENT_TYPES = Object.freeze([
 ] as const);
 
 export type InventoryDocumentType = (typeof INVENTORY_DOCUMENT_TYPES)[number];
+
+/** Step 5 lifecycle is intentionally independent from future stock-posting state. */
+export const INVENTORY_DOCUMENT_STATUSES = Object.freeze([
+  "draft",
+  "approved",
+  "cancelled",
+] as const);
+
+export type InventoryDocumentStatus = (typeof INVENTORY_DOCUMENT_STATUSES)[number];
 
 /** Source identities never contain a display number or a database row position. */
 export interface InventorySourceReference {
@@ -55,15 +63,28 @@ export interface CreateInventoryDocumentLineInput {
 }
 
 /**
- * Draft model with optional validated quantity/UoM and physical reference snapshots;
- * fiscal eligibility/number allocation in Step 4; lifecycle in Step 5.
+ * Persisted lifecycle metadata is part of the document snapshot so approvals remain
+ * deterministic offline and across Argin Bridge synchronization boundaries.
  */
-export interface InventoryDocumentSnapshot {
+export interface InventoryDocumentLifecycleSnapshot {
+  readonly status: InventoryDocumentStatus;
+  readonly approvedAt: string | null;
+  readonly approvedByUserId: string | null;
+  readonly cancelledAt: string | null;
+  readonly cancelledByUserId: string | null;
+  /** Durable identity of the approved document this draft corrects; never a display number. */
+  readonly correctionOfDocumentId: string | null;
+}
+
+/**
+ * Structural model with validated quantity/UoM, physical references and fiscal scope.
+ * Lifecycle is modeled here; stock mutation/posting remains outside Step 5.
+ */
+export interface InventoryDocumentSnapshot extends InventoryDocumentLifecycleSnapshot {
   readonly scope: InventoryDocumentScope | null;
   readonly documentId: string;
   readonly companyId: string;
   readonly documentType: InventoryDocumentType;
-  readonly status: "draft";
   readonly documentNumber: string | null;
   readonly businessDate: string;
   readonly description: string | null;
@@ -85,6 +106,21 @@ export interface CreateInventoryDocumentInput {
   readonly sourceReference?: CreateInventorySourceReferenceInput | null;
   readonly lines?: readonly CreateInventoryDocumentLineInput[];
   readonly createdAt: string;
+}
+
+export type CreateInventoryDocumentCorrectionInput = Omit<
+  CreateInventoryDocumentInput,
+  "companyId" | "documentType"
+>;
+
+export interface ApproveInventoryDocumentInput {
+  readonly approvedAt: string;
+  readonly approvedByUserId: string;
+}
+
+export interface CancelInventoryDocumentInput {
+  readonly cancelledAt: string;
+  readonly cancelledByUserId: string;
 }
 
 const fail = (code: InventoryDomainErrorCode, field: string): never => {
@@ -169,10 +205,86 @@ export function createInventoryDocumentLine(
   });
 }
 
+const newDraftLifecycle = (correctionOfDocumentId: string | null = null): InventoryDocumentLifecycleSnapshot => Object.freeze({
+  status: "draft",
+  approvedAt: null,
+  approvedByUserId: null,
+  cancelledAt: null,
+  cancelledByUserId: null,
+  correctionOfDocumentId,
+});
+
+function normalizeLifecycle(
+  lifecycle: InventoryDocumentLifecycleSnapshot,
+  documentId: string,
+  createdAt: string,
+  updatedAt: string,
+): InventoryDocumentLifecycleSnapshot {
+  if (!INVENTORY_DOCUMENT_STATUSES.includes(lifecycle.status)) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.statusInvalid, "status");
+  }
+  const correctionOfDocumentId = lifecycle.correctionOfDocumentId == null
+    ? null
+    : identity(lifecycle.correctionOfDocumentId, "correctionOfDocumentId");
+  if (correctionOfDocumentId === documentId) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.correctionSelfReference, "correctionOfDocumentId");
+  }
+
+  const approvalIsEmpty = lifecycle.approvedAt == null && lifecycle.approvedByUserId == null;
+  const cancellationIsEmpty = lifecycle.cancelledAt == null && lifecycle.cancelledByUserId == null;
+  if (lifecycle.status === "draft") {
+    if (!approvalIsEmpty || !cancellationIsEmpty) {
+      return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "status");
+    }
+    return newDraftLifecycle(correctionOfDocumentId);
+  }
+
+  if (lifecycle.approvedAt == null || lifecycle.approvedByUserId == null) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "approvedAt");
+  }
+  const approvedAt = timestamp(lifecycle.approvedAt, "approvedAt");
+  const approvedByUserId = identity(lifecycle.approvedByUserId, "approvedByUserId");
+  if (approvedAt < createdAt || approvedAt > updatedAt) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "approvedAt");
+  }
+
+  if (lifecycle.status === "approved") {
+    if (!cancellationIsEmpty) {
+      return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "cancelledAt");
+    }
+    return Object.freeze({
+      status: "approved",
+      approvedAt,
+      approvedByUserId,
+      cancelledAt: null,
+      cancelledByUserId: null,
+      correctionOfDocumentId,
+    });
+  }
+
+  if (lifecycle.cancelledAt == null || lifecycle.cancelledByUserId == null) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "cancelledAt");
+  }
+  const cancelledAt = timestamp(lifecycle.cancelledAt, "cancelledAt");
+  const cancelledByUserId = identity(lifecycle.cancelledByUserId, "cancelledByUserId");
+  if (cancelledAt < approvedAt || cancelledAt > updatedAt) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "cancelledAt");
+  }
+  return Object.freeze({
+    status: "cancelled",
+    approvedAt,
+    approvedByUserId,
+    cancelledAt,
+    cancelledByUserId,
+    correctionOfDocumentId,
+  });
+}
+
 function normalizeDocument(
   input: CreateInventoryDocumentInput,
   version: number,
   updatedAtInput: string,
+  lifecycle: InventoryDocumentLifecycleSnapshot,
 ): InventoryDocumentSnapshot {
   const documentId = identity(input.documentId, "documentId");
   const companyId = identity(input.companyId, "companyId");
@@ -191,6 +303,7 @@ function normalizeDocument(
   if (updatedAt < createdAt) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "updatedAt");
   }
+  const normalizedLifecycle = normalizeLifecycle(lifecycle, documentId, createdAt, updatedAt);
   const normalizeSource = (
     source: CreateInventorySourceReferenceInput | null | undefined,
   ): InventorySourceReference | null => {
@@ -236,7 +349,7 @@ function normalizeDocument(
     documentId,
     companyId,
     documentType: input.documentType,
-    status: "draft",
+    ...normalizedLifecycle,
     documentNumber: optionalText(input.documentNumber, "documentNumber"),
     businessDate: businessDate(input.businessDate, "businessDate"),
     description: optionalText(input.description, "description"),
@@ -250,13 +363,108 @@ function normalizeDocument(
 
 export function createInventoryDocument(input: CreateInventoryDocumentInput): InventoryDocumentSnapshot {
   assertObject(input, "document");
-  return normalizeDocument(input, 1, input.createdAt);
+  return normalizeDocument(input, 1, input.createdAt, newDraftLifecycle());
 }
 
-/** Revalidates persisted draft structure; never authorizes a stock mutation. */
+/** Revalidates persisted structure and lifecycle metadata; never authorizes a stock mutation. */
 export function rehydrateInventoryDocument(snapshot: InventoryDocumentSnapshot): InventoryDocumentSnapshot {
   assertObject(snapshot, "document");
-  if (snapshot.status !== "draft") return fail(INVENTORY_DOMAIN_ERROR_CODES.statusInvalid, "status");
   if (!Array.isArray(snapshot.lines)) return fail(INVENTORY_DOMAIN_ERROR_CODES.linesInvalid, "lines");
-  return normalizeDocument(snapshot, snapshot.version, snapshot.updatedAt);
+  return normalizeDocument(snapshot, snapshot.version, snapshot.updatedAt, {
+    status: snapshot.status,
+    approvedAt: snapshot.approvedAt,
+    approvedByUserId: snapshot.approvedByUserId,
+    cancelledAt: snapshot.cancelledAt,
+    cancelledByUserId: snapshot.cancelledByUserId,
+    correctionOfDocumentId: snapshot.correctionOfDocumentId,
+  });
+}
+
+/** All destructive edits are restricted to drafts. Call before any future draft mutation command. */
+export function assertInventoryDocumentEditable(snapshot: InventoryDocumentSnapshot): InventoryDocumentSnapshot {
+  const document = rehydrateInventoryDocument(snapshot);
+  if (document.status !== "draft") {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.documentImmutable, "status");
+  }
+  return document;
+}
+
+/**
+ * Approves a complete draft. Scope eligibility and permissions are application concerns;
+ * this domain transition only enforces lifecycle completeness and immutable evidence.
+ */
+export function approveInventoryDocument(
+  snapshot: InventoryDocumentSnapshot,
+  input: ApproveInventoryDocumentInput,
+): InventoryDocumentSnapshot {
+  assertObject(input, "approval");
+  const document = rehydrateInventoryDocument(snapshot);
+  if (document.status !== "draft") {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleTransitionInvalid, "status");
+  }
+  if (
+    document.scope === null ||
+    document.documentNumber === null ||
+    document.lines.length === 0 ||
+    document.lines.some(line => line.operation === null)
+  ) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.approvalIncomplete, "document");
+  }
+  const approvedAt = timestamp(input.approvedAt, "approvedAt");
+  const approvedByUserId = identity(input.approvedByUserId, "approvedByUserId");
+  return normalizeDocument(document, document.version + 1, approvedAt, {
+    status: "approved",
+    approvedAt,
+    approvedByUserId,
+    cancelledAt: null,
+    cancelledByUserId: null,
+    correctionOfDocumentId: document.correctionOfDocumentId,
+  });
+}
+
+/** Cancellation is a lifecycle fact; future posting/reversal logic consumes it separately. */
+export function cancelInventoryDocument(
+  snapshot: InventoryDocumentSnapshot,
+  input: CancelInventoryDocumentInput,
+): InventoryDocumentSnapshot {
+  assertObject(input, "cancellation");
+  const document = rehydrateInventoryDocument(snapshot);
+  if (document.status !== "approved") {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleTransitionInvalid, "status");
+  }
+  const cancelledAt = timestamp(input.cancelledAt, "cancelledAt");
+  const cancelledByUserId = identity(input.cancelledByUserId, "cancelledByUserId");
+  return normalizeDocument(document, document.version + 1, cancelledAt, {
+    status: "cancelled",
+    approvedAt: document.approvedAt,
+    approvedByUserId: document.approvedByUserId,
+    cancelledAt,
+    cancelledByUserId,
+    correctionOfDocumentId: document.correctionOfDocumentId,
+  });
+}
+
+/**
+ * Never rewrites an approved source document. A correction is a new durable draft that
+ * points to the approved original by ID; later stock/posting steps decide its financial effect.
+ */
+export function createInventoryDocumentCorrection(
+  originalSnapshot: InventoryDocumentSnapshot,
+  input: CreateInventoryDocumentCorrectionInput,
+): InventoryDocumentSnapshot {
+  assertObject(input, "correction");
+  const original = rehydrateInventoryDocument(originalSnapshot);
+  if (original.status !== "approved") {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.correctionOriginalInvalid, "status");
+  }
+  const correctionId = identity(input.documentId, "documentId");
+  if (correctionId === original.documentId) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.correctionSelfReference, "documentId");
+  }
+  return normalizeDocument({
+    ...input,
+    documentId: correctionId,
+    companyId: original.companyId,
+    documentType: original.documentType,
+  }, 1, input.createdAt, newDraftLifecycle(original.documentId));
 }
