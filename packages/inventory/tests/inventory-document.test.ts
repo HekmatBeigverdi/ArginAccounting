@@ -38,13 +38,10 @@ test("creates every fixed document type as a draft without allocating a number",
     assert.equal(document.version, 1);
     assert.equal(document.documentNumber, null);
     assert.deepEqual(document.lines, []);
+    assert.deepEqual(document.lifecycleHistory, []);
     assert.equal(document.sourceReference, null);
     assert.equal(document.description, null);
-    assert.equal(document.approvedAt, null);
-    assert.equal(document.approvedByUserId, null);
-    assert.equal(document.cancelledAt, null);
-    assert.equal(document.cancelledByUserId, null);
-    assert.equal(document.correctionOfDocumentId, null);
+    assert.equal(Object.isFrozen(document.lifecycleHistory), true);
   }
 });
 
@@ -127,7 +124,7 @@ test("copies and freezes all nested caller-owned structures", () => {
   assert.equal(document.sourceReference?.documentId, "purchase-01");
   assert.equal(document.lines[0]?.productId, "product-01");
   assert.equal(document.lines[0]?.sourceReference?.documentId, "purchase-01");
-  for (const value of [document, document.lines, document.lines[0], document.sourceReference, document.lines[0]?.sourceReference]) {
+  for (const value of [document, document.lines, document.lifecycleHistory, document.lines[0], document.sourceReference, document.lines[0]?.sourceReference]) {
     assert.equal(Object.isFrozen(value), true);
   }
   assert.equal(Reflect.set(document.lines[0]!, "productId", "other"), false);
@@ -161,20 +158,20 @@ test("rehydrates a serialized draft without replacing IDs or resetting version/t
   const restored = rehydrateInventoryDocument(JSON.parse(JSON.stringify(persisted)));
   assert.deepEqual(restored, persisted);
   assert.notEqual(restored.lines, persisted.lines);
+  assert.notEqual(restored.lifecycleHistory, persisted.lifecycleHistory);
   assert.equal(Object.isFrozen(restored.lines[0]?.sourceReference), true);
 });
 
-test("rehydration rejects invalid version, timestamp order and malformed lifecycle state", () => {
+test("rehydration rejects invalid version, timestamp order and malformed lifecycle state/history", () => {
   const document = createInventoryDocument(base);
   for (const version of [0, -1, 1.1, Infinity, NaN, Number.MAX_SAFE_INTEGER + 1]) {
     rejects(() => rehydrateInventoryDocument({ ...document, version }), codes.versionInvalid);
   }
   rejects(() => rehydrateInventoryDocument({ ...document, updatedAt: "2026-09-05T00:00:00Z" }), codes.timestampOrderInvalid);
   rejects(() => rehydrateInventoryDocument({ ...document, updatedAt: "invalid" }), codes.timestampInvalid);
-  for (const status of ["confirmed", "deleted"]) {
-    rejects(() => rehydrateInventoryDocument({ ...document, status: status as never }), codes.statusInvalid);
-  }
-  rejects(() => rehydrateInventoryDocument({ ...document, status: "approved" }), codes.lifecycleMetadataInvalid);
+  rejects(() => rehydrateInventoryDocument({ ...document, status: "deleted" as never }), codes.statusInvalid);
+  rejects(() => rehydrateInventoryDocument({ ...document, status: "approved" }), codes.lifecycleHistoryInvalid);
+  rejects(() => rehydrateInventoryDocument({ ...document, lifecycleHistory: undefined as never }), codes.lifecycleHistoryInvalid);
 });
 
 test("rehydration applies line and source invariants to persisted data", () => {
