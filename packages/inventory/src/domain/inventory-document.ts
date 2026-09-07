@@ -137,7 +137,6 @@ function identity(value: string, field: string): string {
   if (typeof value !== "string" || value.trim().length === 0) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.identityRequired, field);
   }
-  // Preserve opaque IDs: do not uppercase, parse as numbers or collapse spaces.
   return value.trim();
 }
 
@@ -159,7 +158,6 @@ function businessDate(value: string, field: string): string {
 }
 
 function timestamp(value: string, field: string): string {
-  // Explicit UTC input prevents host timezone/DST from changing persisted facts.
   if (typeof value !== "string" ||
       !/^(?!0000)\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$/u.test(value)) {
     return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampInvalid, field);
@@ -312,7 +310,6 @@ function normalizeDocument(
     if (reference.companyId !== companyId) {
       return fail(INVENTORY_DOMAIN_ERROR_CODES.sourceCompanyMismatch, "sourceReference.companyId");
     }
-    // The reserved sourceSystem "inventory" identifies this bounded context.
     if (reference.sourceSystem === "inventory" && reference.documentId === documentId) {
       return fail(INVENTORY_DOMAIN_ERROR_CODES.sourceSelfReference, "sourceReference.documentId");
     }
@@ -326,7 +323,6 @@ function normalizeDocument(
   const ids = new Set<string>();
   const positions = new Set<number>();
   const lines: InventoryDocumentLineSnapshot[] = [];
-  // for..of also visits holes, so sparse input cannot bypass validation.
   for (const raw of sourceLines) {
     const line = createInventoryDocumentLine(raw);
     if (ids.has(line.lineId)) return fail(INVENTORY_DOMAIN_ERROR_CODES.duplicateLineId, "line.lineId");
@@ -380,7 +376,7 @@ export function rehydrateInventoryDocument(snapshot: InventoryDocumentSnapshot):
   });
 }
 
-/** All destructive edits are restricted to drafts. Call before any future draft mutation command. */
+/** All destructive edits are restricted to drafts. */
 export function assertInventoryDocumentEditable(snapshot: InventoryDocumentSnapshot): InventoryDocumentSnapshot {
   const document = rehydrateInventoryDocument(snapshot);
   if (document.status !== "draft") {
@@ -389,10 +385,7 @@ export function assertInventoryDocumentEditable(snapshot: InventoryDocumentSnaps
   return document;
 }
 
-/**
- * Approves a complete draft. Scope eligibility and permissions are application concerns;
- * this domain transition only enforces lifecycle completeness and immutable evidence.
- */
+/** Approves a complete draft; authorization remains an application-layer concern. */
 export function approveInventoryDocument(
   snapshot: InventoryDocumentSnapshot,
   input: ApproveInventoryDocumentInput,
@@ -411,6 +404,9 @@ export function approveInventoryDocument(
     return fail(INVENTORY_DOMAIN_ERROR_CODES.approvalIncomplete, "document");
   }
   const approvedAt = timestamp(input.approvedAt, "approvedAt");
+  if (approvedAt < document.updatedAt) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "approvedAt");
+  }
   const approvedByUserId = identity(input.approvedByUserId, "approvedByUserId");
   return normalizeDocument(document, document.version + 1, approvedAt, {
     status: "approved",
@@ -422,7 +418,7 @@ export function approveInventoryDocument(
   });
 }
 
-/** Cancellation is a lifecycle fact; future posting/reversal logic consumes it separately. */
+/** Cancellation records lifecycle evidence; future posting/reversal logic consumes it separately. */
 export function cancelInventoryDocument(
   snapshot: InventoryDocumentSnapshot,
   input: CancelInventoryDocumentInput,
@@ -433,6 +429,9 @@ export function cancelInventoryDocument(
     return fail(INVENTORY_DOMAIN_ERROR_CODES.lifecycleTransitionInvalid, "status");
   }
   const cancelledAt = timestamp(input.cancelledAt, "cancelledAt");
+  if (cancelledAt < document.updatedAt) {
+    return fail(INVENTORY_DOMAIN_ERROR_CODES.timestampOrderInvalid, "cancelledAt");
+  }
   const cancelledByUserId = identity(input.cancelledByUserId, "cancelledByUserId");
   return normalizeDocument(document, document.version + 1, cancelledAt, {
     status: "cancelled",
@@ -444,10 +443,7 @@ export function cancelInventoryDocument(
   });
 }
 
-/**
- * Never rewrites an approved source document. A correction is a new durable draft that
- * points to the approved original by ID; later stock/posting steps decide its financial effect.
- */
+/** Creates a new correction draft and never rewrites the approved original. */
 export function createInventoryDocumentCorrection(
   originalSnapshot: InventoryDocumentSnapshot,
   input: CreateInventoryDocumentCorrectionInput,
