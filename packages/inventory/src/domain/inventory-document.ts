@@ -33,10 +33,10 @@ export type InventoryDocumentStatus = (typeof INVENTORY_DOCUMENT_STATUSES)[numbe
  * only confirmation is the lifecycle gate that later stock-ledger services may make effective.
  */
 export const INVENTORY_DOCUMENT_TRANSITIONS: Readonly<Record<InventoryDocumentStatus, readonly InventoryDocumentStatus[]>> = Object.freeze({
-  draft: Object.freeze(["submitted", "cancelled"]),
-  submitted: Object.freeze(["draft", "approved", "cancelled"]),
-  approved: Object.freeze(["draft", "confirmed", "cancelled"]),
-  confirmed: Object.freeze(["reversed"]),
+  draft: Object.freeze(["submitted", "cancelled"] as const),
+  submitted: Object.freeze(["draft", "approved", "cancelled"] as const),
+  approved: Object.freeze(["draft", "confirmed", "cancelled"] as const),
+  confirmed: Object.freeze(["reversed"] as const),
   cancelled: Object.freeze([]),
   reversed: Object.freeze([]),
 });
