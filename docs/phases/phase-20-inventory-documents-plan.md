@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–7 are complete; Steps 5–7 have been explicitly owner-accepted. Step 8 implementation and focused test definitions are complete; executable workspace validation remains pending. Steps 9–22 are Not started; persistence contracts, idempotent orchestration, SQLite integration and Desktop work remain pending.
+In Progress. Steps 1–8 are complete; Steps 5–8 have been explicitly owner-accepted. Step 9 implementation and focused contract test definitions are complete; executable workspace validation remains pending. Steps 10–22 are Not started; idempotent/concurrent orchestration, migrations, Argin Bridge envelopes, SQLite integration and Desktop work remain pending.
 
 ## Governance
 
@@ -62,6 +62,7 @@ References:
 - [Warehouse synchronization](../architecture/warehouse-sync-contract.md)
 - [Party Argin Bridge](../architecture/party-argin-bridge-contract.md)
 - [Transfer, adjustment and reversal workflows](../architecture/inventory-transfer-adjustment-workflows.md)
+- [Inventory Application contracts](../architecture/inventory-application-contracts.md)
 
 ### Argin Bridge Rules
 
@@ -85,13 +86,17 @@ Implemented at Step 7: persistence-neutral receipt/issue/opening confirmation, c
 
 Implemented at Step 8: durable transfer grouping, exact two-sided conservation, intra/inter-Warehouse transfer semantics, signed reasoned adjustments, append-only `reversalOfMovementId` compensation facts and semantic batch atomicity.
 
-Still planned in owning steps: persistence-neutral repository/query/UoW contracts, durable idempotency/concurrency orchestration, migrations, Argin Bridge envelopes, SQLite transaction atomicity, authorization/Audit integration and Desktop surfaces.
+Implemented at Step 9: persistence-neutral command/query DTOs, bounded document/kardex/balance readers, typed Application errors, document/movement/balance/opening/business-order/idempotency repository ports, a composed Inventory UoW and future Purchase/Sales/Manufacturing source/confirmation ports.
+
+Still planned in owning steps: durable idempotency/concurrency orchestration, migrations, Argin Bridge envelopes, SQLite transaction atomicity, authorization/Audit integration and Desktop surfaces.
 
 A physical reference includes warehouseId and optional zoneId/locationId under the existing hierarchy contract. Historical references remain resolvable when master data changes. No mutable title/code is identity.
 
 ## Application Services
 
 Document create/edit/submit/approve/confirm/cancel/reverse, bounded queries, opening/transfer/adjustment orchestration, quantity ledger/rebuild, draft import/export and future-source confirmation ports. Security, validation, fiscal locks and stock checks are authoritative at the Application/transaction boundary.
+
+Step 9 freezes interfaces only. `requestKey`, payload fingerprints, expected versions, business-order allocation and UoW composition are available as contracts, but replay semantics, fingerprint conflicts, transaction-bound master reads and concurrent stock mutation behavior are implemented in Step 10 and persisted by later steps.
 
 ## Data and Migrations
 
@@ -116,8 +121,8 @@ Persian RTL and Phase 14 density/accessibility; Jalali business dates with Grego
 | 5 | Document Lifecycle, Approval and Correction Rules | Completed |
 | 6 | Stock Movement Ledger and Balance Rules | Completed |
 | 7 | Receipt, Issue and Opening Balance Workflows | Completed |
-| 8 | Atomic Transfer and Quantity Adjustment Workflows | Implemented — validation pending |
-| 9 | Application, Query and Repository Contracts | Not started |
+| 8 | Atomic Transfer and Quantity Adjustment Workflows | Completed |
+| 9 | Application, Query and Repository Contracts | Implemented — validation pending |
 | 10 | Application Services, Idempotency and Concurrency | Not started |
 | 11 | Migration, Schema, Constraints and Indexing | Not started |
 | 12 | Argin Bridge and Future Synchronization Contract | Not started |
@@ -462,7 +467,7 @@ Step 7 is closed by owner acceptance while retaining truthful validation provena
 
 Step 8 consumes the same approval/scope/master/stock boundaries and adds transfer conservation, signed adjustment, and append-only reversal compensation. Persistence-neutral batch failure never returns a partially updated caller ledger. Real durable transaction atomicity remains Step 13.
 
-### Step 8 — Atomic Transfer and Quantity Adjustment Workflows — Implemented; Validation Pending
+### Step 8 — Atomic Transfer and Quantity Adjustment Workflows — Completed
 
 - Extended immutable StockMovement facts with optional durable `transferId` and `reversalOfMovementId`. Non-transfer/non-reversal movement factories normalize these fields to `null`; existing durable document/line/movement identity remains unchanged.
 - Added/exported `confirmInventoryTransfer`. It accepts only approved Transfer documents, reruns the existing Step 4 Company/Branch/fiscal/lock/Warehouse visibility validation, and revalidates current Product plus source/destination Warehouse/Zone/Location eligibility before producing stock effects.
@@ -479,6 +484,7 @@ Step 8 consumes the same approval/scope/master/stock boundaries and adds transfe
 - Added focused Transfer/Adjustment tests covering inter-Warehouse conservation, intra-Warehouse physical movement, insufficient-source rollback semantics, duplicate transfer identity, malformed pair identities, destination eligibility, positive/negative adjustments, required reason, negative-stock rejection and wrong-document-type boundaries.
 - Added focused reversal tests covering exact inverse compensation, lifecycle linkage, consumed-receipt rejection and duplicate compensation protection.
 - Added [ADR-0020](../adr/ADR-0020-inventory-transfer-adjustment-workflows.md), dedicated architecture documentation and ADR registry/index entries. Full stock-count sessions and in-transit/two-stage logistics remain explicitly deferred.
+- The repository owner explicitly accepted Step 8 in chat before requesting Step 9. Raw local command output was not pasted into the conversation; owner acceptance and executable evidence remain distinct facts.
 
 #### Step 8 Validation Evidence
 
@@ -489,10 +495,42 @@ Step 8 consumes the same approval/scope/master/stock boundaries and adds transfe
 | Focused Step 8 tests | Added in `packages/inventory/tests/inventory-transfer-adjustment.test.ts` and `packages/inventory/tests/inventory-reversal.test.ts` |
 | Defensive review | Added transfer/reversal durable linkage fields, duplicate-transfer/duplicate-compensation guards and persisted reversal-reference integrity checks |
 | Executable package validation | Not observed by the assistant environment; no pass claim is made until local/CI `test`, `typecheck` and `build` output is available |
+| Owner acceptance | Explicitly accepted in chat before Step 9 |
+
+Step 8 is closed by owner acceptance while retaining truthful validation provenance.
 
 #### Step 9 Handoff
 
-Step 9 must define persistence-neutral command/query/repository/UoW ports around the completed document, movement, opening, transfer, adjustment and reversal semantics. It must not introduce SQL/Tauri/HTTP into Domain and must preserve durable transfer/reversal grouping for later SQLite and Argin Bridge implementations.
+Step 9 defines the persistence-neutral command/query/repository/UoW boundary around the completed document and stock workflows. No SQL/Tauri/HTTP dependency enters Domain, and all durable transfer/reversal grouping remains available to later adapters.
+
+### Step 9 — Application, Query and Repository Contracts — Implemented; Validation Pending
+
+- Added `application/contracts` for Inventory, following the established modular contract pattern used by upstream ERP modules while preserving Inventory-specific stock invariants.
+- Added stable `InventoryApplicationError` codes for invalid requests, not-found records, optimistic concurrency, duplicate document numbers/movements/openings, stock conflicts, idempotency conflicts, authorization and dependency blocking. Consumers branch on code/field rather than parsing messages.
+- Added Company-scoped document list/detail/by-number queries plus cursor-based quantity kardex and balance queries. Document pages are bounded to 200 rows and cursor readers to 500 rows; invalid page/cursor requests fail through the typed Application error contract.
+- Added read-model DTOs for document list/detail, kardex entries with running quantity, balance rows, offset pages and cursor pages. Query readers are deliberately separated from mutation repositories.
+- Added command contracts for create/save/delete/lifecycle/confirm/reverse operations with stable request key, canonical payload fingerprint and expected version where applicable. Caller-controlled `businessOrder` was deliberately removed after review; Step 10 must allocate it through the UoW-scoped business-order port.
+- Added persistence-neutral repositories for documents, append-only movement facts, rebuildable balance projections, opening uniqueness facts, durable business-order allocation and idempotency records. Balance projection replacement is explicitly non-authoritative; movements remain stock truth.
+- Added `InventoryUnitOfWork`/`InventoryUnitOfWorkContext` combining every confirmation-critical repository so Step 10 can orchestrate one logical mutation without depending on SQLite. Real commit/rollback semantics remain Step 13.
+- Added future ERP consumer contracts: `InventorySourceDocumentPort.stageDraft` and `InventoryQuantityConfirmationPort.confirm`. Purchase/Sales/Manufacturing consumers submit durable source identity, quantity/unit intent and Warehouse references; they cannot inject raw movements or editable balances and cannot bypass Inventory lifecycle/stock rules.
+- Added six focused contract tests covering bounded document pages, bounded opaque cursors, stable typed errors, complete UoW composition, separation of query reader from repositories and the future source staging/normal confirmation boundary.
+- Added [Inventory Application, Query and Repository Contracts](../architecture/inventory-application-contracts.md). No new ADR is required because Step 9 applies existing Application Service/UoW/database-independent Domain decisions rather than changing architecture direction.
+- No SQL, table name, migration, Tauri command, HTTP endpoint, infrastructure implementation, permission catalog, live Bridge transport, concurrency algorithm or idempotent replay behavior is introduced in Step 9.
+
+#### Step 9 Validation Evidence
+
+| Check | Result |
+| --- | --- |
+| Frozen Step 9 wording vs implementation | Reconciled: commands, bounded list/detail/kardex/balance readers, repositories, UoW, typed errors and future source-consumer ports are represented |
+| Public API | All new Step 9 runtime constants/helpers and TypeScript contracts are exported from `@argin/inventory` |
+| Focused Step 9 tests | Added in `packages/inventory/tests/inventory-contracts.test.ts`; 6 tests defined |
+| Boundary review | Query reader separated from write repositories; caller cannot supply business order; external ERP ports accept business intent rather than raw movement/balance facts |
+| Infrastructure boundary | No SQL/SQLite/Tauri/HTTP implementation added; UoW/idempotency are interfaces only |
+| Executable package validation | Not observed by the assistant environment; no pass claim is made until local/CI `test`, `typecheck` and `build` output is available |
+
+#### Step 10 Handoff
+
+Step 10 must implement authoritative Application Services on these ports: request-key/payload-fingerprint replay and conflict semantics, expected-version comparison, transaction-bound validation, business-order allocation inside the UoW, and stock validation against concurrent mutations. It must not move SQLite implementation from Step 13 forward.
 
 ## Testing
 
@@ -502,7 +540,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The last assistant-observed full Inventory package run remains the Step 4 result: 72 passing tests. Steps 5–8 add focused lifecycle/stock/workflow tests but their workspace execution has not been observed in the assistant environment. Steps 5–7 have explicit owner acceptance. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
+Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The last assistant-observed full Inventory package run remains the Step 4 result: 72 passing tests. Steps 5–9 add focused lifecycle/stock/workflow/contract tests but their workspace execution has not been observed in the assistant environment. Steps 5–8 have explicit owner acceptance. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -529,6 +567,8 @@ Step 6: added ADR-0019 and updated this canonical record plus Inventory architec
 Step 7: updated this canonical record and Inventory architecture for receipt/issue/opening confirmation, current eligibility revalidation, stock checks, opening uniqueness and lifecycle-bypass protection. No new documentation path or H1 title was introduced.
 
 Step 8: added ADR-0020 and `inventory-transfer-adjustment-workflows.md`, updated the ADR registry/generated index, and recorded durable transfer/reversal grouping plus adjustment semantics in this canonical plan.
+
+Step 9: added `inventory-application-contracts.md` and recorded bounded queries, mutation/query separation, repositories/UoW, typed errors and future ERP consumer ports. No ADR was added because existing ADR-0002/0005/0006 decisions already govern this boundary.
 
 During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Keep all repository documentation and commits in English.
 
