@@ -171,3 +171,29 @@ export type {
   InventorySourceQuantityLine,
   StageInventorySourceDocumentRequest,
 } from "./application/contracts/inventory-consumer.ts";
+
+export {
+  INVENTORY_MOVEMENT_BATCH_KINDS,
+  INVENTORY_SYNC_CHANGE_KINDS,
+  INVENTORY_SYNC_CONTRACT_VERSION,
+  InventorySyncContractError,
+  createInventoryDocumentSyncTombstoneEnvelope,
+  createInventoryDocumentSyncUpsertEnvelope,
+  createInventoryMovementBatchSyncEnvelope,
+} from "./application/contracts/inventory-sync.ts";
+export type {
+  CreateInventoryDocumentSyncTombstoneInput,
+  CreateInventoryDocumentSyncUpsertInput,
+  CreateInventoryMovementBatchSyncInput,
+  InventoryDocumentSyncEnvelope,
+  InventoryDocumentSyncTombstoneEnvelope,
+  InventoryDocumentSyncUpsertEnvelope,
+  InventoryMovementBatchKind,
+  InventoryMovementBatchSyncEnvelope,
+  InventorySyncChangeKind,
+  InventorySyncContractErrorCode,
+  InventorySyncDependency,
+  InventorySyncDocumentReference,
+  InventorySyncExternalReference,
+  InventorySyncOrigin,
+} from "./application/contracts/inventory-sync.ts";
