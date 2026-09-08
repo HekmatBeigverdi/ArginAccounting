@@ -51,13 +51,15 @@ test("business order uses one atomic UPSERT RETURNING statement", async () => {
   const value = await new SqliteInventoryBusinessOrderRepository(db).next("company-1", "2026-09-08");
   assert.equal(value, 4);
   // queryOne is stubbed, so inspect the contract source through method behavior by using a session spy.
-  const repo = new SqliteInventoryBusinessOrderRepository({
-    ...db,
+  const session: DatabaseSession = {
+    execute: (sql, parameters) => db.execute(sql, parameters),
+    query: <T>(_sql: string, _parameters?: readonly DatabaseValue[]) => db.query<T>(),
     async queryOne<T>(sql: string, parameters: readonly DatabaseValue[] = []): Promise<T | null> {
       db.statements.push({ sql, parameters });
       return { last_order: 5 } as T;
     },
-  } as DatabaseSession);
+  };
+  const repo = new SqliteInventoryBusinessOrderRepository(session);
   assert.equal(await repo.next("company-1", "2026-09-08"), 5);
   assert.match(db.statements.at(-1)?.sql ?? "", /ON CONFLICT\(company_id,business_date\).*RETURNING last_order/su);
 });
