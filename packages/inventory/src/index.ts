@@ -78,3 +78,15 @@ export type {
   InventoryLineMovementIdentity,
   InventoryOpeningBalanceKey,
 } from "./application/inventory-core-workflows.ts";
+
+export {
+  confirmInventoryQuantityAdjustment,
+  confirmInventoryTransfer,
+} from "./application/inventory-transfer-adjustment-workflows.ts";
+export type {
+  ConfirmInventoryAdjustmentInput,
+  ConfirmInventoryTransferInput,
+  InventoryStockWorkflowResult,
+  InventoryTransferLineMovementIdentity,
+  InventoryTransferLineResolution,
+} from "./application/inventory-transfer-adjustment-workflows.ts";
