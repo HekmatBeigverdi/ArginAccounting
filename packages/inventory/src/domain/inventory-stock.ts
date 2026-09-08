@@ -274,8 +274,20 @@ export function rebuildInventoryStockLedger(
   const movements: InventoryStockMovementSnapshot[] = [];
   for (const raw of input) movements.push(rehydrateInventoryStockMovement(raw));
   movements.sort(compareInventoryStockMovements);
-  const balances = new Map<string, InventoryStockBalanceSnapshot>();
 
+  const movementById = new Map(movements.map(movement => [movement.movementId, movement] as const));
+  for (const movement of movements) {
+    if (movement.reversalOfMovementId === null) continue;
+    const original = movementById.get(movement.reversalOfMovementId);
+    if (!original || original.reversalOfMovementId !== null || original.companyId !== movement.companyId ||
+        original.documentId === movement.documentId ||
+        serializeInventoryStockKey(original.stockKey) !== serializeInventoryStockKey(movement.stockKey) ||
+        addInventoryStockQuantities(original.quantityDelta, movement.quantityDelta) !== "0") {
+      return fail(codes.reversalReferenceInvalid, "reversalOfMovementId");
+    }
+  }
+
+  const balances = new Map<string, InventoryStockBalanceSnapshot>();
   for (const movement of movements) {
     if (movementIds.has(movement.movementId)) return fail(codes.duplicateMovementId, "movementId");
     movementIds.add(movement.movementId);
