@@ -1,20 +1,36 @@
 import type { DatabaseExecutor } from "@argin/database";
-import type {
-  WarehouseDependencyBlocker,
-  WarehouseDependencyCheck,
-  WarehouseDependencyGuard,
-  WarehouseProtectedOperation,
-} from "@argin/warehouse";
 
 const OPEN_STATUSES = Object.freeze(["draft", "submitted", "approved"] as const);
 
-type ScopeInput = {
+export type InventoryWarehouseProtectedOperation =
+  | "warehouse.delete"
+  | "warehouse.deactivate"
+  | "warehouse.archive"
+  | "zone.delete"
+  | "zone.deactivate"
+  | "location.delete"
+  | "location.deactivate"
+  | "location.move";
+
+export interface InventoryWarehouseDependencyBlocker {
+  readonly kind: "stock-balance" | "inventory-document";
+  readonly code: string;
+  readonly count: number;
+  readonly message: string;
+}
+
+export interface InventoryWarehouseDependencyCheck {
+  readonly allowed: boolean;
+  readonly blockers: readonly InventoryWarehouseDependencyBlocker[];
+}
+
+export interface InventoryWarehouseDependencyInput {
   readonly companyId: string;
-  readonly operation: WarehouseProtectedOperation;
+  readonly operation: InventoryWarehouseProtectedOperation;
   readonly warehouseId: string;
   readonly zoneId?: string | null;
   readonly locationId?: string | null;
-};
+}
 
 type CountRow = { count: number | string };
 type QuantityRow = { quantity: string };
@@ -29,7 +45,7 @@ const isZeroDecimal = (value: string): boolean => {
   return `${match[2] ?? ""}${match[3] ?? ""}`.split("").every((digit) => digit === "0");
 };
 
-const scopePredicate = (alias: string, input: ScopeInput): { sql: string; parameters: readonly (string | null)[] } => {
+const scopePredicate = (alias: string, input: InventoryWarehouseDependencyInput): { sql: string; parameters: readonly (string | null)[] } => {
   const parameters: (string | null)[] = [input.companyId, input.warehouseId];
   let sql = `${alias}.company_id=? AND ${alias}.warehouse_id=?`;
   if (input.zoneId !== undefined && input.zoneId !== null) {
@@ -43,7 +59,7 @@ const scopePredicate = (alias: string, input: ScopeInput): { sql: string; parame
   return { sql, parameters };
 };
 
-const lineScopePredicate = (input: ScopeInput): { sql: string; parameters: readonly (string | null)[] } => {
+const lineScopePredicate = (input: InventoryWarehouseDependencyInput): { sql: string; parameters: readonly (string | null)[] } => {
   const parameters: (string | null)[] = [input.companyId];
   const branches: string[] = [];
   const addSide = (prefix: "" | "destination_") => {
@@ -64,17 +80,21 @@ const lineScopePredicate = (input: ScopeInput): { sql: string; parameters: reado
   return { sql: `d.company_id=? AND (${branches.join(" OR ")})`, parameters };
 };
 
-const blocksHistoricalReferences = (operation: WarehouseProtectedOperation): boolean =>
+const blocksHistoricalReferences = (operation: InventoryWarehouseProtectedOperation): boolean =>
   operation === "warehouse.delete" ||
   operation === "zone.delete" ||
   operation === "location.delete" ||
   operation === "location.move";
 
-export class InventoryWarehouseDependencyGuard implements WarehouseDependencyGuard {
+/**
+ * Structurally matches Phase 19 WarehouseDependencyGuard without creating a reverse
+ * package dependency from Inventory infrastructure back into Warehouse infrastructure.
+ */
+export class InventoryWarehouseDependencyGuard {
   constructor(private readonly database: DatabaseExecutor) {}
 
-  async check(input: ScopeInput): Promise<WarehouseDependencyCheck> {
-    const blockers: WarehouseDependencyBlocker[] = [];
+  async check(input: InventoryWarehouseDependencyInput): Promise<InventoryWarehouseDependencyCheck> {
+    const blockers: InventoryWarehouseDependencyBlocker[] = [];
 
     const balanceScope = scopePredicate("b", input);
     const balanceRows = await this.database.query<QuantityRow>(
