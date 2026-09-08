@@ -36,7 +36,9 @@
 
 - [Inventory Application, Query and Repository Contracts](architecture/inventory-application-contracts.md)
 - [Inventory Application Services, Idempotency, and Concurrency](architecture/inventory-application-services.md)
+- [Inventory Argin Bridge and Future Synchronization Contract](architecture/inventory-argin-bridge-contract.md)
 - [Inventory Document Domain Foundation](architecture/inventory-documents.md)
+- [Inventory SQLite Persistence and Atomic Unit of Work](architecture/inventory-sqlite-persistence.md)
 - [Inventory Transfer, Adjustment, and Reversal Workflows](architecture/inventory-transfer-adjustment-workflows.md)
 - [Architecture Overview](architecture/overview.md)
 - [Party Argin Bridge Contract](architecture/party-argin-bridge-contract.md)
