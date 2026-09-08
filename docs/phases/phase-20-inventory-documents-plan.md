@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–6 are complete; Steps 5 and 6 have been explicitly owner-accepted. Step 7 implementation and focused test definitions are complete; executable workspace validation remains pending. Steps 8–22 are Not started; transfer/adjustment orchestration, persistence and Desktop integration remain pending.
+In Progress. Steps 1–7 are complete; Steps 5–7 have been explicitly owner-accepted. Step 8 implementation and focused test definitions are complete; executable workspace validation remains pending. Steps 9–22 are Not started; persistence contracts, idempotent orchestration, SQLite integration and Desktop work remain pending.
 
 ## Governance
 
@@ -61,6 +61,7 @@ References:
 - [Warehouse ERP ownership](../architecture/warehouse-inventory-erp-integration.md)
 - [Warehouse synchronization](../architecture/warehouse-sync-contract.md)
 - [Party Argin Bridge](../architecture/party-argin-bridge-contract.md)
+- [Transfer, adjustment and reversal workflows](../architecture/inventory-transfer-adjustment-workflows.md)
 
 ### Argin Bridge Rules
 
@@ -82,7 +83,9 @@ Implemented at Step 6: `InventoryStockKey`, immutable `InventoryStockMovementSna
 
 Implemented at Step 7: persistence-neutral receipt/issue/opening confirmation, confirmation-time scope/master/stock revalidation, signed movement generation, durable fiscal-year opening uniqueness keys and lifecycle-bypass protection.
 
-Still planned in owning steps: TransferGroup, transfer conservation, adjustment/reversal compensation semantics, persistence and authoritative idempotent UoW orchestration.
+Implemented at Step 8: durable transfer grouping, exact two-sided conservation, intra/inter-Warehouse transfer semantics, signed reasoned adjustments, append-only `reversalOfMovementId` compensation facts and semantic batch atomicity.
+
+Still planned in owning steps: persistence-neutral repository/query/UoW contracts, durable idempotency/concurrency orchestration, migrations, Argin Bridge envelopes, SQLite transaction atomicity, authorization/Audit integration and Desktop surfaces.
 
 A physical reference includes warehouseId and optional zoneId/locationId under the existing hierarchy contract. Historical references remain resolvable when master data changes. No mutable title/code is identity.
 
@@ -112,8 +115,8 @@ Persian RTL and Phase 14 density/accessibility; Jalali business dates with Grego
 | 4 | Company, Branch, Fiscal Scope and Numbering | Completed |
 | 5 | Document Lifecycle, Approval and Correction Rules | Completed |
 | 6 | Stock Movement Ledger and Balance Rules | Completed |
-| 7 | Receipt, Issue and Opening Balance Workflows | Implemented — validation pending |
-| 8 | Atomic Transfer and Quantity Adjustment Workflows | Not started |
+| 7 | Receipt, Issue and Opening Balance Workflows | Completed |
+| 8 | Atomic Transfer and Quantity Adjustment Workflows | Implemented — validation pending |
 | 9 | Application, Query and Repository Contracts | Not started |
 | 10 | Application Services, Idempotency and Concurrency | Not started |
 | 11 | Migration, Schema, Constraints and Indexing | Not started |
@@ -424,7 +427,7 @@ Step 6 is closed by owner acceptance while retaining truthful validation provena
 
 Step 7 consumes the approved lifecycle state, Step 4 current scope validation and Step 6 ledger rules to make receipt/issue/opening confirmation semantics explicit. Transfer, adjustment and reversal movement generation remain Step 8.
 
-### Step 7 — Receipt, Issue and Opening Balance Workflows — Implemented; Validation Pending
+### Step 7 — Receipt, Issue and Opening Balance Workflows — Completed
 
 - Added/exported `confirmInventoryReceiptIssueOpening` as a persistence-neutral Application workflow for only `receipt`, `issue` and `opening` document types. Transfer and adjustment are explicitly rejected and remain Step 8.
 - Requires an `approved` document. Draft/import-style, submitted, already-confirmed or otherwise out-of-sequence documents cannot bypass the existing submit/approve lifecycle. Structural completeness is checked again before any stock result is produced.
@@ -440,6 +443,7 @@ Step 7 consumes the approved lifecycle state, Step 4 current scope validation an
 - Preserves Steps 9–13 boundaries: Step 7 does not define repositories/UoW, idempotency storage, optimistic transaction locks, migrations, SQLite persistence, durable `businessOrder` allocation, or atomic database writes. Later authoritative services must bind the supplied scope/master reads and writes to the committing transaction.
 - Added 14 focused workflow tests covering receipt/issue signs, stock decrement, backdated rejection, fiscal/lock revalidation, opening traceability/duplicates, current Product/Warehouse revalidation, lifecycle/import bypass rejection, Step 8 type boundary, exact line/movement mapping, missing-ledger/malformed-opening guards, forged balance projection rejection and failure immutability.
 - Updated the canonical Inventory architecture record and public package exports. No new ADR is required because this step applies already-accepted lifecycle, scope, quantity and ledger decisions without introducing a new persistence/transport decision.
+- The repository owner explicitly accepted Step 7 in chat before requesting Step 8. Raw local command output was not pasted into the conversation; owner acceptance and executable evidence remain distinct facts.
 
 #### Step 7 Validation Evidence
 
@@ -450,10 +454,45 @@ Step 7 consumes the approved lifecycle state, Step 4 current scope validation an
 | Focused Step 7 test definitions | Added in `packages/inventory/tests/inventory-core-workflows.test.ts`; 14 tests defined |
 | Defensive review | Added explicit rejection for missing ledger/malformed opening state; added confirmation-time Step 4 scope/fiscal/lock revalidation after initial implementation review |
 | Executable package validation | Not observed by the assistant environment; no pass claim is made until local/CI `test`, `typecheck` and `build` output is available |
+| Owner acceptance | Explicitly accepted in chat before Step 8 |
+
+Step 7 is closed by owner acceptance while retaining truthful validation provenance.
 
 #### Step 8 Handoff
 
-Step 8 must add atomic transfer source/destination movement generation with one transfer identity, conservation and distinct StockKeys, plus reasoned signed quantity adjustment and stock-effective reversal compensation behavior. It must preserve Step 7 confirmation-time scope/master/stock validation patterns and must not introduce persistence/UoW behavior owned by Steps 9–13.
+Step 8 consumes the same approval/scope/master/stock boundaries and adds transfer conservation, signed adjustment, and append-only reversal compensation. Persistence-neutral batch failure never returns a partially updated caller ledger. Real durable transaction atomicity remains Step 13.
+
+### Step 8 — Atomic Transfer and Quantity Adjustment Workflows — Implemented; Validation Pending
+
+- Extended immutable StockMovement facts with optional durable `transferId` and `reversalOfMovementId`. Non-transfer/non-reversal movement factories normalize these fields to `null`; existing durable document/line/movement identity remains unchanged.
+- Added/exported `confirmInventoryTransfer`. It accepts only approved Transfer documents, reruns the existing Step 4 Company/Branch/fiscal/lock/Warehouse visibility validation, and revalidates current Product plus source/destination Warehouse/Zone/Location eligibility before producing stock effects.
+- Each Transfer line generates exactly two immutable facts under one durable `transferId`: negative source base quantity and equal positive destination base quantity. Source and destination StockKeys must differ and exact decimal conservation requires the pair to sum to zero.
+- Supports intra-Warehouse physical transfer (for example Zone-to-Zone) and inter-Warehouse transfer through the same contract. Cross-Branch authorization remains the trusted Step 4 policy and requires both endpoint access.
+- Rejects reused transfer identity and malformed/duplicate pair movement identities. Transfer IDs, movement IDs, document IDs and StockKeys are durable cross-store identities; no display number, rowid or array position becomes identity.
+- Builds every transfer movement first, then evaluates the complete batch through one ledger rebuild. Insufficient source stock, destination failure, current-master rejection or any other invariant produces no returned half-transfer and leaves caller document/ledger snapshots unchanged.
+- Added/exported `confirmInventoryQuantityAdjustment`. Adjustment confirmation requires approved lifecycle, current scope/master eligibility, exact line/movement mapping and a non-empty reason. The snapshotted signed Product base quantity is the stock effect; positive adds and negative subtracts.
+- Adjustment reductions inherit the same historical negative-stock rule; valuation/cost meaning is explicitly excluded and remains Phase 21.
+- Added/exported `reverseInventoryStockEffects`. A Confirmed original is never edited/deleted. Every original movement receives one exact inverse compensating fact under a distinct `reversalDocumentId`, linked by `reversalOfMovementId`; only after the complete batch is valid does the original lifecycle become `reversed`.
+- Ledger rebuild validates persisted reversal references: referenced original must exist, be a non-reversal fact, belong to the same Company/StockKey, live under a different document ID and sum exactly to zero with its compensation. One original movement cannot be compensated twice.
+- Reversal of already-consumed incoming stock can fail under the default negative-stock policy. Failed reversal leaves both original lifecycle and caller ledger unchanged.
+- Reversal business date/order are explicit inputs at this persistence-neutral step. Authoritative fiscal eligibility for the separate reversal operation, durable idempotency, optimistic concurrency and atomic persistence are composed in Steps 9–13.
+- Added focused Transfer/Adjustment tests covering inter-Warehouse conservation, intra-Warehouse physical movement, insufficient-source rollback semantics, duplicate transfer identity, malformed pair identities, destination eligibility, positive/negative adjustments, required reason, negative-stock rejection and wrong-document-type boundaries.
+- Added focused reversal tests covering exact inverse compensation, lifecycle linkage, consumed-receipt rejection and duplicate compensation protection.
+- Added [ADR-0020](../adr/ADR-0020-inventory-transfer-adjustment-workflows.md), dedicated architecture documentation and ADR registry/index entries. Full stock-count sessions and in-transit/two-stage logistics remain explicitly deferred.
+
+#### Step 8 Validation Evidence
+
+| Check | Result |
+| --- | --- |
+| Frozen Step 8 wording vs implementation | Reconciled: one transfer identity, two-sided exact conservation, intra/inter-Warehouse support, distinct StockKeys, failure rollback semantics, signed reasoned adjustment and deferred two-stage logistics are represented |
+| Reversal handoff from Steps 5–7 | Completed with append-only `reversalOfMovementId` compensation and lifecycle linkage; no confirmed fact is destructively rewritten |
+| Focused Step 8 tests | Added in `packages/inventory/tests/inventory-transfer-adjustment.test.ts` and `packages/inventory/tests/inventory-reversal.test.ts` |
+| Defensive review | Added transfer/reversal durable linkage fields, duplicate-transfer/duplicate-compensation guards and persisted reversal-reference integrity checks |
+| Executable package validation | Not observed by the assistant environment; no pass claim is made until local/CI `test`, `typecheck` and `build` output is available |
+
+#### Step 9 Handoff
+
+Step 9 must define persistence-neutral command/query/repository/UoW ports around the completed document, movement, opening, transfer, adjustment and reversal semantics. It must not introduce SQL/Tauri/HTTP into Domain and must preserve durable transfer/reversal grouping for later SQLite and Argin Bridge implementations.
 
 ## Testing
 
@@ -463,7 +502,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The last assistant-observed full Inventory package run remains the Step 4 result: 72 passing tests. Steps 5–7 add focused lifecycle/stock/workflow tests but their workspace execution has not been observed in the assistant environment. Steps 5 and 6 have explicit owner acceptance. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
+Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The last assistant-observed full Inventory package run remains the Step 4 result: 72 passing tests. Steps 5–8 add focused lifecycle/stock/workflow tests but their workspace execution has not been observed in the assistant environment. Steps 5–7 have explicit owner acceptance. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -489,6 +528,8 @@ Step 6: added ADR-0019 and updated this canonical record plus Inventory architec
 
 Step 7: updated this canonical record and Inventory architecture for receipt/issue/opening confirmation, current eligibility revalidation, stock checks, opening uniqueness and lifecycle-bypass protection. No new documentation path or H1 title was introduced.
 
+Step 8: added ADR-0020 and `inventory-transfer-adjustment-workflows.md`, updated the ADR registry/generated index, and recorded durable transfer/reversal grouping plus adjustment semantics in this canonical plan.
+
 During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Keep all repository documentation and commits in English.
 
 ## Related ADRs
@@ -496,6 +537,8 @@ During implementation: canonical Inventory architecture and Bridge contracts, da
 [ADR-0018 — Exact Inventory Quantities and Historical Unit Snapshots](../adr/ADR-0018-inventory-quantity-snapshots.md) records the Step 3 representation decision.
 
 [ADR-0019 — Append-only Inventory Stock Ledger and Rebuildable Balances](../adr/ADR-0019-inventory-stock-ledger.md) records the Step 6 movement source-of-truth, exact arithmetic, deterministic business ordering and negative-history policy.
+
+[ADR-0020 — Atomic Inventory Transfer and Quantity Adjustment Workflows](../adr/ADR-0020-inventory-transfer-adjustment-workflows.md) records Step 8 transfer conservation, signed adjustments and append-only reversal compensation.
 
 Follow [Offline First](../adr/ADR-0001-offline-first.md), [Database-independent Domain](../adr/ADR-0002-database-independent-domain.md), [UoW](../adr/ADR-0005-repository-unit-of-work.md), [Application Services](../adr/ADR-0006-application-services.md), [Approval Concurrency](../adr/ADR-0008-approval-optimistic-concurrency.md) and [Shared Platform](../adr/ADR-0009-platform-infrastructure-first.md).
 
