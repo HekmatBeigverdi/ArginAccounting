@@ -7,7 +7,7 @@
 
 ## Context
 
-A stock transfer is one business operation with two physical effects: the source position decreases and the destination position increases by exactly the same Product base-unit quantity. Treating those effects as unrelated movements permits partial application, duplicate delivery, or quantity drift. Quantity adjustments also require an explicit operational reason and must preserve their signed physical effect without becoming a valuation mechanism.
+A stock transfer is one business operation with two physical effects: the source position decreases and the destination position increases by exactly the same Product base-unit quantity. Treating those effects as unrelated movements permits partial application, duplicate delivery, or quantity drift. Quantity adjustments require an explicit operational reason and must preserve their signed physical effect without becoming a valuation mechanism. Confirmed facts also need append-only reversal compensation rather than destructive editing/deletion.
 
 ## Decision
 
@@ -20,16 +20,20 @@ A stock transfer is one business operation with two physical effects: the source
 7. Intra-Warehouse physical transfer (for example Zone A to Zone B) and inter-Warehouse transfer use the same model. Cross-Branch eligibility continues to use the trusted Step 4 policy and both-end access checks.
 8. Quantity adjustment uses the signed Product base-unit quantity captured on the document line. Positive increases stock; negative decreases stock.
 9. Adjustment confirmation requires a non-empty reason. The reason is retained in lifecycle confirmation evidence; adjustment does not create valuation/cost facts.
-10. Full stock-count sessions, reservation/ATP, lot/serial tracking and in-transit/two-stage logistics remain deferred.
-11. Step 8 atomicity is semantic/persistence-neutral. Real SQLite transaction rollback, concurrency and durable idempotency remain Steps 10–13.
+10. Reversal never edits or deletes a confirmed movement. For every original movement, one exact inverse compensating movement is appended under the distinct `reversalDocumentId` and stores `reversalOfMovementId`.
+11. One original movement can be compensated only once. A reversal batch is validated by rebuilding the ledger, so reversal of already-consumed incoming stock can fail under the default negative-stock policy.
+12. The original document moves `confirmed -> reversed` only after all compensating movements form a valid batch. The caller ledger/document snapshots are otherwise unchanged on failure.
+13. Full stock-count sessions, reservation/ATP, lot/serial tracking and in-transit/two-stage logistics remain deferred.
+14. Step 8 atomicity is semantic/persistence-neutral. Real SQLite transaction rollback, reversal-date fiscal authorization, concurrency and durable idempotency remain composed by Steps 9–13.
 
 ## Consequences
 
 - Transfer quantity is conserved by construction and traceable across both physical positions with one durable identity.
 - A destination failure or insufficient source balance cannot produce a successful half-transfer result from the workflow.
-- Transfer batches are suitable for later Argin Bridge grouping; Step 12 will freeze the transport envelope and partial-delivery rules.
+- Transfer and reversal batches are suitable for later Argin Bridge grouping; Step 12 will freeze the transport envelope and partial-delivery rules.
 - Adjustment remains a physical quantity correction with explicit reason, separate from Phase 21 valuation.
-- Later persistence may cache balances, but both transfer movements remain immutable source facts.
+- Confirmed history remains immutable; reversal is explainable by original movement ID plus compensating movement ID/document ID.
+- Later persistence may cache balances, but transfer/reversal movements remain immutable source facts.
 
 ## Rejected Alternatives
 
@@ -37,4 +41,5 @@ A stock transfer is one business operation with two physical effects: the source
 - Mutable source/destination balances without linked facts: rejected because replay/audit/rebuild become unsafe.
 - Using entered-unit quantities independently on each side: rejected because conversion/rounding could break conservation; base-unit snapshot is authoritative.
 - Silent adjustments without reason: rejected because physical corrections require audit-quality business explanation.
+- Deleting or rewriting original movements during reversal: rejected because it destroys auditability and Bridge-safe replay semantics.
 - Implementing in-transit or two-stage shipping in Phase 20 Step 8: rejected as explicitly deferred scope.
