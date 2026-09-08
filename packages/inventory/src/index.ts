@@ -82,11 +82,14 @@ export type {
 export {
   confirmInventoryQuantityAdjustment,
   confirmInventoryTransfer,
+  reverseInventoryStockEffects,
 } from "./application/inventory-transfer-adjustment-workflows.ts";
 export type {
   ConfirmInventoryAdjustmentInput,
   ConfirmInventoryTransferInput,
+  InventoryReversalMovementIdentity,
   InventoryStockWorkflowResult,
   InventoryTransferLineMovementIdentity,
   InventoryTransferLineResolution,
+  ReverseInventoryStockEffectsInput,
 } from "./application/inventory-transfer-adjustment-workflows.ts";
