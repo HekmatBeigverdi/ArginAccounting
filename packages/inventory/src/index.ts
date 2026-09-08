@@ -94,6 +94,15 @@ export type {
   ReverseInventoryStockEffectsInput,
 } from "./application/inventory-transfer-adjustment-workflows.ts";
 
+export { InventoryApplicationService } from "./application/inventory-application-service.ts";
+export type {
+  InventoryApplicationIdentityFactory,
+  InventoryApplicationMutationResult,
+  InventoryApplicationServiceDependencies,
+  InventoryCurrentMasterResolver,
+  InventoryNumberingGateway,
+} from "./application/inventory-application-service.ts";
+
 export {
   INVENTORY_APPLICATION_ERROR_CODES,
   InventoryApplicationError,
