@@ -105,6 +105,8 @@ export type {
 
 export { SecuredInventoryService } from "./application/secured-inventory-service.ts";
 export type { SecuredInventoryServiceDependencies } from "./application/secured-inventory-service.ts";
+export { SecuredInventoryQuantityConfirmationPort } from "./application/inventory-erp-integration.ts";
+export type { InventoryErpConfirmationAdapterDependencies } from "./application/inventory-erp-integration.ts";
 
 export {
   INVENTORY_APPLICATION_ERROR_CODES,
