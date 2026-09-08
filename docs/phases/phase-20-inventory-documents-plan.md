@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–12 are complete; Steps 5–12 have been explicitly owner-accepted. Step 13 concrete SQLite repositories, real atomic Unit of Work, reversal persistence correction and focused adapter/transaction test definitions are implemented; executable workspace/Rust/SQLite validation remains pending. Steps 14–22 are Not started.
+In Progress. Steps 1–13 are complete; Steps 5–13 have been explicitly owner-accepted. Step 14 separate permissions, Company/Branch authorization, shared Phase 8 Approval integration, replay-safe shared Audit integration and focused security tests are implemented; executable workspace validation remains pending. Steps 15–22 are Not started.
 
 ## Governance
 
@@ -52,7 +52,7 @@ The canonical [roadmap](../../ROADMAP.md) places Inventory Documents at Phase 20
 
 ## Architecture
 
-Confirmed package boundary: `@argin/inventory` owns Domain/Application and `@argin/inventory-tauri` owns SQLite adapters from Step 13 onward. UI consumes public Application services through Desktop composition.
+Confirmed package boundary: `@argin/inventory` owns Domain/Application and `@argin/inventory-tauri` owns SQLite/shared Desktop adapters from Step 13 onward. UI consumes public Application services through Desktop composition.
 
 Reuse Company/Branch, Fiscal, Product units/selectors, Warehouse operational references/selectors, Security, Audit/Approval, Number Series, shared UoW and query infrastructure. Never write another module's tables directly.
 
@@ -67,6 +67,7 @@ References:
 - [Inventory Application Services](../architecture/inventory-application-services.md)
 - [Inventory Argin Bridge contract](../architecture/inventory-argin-bridge-contract.md)
 - [Inventory SQLite persistence](../architecture/inventory-sqlite-persistence.md)
+- [Inventory Security, Approval, and Audit](../security/inventory-security-approval-audit.md)
 - [Database Design](../database/database-design.md)
 - [Database Dictionary](../database/database-dictionary.md)
 
@@ -80,7 +81,7 @@ Only eligible unconfirmed document deletion may produce a tombstone. Confirmed m
 
 ## Domain and Application Model
 
-Implemented through Steps 2–13:
+Implemented through Steps 2–14:
 
 - Immutable `InventoryDocumentSnapshot` and stable line/source identities.
 - Exact decimal quantity and historical unit snapshots.
@@ -93,6 +94,7 @@ Implemented through Steps 2–13:
 - `InventoryApplicationService` orchestration for lifecycle actions, confirmation, replay-safe idempotency, expected-version checks, UoW-scoped business ordering and reversal scope/date validation.
 - Versioned Argin Bridge document/movement-batch contracts with indivisible transfer/reversal semantics and no synchronized authoritative balance projection.
 - Concrete SQLite repositories/UoW plus a production pinned-connection transaction bridge with real `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK` semantics.
+- Separate Inventory permissions, persisted-document Company/Branch authorization, shared Phase 8 Approval gateway and shared immutable Audit adapter around successful lifecycle operations.
 
 ## Application Service Rules — Step 10
 
@@ -167,7 +169,19 @@ Production `TauriSqliteExecutor.connect()` now uses a Rust-side transaction brid
 
 The TypeScript executor retains the transaction queue as an additional conservative local serialization layer. Direct-constructor unit-test doubles retain the previous logical-session fallback; production connections use the pinned atomic bridge.
 
-No Audit/permission write is claimed in Step 13. Shared Approval/Audit composition remains Step 14 and must be added without weakening this atomic stock transaction boundary.
+Shared Approval/Audit composition in Step 14 does not weaken the Step 13 stock transaction. No distributed cross-module transaction is claimed; deterministic identities and idempotent retry make cross-module recovery convergent.
+
+## Security, Approval and Audit — Step 14
+
+Inventory freezes ten independent permissions: view, create, edit, submit, approve, confirm, reverse, cancel, import and export. Approval and confirmation are deliberately separate so approval authority cannot implicitly change stock.
+
+`SecuredInventoryService` reloads the persisted document before mutation and authorizes against its actual Company and origin Branch. Company-wide scope remains explicit with `branchId = null`. Authorization failure is mapped to `inventory.application.unauthorized` before the inner mutation service runs.
+
+`SharedInventoryApprovalGateway` delegates to the shared Phase 8 `@argin/audit` Approval services. One deterministic shared request ID is used per Company + Inventory document. Submit creates/submits the shared request idempotently; approve applies the shared transition; confirm calls `requireApproved()` before entering the stock mutation path. Inventory does not own Approval tables or a parallel Approval state machine.
+
+Submission deliberately re-invokes the idempotent Approval gateway even when Inventory returns a replayed result. This repairs a failure that happened after the Inventory submit commit but before shared Approval creation/submission. Successful Inventory replay still suppresses duplicate Inventory Audit success records.
+
+`SharedInventoryAuditSink` writes through the shared Audit application service. It records actor, Company, Branch, document, request/correlation, reason, before/after status and exact Inventory action metadata. Deterministic audit entry identity (`action + requestId + documentId`) plus pre-read de-duplicates repeated successful delivery.
 
 ## Step Status
 
@@ -185,8 +199,8 @@ No Audit/permission write is claimed in Step 13. Shared Approval/Audit compositi
 | 10 | Application Services, Idempotency and Concurrency | Completed |
 | 11 | Migration, Schema, Constraints and Indexing | Completed |
 | 12 | Argin Bridge and Future Synchronization Contract | Completed |
-| 13 | SQLite Repository, Unit of Work and Atomic Confirmation | Implemented — validation pending |
-| 14 | Permissions, Audit and Shared Approval Integration | Not started |
+| 13 | SQLite Repository, Unit of Work and Atomic Confirmation | Completed |
+| 14 | Permissions, Audit and Shared Approval Integration | Implemented — validation pending |
 | 15 | Master Data Dependency Guards and ERP Integration | Not started |
 | 16 | Persian RTL Inventory Document Workspace | Not started |
 | 17 | Quantity Kardex, Stock Balances and Source Drill-down | Not started |
@@ -355,7 +369,7 @@ Reconcile Step Status with actual evidence and owner acceptance, review deferred
 - Step 12 defensive review identified the reversal persistence ownership mismatch and handed it to Step 13 without changing accepted Domain/Bridge identity semantics.
 - Owner explicitly accepted Step 12 before requesting Step 13. Raw package execution was not pasted into the conversation.
 
-### Step 13 — SQLite Repository, Unit of Work and Atomic Confirmation — Implemented; Validation Pending
+### Step 13 — SQLite Repository, Unit of Work and Atomic Confirmation — Completed
 
 - Created `@argin/inventory-tauri` with concrete document, movement, balance projection, opening, business-order and idempotency repositories plus `SqliteInventoryUnitOfWork`.
 - Document writes use expected-version compare-and-swap and map zero-row stale writes to `inventory.application.concurrency-conflict` when the document still exists.
@@ -365,28 +379,40 @@ Reconcile Step Status with actual evidence and owner acceptance, review deferred
 - Opening persistence resolves originating document/line/time from the just-appended opening movement inside the same transaction.
 - Business-order allocation uses one transaction-bound SQLite upsert/`RETURNING`; callers still cannot inject chronology.
 - Durable idempotency result persistence is in the same UoW as movement, projection, opening and document lifecycle/version writes.
-- Replaced the previous production logical-only `TauriSqliteExecutor.transaction()` behavior with a Rust-side pinned SQLx `PoolConnection<Sqlite>` transaction bridge. Production callbacks now use `BEGIN IMMEDIATE`, a single connection for all statements, `COMMIT` on success and `ROLLBACK` on failure.
-- The TypeScript transaction queue remains as an additional local serialization guard. Direct-constructor tests retain logical-session fallback; production `connect()` uses the atomic bridge.
-- Added six focused `@argin/inventory-tauri` adapter tests plus two `@argin/database-tauri` pinned transaction tests (8 focused Step 13 definitions total).
-- Added [Inventory SQLite Persistence and Atomic Unit of Work](../architecture/inventory-sqlite-persistence.md), updated database design/dictionary, module registry and documentation index.
-- Step 13 does not implement permission checks, Audit or shared Approval integration; those remain Step 14. It does not add master-data dependency guards, UI, valuation or live Bridge transport.
+- Production `TauriSqliteExecutor.transaction()` uses a Rust-side pinned SQLx `PoolConnection<Sqlite>` transaction bridge with `BEGIN IMMEDIATE`, one connection, `COMMIT` and `ROLLBACK`.
+- Added six focused `@argin/inventory-tauri` adapter tests plus two `@argin/database-tauri` pinned transaction tests.
+- Owner explicitly accepted Step 13 before requesting Step 14. Raw local execution was not pasted into the conversation.
 
-#### Step 13 Validation Evidence
+### Step 14 — Permissions, Audit and Shared Approval Integration — Implemented; Validation Pending
+
+- Added ten independent permission codes for view/create/edit/submit/approve/confirm/reverse/cancel/import/export.
+- Added `InventoryAuthorizationPolicy`, `InventorySecurityContext`, shared Approval gateway and Audit sink contracts without adding SQL/Tauri dependencies to Domain/Application contracts.
+- Added `SecuredInventoryService` for submit/approve/confirm/reverse/cancel. It reloads the persisted document first and authorizes against actual Company/origin-Branch scope before mutation.
+- Approval and confirmation are separate permissions; confirm also requires the shared Approval request to already be `approved`.
+- Added `SharedInventoryApprovalGateway` in `@argin/inventory-tauri`, delegating create/get/submit/approve to the Phase 8 `@argin/audit` Approval application services with deterministic Company + document request identity.
+- Submission retry heals a post-Inventory-commit Approval failure by re-invoking the idempotent shared Approval gateway even when Inventory returns `replayed: true`.
+- Added `SharedInventoryAuditSink`, delegating to shared Audit with deterministic event identity, actor/scope/correlation/reason/before-after status and precise Inventory action metadata.
+- Successful Inventory replay suppresses duplicate Inventory Audit emission; the shared Audit adapter also pre-checks deterministic entry identity.
+- Added five focused Inventory security/integration tests covering independent permissions, persisted Branch authorization, Approval-before-confirm, replay audit suppression and Approval repair on submit replay.
+- Added [Inventory Security, Approval, and Audit](../security/inventory-security-approval-audit.md).
+- Step 14 does not claim a distributed transaction across Inventory and shared Approval/Audit stores; deterministic identities and retry-safe composition preserve convergence while Step 13 stock atomicity remains unchanged.
+
+#### Step 14 Validation Evidence
 
 | Check | Result |
 | --- | --- |
-| Reversal persistence blocker | Resolved additively through migration 0027 compensation partition + unified ledger view |
-| SQLite adapter package | `@argin/inventory-tauri` repositories and Unit of Work implemented |
-| Optimistic concurrency | Document updates use Company/document/expected-version CAS |
-| Business ordering | Transaction-bound upsert/`RETURNING` allocation implemented |
-| Idempotency | Durable outcome repository participates in the same Inventory UoW |
-| Production database atomicity | Rust SQLx pinned connection boundary implements `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK` |
-| Focused Step 13 tests | 6 Inventory adapter + 2 database atomic-bridge tests defined |
-| Executable package/Desktop/Rust validation | Not observed by the assistant environment; no pass claim is made before local output |
+| Permission separation | 10 distinct codes; approve and confirm are independent |
+| Company/Branch authorization | Secured boundary uses persisted document Company/origin Branch before mutation |
+| Shared Approval | Adapter uses Phase 8 `@argin/audit` services; no parallel Inventory Approval store/state machine |
+| Confirmation gate | Shared Approval must be `approved` before stock confirmation starts |
+| Replay recovery | Submit replay re-runs idempotent Approval composition; successful replay emits no duplicate Inventory Audit |
+| Shared Audit | Deterministic shared Audit identity + before/after/reason/correlation metadata implemented |
+| Focused Step 14 tests | 5 security/integration tests defined in `packages/inventory/tests/inventory-security-integration.test.ts` |
+| Executable package validation | Not observed by the assistant environment; no pass claim is made before local output |
 
-#### Step 14 Handoff
+#### Step 15 Handoff
 
-Step 14 must compose separate Inventory permissions, Company/Branch authorization, shared Phase 8 Approval and immutable Audit around the Step 13 atomic persistence boundary. It must not invent a parallel approval engine, duplicate successful Audit events during idempotent replay, or weaken the transaction/replay guarantees already established.
+Step 15 must register concrete Inventory dependency probes for Product/Warehouse/Zone/Location maintenance and expose future Purchase/Sales/Manufacturing quantity-confirmation plus Phase 21 movement-feed boundaries. It must preserve historical movement references and must not weaken Step 14 authorization or Step 13 transaction/idempotency guarantees.
 
 ## Testing
 
@@ -396,7 +422,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–13 add focused lifecycle/stock/workflow/contract/orchestration/migration/Bridge/SQLite adapter/transaction tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–12 have explicit owner acceptance. Real migration upgrade/constraint/rollback/restart validation remains required in Step 20 and final gates in Step 21.
+The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–14 add focused lifecycle/stock/workflow/contract/orchestration/migration/Bridge/SQLite/security tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–13 have explicit owner acceptance. Real migration upgrade/constraint/rollback/restart validation remains required in Step 20 and final gates in Step 21.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -415,7 +441,8 @@ Required implementation gates, to be executed and recorded at Steps 19–21:
 - Step 11 added migration `0026_inventory_documents.sql`, registered it in the Desktop runner, and updated database design/dictionary.
 - Step 12 added `inventory-argin-bridge-contract.md` and froze document/movement synchronization envelopes and atomic batch rules.
 - Step 13 created `@argin/inventory-tauri`, added migration `0027_inventory_reversal_persistence.sql`, added `inventory-sqlite-persistence.md`, implemented the real Desktop SQLite transaction bridge, and updated database design/dictionary/module registry/generated index.
-- Permissions/approval security records, ERP dependency integration and Desktop UI documentation remain updated in their owning steps.
+- Step 14 added `inventory-security-approval-audit.md`, secured Inventory lifecycle composition, shared Phase 8 Approval integration and shared replay-safe Audit adapters.
+- ERP dependency integration and Desktop UI documentation remain updated in their owning steps.
 
 ## Related ADRs
 
