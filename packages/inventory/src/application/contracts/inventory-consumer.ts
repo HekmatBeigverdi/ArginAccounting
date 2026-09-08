@@ -57,3 +57,38 @@ export interface InventoryQuantityConfirmationPort {
   /** Requests normal Inventory confirmation; authorization/approval/stock/UoW rules remain authoritative. */
   confirm(request: ConfirmInventorySourceDocumentRequest): Promise<InventorySourceDocumentResult>;
 }
+
+/** Stable immutable movement feed consumed by valuation and later ERP modules. */
+export interface InventoryMovementFeedEntry {
+  readonly movementId: string;
+  readonly companyId: string;
+  readonly documentId: string;
+  readonly lineId: string;
+  readonly transferId: string | null;
+  readonly reversalOfMovementId: string | null;
+  readonly productId: string;
+  readonly warehouse: WarehouseOperationalReference;
+  readonly businessDate: string;
+  readonly businessOrder: number;
+  readonly recordedAt: string;
+  readonly quantityDelta: string;
+}
+
+export interface InventoryMovementFeedRequest {
+  readonly companyId: string;
+  readonly afterMovementId?: string | null;
+  readonly limit: number;
+}
+
+export interface InventoryMovementFeedPage {
+  readonly items: readonly InventoryMovementFeedEntry[];
+  readonly nextMovementId: string | null;
+}
+
+export interface InventoryMovementFeedReader {
+  /**
+   * Returns immutable quantity facts in deterministic business chronology.
+   * Consumers must never mutate these facts or treat balance projections as an equivalent feed.
+   */
+  read(request: InventoryMovementFeedRequest): Promise<InventoryMovementFeedPage>;
+}
