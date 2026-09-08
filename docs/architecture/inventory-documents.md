@@ -2,7 +2,7 @@
 
 ## Status and Ownership
 
-Phase 20 Steps 2–6 deliver the document model, exact quantity/unit snapshots, operational references, scope/numbering, lifecycle contract and append-only stock-ledger/balance rules in `@argin/inventory`.
+Phase 20 Steps 2–7 deliver the document model, exact quantity/unit snapshots, operational references, scope/numbering, lifecycle contract, append-only stock-ledger/balance rules and receipt/issue/opening confirmation workflows in `@argin/inventory`.
 The [fixed phase record](../phases/phase-20-inventory-documents-plan.md) owns step status and validation evidence.
 
 Inventory owns quantity documents and their stock facts. Product owns master definitions/units; Warehouse owns physical master data; Purchases and Sales own their commercial source workflows. The package consumes public upstream contracts and has no infrastructure dependency.
@@ -19,18 +19,19 @@ Inventory owns quantity documents and their stock facts. Product owns master def
 | `InventoryStockKey` | Durable Company + Product + Warehouse + optional Zone + optional Location identity for quantity ownership |
 | `InventoryStockMovementSnapshot` | Immutable signed base-unit quantity fact with durable movement/source identity, business chronology and UTC recording evidence |
 | `InventoryStockBalanceSnapshot` | Derived balance projection for one StockKey; never the sole source of truth |
+| `InventoryOpeningBalanceKey` | Durable Company + fiscal year + StockKey uniqueness fact for confirmed opening quantities |
 | `InventorySourceReference` | Company + source system + source document type + durable document ID + optional durable line ID |
 | `InventoryDomainError` | Stable code plus field; consumers never parse prose error messages |
 
-Public structural factories are `createInventoryDocument`, `createInventoryDocumentLine` and `createInventorySourceReference`; persisted snapshots use `rehydrateInventoryDocument`. Step 5 exports the transition matrix and lifecycle operations. Step 6 exports StockKey, movement creation/rehydration, exact quantity addition, deterministic ordering, ledger rebuild/append and balance lookup through `src/index.ts`.
+Public structural factories are `createInventoryDocument`, `createInventoryDocumentLine` and `createInventorySourceReference`; persisted snapshots use `rehydrateInventoryDocument`. Step 5 exports the transition matrix and lifecycle operations. Step 6 exports StockKey, movement creation/rehydration, exact quantity addition, deterministic ordering, ledger rebuild/append and balance lookup. Step 7 exports `confirmInventoryReceiptIssueOpening`, opening-key serialization and the current confirmation-resolution contracts through `src/index.ts`.
 
 ## Identity and Immutability
 
 - IDs are opaque strings, trimmed at the boundary with case and content preserved. They are supplied by callers; Domain never generates random IDs or reads the system clock.
 - Document numbers remain strings, preserving leading zeroes. A missing number is `null`; the factory does not allocate a Number Series value or enforce its future uniqueness policy.
 - Lines belong to the aggregate. Line IDs and positive safe-integer positions must each be unique within a document. Position gaps are permitted in drafts; output is sorted by position without renumbering/re-identifying lines or mutating caller arrays.
-- The same Product ID may occur on multiple distinct lines. Step 3 validates resolved Product identity, Company, stock eligibility and units through `createInventoryLineOperation`; authoritative reads and transaction-time rechecks remain later Application responsibilities.
-- Header, source references, line objects, line arrays, lifecycle history, StockKeys, movement facts and ledger projections are defensively copied/frozen at Domain boundaries.
+- The same Product ID may occur on multiple distinct lines. Step 3 validates resolved Product identity, Company, stock eligibility and units through `createInventoryLineOperation`; Step 7 revalidates current Product and Warehouse eligibility before any receipt/issue/opening confirmation result is returned.
+- Header, source references, line objects, line arrays, lifecycle history, StockKeys, movement facts, opening keys and ledger projections are defensively copied/frozen at Domain/Application boundaries.
 - Creation starts at version 1 and status `draft`. Rehydration validates a positive safe-integer version and the complete lifecycle-history chain; it never invents a transition or authorizes a mutation.
 
 ## Date Contract
@@ -39,7 +40,7 @@ Public structural factories are `createInventoryDocument`, `createInventoryDocum
 
 `createdAt`, `updatedAt` and movement `recordedAt` require explicit UTC ISO input: `YYYY-MM-DDTHH:mm:ss[.SSS]Z` (one to three fractional digits when present). They normalize to millisecond ISO UTC strings. Implicit local time and numeric-offset inputs are rejected; adapters normalize offsets before invoking Domain. Updated time cannot precede creation time. Lifecycle transition times are monotonic and cannot precede the prior aggregate update.
 
-Current fiscal-period eligibility and historical locks are checked by Step 4 scope validation. Stock chronology is based on `businessDate` plus the explicit persisted `businessOrder`, not on recording time.
+Current fiscal-period eligibility and historical locks are checked by Step 4 scope validation and rerun by Step 7 at receipt/issue/opening confirmation. Stock chronology is based on `businessDate` plus the explicit persisted `businessOrder`, not on recording time.
 
 ## Source References and Argin Bridge
 
@@ -56,7 +57,7 @@ Step 5 freezes the Domain transition vocabulary and keeps approval separate from
 | `draft` | `submitted`, `cancelled` | Ordinary field/line editing and eligible deletion/tombstone preparation are Draft-only |
 | `submitted` | `draft`, `approved`, `cancelled` | Submission awaits approval; returning to Draft enables correction before approval |
 | `approved` | `draft`, `confirmed`, `cancelled` | Approval alone has no stock effect; returning to Draft explicitly invalidates the current approval before editing |
-| `confirmed` | `reversed` | Confirmed facts cannot be edited, deleted or cancelled; later services make confirmation atomically stock-effective |
+| `confirmed` | `reversed` | Confirmed facts cannot be edited, deleted or cancelled; authoritative services make confirmation stock-effective |
 | `cancelled` | none | Terminal unconfirmed cancellation; it is not deletion/tombstone and has no stock effect |
 | `reversed` | none | Terminal original-document state linked to a distinct compensating reversal document |
 
@@ -86,20 +87,41 @@ Default policy rejects a negative running quantity at any point in canonical his
 
 `appendInventoryStockMovement` is functional: it rebuilds with the candidate fact and never mutates the caller ledger. Rejected backdated/negative/duplicate candidates leave the original snapshot unchanged. `getInventoryStockBalance` returns a derived zero snapshot when a StockKey has no facts rather than inventing a stored balance record.
 
-Step 6 intentionally does not decide whether a receipt, issue, opening, adjustment, transfer or reversal produces which delta(s). Those workflow semantics remain Steps 7–8. It also does not persist, lock, allocate durable `businessOrder`, enforce request idempotency or atomically combine document confirmation with movement writes; those remain Steps 10–13.
+## Receipt, Issue and Opening Balance Workflows
+
+Step 7 adds the persistence-neutral `confirmInventoryReceiptIssueOpening` workflow for the three simple one-sided quantity document types.
+
+The workflow accepts only an `approved` receipt, issue or opening document. Draft/imported documents, submitted documents and already-confirmed documents cannot bypass submission/approval. Transfer and adjustment are rejected explicitly and remain Step 8. The workflow also rechecks structural completeness so a forged persisted approved snapshot with missing scope/number/lines/operations cannot become stock-effective.
+
+Confirmation re-runs the existing Step 4 Company/Branch/fiscal-period/historical-lock/Warehouse-visibility validator using trusted `InventoryScopeContext` and `InventoryScopeReaders`. It then revalidates current Product eligibility and the full requested Warehouse/Zone/Location hierarchy using Step 3 rules. Historical quantity/unit snapshots are not recalculated from today's master data.
+
+Movement semantics are fixed for these three types:
+
+- Receipt: one positive base-unit movement per line.
+- Issue: one negative base-unit movement per line.
+- Opening: one positive base-unit movement per line plus an `InventoryOpeningBalanceKey` uniqueness fact.
+
+The caller supplies durable movement IDs and one positive `businessOrder`; Step 7 does not generate random identities or allocate persistence order. Movement `recordedAt` is the confirmation action timestamp. All line mappings must match the document exactly and duplicate movement identities are rejected.
+
+Opening uniqueness is Company + fiscal year + StockKey. A second confirmed opening for the same fiscal-year StockKey is rejected, including duplicate StockKeys inside one opening document. The output carries normalized opening keys so Step 11/13 can later persist/enforce the same uniqueness transactionally.
+
+Stock validation always rebuilds from `ledger.movements`; a caller-supplied mutable/fake balance projection is ignored. Missing ledger state and malformed opening-key state fail explicitly rather than being treated as empty. Issues therefore inherit Step 6 current, backdated and same-day negative-history checks. A failure returns no confirmed document or movement result and does not mutate caller snapshots.
+
+Only after every scope/master/opening/stock rule succeeds does the workflow perform `approved -> confirmed`. This is a pure result composition today: persistence, row locking, idempotency, atomic document+movement+opening-key writes, durable business-order allocation and retry behavior remain Steps 9–13. Later Application composition must supply the scope readers and current master resolutions from the same authoritative transaction boundary; caller-provided projections are not authorization by themselves.
 
 ## Deliberate Step Boundaries
 
 - Empty draft line collections are allowed. Submission rejects incomplete documents.
 - Step 3 owns exact quantity/unit and physical-reference contracts.
-- Step 4 owns fiscal/Branch eligibility and shared number reservation.
+- Step 4 owns fiscal/Branch eligibility and shared number reservation; Step 7 reuses its current-write validator at confirmation.
 - Step 5 owns lifecycle state/invariants; shared authorization/Audit/Approval composition remains Step 14.
-- Step 6 owns generic StockKey, immutable movement facts, deterministic chronology, exact ledger rebuild and default negative-stock policy only.
-- Steps 7–8 own receipt/issue/opening and transfer/adjustment/reversal workflow movement generation.
+- Step 6 owns generic StockKey, immutable movement facts, deterministic chronology, exact ledger rebuild and default negative-stock policy.
+- Step 7 owns receipt/issue/opening movement signs, confirmation-time eligibility/stock revalidation and duplicate opening guards.
+- Step 8 owns transfer conservation, adjustment reason/effect and reversal compensation semantics.
 - Step 9 adds Application/repository ports, Step 10 orchestration/idempotency/concurrency, Step 11 migrations, Step 12 Bridge envelopes and Step 13 SQLite atomic persistence.
-- No migration, database table, permission, event, Desktop screen, valuation or accounting posting behavior is delivered by Step 6.
+- No migration, database table, permission catalog, Audit integration, event, Desktop screen, valuation or accounting posting behavior is delivered by Step 7.
 
-This foundation follows the existing offline-first, independent Domain and modular ownership ADRs; it does not introduce a new transport or persistence architecture decision.
+This foundation follows the existing offline-first, independent Domain and modular ownership ADRs; Step 7 introduces no new transport or persistence architecture decision.
 
 ## Exact Quantities and Unit Snapshots
 
@@ -127,7 +149,7 @@ The operation snapshot stores Company, Product ID/version, historical quantity/u
 
 ## Authoritative Write Boundary
 
-Historical rehydration and structural factories do not establish current master eligibility. Later Application services must resolve actual masters and revalidate their current eligibility under the committing transaction. Branch access and fiscal eligibility use the Step 4 helper. Stock confirmation must combine the Step 5 lifecycle gate with Step 6 stock rules and the later workflow/UoW contracts; rehydration is never authorization.
+Historical rehydration and structural factories do not establish current master eligibility. Step 7 demonstrates the required confirmation pattern for receipt/issue/opening: trusted scope validation, current master resolution/revalidation, ledger rebuild/stock policy, then lifecycle confirmation. Later Application services must bind those reads and the eventual writes to one committing transaction. Rehydration is never authorization.
 
 ## Company, Branch and Fiscal Scope
 
