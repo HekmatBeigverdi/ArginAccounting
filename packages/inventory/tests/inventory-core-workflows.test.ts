@@ -22,6 +22,8 @@ import type {
   InventoryDomainErrorCode,
   InventoryOpeningBalanceKey,
   InventoryProductReference,
+  InventoryScopeContext,
+  InventoryScopeReaders,
   InventoryStockLedgerSnapshot,
 } from "../src/index.ts";
 
@@ -52,6 +54,69 @@ const warehouse = classifyWarehouse({
 });
 const warehouseReference = { warehouseId: warehouse.warehouseId };
 const resolvedWarehouse = { warehouse };
+
+const scopeContext: InventoryScopeContext = {
+  companyId,
+  actor: { id: actorUserId, branchIds: [], permissions: [] },
+};
+
+function createScopeReaders(): InventoryScopeReaders {
+  return {
+    companies: {
+      findById: async () => ({
+        id: companyId,
+        code: "C1",
+        legalName: "Company",
+        tradeName: null,
+        nationalId: null,
+        registrationNumber: null,
+        activityType: "trading",
+        baseCurrency: "IRR",
+        locale: "fa-IR",
+        calendar: "jalali",
+        status: "active",
+        createdAt: at,
+        updatedAt: at,
+      }),
+    },
+    branches: { findById: async () => null },
+    fiscalYears: {
+      findById: async () => ({
+        id: "fy-2026",
+        companyId,
+        code: "FY26",
+        title: "2026",
+        startDate: "2026-01-01",
+        endDate: "2026-12-31",
+        status: "open",
+        isCurrent: true,
+        closedAt: null,
+        closedBy: null,
+        createdAt: at,
+        updatedAt: at,
+      }),
+    },
+    fiscalPeriods: {
+      findById: async () => ({
+        id: "fp-09",
+        fiscalYearId: "fy-2026",
+        sequence: 9,
+        code: "09",
+        title: "September",
+        startDate: "2026-09-01",
+        endDate: "2026-09-30",
+        status: "open",
+        lockReason: null,
+        lockedAt: null,
+        lockedBy: null,
+        createdAt: at,
+        updatedAt: at,
+      }),
+    },
+    historicalLocks: { findActiveLocks: async () => [] },
+    warehouses: { getById: async () => warehouse },
+  };
+}
 
 function operation(quantity: string) {
   return createInventoryLineOperation({
@@ -107,6 +172,8 @@ function confirmInput(document: InventoryDocumentSnapshot, ledger = rebuildInven
   return {
     document,
     action: { occurredAt: confirmAt, actorUserId },
+    scopeContext,
+    scopeReaders: createScopeReaders(),
     businessOrder: 10,
     movementIdentities: [{ lineId: "line-1", movementId: `move-${document.documentId}` }],
     lineResolutions: [{ lineId: "line-1", product: product(), warehouse: resolvedWarehouse }],
@@ -115,12 +182,12 @@ function confirmInput(document: InventoryDocumentSnapshot, ledger = rebuildInven
   } as const;
 }
 
-function rejects(action: () => unknown, code: InventoryDomainErrorCode): void {
-  assert.throws(action, (error: unknown) => error instanceof InventoryDomainError && error.code === code);
+async function rejects(action: () => Promise<unknown>, code: InventoryDomainErrorCode): Promise<void> {
+  await assert.rejects(action, (error: unknown) => error instanceof InventoryDomainError && error.code === code);
 }
 
-test("receipt confirmation creates positive immutable movement and confirms only after validation", () => {
-  const result = confirmInventoryReceiptIssueOpening(confirmInput(approved("receipt", "5")));
+test("receipt confirmation creates positive immutable movement after scope/master validation", async () => {
+  const result = await confirmInventoryReceiptIssueOpening(confirmInput(approved("receipt", "5")));
   assert.equal(result.document.status, "confirmed");
   assert.equal(result.movements.length, 1);
   assert.equal(result.movements[0]?.quantityDelta, "5");
@@ -130,14 +197,14 @@ test("receipt confirmation creates positive immutable movement and confirms only
   assert.equal(getInventoryStockBalance(result.ledger, result.movements[0]!.stockKey).quantity, "5");
 });
 
-test("issue confirmation emits a negative delta and enforces current stock", () => {
-  const result = confirmInventoryReceiptIssueOpening(confirmInput(approved("issue", "3"), baseLedger("10")));
+test("issue confirmation emits a negative delta and enforces current stock", async () => {
+  const result = await confirmInventoryReceiptIssueOpening(confirmInput(approved("issue", "3"), baseLedger("10")));
   assert.equal(result.movements[0]?.quantityDelta, "-3");
   assert.equal(getInventoryStockBalance(result.ledger, result.movements[0]!.stockKey).quantity, "7");
-  rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(approved("issue", "11", "doc-issue-too-large"), baseLedger("10"))), codes.negativeStock);
+  await rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(approved("issue", "11", "doc-issue-too-large"), baseLedger("10"))), codes.negativeStock);
 });
 
-test("backdated issue revalidates historical running balance instead of ending balance only", () => {
+test("backdated issue revalidates historical running balance instead of ending balance only", async () => {
   const laterReceipt = createInventoryStockMovement({
     movementId: "later-receipt",
     companyId,
@@ -150,12 +217,40 @@ test("backdated issue revalidates historical running balance instead of ending b
     recordedAt: "2026-09-09T08:00:00Z",
     quantityDelta: "10",
   });
-  const document = approved("issue", "3", "backdated-issue");
-  rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(document, rebuildInventoryStockLedger([laterReceipt]))), codes.negativeStock);
+  await rejects(
+    () => confirmInventoryReceiptIssueOpening(confirmInput(approved("issue", "3", "backdated-issue"), rebuildInventoryStockLedger([laterReceipt]))),
+    codes.negativeStock,
+  );
 });
 
-test("opening confirmation returns a durable fiscal-year StockKey uniqueness fact", () => {
-  const result = confirmInventoryReceiptIssueOpening(confirmInput(approved("opening", "8")));
+test("confirmation revalidates fiscal scope and historical locks", async () => {
+  const document = approved("receipt");
+  const closedReaders = createScopeReaders();
+  closedReaders.fiscalPeriods.findById = async () => ({
+    ...(await createScopeReaders().fiscalPeriods.findById("fp-09"))!,
+    status: "closed",
+  });
+  await rejects(() => confirmInventoryReceiptIssueOpening({ ...confirmInput(document), scopeReaders: closedReaders }), codes.fiscalScopeInvalid);
+
+  const lockedReaders = createScopeReaders();
+  lockedReaders.historicalLocks.findActiveLocks = async () => [{
+    id: "lock-1",
+    companyId,
+    branchId: null,
+    scope: "inventory",
+    lockedThroughDate: "2026-09-08",
+    reason: "closed",
+    isActive: true,
+    createdBy: null,
+    createdAt: at,
+    releasedBy: null,
+    releasedAt: null,
+  }];
+  await rejects(() => confirmInventoryReceiptIssueOpening({ ...confirmInput(document), scopeReaders: lockedReaders }), codes.historicalLockBlocked);
+});
+
+test("opening confirmation returns a durable fiscal-year StockKey uniqueness fact", async () => {
+  const result = await confirmInventoryReceiptIssueOpening(confirmInput(approved("opening", "8")));
   assert.equal(result.openingKeys.length, 1);
   assert.equal(result.openingKeys[0]?.fiscalYearId, "fy-2026");
   assert.equal(result.openingKeys[0]?.companyId, companyId);
@@ -163,13 +258,15 @@ test("opening confirmation returns a durable fiscal-year StockKey uniqueness fac
   assert.equal(result.movements[0]?.documentId, "doc-opening");
 });
 
-test("duplicate opening for the same fiscal-year StockKey is rejected", () => {
-  const first = confirmInventoryReceiptIssueOpening(confirmInput(approved("opening", "8", "opening-1")));
-  const second = approved("opening", "2", "opening-2");
-  rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(second, first.ledger, first.openingKeys)), codes.openingDuplicate);
+test("duplicate opening for the same fiscal-year StockKey is rejected", async () => {
+  const first = await confirmInventoryReceiptIssueOpening(confirmInput(approved("opening", "8", "opening-1")));
+  await rejects(
+    () => confirmInventoryReceiptIssueOpening(confirmInput(approved("opening", "2", "opening-2"), first.ledger, first.openingKeys)),
+    codes.openingDuplicate,
+  );
 });
 
-test("duplicate StockKey lines inside one opening document are rejected", () => {
+test("duplicate StockKey lines inside one opening document are rejected", async () => {
   const op = operation("2");
   let document = createInventoryDocument({
     documentId: "opening-two-lines",
@@ -186,7 +283,7 @@ test("duplicate StockKey lines inside one opening document are rejected", () => 
   });
   document = submitInventoryDocument(document, { occurredAt: submitAt, actorUserId });
   document = approveInventoryDocument(document, { occurredAt: approveAt, actorUserId });
-  rejects(() => confirmInventoryReceiptIssueOpening({
+  await rejects(() => confirmInventoryReceiptIssueOpening({
     ...confirmInput(document),
     movementIdentities: [
       { lineId: "line-1", movementId: "opening-m1" },
@@ -199,58 +296,58 @@ test("duplicate StockKey lines inside one opening document are rejected", () => 
   }), codes.openingDuplicate);
 });
 
-test("current Product and Warehouse eligibility are revalidated at confirmation", () => {
+test("current Product and Warehouse eligibility are revalidated at confirmation", async () => {
   const document = approved("receipt");
-  rejects(() => confirmInventoryReceiptIssueOpening({
+  await rejects(() => confirmInventoryReceiptIssueOpening({
     ...confirmInput(document),
     lineResolutions: [{ lineId: "line-1", product: { ...product(), status: "inactive" }, warehouse: resolvedWarehouse }],
   }), codes.productIneligible);
-  rejects(() => confirmInventoryReceiptIssueOpening({
+  await rejects(() => confirmInventoryReceiptIssueOpening({
     ...confirmInput(document),
     lineResolutions: [{ lineId: "line-1", product: product(), warehouse: { warehouse: { ...warehouse, status: "inactive" } } }],
   }), codes.referenceIneligible);
 });
 
-test("draft/import-style documents cannot bypass submit and approval", () => {
-  rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(draft("receipt"))), codes.lifecycleTransitionInvalid);
+test("draft/import-style documents cannot bypass submit and approval", async () => {
+  await rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(draft("receipt"))), codes.lifecycleTransitionInvalid);
 });
 
-test("transfer and adjustment remain owned by Step 8", () => {
+test("transfer and adjustment remain owned by Step 8", async () => {
   for (const type of ["transfer", "adjustment"] as const) {
-    rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(draft(type))), codes.stockWorkflowUnsupported);
+    await rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(draft(type))), codes.stockWorkflowUnsupported);
   }
 });
 
-test("resolution and movement identity sets must match document lines exactly", () => {
+test("resolution and movement identity sets must match document lines exactly", async () => {
   const document = approved("receipt");
-  rejects(() => confirmInventoryReceiptIssueOpening({ ...confirmInput(document), lineResolutions: [] }), codes.confirmationResolutionMismatch);
-  rejects(() => confirmInventoryReceiptIssueOpening({ ...confirmInput(document), movementIdentities: [] }), codes.confirmationResolutionMismatch);
-  rejects(() => confirmInventoryReceiptIssueOpening({
+  await rejects(() => confirmInventoryReceiptIssueOpening({ ...confirmInput(document), lineResolutions: [] }), codes.confirmationResolutionMismatch);
+  await rejects(() => confirmInventoryReceiptIssueOpening({ ...confirmInput(document), movementIdentities: [] }), codes.confirmationResolutionMismatch);
+  await rejects(() => confirmInventoryReceiptIssueOpening({
     ...confirmInput(document),
     movementIdentities: [{ lineId: "line-1", movementId: "same" }, { lineId: "extra", movementId: "same" }],
   }), codes.movementIdentityMismatch);
 });
 
-test("missing ledger and malformed opening guard cannot be treated as empty state", () => {
+test("missing ledger and malformed opening guard cannot be treated as empty state", async () => {
   const input = confirmInput(approved("receipt"));
-  rejects(() => confirmInventoryReceiptIssueOpening({ ...input, ledger: undefined } as unknown as ConfirmInventoryCoreDocumentInput), codes.inputInvalid);
-  rejects(() => confirmInventoryReceiptIssueOpening({ ...input, openingKeys: {} } as unknown as ConfirmInventoryCoreDocumentInput), codes.openingKeyInvalid);
+  await rejects(() => confirmInventoryReceiptIssueOpening({ ...input, ledger: undefined } as unknown as ConfirmInventoryCoreDocumentInput), codes.inputInvalid);
+  await rejects(() => confirmInventoryReceiptIssueOpening({ ...input, openingKeys: {} } as unknown as ConfirmInventoryCoreDocumentInput), codes.openingKeyInvalid);
 });
 
-test("caller balance projection is ignored and rebuilt from immutable movement facts", () => {
+test("caller balance projection is ignored and rebuilt from immutable movement facts", async () => {
   const key = createInventoryStockKey({ companyId, productId: "product-1", warehouse: warehouseReference });
   const forged = {
     movements: [],
     balances: [{ stockKey: key, quantity: "999", movementCount: 99, lastMovementId: "fake" }],
   } as InventoryStockLedgerSnapshot;
-  const result = confirmInventoryReceiptIssueOpening(confirmInput(approved("receipt", "5"), forged));
+  const result = await confirmInventoryReceiptIssueOpening(confirmInput(approved("receipt", "5"), forged));
   assert.equal(getInventoryStockBalance(result.ledger, key).quantity, "5");
 });
 
-test("failed confirmation leaves caller document and ledger unchanged", () => {
+test("failed confirmation leaves caller document and ledger unchanged", async () => {
   const document = approved("issue", "6", "failed-issue");
   const ledger = baseLedger("5");
-  rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(document, ledger)), codes.negativeStock);
+  await rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(document, ledger)), codes.negativeStock);
   assert.equal(document.status, "approved");
   assert.equal(getInventoryStockBalance(ledger, createInventoryStockKey({ companyId, productId: "product-1", warehouse: warehouseReference })).quantity, "5");
 });
