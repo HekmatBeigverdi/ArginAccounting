@@ -31,6 +31,8 @@ export interface InventoryLifecycleCommand extends InventoryCommandMetadata {
 export interface ReverseInventoryCommand extends InventoryCommandMetadata {
   readonly documentId: string;
   readonly expectedVersion: number;
+  /** Business date of the compensating reversal operation; fiscal/lock validation uses this date. */
+  readonly businessDate: string;
   readonly action: ReverseInventoryDocumentInput;
 }
 
