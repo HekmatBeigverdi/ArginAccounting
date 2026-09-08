@@ -14,7 +14,8 @@
   "dependencies": {
     "@argin/audit": "workspace:*",
     "@argin/database": "workspace:*",
-    "@argin/inventory": "workspace:*"
+    "@argin/inventory": "workspace:*",
+    "@argin/warehouse": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",
