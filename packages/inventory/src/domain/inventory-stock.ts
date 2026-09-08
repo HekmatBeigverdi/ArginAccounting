@@ -21,6 +21,8 @@ export interface InventoryStockMovementSnapshot {
   readonly businessOrder: number;
   readonly recordedAt: string;
   readonly stockKey: InventoryStockKey;
+  /** Present on both source and destination facts of one transfer; null for non-transfer movements. */
+  readonly transferId: string | null;
   /** Signed quantity in the Product base unit. Positive=in, negative=out. */
   readonly quantityDelta: string;
 }
@@ -35,6 +37,7 @@ export interface CreateInventoryStockMovementInput {
   readonly businessDate: string;
   readonly businessOrder: number;
   readonly recordedAt: string;
+  readonly transferId?: string | null;
   readonly quantityDelta: string;
 }
 
@@ -62,6 +65,10 @@ const fail = (code: (typeof codes)[keyof typeof codes], field: string): never =>
 function id(value: string, field: string): string {
   if (typeof value !== "string" || !value.trim()) return fail(codes.identityRequired, field);
   return value.trim();
+}
+
+function optionalId(value: string | null | undefined, field: string): string | null {
+  return value == null ? null : id(value, field);
 }
 
 function date(value: string, field: string): string {
@@ -192,6 +199,7 @@ export function createInventoryStockMovement(
     businessOrder: positiveOrder(input.businessOrder),
     recordedAt: timestamp(input.recordedAt, "recordedAt"),
     stockKey,
+    transferId: optionalId(input.transferId, "transferId"),
     quantityDelta,
   });
 }
@@ -216,6 +224,7 @@ export function rehydrateInventoryStockMovement(
     businessDate: input.businessDate,
     businessOrder: input.businessOrder,
     recordedAt: input.recordedAt,
+    transferId: input.transferId ?? null,
     quantityDelta: input.quantityDelta,
   });
   if (serializeInventoryStockKey(movement.stockKey) !== serializeInventoryStockKey(input.stockKey)) {
