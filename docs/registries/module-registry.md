@@ -12,16 +12,18 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Accounting — Chart of Accounts | `@argin/accounting`, `@argin/accounting-tauri`, Desktop | Implemented | 10 | `docs/phases/phase-10-chart-of-accounts.md` |
 | Accounting Dimensions | `@argin/accounting`, `@argin/accounting-tauri`, Desktop | Implemented | 11 | `docs/phases/phase-11-accounting-dimensions.md` |
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
-| Inventory Documents | `@argin/inventory`; SQLite adapter and Desktop integration planned | Draft Domain, quantities, scope and numbering implemented | 20 | [Phase 20 fixed plan](../phases/phase-20-inventory-documents-plan.md) |
+| Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`; Desktop integration pending | Domain/Application/SQLite persistence implemented through Step 13 | 20 | [Phase 20 fixed plan](../phases/phase-20-inventory-documents-plan.md) |
 
-## Inventory Documents — Phase 20 Baseline
+## Inventory Documents — Phase 20 Current State
 
 - Purpose/ownership: quantity documents, immutable stock movements, on-hand projections and quantity kardex; scope and exclusions are authoritative in the linked phase record.
-- Domain foundation: `packages/inventory` created at Step 2; Application ports/services remain planned. SQLite adapter: planned `packages/inventory-tauri`; UI uses Desktop composition.
-- Migrations: none introduced; existing baseline ends at 0025. Allocate at Step 11 after rechecking the registry.
+- Domain/Application: `packages/inventory` owns immutable documents, exact quantities, lifecycle, stock workflows, Application ports/services, idempotency/concurrency orchestration and Argin Bridge contracts.
+- SQLite adapter: `packages/inventory-tauri` is implemented at Step 13 with repositories and `SqliteInventoryUnitOfWork`.
+- Migrations: `0026_inventory_documents.sql` defines the primary schema; `0027_inventory_reversal_persistence.sql` adds the append-only reversal compensation partition and unified movement view required by the accepted reversal identity model.
+- Transaction boundary: production `@argin/database-tauri` connections use a Rust-side pinned SQLx SQLite connection with `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK` for real atomic UoW execution.
 - Permissions: planned `inventory` namespace; exact catalog and shared approval integration belong to Step 14.
-- Public Domain factories/snapshots: [Inventory document foundation](../architecture/inventory-documents.md). Application/Bridge contracts remain planned at Steps 9/12; upstream Product and Warehouse public ports remain the source of master identity and eligibility.
-- Lifecycle: Steps 1–4 complete; drafts with exact quantities, operational references, scope checks and number reservation are implemented. No stock-changing workflow, SQLite adapter or deprecation.
+- Bridge: Step 12 contracts preserve durable document/line/movement/transfer/reversal identities and do not synchronize balance projections as authoritative facts.
+- Desktop workspace/query UI remains Step 16+; master-data dependency guards and ERP integration remain Step 15.
 
 ## Required Fields for Future Entries
 
