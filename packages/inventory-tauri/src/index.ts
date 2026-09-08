@@ -10,3 +10,5 @@ export { SqliteInventoryOpeningBalanceRepository } from "./sqlite-inventory-open
 export { SqliteInventoryUnitOfWork } from "./sqlite-inventory-unit-of-work.ts";
 export { SharedInventoryApprovalGateway } from "./shared-inventory-approval-gateway.ts";
 export { SharedInventoryAuditSink } from "./shared-inventory-audit-sink.ts";
+export { InventoryWarehouseDependencyGuard } from "./inventory-warehouse-dependency-guard.ts";
+export { SqliteInventoryMovementFeedReader } from "./sqlite-inventory-movement-feed.ts";
