@@ -6,8 +6,8 @@ import {
   SqliteInventoryDocumentRepository,
   SqliteInventoryIdempotencyRepository,
   SqliteInventoryMovementRepository,
-  SqliteInventoryOpeningBalanceRepository,
 } from "./sqlite-inventory-repositories.ts";
+import { SqliteInventoryOpeningBalanceRepository } from "./sqlite-inventory-opening-repository.ts";
 
 const contextFor = (database: DatabaseSession): InventoryUnitOfWorkContext => Object.freeze({
   documents: new SqliteInventoryDocumentRepository(database),
