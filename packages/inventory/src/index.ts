@@ -93,3 +93,72 @@ export type {
   InventoryTransferLineResolution,
   ReverseInventoryStockEffectsInput,
 } from "./application/inventory-transfer-adjustment-workflows.ts";
+
+export {
+  INVENTORY_APPLICATION_ERROR_CODES,
+  InventoryApplicationError,
+} from "./application/contracts/inventory-errors.ts";
+export type { InventoryApplicationErrorCode } from "./application/contracts/inventory-errors.ts";
+
+export {
+  INVENTORY_QUERY_LIMITS,
+  normalizeInventoryCursorRequest,
+  normalizeInventoryPageRequest,
+} from "./application/contracts/inventory-queries.ts";
+export type {
+  GetInventoryDocumentByNumberQuery,
+  GetInventoryDocumentQuery,
+  InventoryBalanceQuery,
+  InventoryCursorRequest,
+  InventoryDocumentFilter,
+  InventoryDocumentSort,
+  InventoryDocumentSortField,
+  InventoryKardexQuery,
+  InventoryPageRequest,
+  InventorySortDirection,
+  ListInventoryDocumentsQuery,
+} from "./application/contracts/inventory-queries.ts";
+
+export { inventoryBalanceRowFromSnapshot } from "./application/contracts/inventory-dto.ts";
+export type {
+  InventoryBalanceRow,
+  InventoryCursorPage,
+  InventoryDocumentDetail,
+  InventoryDocumentListItem,
+  InventoryKardexEntry,
+  InventoryPage,
+} from "./application/contracts/inventory-dto.ts";
+
+export type { InventoryQueryReader } from "./application/contracts/inventory-reader.ts";
+export type {
+  ConfirmInventoryDocumentCommand,
+  CreateInventoryDocumentCommand,
+  DeleteInventoryDraftCommand,
+  InventoryCommandMetadata,
+  InventoryLifecycleCommand,
+  ReverseInventoryCommand,
+  SaveInventoryDraftCommand,
+} from "./application/contracts/inventory-commands.ts";
+export type {
+  InventoryBalanceProjectionRepository,
+  InventoryBusinessOrderRepository,
+  InventoryDocumentRepository,
+  InventoryIdempotencyOutcomeKind,
+  InventoryIdempotencyRecord,
+  InventoryIdempotencyRepository,
+  InventoryMovementRepository,
+  InventoryOpeningBalanceRepository,
+} from "./application/contracts/inventory-repository.ts";
+export type {
+  InventoryUnitOfWork,
+  InventoryUnitOfWorkContext,
+} from "./application/contracts/inventory-unit-of-work.ts";
+export type {
+  ConfirmInventorySourceDocumentRequest,
+  InventoryQuantityConfirmationPort,
+  InventorySourceDocumentPort,
+  InventorySourceDocumentResult,
+  InventorySourceQuantityDocumentType,
+  InventorySourceQuantityLine,
+  StageInventorySourceDocumentRequest,
+} from "./application/contracts/inventory-consumer.ts";
