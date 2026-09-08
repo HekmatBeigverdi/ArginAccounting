@@ -17,6 +17,8 @@ export interface InventoryStockMovementSnapshot {
   readonly documentId: string;
   readonly lineId: string;
   readonly businessDate: string;
+  /** Stable positive ordering value assigned by the authoritative confirmation boundary. */
+  readonly businessOrder: number;
   readonly recordedAt: string;
   readonly stockKey: InventoryStockKey;
   /** Signed quantity in the Product base unit. Positive=in, negative=out. */
@@ -31,6 +33,7 @@ export interface CreateInventoryStockMovementInput {
   readonly productId: string;
   readonly warehouse: WarehouseOperationalReference;
   readonly businessDate: string;
+  readonly businessOrder: number;
   readonly recordedAt: string;
   readonly quantityDelta: string;
 }
@@ -69,6 +72,11 @@ function date(value: string, field: string): string {
   if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
     return fail(codes.businessDateInvalid, field);
   }
+  return value;
+}
+
+function positiveOrder(value: number): number {
+  if (!Number.isSafeInteger(value) || value < 1) return fail(codes.stockOrderInvalid, "businessOrder");
   return value;
 }
 
@@ -181,6 +189,7 @@ export function createInventoryStockMovement(
     documentId: id(input.documentId, "documentId"),
     lineId: id(input.lineId, "lineId"),
     businessDate: date(input.businessDate, "businessDate"),
+    businessOrder: positiveOrder(input.businessOrder),
     recordedAt: timestamp(input.recordedAt, "recordedAt"),
     stockKey,
     quantityDelta,
@@ -205,6 +214,7 @@ export function rehydrateInventoryStockMovement(
     productId: input.stockKey.productId,
     warehouse,
     businessDate: input.businessDate,
+    businessOrder: input.businessOrder,
     recordedAt: input.recordedAt,
     quantityDelta: input.quantityDelta,
   });
@@ -214,16 +224,14 @@ export function rehydrateInventoryStockMovement(
   return movement;
 }
 
-/**
- * Canonical ledger order: business date first, then durable document/line/movement IDs.
- * recordedAt is evidence, not stock chronology, so replicas rebuild the same balance history.
- */
+/** Canonical order is business date, explicit business order, then durable tie breakers. */
 export function compareInventoryStockMovements(
   left: InventoryStockMovementSnapshot,
   right: InventoryStockMovementSnapshot,
 ): number {
+  if (left.businessDate !== right.businessDate) return left.businessDate < right.businessDate ? -1 : 1;
+  if (left.businessOrder !== right.businessOrder) return left.businessOrder < right.businessOrder ? -1 : 1;
   for (const [a, b] of [
-    [left.businessDate, right.businessDate],
     [left.documentId, right.documentId],
     [left.lineId, right.lineId],
     [left.movementId, right.movementId],
@@ -274,8 +282,10 @@ export function rebuildInventoryStockLedger(
     }));
   }
 
-  const orderedBalances = Array.from(balances.values()).sort((a, b) =>
-    serializeInventoryStockKey(a.stockKey).localeCompare(serializeInventoryStockKey(b.stockKey)));
+  const orderedBalances = Array.from(balances.values()).sort((a, b) => {
+    const aa = serializeInventoryStockKey(a.stockKey), bb = serializeInventoryStockKey(b.stockKey);
+    return aa === bb ? 0 : aa < bb ? -1 : 1;
+  });
   return Object.freeze({
     movements: Object.freeze(movements),
     balances: Object.freeze(orderedBalances),
