@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–13 are complete; Steps 5–13 have been explicitly owner-accepted. Step 14 separate permissions, Company/Branch authorization, shared Phase 8 Approval integration, replay-safe shared Audit integration and focused security tests are implemented; executable workspace validation remains pending. Steps 15–22 are Not started.
+In Progress. Steps 1–14 are complete; Steps 5–14 have been explicitly owner-accepted. Step 15 concrete Warehouse dependency probing, secured ERP confirmation boundary, stable movement feed and focused integration tests are implemented; executable workspace/Desktop validation remains pending. Steps 16–22 are Not started.
 
 ## Governance
 
@@ -68,6 +68,7 @@ References:
 - [Inventory Argin Bridge contract](../architecture/inventory-argin-bridge-contract.md)
 - [Inventory SQLite persistence](../architecture/inventory-sqlite-persistence.md)
 - [Inventory Security, Approval, and Audit](../security/inventory-security-approval-audit.md)
+- [Inventory Master Data Dependency Guards and ERP Integration](../architecture/inventory-master-data-erp-integration.md)
 - [Database Design](../database/database-design.md)
 - [Database Dictionary](../database/database-dictionary.md)
 
@@ -81,7 +82,7 @@ Only eligible unconfirmed document deletion may produce a tombstone. Confirmed m
 
 ## Domain and Application Model
 
-Implemented through Steps 2–14:
+Implemented through Steps 2–15:
 
 - Immutable `InventoryDocumentSnapshot` and stable line/source identities.
 - Exact decimal quantity and historical unit snapshots.
@@ -95,6 +96,7 @@ Implemented through Steps 2–14:
 - Versioned Argin Bridge document/movement-batch contracts with indivisible transfer/reversal semantics and no synchronized authoritative balance projection.
 - Concrete SQLite repositories/UoW plus a production pinned-connection transaction bridge with real `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK` semantics.
 - Separate Inventory permissions, persisted-document Company/Branch authorization, shared Phase 8 Approval gateway and shared immutable Audit adapter around successful lifecycle operations.
+- Concrete Inventory-backed Warehouse dependency guard, secured ERP confirmation adapter and bounded immutable movement feed for valuation/later consumers.
 
 ## Application Service Rules — Step 10
 
@@ -114,7 +116,7 @@ Implemented through Steps 2–14:
 
 Same `requestKey + operation + payloadFingerprint` replays the original recorded outcome without adding another movement. Reusing the same request key with changed operation or fingerprint returns `inventory.application.idempotency-conflict`.
 
-Document optimistic concurrency alone is insufficient for stock. Two different documents can compete for the same StockKey, so stock facts must be read/rebuilt inside the same committing UoW. Step 13 now binds that UoW to a real SQLite transaction and serializes local mutation callbacks conservatively.
+Document optimistic concurrency alone is insufficient for stock. Two different documents can compete for the same StockKey, so stock facts must be read/rebuilt inside the same committing UoW. Step 13 binds that UoW to a real SQLite transaction and serializes local mutation callbacks conservatively.
 
 Callers cannot supply `businessOrder`; it is allocated inside the UoW. Reversal carries its own `businessDate` and `reversalScope`, so a compensating operation may be validated in a different open fiscal period from the original document without rewriting the original document's date/scope.
 
@@ -157,17 +159,7 @@ Key persistence decisions:
 
 ## Atomic SQLite Transaction Boundary — Step 13
 
-The previous `TauriSqliteExecutor.transaction()` only serialized JavaScript callbacks and did not provide database rollback because plugin-sql commands could use different pooled connections. Step 13 corrects this production boundary rather than falsely calling serialization a transaction.
-
-Production `TauriSqliteExecutor.connect()` now uses a Rust-side transaction bridge that:
-
-1. obtains a `PoolConnection<Sqlite>` from the already loaded `tauri-plugin-sql` pool;
-2. executes `BEGIN IMMEDIATE` on that pinned connection;
-3. keeps the connection under one transaction handle for every callback query/write;
-4. executes `COMMIT` on success;
-5. executes `ROLLBACK` on failure.
-
-The TypeScript executor retains the transaction queue as an additional conservative local serialization layer. Direct-constructor unit-test doubles retain the previous logical-session fallback; production connections use the pinned atomic bridge.
+Production `TauriSqliteExecutor.connect()` uses a Rust-side transaction bridge that obtains one `PoolConnection<Sqlite>`, executes `BEGIN IMMEDIATE`, keeps every callback query/write on the same connection, commits on success and rolls back on failure. The TypeScript queue remains as an additional conservative local serialization layer.
 
 Shared Approval/Audit composition in Step 14 does not weaken the Step 13 stock transaction. No distributed cross-module transaction is claimed; deterministic identities and idempotent retry make cross-module recovery convergent.
 
@@ -175,13 +167,27 @@ Shared Approval/Audit composition in Step 14 does not weaken the Step 13 stock t
 
 Inventory freezes ten independent permissions: view, create, edit, submit, approve, confirm, reverse, cancel, import and export. Approval and confirmation are deliberately separate so approval authority cannot implicitly change stock.
 
-`SecuredInventoryService` reloads the persisted document before mutation and authorizes against its actual Company and origin Branch. Company-wide scope remains explicit with `branchId = null`. Authorization failure is mapped to `inventory.application.unauthorized` before the inner mutation service runs.
+`SecuredInventoryService` reloads the persisted document before mutation and authorizes against its actual Company and origin Branch. `SharedInventoryApprovalGateway` delegates to the shared Phase 8 `@argin/audit` Approval services. Confirm requires that shared request to already be approved. `SharedInventoryAuditSink` records actor, Company/Branch, request/correlation, reason and before/after lifecycle state using deterministic replay-safe identity.
 
-`SharedInventoryApprovalGateway` delegates to the shared Phase 8 `@argin/audit` Approval services. One deterministic shared request ID is used per Company + Inventory document. Submit creates/submits the shared request idempotently; approve applies the shared transition; confirm calls `requireApproved()` before entering the stock mutation path. Inventory does not own Approval tables or a parallel Approval state machine.
+Submission re-invokes the idempotent Approval gateway even when Inventory itself returns a replayed result, repairing failures that occur after the Inventory submit commit but before shared Approval creation/submission. Successful Inventory replay still suppresses duplicate Inventory Audit success records.
 
-Submission deliberately re-invokes the idempotent Approval gateway even when Inventory returns a replayed result. This repairs a failure that happened after the Inventory submit commit but before shared Approval creation/submission. Successful Inventory replay still suppresses duplicate Inventory Audit success records.
+## Master Data Dependency Guards and ERP Integration — Step 15
 
-`SharedInventoryAuditSink` writes through the shared Audit application service. It records actor, Company, Branch, document, request/correlation, reason, before/after status and exact Inventory action metadata. Deterministic audit entry identity (`action + requestId + documentId`) plus pre-read de-duplicates repeated successful delivery.
+`InventoryWarehouseDependencyGuard` implements the Phase 19 `WarehouseDependencyGuard` contract with Company-scoped durable Warehouse/Zone/Location IDs. It detects non-zero stock, open Inventory documents and immutable movement history.
+
+Protection policy is operation-sensitive:
+
+- delete Warehouse/Zone/Location: non-zero stock, open documents or historical movements block deletion;
+- deactivate/archive Warehouse and deactivate Zone/Location: non-zero stock or open documents block the operation, while historical identity is preserved and remains readable;
+- move Location: non-zero stock, open documents or historical movement use blocks the move because changing Zone ownership would reinterpret historical StockKeys.
+
+Confirmed Inventory lines retain exact entered/base quantities and historical unit/conversion snapshots. Later Product/unit master edits cannot rewrite those facts.
+
+`SecuredInventoryQuantityConfirmationPort` is the public confirmation adapter for future Purchase/Sales/Manufacturing. It routes every request through `SecuredInventoryService.confirm()` so authorization, shared Approval, optimistic concurrency, atomic stock validation, idempotency and Audit cannot be bypassed by an owning ERP module.
+
+`InventoryMovementFeedReader` is the immutable quantity-fact boundary for Phase 21 and later consumers. `SqliteInventoryMovementFeedReader` reads `inventory_all_stock_movements`, is Company-scoped, bounded to 500 rows and orders by `businessDate -> businessOrder -> documentId -> lineId -> movementId`. Continuation resolves the full chronology tuple from the previous movement identity; movement ID alone is never treated as chronology. Balance projections are not exposed as equivalent authoritative facts.
+
+Concrete Purchase/Sales/Manufacturing draft staging remains in their owning future phases because those source lifecycles do not exist yet; Phase 20 freezes the public `InventorySourceDocumentPort` contract without inventing their transactional models.
 
 ## Step Status
 
@@ -200,8 +206,8 @@ Submission deliberately re-invokes the idempotent Approval gateway even when Inv
 | 11 | Migration, Schema, Constraints and Indexing | Completed |
 | 12 | Argin Bridge and Future Synchronization Contract | Completed |
 | 13 | SQLite Repository, Unit of Work and Atomic Confirmation | Completed |
-| 14 | Permissions, Audit and Shared Approval Integration | Implemented — validation pending |
-| 15 | Master Data Dependency Guards and ERP Integration | Not started |
+| 14 | Permissions, Audit and Shared Approval Integration | Completed |
+| 15 | Master Data Dependency Guards and ERP Integration | Implemented — validation pending |
 | 16 | Persian RTL Inventory Document Workspace | Not started |
 | 17 | Quantity Kardex, Stock Balances and Source Drill-down | Not started |
 | 18 | Import, Export, Print and PDF | Not started |
@@ -351,68 +357,68 @@ Reconcile Step Status with actual evidence and owner acceptance, review deferred
 
 ### Step 11 — Migration, Schema, Constraints and Indexing — Completed
 
-- Re-inventoried the runtime migration registry and verified `0025_warehouse_maintenance_tombstones.sql` as the latest existing migration before allocation.
 - Added and registered `0026_inventory_documents.sql` as Tauri migration version 26.
 - Added normalized durable tables for documents, lines, lifecycle history, movement facts, opening uniqueness facts, balance projections, business-order allocation and idempotency outcomes.
 - Preserved Company-wide Inventory scope, exact TEXT quantities, append-only fact boundaries, hard uniqueness and query indexes.
-- Added `apps/desktop/tests/inventory-migration-contract.test.ts` with six focused source-contract tests.
+- Added focused migration-contract tests.
 - Owner explicitly accepted Step 11 before requesting Step 12. Raw local execution was not pasted into the conversation.
 
 ### Step 12 — Argin Bridge and Future Synchronization Contract — Completed
 
 - Added versioned Inventory document upsert/tombstone and immutable movement-batch contracts.
-- Confirmation, Transfer and Reversal batches retain durable identities plus operation/request/idempotency/fingerprint/origin/version metadata.
-- Transfer batches require complete source/destination pairs and exact conservation; half-transfer is rejected.
-- Reversal batches carry dependencies on original immutable movement facts and cannot be last-write-wins merged.
+- Transfer batches require complete source/destination pairs and exact conservation; Reversal batches depend on original immutable facts.
 - `inventory_stock_balances` intentionally has no authoritative synchronization envelope.
-- Added focused Bridge tests for versioning, Draft tombstone, confirmation dependency, full transfer conservation, half-transfer rejection, reversal dependency and payload fingerprint requirements.
-- Step 12 defensive review identified the reversal persistence ownership mismatch and handed it to Step 13 without changing accepted Domain/Bridge identity semantics.
+- Added focused Bridge tests.
 - Owner explicitly accepted Step 12 before requesting Step 13. Raw package execution was not pasted into the conversation.
 
 ### Step 13 — SQLite Repository, Unit of Work and Atomic Confirmation — Completed
 
-- Created `@argin/inventory-tauri` with concrete document, movement, balance projection, opening, business-order and idempotency repositories plus `SqliteInventoryUnitOfWork`.
-- Document writes use expected-version compare-and-swap and map zero-row stale writes to `inventory.application.concurrency-conflict` when the document still exists.
-- Movement reads use one authoritative logical view in canonical business chronology. Ordinary/transfer facts persist to the primary movement table; reversal facts persist to the compensation partition.
-- Added and registered migration `0027_inventory_reversal_persistence.sql`, resolving the Step 12 blocker without creating a synthetic mutable reversal header or changing Bridge identities.
-- Reversal compensation preserves `effectDocumentId`, original durable line identity and one-time `originalMovementId` linkage. Both physical partitions are append-only and exposed as one `InventoryStockMovementSnapshot` ledger through `inventory_all_stock_movements`.
-- Opening persistence resolves originating document/line/time from the just-appended opening movement inside the same transaction.
-- Business-order allocation uses one transaction-bound SQLite upsert/`RETURNING`; callers still cannot inject chronology.
-- Durable idempotency result persistence is in the same UoW as movement, projection, opening and document lifecycle/version writes.
-- Production `TauriSqliteExecutor.transaction()` uses a Rust-side pinned SQLx `PoolConnection<Sqlite>` transaction bridge with `BEGIN IMMEDIATE`, one connection, `COMMIT` and `ROLLBACK`.
-- Added six focused `@argin/inventory-tauri` adapter tests plus two `@argin/database-tauri` pinned transaction tests.
+- Created `@argin/inventory-tauri` with concrete repositories and `SqliteInventoryUnitOfWork`.
+- Added migration `0027_inventory_reversal_persistence.sql` and `inventory_all_stock_movements` to preserve accepted Reversal identities.
+- Production `TauriSqliteExecutor.transaction()` uses a pinned SQLx SQLite connection with `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK`.
+- Document CAS, business-order allocation and durable idempotency participate in the real transaction boundary.
+- Added focused Inventory adapter and database atomic-bridge tests.
 - Owner explicitly accepted Step 13 before requesting Step 14. Raw local execution was not pasted into the conversation.
 
-### Step 14 — Permissions, Audit and Shared Approval Integration — Implemented; Validation Pending
+### Step 14 — Permissions, Audit and Shared Approval Integration — Completed
 
-- Added ten independent permission codes for view/create/edit/submit/approve/confirm/reverse/cancel/import/export.
-- Added `InventoryAuthorizationPolicy`, `InventorySecurityContext`, shared Approval gateway and Audit sink contracts without adding SQL/Tauri dependencies to Domain/Application contracts.
-- Added `SecuredInventoryService` for submit/approve/confirm/reverse/cancel. It reloads the persisted document first and authorizes against actual Company/origin-Branch scope before mutation.
-- Approval and confirmation are separate permissions; confirm also requires the shared Approval request to already be `approved`.
-- Added `SharedInventoryApprovalGateway` in `@argin/inventory-tauri`, delegating create/get/submit/approve to the Phase 8 `@argin/audit` Approval application services with deterministic Company + document request identity.
-- Submission retry heals a post-Inventory-commit Approval failure by re-invoking the idempotent shared Approval gateway even when Inventory returns `replayed: true`.
-- Added `SharedInventoryAuditSink`, delegating to shared Audit with deterministic event identity, actor/scope/correlation/reason/before-after status and precise Inventory action metadata.
-- Successful Inventory replay suppresses duplicate Inventory Audit emission; the shared Audit adapter also pre-checks deterministic entry identity.
-- Added five focused Inventory security/integration tests covering independent permissions, persisted Branch authorization, Approval-before-confirm, replay audit suppression and Approval repair on submit replay.
-- Added [Inventory Security, Approval, and Audit](../security/inventory-security-approval-audit.md).
-- Step 14 does not claim a distributed transaction across Inventory and shared Approval/Audit stores; deterministic identities and retry-safe composition preserve convergence while Step 13 stock atomicity remains unchanged.
+- Added ten independent permission codes and persisted-document Company/Branch authorization.
+- Added `SecuredInventoryService`, shared Phase 8 Approval composition and shared replay-safe Audit integration.
+- Approval and confirmation remain separate authorities; stock confirmation requires the shared Approval request to be approved.
+- Submit replay can heal a post-Inventory-commit Approval composition failure; successful replay does not duplicate Inventory Audit.
+- Added five focused Inventory security/integration tests and [Inventory Security, Approval, and Audit](../security/inventory-security-approval-audit.md).
+- Owner explicitly accepted Step 14 before requesting Step 15. Raw local execution was not pasted into the conversation.
 
-#### Step 14 Validation Evidence
+### Step 15 — Master Data Dependency Guards and ERP Integration — Implemented; Validation Pending
+
+- Added `InventoryWarehouseDependencyGuard`, implementing the existing Phase 19 Warehouse dependency contract without changing Warehouse Domain ownership.
+- Guard checks non-zero stock projection, open Inventory documents referencing source/destination Warehouse paths, and immutable history in `inventory_all_stock_movements`.
+- Delete operations block on history; deactivate/archive preserve historical identities; Location move also blocks on history to prevent reinterpretation of historical StockKeys.
+- Added `InventoryMovementFeedReader` public contract and `SqliteInventoryMovementFeedReader` implementation with Company isolation, 500-row bound and deterministic chronology cursoring.
+- Added `SecuredInventoryQuantityConfirmationPort`; future Purchase/Sales/Manufacturing confirmation therefore flows through Step 14 security/Approval and Step 13 atomic/idempotent confirmation rather than direct movement writes.
+- Preserved Product/unit history through immutable quantity/unit/conversion snapshots; current master edits are not allowed to rewrite confirmed line facts.
+- Added `@argin/warehouse` to `@argin/inventory-tauri` for the public dependency-guard interface and added Inventory packages to Desktop dependencies for future composition.
+- Added five focused SQLite guard/feed tests and one focused secured ERP confirmation-port test.
+- Added [Inventory Master Data Dependency Guards and ERP Integration](../architecture/inventory-master-data-erp-integration.md).
+- Concrete Purchase/Sales/Manufacturing draft staging remains deferred to the owning future phases; Phase 20 does not invent their source-document lifecycle.
+
+#### Step 15 Validation Evidence
 
 | Check | Result |
 | --- | --- |
-| Permission separation | 10 distinct codes; approve and confirm are independent |
-| Company/Branch authorization | Secured boundary uses persisted document Company/origin Branch before mutation |
-| Shared Approval | Adapter uses Phase 8 `@argin/audit` services; no parallel Inventory Approval store/state machine |
-| Confirmation gate | Shared Approval must be `approved` before stock confirmation starts |
-| Replay recovery | Submit replay re-runs idempotent Approval composition; successful replay emits no duplicate Inventory Audit |
-| Shared Audit | Deterministic shared Audit identity + before/after/reason/correlation metadata implemented |
-| Focused Step 14 tests | 5 security/integration tests defined in `packages/inventory/tests/inventory-security-integration.test.ts` |
-| Executable package validation | Not observed by the assistant environment; no pass claim is made before local output |
+| Warehouse dependency contract | Concrete Inventory implementation added against Phase 19 public `WarehouseDependencyGuard` |
+| Non-zero stock | Guard detects non-zero balance projection rows without floating-point conversion |
+| Open documents | Guard checks Draft/Submitted/Approved Inventory source and destination Warehouse references |
+| Historical movement protection | Delete and Location move block on authoritative immutable movement history |
+| ERP confirmation | Public adapter routes through `SecuredInventoryService.confirm()` |
+| Valuation/later consumer feed | Company-scoped bounded immutable movement feed implemented over `inventory_all_stock_movements` |
+| Product/unit history | Historical quantity/unit/conversion snapshots remain immutable facts |
+| Focused Step 15 tests | 6 tests defined across Inventory and Inventory-Tauri integration suites |
+| Executable package/Desktop validation | Not observed by the assistant environment; no pass claim is made before local output |
 
-#### Step 15 Handoff
+#### Step 16 Handoff
 
-Step 15 must register concrete Inventory dependency probes for Product/Warehouse/Zone/Location maintenance and expose future Purchase/Sales/Manufacturing quantity-confirmation plus Phase 21 movement-feed boundaries. It must preserve historical movement references and must not weaken Step 14 authorization or Step 13 transaction/idempotency guarantees.
+Step 16 must build the Persian RTL Inventory document workspace on the secured/public boundaries already established. It must not let UI callers write movement/balance tables, bypass shared Approval, invent valuation fields or replace durable Warehouse/Product identities with display codes.
 
 ## Testing
 
@@ -422,7 +428,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–14 add focused lifecycle/stock/workflow/contract/orchestration/migration/Bridge/SQLite/security tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–13 have explicit owner acceptance. Real migration upgrade/constraint/rollback/restart validation remains required in Step 20 and final gates in Step 21.
+The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–15 add focused lifecycle/stock/workflow/contract/orchestration/migration/Bridge/SQLite/security/integration tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–14 have explicit owner acceptance. Real migration upgrade/constraint/rollback/restart and Desktop composition/master-data guard wiring validation remain required in Step 20; final monorepo gates remain Step 21.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -440,9 +446,10 @@ Required implementation gates, to be executed and recorded at Steps 19–21:
 - Step 10 added `inventory-application-services.md` and recorded idempotent/concurrent orchestration.
 - Step 11 added migration `0026_inventory_documents.sql`, registered it in the Desktop runner, and updated database design/dictionary.
 - Step 12 added `inventory-argin-bridge-contract.md` and froze document/movement synchronization envelopes and atomic batch rules.
-- Step 13 created `@argin/inventory-tauri`, added migration `0027_inventory_reversal_persistence.sql`, added `inventory-sqlite-persistence.md`, implemented the real Desktop SQLite transaction bridge, and updated database design/dictionary/module registry/generated index.
+- Step 13 created `@argin/inventory-tauri`, added migration `0027_inventory_reversal_persistence.sql`, added `inventory-sqlite-persistence.md`, and implemented the real Desktop SQLite transaction bridge.
 - Step 14 added `inventory-security-approval-audit.md`, secured Inventory lifecycle composition, shared Phase 8 Approval integration and shared replay-safe Audit adapters.
-- ERP dependency integration and Desktop UI documentation remain updated in their owning steps.
+- Step 15 added `inventory-master-data-erp-integration.md`, the concrete Warehouse dependency guard, secured ERP confirmation adapter and stable movement feed.
+- Desktop Inventory UI documentation remains Step 16 onward; generated documentation index refresh remains Step 21.
 
 ## Related ADRs
 
