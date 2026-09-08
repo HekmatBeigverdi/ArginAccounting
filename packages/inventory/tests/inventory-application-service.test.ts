@@ -27,13 +27,11 @@ import type {
   InventoryIdempotencyRecord,
   InventoryIdempotencyRepository,
   InventoryMovementRepository,
-  InventoryOpeningBalanceKey,
   InventoryOpeningBalanceRepository,
   InventoryProductReference,
   InventoryScopeContext,
   InventoryScopeReaders,
   InventoryStockBalanceSnapshot,
-  InventoryStockKey,
   InventoryStockMovementSnapshot,
   InventoryUnitOfWork,
   InventoryUnitOfWorkContext,
@@ -200,7 +198,7 @@ function serviceFixture() {
     scopeContext: () => scopeContext,
     masters: {
       product: async (_companyId, productId) => productId === "product-1" ? product() : null,
-      warehouse: async (_companyId, reference) => ({ warehouse, zone: null, location: null, requested: reference } as never),
+      warehouse: async () => ({ warehouse }),
     },
     identities: {
       movementId: input => `${input.documentId}:${input.lineId}:${input.role}`,
