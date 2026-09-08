@@ -9,7 +9,7 @@ export interface InventoryCommandMetadata {
   readonly companyId: string;
   /** Stable client/request identity used by Step 10 idempotency orchestration. */
   readonly requestKey: string;
-  /** Canonical payload fingerprint computed by the authoritative service, not by Domain. */
+  /** Canonical payload fingerprint computed by the authoritative Application boundary. */
   readonly payloadFingerprint: string;
 }
 
@@ -41,7 +41,6 @@ export interface DeleteInventoryDraftCommand extends InventoryCommandMetadata {
 }
 
 export interface ConfirmInventoryDocumentCommand extends InventoryLifecycleCommand {
-  /** Durable same-day stock chronology order assigned inside the authoritative UoW. */
-  readonly businessOrder: number;
+  /** Step 10 resolves durable businessOrder inside the authoritative UoW; callers cannot inject it. */
   readonly allowNegativeStock?: boolean;
 }
