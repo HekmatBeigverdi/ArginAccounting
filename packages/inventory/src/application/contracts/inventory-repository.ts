@@ -1,4 +1,4 @@
-import type { InventoryDocumentSnapshot, InventoryDocumentType } from "../../domain/inventory-document.ts";
+import type { InventoryDocumentSnapshot, InventoryDocumentStatus, InventoryDocumentType } from "../../domain/inventory-document.ts";
 import type { InventoryOpeningBalanceKey } from "../inventory-core-workflows.ts";
 import type {
   InventoryStockBalanceSnapshot,
@@ -54,6 +54,8 @@ export interface InventoryIdempotencyRecord {
   readonly outcomeKind: InventoryIdempotencyOutcomeKind;
   readonly documentId: string;
   readonly documentVersion: number | null;
+  /** Snapshot of the successful outcome so replay does not depend on later document mutations. */
+  readonly documentStatus: InventoryDocumentStatus;
   readonly recordedAt: string;
 }
 
