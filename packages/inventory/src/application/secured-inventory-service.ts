@@ -43,18 +43,18 @@ export class SecuredInventoryService {
   async submit(security: InventorySecurityContext, command: InventoryLifecycleCommand): Promise<InventoryApplicationMutationResult> {
     const before = await this.requireDocument(security, command, inventoryPermissions.submit);
     const result = await this.deps.application.submit(command);
-    if (!result.replayed) {
-      await this.deps.approval.submit({
-        companyId: before.companyId,
-        branchId: before.scope?.branchId ?? null,
-        documentId: before.documentId,
-        documentNumber: before.documentNumber,
-        actorId: security.actorId,
-        actorDisplayName: normalizeActorName(security),
-        correlationId: inventoryCorrelationId(security, command.requestKey),
-      });
-      await this.record("inventory.document.submit", security, command, before, result);
-    }
+    // Approval composition is intentionally retried even when Inventory reports replay.
+    // This heals a prior post-commit Approval infrastructure failure without duplicating Inventory effects.
+    await this.deps.approval.submit({
+      companyId: before.companyId,
+      branchId: before.scope?.branchId ?? null,
+      documentId: before.documentId,
+      documentNumber: before.documentNumber,
+      actorId: security.actorId,
+      actorDisplayName: normalizeActorName(security),
+      correlationId: inventoryCorrelationId(security, command.requestKey),
+    });
+    if (!result.replayed) await this.record("inventory.document.submit", security, command, before, result);
     return result;
   }
 
