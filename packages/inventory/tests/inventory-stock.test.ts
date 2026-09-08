@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { WarehouseOperationalReference } from "@argin/warehouse";
 import {
   INVENTORY_DOMAIN_ERROR_CODES as codes,
   InventoryDomainError,
@@ -16,9 +17,9 @@ import {
 import type { InventoryDomainErrorCode, InventoryStockMovementSnapshot } from "../src/index.ts";
 
 const companyId = "company-1";
-const warehouse = { warehouseId: "warehouse-1", zoneId: null, locationId: null };
-const zone = { warehouseId: "warehouse-1", zoneId: "zone-1", locationId: null };
-const location = { warehouseId: "warehouse-1", zoneId: "zone-1", locationId: "location-1" };
+const warehouse: WarehouseOperationalReference = { warehouseId: "warehouse-1", zoneId: null, locationId: null };
+const zone: WarehouseOperationalReference = { warehouseId: "warehouse-1", zoneId: "zone-1", locationId: null };
+const location: WarehouseOperationalReference = { warehouseId: "warehouse-1", zoneId: "zone-1", locationId: "location-1" };
 
 function rejects(action: () => unknown, code: InventoryDomainErrorCode): void {
   assert.throws(action, (error: unknown) => error instanceof InventoryDomainError && error.code === code);
@@ -29,8 +30,9 @@ function movement(overrides: Partial<{
   documentId: string;
   lineId: string;
   productId: string;
-  warehouse: typeof warehouse;
+  warehouse: WarehouseOperationalReference;
   businessDate: string;
+  businessOrder: number;
   recordedAt: string;
   quantityDelta: string;
 }> = {}): InventoryStockMovementSnapshot {
@@ -42,6 +44,7 @@ function movement(overrides: Partial<{
     productId: overrides.productId ?? "product-1",
     warehouse: overrides.warehouse ?? warehouse,
     businessDate: overrides.businessDate ?? "2026-09-08",
+    businessOrder: overrides.businessOrder ?? 1,
     recordedAt: overrides.recordedAt ?? "2026-09-08T08:00:00Z",
     quantityDelta: overrides.quantityDelta ?? "10",
   });
@@ -72,16 +75,20 @@ test("movement facts are canonical immutable base-unit deltas", () => {
   const fact = movement({ movementId: " move-1 ", quantityDelta: "0010.5000", recordedAt: "2026-09-08T08:00:00.1Z" });
   assert.equal(fact.movementId, "move-1");
   assert.equal(fact.quantityDelta, "10.5");
+  assert.equal(fact.businessOrder, 1);
   assert.equal(fact.recordedAt, "2026-09-08T08:00:00.100Z");
   assert.equal(Object.isFrozen(fact), true);
   assert.equal(Object.isFrozen(fact.stockKey), true);
   assert.deepEqual(rehydrateInventoryStockMovement(JSON.parse(JSON.stringify(fact))), fact);
 });
 
-test("movement rejects zero quantity and malformed dates/timestamps", () => {
+test("movement rejects zero quantity, malformed time and invalid business order", () => {
   rejects(() => movement({ quantityDelta: "0.000" }), codes.quantityZero);
   rejects(() => movement({ businessDate: "2026-02-29" }), codes.businessDateInvalid);
   rejects(() => movement({ recordedAt: "2026-09-08T11:30:00+03:30" }), codes.timestampInvalid);
+  for (const businessOrder of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    rejects(() => movement({ businessOrder }), codes.stockOrderInvalid);
+  }
 });
 
 test("exact ledger arithmetic never uses JavaScript floating point", () => {
@@ -92,8 +99,8 @@ test("exact ledger arithmetic never uses JavaScript floating point", () => {
 
 test("rebuild derives balance only from append-only movement facts", () => {
   const ledger = rebuildInventoryStockLedger([
-    movement({ movementId: "m-in", documentId: "doc-1", quantityDelta: "10" }),
-    movement({ movementId: "m-out", documentId: "doc-2", quantityDelta: "-3" }),
+    movement({ movementId: "m-in", documentId: "doc-1", businessOrder: 1, quantityDelta: "10" }),
+    movement({ movementId: "m-out", documentId: "doc-2", businessOrder: 2, quantityDelta: "-3" }),
   ]);
   const key = createInventoryStockKey({ companyId, productId: "product-1", warehouse });
   const balance = getInventoryStockBalance(ledger, key);
@@ -106,22 +113,22 @@ test("rebuild derives balance only from append-only movement facts", () => {
 });
 
 test("input order cannot change deterministic business-date ledger order", () => {
-  const later = movement({ movementId: "m-later", documentId: "doc-z", businessDate: "2026-09-09", quantityDelta: "-2" });
-  const earlier = movement({ movementId: "m-earlier", documentId: "doc-a", businessDate: "2026-09-08", quantityDelta: "5" });
+  const later = movement({ movementId: "m-later", documentId: "doc-z", businessDate: "2026-09-09", businessOrder: 1, quantityDelta: "-2" });
+  const earlier = movement({ movementId: "m-earlier", documentId: "doc-a", businessDate: "2026-09-08", businessOrder: 99, quantityDelta: "5" });
   const first = rebuildInventoryStockLedger([later, earlier]);
   const second = rebuildInventoryStockLedger([earlier, later]);
   assert.deepEqual(first, second);
   assert.deepEqual(first.movements.map(item => item.movementId), ["m-earlier", "m-later"]);
 });
 
-test("same-date ordering is deterministic by durable document, line and movement IDs", () => {
+test("same-date ordering uses businessOrder before durable tie breakers", () => {
   const items = [
-    movement({ movementId: "m-2", documentId: "doc-b", lineId: "line-1", quantityDelta: "1" }),
-    movement({ movementId: "m-3", documentId: "doc-a", lineId: "line-2", quantityDelta: "1" }),
-    movement({ movementId: "m-1", documentId: "doc-a", lineId: "line-1", quantityDelta: "1" }),
+    movement({ movementId: "m-3", documentId: "doc-a", businessOrder: 2, quantityDelta: "1" }),
+    movement({ movementId: "m-2", documentId: "doc-b", businessOrder: 1, quantityDelta: "1" }),
+    movement({ movementId: "m-1", documentId: "doc-a", businessOrder: 1, quantityDelta: "1" }),
   ];
   const sorted = [...items].sort(compareInventoryStockMovements);
-  assert.deepEqual(sorted.map(item => item.movementId), ["m-1", "m-3", "m-2"]);
+  assert.deepEqual(sorted.map(item => item.movementId), ["m-1", "m-2", "m-3"]);
 });
 
 test("default policy rejects current negative stock", () => {
@@ -130,17 +137,28 @@ test("default policy rejects current negative stock", () => {
   ]), codes.negativeStock);
 });
 
+test("same-day business order participates in negative-stock validation", () => {
+  const receiptAfterIssue = [
+    movement({ movementId: "receipt", documentId: "receipt", businessOrder: 2, quantityDelta: "10" }),
+    movement({ movementId: "issue", documentId: "issue", businessOrder: 1, quantityDelta: "-5" }),
+  ];
+  rejects(() => rebuildInventoryStockLedger(receiptAfterIssue), codes.negativeStock);
+  assert.equal(getInventoryStockBalance(rebuildInventoryStockLedger(receiptAfterIssue, { allowNegativeStock: true }), receiptAfterIssue[0]!.stockKey).quantity, "5");
+});
+
 test("default policy rejects a backdated movement that makes historical stock negative", () => {
   const receipt = movement({
     movementId: "receipt",
     documentId: "doc-b",
     businessDate: "2026-09-10",
+    businessOrder: 1,
     quantityDelta: "10",
   });
   const issue = movement({
     movementId: "issue",
     documentId: "doc-c",
     businessDate: "2026-09-11",
+    businessOrder: 1,
     quantityDelta: "-5",
   });
   const ledger = rebuildInventoryStockLedger([receipt, issue]);
@@ -148,6 +166,7 @@ test("default policy rejects a backdated movement that makes historical stock ne
     movementId: "backdated",
     documentId: "doc-a",
     businessDate: "2026-09-09",
+    businessOrder: 1,
     quantityDelta: "-1",
   });
   rejects(() => appendInventoryStockMovement(ledger, backdatedIssue), codes.negativeStock);
@@ -157,18 +176,18 @@ test("default policy rejects a backdated movement that makes historical stock ne
 
 test("explicit policy can allow negative stock without changing canonical chronology", () => {
   const ledger = rebuildInventoryStockLedger([
-    movement({ movementId: "m-out", documentId: "doc-a", quantityDelta: "-2" }),
-    movement({ movementId: "m-in", documentId: "doc-b", quantityDelta: "5" }),
+    movement({ movementId: "m-out", documentId: "doc-a", businessOrder: 1, quantityDelta: "-2" }),
+    movement({ movementId: "m-in", documentId: "doc-b", businessOrder: 2, quantityDelta: "5" }),
   ], { allowNegativeStock: true });
   assert.equal(getInventoryStockBalance(ledger, ledger.movements[0]!.stockKey).quantity, "3");
 });
 
 test("balances are isolated by stock key", () => {
   const ledger = rebuildInventoryStockLedger([
-    movement({ movementId: "m-w", documentId: "doc-w", quantityDelta: "10", warehouse }),
-    movement({ movementId: "m-z", documentId: "doc-z", quantityDelta: "4", warehouse: zone }),
-    movement({ movementId: "m-l", documentId: "doc-l", quantityDelta: "2", warehouse: location }),
-    movement({ movementId: "m-p", documentId: "doc-p", quantityDelta: "7", productId: "product-2" }),
+    movement({ movementId: "m-w", documentId: "doc-w", businessOrder: 1, quantityDelta: "10", warehouse }),
+    movement({ movementId: "m-z", documentId: "doc-z", businessOrder: 2, quantityDelta: "4", warehouse: zone }),
+    movement({ movementId: "m-l", documentId: "doc-l", businessOrder: 3, quantityDelta: "2", warehouse: location }),
+    movement({ movementId: "m-p", documentId: "doc-p", businessOrder: 4, quantityDelta: "7", productId: "product-2" }),
   ]);
   assert.equal(ledger.balances.length, 4);
   assert.equal(getInventoryStockBalance(ledger, createInventoryStockKey({ companyId, productId: "product-1", warehouse })).quantity, "10");
@@ -186,21 +205,21 @@ test("missing balance is a derived zero projection, not a stored mutable fact", 
 });
 
 test("duplicate movement identity and duplicate source fact are rejected", () => {
-  const first = movement({ movementId: "m-1", documentId: "doc-1", lineId: "line-1", quantityDelta: "2" });
+  const first = movement({ movementId: "m-1", documentId: "doc-1", lineId: "line-1", businessOrder: 1, quantityDelta: "2" });
   rejects(() => rebuildInventoryStockLedger([
     first,
-    movement({ movementId: "m-1", documentId: "doc-2", lineId: "line-2", quantityDelta: "1" }),
+    movement({ movementId: "m-1", documentId: "doc-2", lineId: "line-2", businessOrder: 2, quantityDelta: "1" }),
   ]), codes.duplicateMovementId);
   rejects(() => rebuildInventoryStockLedger([
     first,
-    movement({ movementId: "m-2", documentId: "doc-1", lineId: "line-1", quantityDelta: "1" }),
+    movement({ movementId: "m-2", documentId: "doc-1", lineId: "line-1", businessOrder: 2, quantityDelta: "1" }),
   ]), codes.duplicateMovementSource);
 });
 
 test("same document line may produce a distinct fact for a different stock key", () => {
   const ledger = rebuildInventoryStockLedger([
-    movement({ movementId: "m-source", documentId: "transfer-1", lineId: "line-1", warehouse, quantityDelta: "2" }),
-    movement({ movementId: "m-destination", documentId: "transfer-1", lineId: "line-1", warehouse: zone, quantityDelta: "2" }),
+    movement({ movementId: "m-source", documentId: "transfer-1", lineId: "line-1", businessOrder: 1, warehouse, quantityDelta: "2" }),
+    movement({ movementId: "m-destination", documentId: "transfer-1", lineId: "line-1", businessOrder: 1, warehouse: zone, quantityDelta: "2" }),
   ]);
   assert.equal(ledger.movements.length, 2);
 });
