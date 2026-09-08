@@ -1,4 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod atomic_sqlite_commands;
 mod password_commands;
 
 #[tauri::command]
@@ -61,12 +62,18 @@ fn database_migrations() -> Vec<Migration> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(atomic_sqlite_commands::AtomicSqliteTransactions::default())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             print_current_webview,
             password_commands::hash_password,
             password_commands::verify_password,
+            atomic_sqlite_commands::atomic_sqlite_begin,
+            atomic_sqlite_commands::atomic_sqlite_execute,
+            atomic_sqlite_commands::atomic_sqlite_select,
+            atomic_sqlite_commands::atomic_sqlite_commit,
+            atomic_sqlite_commands::atomic_sqlite_rollback,
         ])
         .plugin(
             tauri_plugin_sql::Builder::default()
