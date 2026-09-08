@@ -64,3 +64,17 @@ export { validateInventoryDocumentScope } from "./application/inventory-scope-va
 export type { InventoryScopeReaders, InventoryScopeContext, ScopedInventoryDocument } from "./application/inventory-scope-validation.ts";
 export { reserveInventoryDocumentNumber, INVENTORY_NUMBER_SERIES_TYPES, DEFAULT_INVENTORY_NUMBER_SERIES_DEFINITIONS } from "./application/inventory-numbering.ts";
 export type { InventoryNumberReservation } from "./application/inventory-numbering.ts";
+
+export {
+  INVENTORY_CORE_STOCK_DOCUMENT_TYPES,
+  confirmInventoryReceiptIssueOpening,
+  serializeInventoryOpeningBalanceKey,
+} from "./application/inventory-core-workflows.ts";
+export type {
+  ConfirmInventoryCoreDocumentInput,
+  InventoryCoreConfirmationResult,
+  InventoryCoreStockDocumentType,
+  InventoryLineConfirmationResolution,
+  InventoryLineMovementIdentity,
+  InventoryOpeningBalanceKey,
+} from "./application/inventory-core-workflows.ts";
