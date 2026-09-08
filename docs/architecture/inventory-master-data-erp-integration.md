@@ -12,11 +12,11 @@ Downstream ERP modules may request Inventory work through public ports. They mus
 
 ## Warehouse Dependency Guard
 
-`InventoryWarehouseDependencyGuard` implements the Phase 19 `WarehouseDependencyGuard` contract using Inventory persistence.
+`InventoryWarehouseDependencyGuard` is structurally compatible with the Phase 19 `WarehouseDependencyGuard` contract without introducing a reverse package dependency from Inventory infrastructure to Warehouse infrastructure.
 
 It evaluates three dependency classes:
 
-- non-zero Inventory stock from the current balance projection;
+- non-zero Inventory stock rebuilt exactly from authoritative `inventory_all_stock_movements` quantity deltas;
 - open Inventory documents (`draft`, `submitted`, `approved`) referencing the Warehouse/Zone/Location on source or destination operations;
 - immutable historical movement facts from `inventory_all_stock_movements`.
 
@@ -34,7 +34,7 @@ Protected-operation policy:
 
 Historical references block destructive delete because removal would break immutable accounting/Inventory history. Deactivation/archive do not erase identity, so historical use alone does not block them. Location movement is blocked by history because changing its Zone relationship would reinterpret historical StockKeys.
 
-The guard is Company-scoped and uses durable IDs only. Warehouse code/title or UI path labels are never dependency identity.
+The guard is Company-scoped and uses durable IDs only. Warehouse code/title or UI path labels are never dependency identity. Exact stock aggregation uses Inventory decimal arithmetic rather than SQLite `REAL` or JavaScript floating point.
 
 ## Product and Unit History
 
@@ -84,4 +84,4 @@ Inventory Valuation consumes the movement feed and may create cost layers/value 
 
 ## Deferred
 
-This step does not implement Purchase/Sales/Manufacturing documents, valuation, reservation/ATP, UI, live Argin Bridge transport or cross-module database writes.
+This step does not implement Purchase/Sales/Manufacturing documents, valuation, reservation/ATP, UI, live Argin Bridge transport or cross-module database writes. Desktop wiring of the concrete guard into the Warehouse composition root is validated together with cross-module Desktop integration in Step 20.
