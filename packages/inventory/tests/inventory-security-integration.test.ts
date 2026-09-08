@@ -21,6 +21,11 @@ const confirmCommand = {
   expectedVersion: 3, action: { actorUserId: "user-1", occurredAt: "2026-09-08T10:00:00.000Z" },
 } as const;
 
+const submitCommand = {
+  companyId: "company-1", documentId: "doc-1", requestKey: "req-submit", payloadFingerprint: "fp-submit",
+  expectedVersion: 3, action: { actorUserId: "user-1", occurredAt: "2026-09-08T10:00:00.000Z" },
+} as const;
+
 test("inventory permissions remain independently assignable", () => {
   assert.equal(new Set(Object.values(inventoryPermissions)).size, 10);
   assert.equal(inventoryPermissions.approve, "inventory.documents.approve");
@@ -73,5 +78,24 @@ test("successful replay does not emit a duplicate Inventory audit event", async 
   });
   const result = await service.confirm({ actorId: "user-1" }, confirmCommand);
   assert.equal(result.replayed, true);
+  assert.equal(auditCount, 0);
+});
+
+test("submit replay still repairs or verifies the shared Approval request", async () => {
+  let approvalSubmitCount = 0;
+  let auditCount = 0;
+  const service = new SecuredInventoryService({
+    application: { async submit() { return { documentId: "doc-1", status: "submitted", version: 4, replayed: true }; } } as unknown as InventoryApplicationService,
+    documents: { async findById() { return Object.freeze({ ...document, status: "submitted" as const }); } },
+    authorization: { async require() {} },
+    approval: {
+      async submit() { approvalSubmitCount += 1; return { requestId: "approval-1", status: "pending" }; },
+      async approve() { throw new Error("unused"); }, async requireApproved() {},
+    },
+    audit: { async record() { auditCount += 1; } },
+  });
+  const result = await service.submit({ actorId: "user-1" }, submitCommand);
+  assert.equal(result.replayed, true);
+  assert.equal(approvalSubmitCount, 1);
   assert.equal(auditCount, 0);
 });
