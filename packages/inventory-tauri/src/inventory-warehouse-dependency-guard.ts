@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "@argin/database";
+import { addInventoryStockQuantities } from "@argin/inventory";
 
 const OPEN_STATUSES = Object.freeze(["draft", "submitted", "approved"] as const);
 
@@ -33,17 +34,15 @@ export interface InventoryWarehouseDependencyInput {
 }
 
 type CountRow = { count: number | string };
-type QuantityRow = { quantity: string };
+type MovementQuantityRow = {
+  product_id: string;
+  warehouse_id: string;
+  zone_id: string | null;
+  location_id: string | null;
+  quantity_delta: string;
+};
 
 const countOf = (row: CountRow | null): number => Number(row?.count ?? 0);
-
-const isZeroDecimal = (value: string): boolean => {
-  const normalized = value.trim();
-  if (!normalized) return true;
-  const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(normalized);
-  if (!match) return false;
-  return `${match[2] ?? ""}${match[3] ?? ""}`.split("").every((digit) => digit === "0");
-};
 
 const scopePredicate = (alias: string, input: InventoryWarehouseDependencyInput): { sql: string; parameters: readonly (string | null)[] } => {
   const parameters: (string | null)[] = [input.companyId, input.warehouseId];
@@ -80,6 +79,24 @@ const lineScopePredicate = (input: InventoryWarehouseDependencyInput): { sql: st
   return { sql: `d.company_id=? AND (${branches.join(" OR ")})`, parameters };
 };
 
+const stockKey = (row: MovementQuantityRow): string => JSON.stringify([
+  row.product_id,
+  row.warehouse_id,
+  row.zone_id,
+  row.location_id,
+]);
+
+const countNonZeroAuthoritativeStock = (rows: readonly MovementQuantityRow[]): number => {
+  const balances = new Map<string, string>();
+  for (const row of rows) {
+    const key = stockKey(row);
+    balances.set(key, addInventoryStockQuantities(balances.get(key) ?? "0", row.quantity_delta));
+  }
+  let count = 0;
+  for (const quantity of balances.values()) if (quantity !== "0") count += 1;
+  return count;
+};
+
 const blocksHistoricalReferences = (operation: InventoryWarehouseProtectedOperation): boolean =>
   operation === "warehouse.delete" ||
   operation === "zone.delete" ||
@@ -96,12 +113,14 @@ export class InventoryWarehouseDependencyGuard {
   async check(input: InventoryWarehouseDependencyInput): Promise<InventoryWarehouseDependencyCheck> {
     const blockers: InventoryWarehouseDependencyBlocker[] = [];
 
-    const balanceScope = scopePredicate("b", input);
-    const balanceRows = await this.database.query<QuantityRow>(
-      `SELECT b.quantity FROM inventory_stock_balances b WHERE ${balanceScope.sql}`,
-      balanceScope.parameters,
+    const movementScope = scopePredicate("m", input);
+    const movementRows = await this.database.query<MovementQuantityRow>(
+      `SELECT m.product_id,m.warehouse_id,m.zone_id,m.location_id,m.quantity_delta
+       FROM inventory_all_stock_movements m
+       WHERE ${movementScope.sql}`,
+      movementScope.parameters,
     );
-    const nonZeroCount = balanceRows.filter((row) => !isZeroDecimal(row.quantity)).length;
+    const nonZeroCount = countNonZeroAuthoritativeStock(movementRows);
     if (nonZeroCount > 0) {
       blockers.push(Object.freeze({
         kind: "stock-balance",
@@ -131,21 +150,13 @@ export class InventoryWarehouseDependencyGuard {
       }));
     }
 
-    if (blocksHistoricalReferences(input.operation)) {
-      const movementScope = scopePredicate("m", input);
-      const historical = await this.database.queryOne<CountRow>(
-        `SELECT COUNT(*) AS count FROM inventory_all_stock_movements m WHERE ${movementScope.sql}`,
-        movementScope.parameters,
-      );
-      const historicalCount = countOf(historical);
-      if (historicalCount > 0) {
-        blockers.push(Object.freeze({
-          kind: "inventory-document",
-          code: "inventory.warehouse-dependency.historical-movement",
-          count: historicalCount,
-          message: "Warehouse reference is part of immutable Inventory movement history.",
-        }));
-      }
+    if (blocksHistoricalReferences(input.operation) && movementRows.length > 0) {
+      blockers.push(Object.freeze({
+        kind: "inventory-document",
+        code: "inventory.warehouse-dependency.historical-movement",
+        count: movementRows.length,
+        message: "Warehouse reference is part of immutable Inventory movement history.",
+      }));
     }
 
     return Object.freeze({
