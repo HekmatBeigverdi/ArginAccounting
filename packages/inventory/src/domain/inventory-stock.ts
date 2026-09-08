@@ -253,7 +253,9 @@ export function rebuildInventoryStockLedger(
   if (!Array.isArray(input)) return fail(codes.inputInvalid, "movements");
   const movementIds = new Set<string>();
   const sourceFacts = new Set<string>();
-  const movements = input.map(rehydrateInventoryStockMovement).sort(compareInventoryStockMovements);
+  const movements: InventoryStockMovementSnapshot[] = [];
+  for (const raw of input) movements.push(rehydrateInventoryStockMovement(raw));
+  movements.sort(compareInventoryStockMovements);
   const balances = new Map<string, InventoryStockBalanceSnapshot>();
 
   for (const movement of movements) {
