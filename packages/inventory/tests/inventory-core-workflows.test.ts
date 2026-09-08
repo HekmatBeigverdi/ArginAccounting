@@ -114,7 +114,14 @@ function createScopeReaders(): InventoryScopeReaders {
       }),
     },
     historicalLocks: { findActiveLocks: async () => [] },
-    warehouses: { getById: async () => warehouse },
+    warehouses: {
+      getById: async () => ({
+        ...warehouse,
+        organizationalScope: { mode: "company" },
+        externalIdentifiers: [],
+        version: 1,
+      }),
+    },
   };
 }
 

@@ -172,7 +172,7 @@ export async function confirmInventoryReceiptIssueOpening(
 
   // Never trust a caller-provided balance projection; rebuild from accepted facts first.
   let ledger = rebuildInventoryStockLedger(input.ledger.movements, {
-    allowNegativeStock: input.allowNegativeStock,
+    allowNegativeStock: input.allowNegativeStock === true,
   });
   const movements: InventoryStockMovementSnapshot[] = [];
   const type = scopedDocument.documentType as InventoryCoreStockDocumentType;
@@ -222,7 +222,7 @@ export async function confirmInventoryReceiptIssueOpening(
     }
 
     ledger = appendInventoryStockMovement(ledger, movement, {
-      allowNegativeStock: input.allowNegativeStock,
+      allowNegativeStock: input.allowNegativeStock === true,
     });
     movements.push(movement);
   }
