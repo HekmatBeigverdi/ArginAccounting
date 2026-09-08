@@ -15,6 +15,8 @@ import {
   serializeInventoryStockKey,
 } from "../domain/inventory-stock.ts";
 import { INVENTORY_DOMAIN_ERROR_CODES as codes, InventoryDomainError } from "../domain/inventory-errors.ts";
+import type { InventoryScopeContext, InventoryScopeReaders } from "./inventory-scope-validation.ts";
+import { validateInventoryDocumentScope } from "./inventory-scope-validation.ts";
 
 export const INVENTORY_CORE_STOCK_DOCUMENT_TYPES = Object.freeze(["receipt", "issue", "opening"] as const);
 export type InventoryCoreStockDocumentType = (typeof INVENTORY_CORE_STOCK_DOCUMENT_TYPES)[number];
@@ -42,6 +44,9 @@ export interface InventoryOpeningBalanceKey {
 export interface ConfirmInventoryCoreDocumentInput {
   readonly document: InventoryDocumentSnapshot;
   readonly action: InventoryLifecycleActionInput;
+  /** Trusted authenticated/fiscal scope used by the existing Step 4 validator. */
+  readonly scopeContext: InventoryScopeContext;
+  readonly scopeReaders: InventoryScopeReaders;
   /** Stable positive order allocated by the authoritative confirmation boundary. */
   readonly businessOrder: number;
   readonly movementIdentities: readonly InventoryLineMovementIdentity[];
@@ -130,13 +135,13 @@ function signedBaseQuantity(type: InventoryCoreStockDocumentType, baseQuantity: 
 }
 
 /**
- * Pure Step 7 confirmation workflow for receipt, issue and opening documents.
- * It does not persist, allocate numbers/orders/IDs, authorize, or create repository contracts.
- * Callers must resolve current masters in the same authoritative transaction that later persists the result.
+ * Pure/persistence-neutral Step 7 confirmation workflow for receipt, issue and opening documents.
+ * It does not persist, allocate numbers/orders/IDs, authorize permissions, or create repository contracts.
+ * Existing Step 4 scope readers and current Product/Warehouse resolutions must be transaction-bound by later services.
  */
-export function confirmInventoryReceiptIssueOpening(
+export async function confirmInventoryReceiptIssueOpening(
   input: ConfirmInventoryCoreDocumentInput,
-): InventoryCoreConfirmationResult {
+): Promise<InventoryCoreConfirmationResult> {
   if (!input || typeof input !== "object") return fail(codes.inputInvalid, "confirmation");
   const document = rehydrateInventoryDocument(input.document);
   if (!INVENTORY_CORE_STOCK_DOCUMENT_TYPES.includes(document.documentType as InventoryCoreStockDocumentType)) {
@@ -157,9 +162,11 @@ export function confirmInventoryReceiptIssueOpening(
     return fail(codes.openingKeyInvalid, "openingKeys");
   }
 
+  // Re-run Company/Branch/fiscal/lock/Warehouse-visibility rules at confirmation time.
+  const scopedDocument = await validateInventoryDocumentScope(document, input.scopeContext, input.scopeReaders);
   const resolutions = normalizeLineResolutions(input.lineResolutions);
   const movementIds = normalizeMovementIdentities(input.movementIdentities);
-  if (resolutions.size !== document.lines.length || movementIds.size !== document.lines.length) {
+  if (resolutions.size !== scopedDocument.lines.length || movementIds.size !== scopedDocument.lines.length) {
     return fail(codes.confirmationResolutionMismatch, "lines");
   }
 
@@ -168,13 +175,13 @@ export function confirmInventoryReceiptIssueOpening(
     allowNegativeStock: input.allowNegativeStock,
   });
   const movements: InventoryStockMovementSnapshot[] = [];
-  const type = document.documentType as InventoryCoreStockDocumentType;
+  const type = scopedDocument.documentType as InventoryCoreStockDocumentType;
 
   const existingOpeningKeys = (input.openingKeys ?? []).map(normalizeOpeningKey);
   const openingSet = new Set(existingOpeningKeys.map(serializeInventoryOpeningBalanceKey));
   const newOpeningKeys: InventoryOpeningBalanceKey[] = [];
 
-  for (const line of document.lines) {
+  for (const line of scopedDocument.lines) {
     const operation = line.operation;
     if (!operation) return fail(codes.submissionIncomplete, "line.operation");
     if (operation.destination !== null) return fail(codes.operationMismatch, "line.operation.destination");
@@ -185,18 +192,18 @@ export function confirmInventoryReceiptIssueOpening(
       return fail(codes.confirmationResolutionMismatch, "lineId");
     }
 
-    // Revalidate current Product and Warehouse eligibility; historical snapshots remain unchanged.
-    assertInventoryProductEligible(document.companyId, line.productId, resolution.product);
-    validateInventoryWarehouseReference(document.companyId, operation.warehouse, resolution.warehouse);
+    // Revalidate current Product and full Warehouse/Zone/Location eligibility; historical snapshots remain unchanged.
+    assertInventoryProductEligible(scopedDocument.companyId, line.productId, resolution.product);
+    validateInventoryWarehouseReference(scopedDocument.companyId, operation.warehouse, resolution.warehouse);
 
     const movement = createInventoryStockMovement({
       movementId,
-      companyId: document.companyId,
-      documentId: document.documentId,
+      companyId: scopedDocument.companyId,
+      documentId: scopedDocument.documentId,
       lineId: line.lineId,
       productId: line.productId,
       warehouse: operation.warehouse,
-      businessDate: document.businessDate,
+      businessDate: scopedDocument.businessDate,
       businessOrder: input.businessOrder,
       recordedAt: input.action.occurredAt,
       quantityDelta: signedBaseQuantity(type, operation.quantity.baseQuantity),
@@ -204,8 +211,8 @@ export function confirmInventoryReceiptIssueOpening(
 
     if (type === "opening") {
       const openingKey = normalizeOpeningKey({
-        companyId: document.companyId,
-        fiscalYearId: document.scope.fiscalYearId,
+        companyId: scopedDocument.companyId,
+        fiscalYearId: scopedDocument.scope.fiscalYearId,
         stockKey: movement.stockKey,
       });
       const serialized = serializeInventoryOpeningBalanceKey(openingKey);
@@ -220,8 +227,8 @@ export function confirmInventoryReceiptIssueOpening(
     movements.push(movement);
   }
 
-  // Lifecycle confirmation occurs only after every eligibility/stock/opening rule succeeds.
-  const confirmed = confirmInventoryDocument(document, input.action);
+  // Lifecycle confirmation occurs only after every scope/master/stock/opening rule succeeds.
+  const confirmed = confirmInventoryDocument(scopedDocument, input.action);
   return Object.freeze({
     document: confirmed,
     movements: Object.freeze(movements),
