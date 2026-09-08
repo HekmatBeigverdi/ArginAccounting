@@ -88,7 +88,16 @@ function scopeReaders(): InventoryScopeReaders {
     fiscalPeriods: { findById: async id => id === period.id ? period : null },
     historicalLocks: { findActiveLocks: async () => locks },
     warehouses: {
-      getById: async input => input.warehouseId === warehouse1.warehouseId ? warehouse1 : input.warehouseId === warehouse2.warehouseId ? warehouse2 : null,
+      getById: async input => {
+        const warehouse = [warehouse1, warehouse2].find(item => item.warehouseId === input.warehouseId);
+        if (!warehouse) return null;
+        return {
+          ...warehouse,
+          organizationalScope: { mode: "company" },
+          externalIdentifiers: [],
+          version: 1,
+        };
+      },
     },
   };
 }
