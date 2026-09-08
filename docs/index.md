@@ -29,6 +29,7 @@
 - [ADR-0017 — Party Master Data Model](adr/ADR-0017-party-master-data-model.md)
 - [ADR-0018 — Exact Inventory Quantities and Historical Unit Snapshots](adr/ADR-0018-inventory-quantity-snapshots.md)
 - [ADR-0019 — Append-only Inventory Stock Ledger and Rebuildable Balances](adr/ADR-0019-inventory-stock-ledger.md)
+- [ADR-0020 — Atomic Inventory Transfer and Quantity Adjustment Workflows](adr/ADR-0020-inventory-transfer-adjustment-workflows.md)
 - [Architecture Decision Records](adr/README.md)
 
 ## architecture
