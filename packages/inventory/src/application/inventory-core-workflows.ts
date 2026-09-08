@@ -150,6 +150,12 @@ export function confirmInventoryReceiptIssueOpening(
   if (!Number.isSafeInteger(input.businessOrder) || input.businessOrder < 1) {
     return fail(codes.stockOrderInvalid, "businessOrder");
   }
+  if (!input.ledger || typeof input.ledger !== "object" || !Array.isArray(input.ledger.movements)) {
+    return fail(codes.inputInvalid, "ledger");
+  }
+  if (input.openingKeys !== undefined && !Array.isArray(input.openingKeys)) {
+    return fail(codes.openingKeyInvalid, "openingKeys");
+  }
 
   const resolutions = normalizeLineResolutions(input.lineResolutions);
   const movementIds = normalizeMovementIdentities(input.movementIdentities);
@@ -158,13 +164,13 @@ export function confirmInventoryReceiptIssueOpening(
   }
 
   // Never trust a caller-provided balance projection; rebuild from accepted facts first.
-  let ledger = rebuildInventoryStockLedger(input.ledger?.movements ?? [], {
+  let ledger = rebuildInventoryStockLedger(input.ledger.movements, {
     allowNegativeStock: input.allowNegativeStock,
   });
   const movements: InventoryStockMovementSnapshot[] = [];
   const type = document.documentType as InventoryCoreStockDocumentType;
 
-  const existingOpeningKeys = Array.isArray(input.openingKeys) ? input.openingKeys.map(normalizeOpeningKey) : [];
+  const existingOpeningKeys = (input.openingKeys ?? []).map(normalizeOpeningKey);
   const openingSet = new Set(existingOpeningKeys.map(serializeInventoryOpeningBalanceKey));
   const newOpeningKeys: InventoryOpeningBalanceKey[] = [];
 
