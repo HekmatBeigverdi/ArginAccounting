@@ -1,7 +1,15 @@
 import type { InventoryProductReference, InventoryWarehouseResolution } from "../domain/inventory-operation.ts";
 import { assertInventoryProductEligible, validateInventoryWarehouseReference } from "../domain/inventory-operation.ts";
-import type { InventoryDocumentSnapshot, InventoryLifecycleActionInput } from "../domain/inventory-document.ts";
-import { confirmInventoryDocument, rehydrateInventoryDocument } from "../domain/inventory-document.ts";
+import type {
+  InventoryDocumentSnapshot,
+  InventoryLifecycleActionInput,
+  ReverseInventoryDocumentInput,
+} from "../domain/inventory-document.ts";
+import {
+  confirmInventoryDocument,
+  rehydrateInventoryDocument,
+  reverseInventoryDocument,
+} from "../domain/inventory-document.ts";
 import type { InventoryStockLedgerSnapshot, InventoryStockMovementSnapshot } from "../domain/inventory-stock.ts";
 import {
   addInventoryStockQuantities,
@@ -51,6 +59,21 @@ export interface ConfirmInventoryAdjustmentInput {
     readonly product: InventoryProductReference | null;
     readonly warehouse: InventoryWarehouseResolution;
   }[];
+  readonly ledger: InventoryStockLedgerSnapshot;
+  readonly allowNegativeStock?: boolean;
+}
+
+export interface InventoryReversalMovementIdentity {
+  readonly originalMovementId: string;
+  readonly reversalMovementId: string;
+}
+
+export interface ReverseInventoryStockEffectsInput {
+  readonly document: InventoryDocumentSnapshot;
+  readonly action: ReverseInventoryDocumentInput;
+  readonly businessDate: string;
+  readonly businessOrder: number;
+  readonly movementIdentities: readonly InventoryReversalMovementIdentity[];
   readonly ledger: InventoryStockLedgerSnapshot;
   readonly allowNegativeStock?: boolean;
 }
@@ -294,4 +317,83 @@ export async function confirmInventoryQuantityAdjustment(
   });
   const confirmed = confirmInventoryDocument(scopedDocument, { ...input.action, reason: normalizedReason });
   return Object.freeze({ document: confirmed, movements: Object.freeze(movements), ledger });
+}
+
+function reversalIdentityMap(
+  input: readonly InventoryReversalMovementIdentity[],
+): ReadonlyMap<string, string> {
+  if (!Array.isArray(input)) return fail(codes.movementIdentityMismatch, "movementIdentities");
+  const result = new Map<string, string>();
+  const reversalIds = new Set<string>();
+  for (const item of input) {
+    if (!item || typeof item !== "object") return fail(codes.movementIdentityMismatch, "movementIdentities");
+    const originalMovementId = id(item.originalMovementId, "movementIdentities.originalMovementId");
+    const reversalMovementId = id(item.reversalMovementId, "movementIdentities.reversalMovementId");
+    if (originalMovementId === reversalMovementId || result.has(originalMovementId) || reversalIds.has(reversalMovementId)) {
+      return fail(codes.movementIdentityMismatch, "movementIdentities");
+    }
+    result.set(originalMovementId, reversalMovementId);
+    reversalIds.add(reversalMovementId);
+  }
+  return result;
+}
+
+function oppositeQuantity(value: string): string {
+  return value.startsWith("-") ? value.slice(1) : `-${value}`;
+}
+
+/**
+ * Creates append-only compensating facts for all movements of a Confirmed document and then
+ * marks the original lifecycle as Reversed. Persistence/fiscal eligibility of the separate
+ * reversal document/date is composed by the authoritative services in Steps 9–13.
+ */
+export function reverseInventoryStockEffects(
+  input: ReverseInventoryStockEffectsInput,
+): InventoryStockWorkflowResult {
+  if (!input || typeof input !== "object") return fail(codes.inputInvalid, "reversal");
+  assertBaseInput(input);
+  const document = rehydrateInventoryDocument(input.document);
+  if (document.status !== "confirmed") return fail(codes.lifecycleTransitionInvalid, "status");
+  const reversalDocumentId = id(input.action.reversalDocumentId, "reversalDocumentId");
+  if (reversalDocumentId === document.documentId) return fail(codes.reversalReferenceInvalid, "reversalDocumentId");
+
+  const originalMovements = input.ledger.movements.filter(movement => movement.documentId === document.documentId);
+  if (originalMovements.length === 0) return fail(codes.reversalReferenceInvalid, "movements");
+  const identities = reversalIdentityMap(input.movementIdentities);
+  if (identities.size !== originalMovements.length) return fail(codes.movementIdentityMismatch, "movementIdentities");
+  if (input.ledger.movements.some(movement => movement.documentId === reversalDocumentId)) {
+    return fail(codes.reversalReferenceInvalid, "reversalDocumentId");
+  }
+
+  const movements: InventoryStockMovementSnapshot[] = [];
+  for (const original of originalMovements) {
+    const reversalMovementId = identities.get(original.movementId);
+    if (!reversalMovementId) return fail(codes.movementIdentityMismatch, "originalMovementId");
+    if (input.ledger.movements.some(movement => movement.reversalOfMovementId === original.movementId)) {
+      return fail(codes.reversalReferenceInvalid, "reversalOfMovementId");
+    }
+    movements.push(createInventoryStockMovement({
+      movementId: reversalMovementId,
+      companyId: original.companyId,
+      documentId: reversalDocumentId,
+      lineId: original.lineId,
+      productId: original.stockKey.productId,
+      warehouse: {
+        warehouseId: original.stockKey.warehouseId,
+        zoneId: original.stockKey.zoneId,
+        locationId: original.stockKey.locationId,
+      },
+      businessDate: input.businessDate,
+      businessOrder: input.businessOrder,
+      recordedAt: input.action.occurredAt,
+      reversalOfMovementId: original.movementId,
+      quantityDelta: oppositeQuantity(original.quantityDelta),
+    }));
+  }
+
+  const ledger = rebuildInventoryStockLedger([...input.ledger.movements, ...movements], {
+    allowNegativeStock: input.allowNegativeStock === true,
+  });
+  const reversed = reverseInventoryDocument(document, input.action);
+  return Object.freeze({ document: reversed, movements: Object.freeze(movements), ledger });
 }
