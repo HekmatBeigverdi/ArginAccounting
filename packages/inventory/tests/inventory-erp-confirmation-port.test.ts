@@ -6,12 +6,12 @@ import {
 } from "../src/index.ts";
 
 test("ERP confirmation adapter routes through SecuredInventoryService with caller identity", async () => {
-  let securitySeen: InventorySecurityContext | null = null;
+  const captured: { security: InventorySecurityContext | null } = { security: null };
   let commandSeen: unknown = null;
   const port = new SecuredInventoryQuantityConfirmationPort({
     inventory: {
       async confirm(security, command) {
-        securitySeen = security;
+        captured.security = security;
         commandSeen = command;
         return { documentId: command.documentId, status: "confirmed", version: 4, replayed: false };
       },
@@ -29,8 +29,9 @@ test("ERP confirmation adapter routes through SecuredInventoryService with calle
     payloadFingerprint: "fp-1",
   });
 
-  assert.equal(securitySeen?.actorId, "user-1");
-  assert.equal(securitySeen?.actorDisplayName, "ERP User");
+  assert.ok(captured.security);
+  assert.equal(captured.security.actorId, "user-1");
+  assert.equal(captured.security.actorDisplayName, "ERP User");
   assert.deepEqual(result, { inventoryDocumentId: "doc-1", status: "confirmed", version: 4 });
   assert.equal((commandSeen as { documentId: string }).documentId, "doc-1");
 });
