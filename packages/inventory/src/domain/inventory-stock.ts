@@ -23,6 +23,8 @@ export interface InventoryStockMovementSnapshot {
   readonly stockKey: InventoryStockKey;
   /** Present on both source and destination facts of one transfer; null for non-transfer movements. */
   readonly transferId: string | null;
+  /** Original immutable movement neutralized by this compensating fact, when this is a reversal. */
+  readonly reversalOfMovementId: string | null;
   /** Signed quantity in the Product base unit. Positive=in, negative=out. */
   readonly quantityDelta: string;
 }
@@ -38,6 +40,7 @@ export interface CreateInventoryStockMovementInput {
   readonly businessOrder: number;
   readonly recordedAt: string;
   readonly transferId?: string | null;
+  readonly reversalOfMovementId?: string | null;
   readonly quantityDelta: string;
 }
 
@@ -188,10 +191,13 @@ export function createInventoryStockMovement(
     productId: input.productId,
     warehouse: input.warehouse,
   });
+  const movementId = id(input.movementId, "movementId");
+  const reversalOfMovementId = optionalId(input.reversalOfMovementId, "reversalOfMovementId");
+  if (reversalOfMovementId === movementId) return fail(codes.reversalReferenceInvalid, "reversalOfMovementId");
   const quantityDelta = normalizeInventoryQuantity(input.quantityDelta);
   if (quantityDelta === "0") return fail(codes.quantityZero, "quantityDelta");
   return Object.freeze({
-    movementId: id(input.movementId, "movementId"),
+    movementId,
     companyId: stockKey.companyId,
     documentId: id(input.documentId, "documentId"),
     lineId: id(input.lineId, "lineId"),
@@ -200,6 +206,7 @@ export function createInventoryStockMovement(
     recordedAt: timestamp(input.recordedAt, "recordedAt"),
     stockKey,
     transferId: optionalId(input.transferId, "transferId"),
+    reversalOfMovementId,
     quantityDelta,
   });
 }
@@ -225,6 +232,7 @@ export function rehydrateInventoryStockMovement(
     businessOrder: input.businessOrder,
     recordedAt: input.recordedAt,
     transferId: input.transferId ?? null,
+    reversalOfMovementId: input.reversalOfMovementId ?? null,
     quantityDelta: input.quantityDelta,
   });
   if (serializeInventoryStockKey(movement.stockKey) !== serializeInventoryStockKey(input.stockKey)) {
@@ -262,6 +270,7 @@ export function rebuildInventoryStockLedger(
   if (!Array.isArray(input)) return fail(codes.inputInvalid, "movements");
   const movementIds = new Set<string>();
   const sourceFacts = new Set<string>();
+  const reversedMovementIds = new Set<string>();
   const movements: InventoryStockMovementSnapshot[] = [];
   for (const raw of input) movements.push(rehydrateInventoryStockMovement(raw));
   movements.sort(compareInventoryStockMovements);
@@ -270,6 +279,12 @@ export function rebuildInventoryStockLedger(
   for (const movement of movements) {
     if (movementIds.has(movement.movementId)) return fail(codes.duplicateMovementId, "movementId");
     movementIds.add(movement.movementId);
+    if (movement.reversalOfMovementId !== null) {
+      if (reversedMovementIds.has(movement.reversalOfMovementId)) {
+        return fail(codes.reversalReferenceInvalid, "reversalOfMovementId");
+      }
+      reversedMovementIds.add(movement.reversalOfMovementId);
+    }
     const sourceKey = JSON.stringify([
       movement.companyId,
       movement.documentId,
