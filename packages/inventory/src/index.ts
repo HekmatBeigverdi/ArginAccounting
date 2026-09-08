@@ -39,6 +39,25 @@ export type { InventoryUnitSnapshot, InventoryQuantitySnapshot } from "./domain/
 export { assertInventoryProductEligible, validateInventoryWarehouseReference, createInventoryLineOperation, rehydrateInventoryLineOperation } from "./domain/inventory-operation.ts";
 export type { InventoryProductReference, InventoryWarehouseResolution, InventoryLineOperationSnapshot } from "./domain/inventory-operation.ts";
 
+export {
+  addInventoryStockQuantities,
+  appendInventoryStockMovement,
+  compareInventoryStockMovements,
+  createInventoryStockKey,
+  createInventoryStockMovement,
+  getInventoryStockBalance,
+  rebuildInventoryStockLedger,
+  rehydrateInventoryStockMovement,
+  serializeInventoryStockKey,
+} from "./domain/inventory-stock.ts";
+export type {
+  CreateInventoryStockMovementInput,
+  InventoryStockBalanceSnapshot,
+  InventoryStockKey,
+  InventoryStockLedgerSnapshot,
+  InventoryStockMovementSnapshot,
+} from "./domain/inventory-stock.ts";
+
 export { createInventoryDocumentScope } from "./domain/inventory-scope.ts";
 export type { InventoryDocumentScope, CreateInventoryDocumentScopeInput } from "./domain/inventory-scope.ts";
 export { validateInventoryDocumentScope } from "./application/inventory-scope-validation.ts";
