@@ -89,7 +89,16 @@ const scopeReaders: InventoryScopeReaders = {
   fiscalYears: { findById: async id => id === year.id ? year : null },
   fiscalPeriods: { findById: async id => id === period.id ? period : null },
   historicalLocks: { findActiveLocks: async () => locks },
-  warehouses: { getById: async input => input.warehouseId === warehouse.warehouseId ? warehouse : null },
+  warehouses: {
+    getById: async input => input.warehouseId === warehouse.warehouseId
+      ? {
+          ...warehouse,
+          organizationalScope: { mode: "branch", branchId: branch.id },
+          externalIdentifiers: [],
+          version: 1,
+        }
+      : null,
+  },
 };
 const scopeContext: InventoryScopeContext = {
   companyId,
@@ -113,7 +122,7 @@ function approvedAdjustment(documentId: string, quantity: string): InventoryDocu
     documentType: "adjustment",
     documentNumber: documentId,
     businessDate: "2026-09-08",
-    scope: { originBranchId: branch.id, fiscalYearId: year.id, fiscalPeriodId: period.id },
+    scope: { branchId: branch.id, fiscalYearId: year.id, fiscalPeriodId: period.id },
     lines: [{ lineId: `${documentId}-line`, position: 1, productId: "product-1", operation }],
     createdAt,
   });
