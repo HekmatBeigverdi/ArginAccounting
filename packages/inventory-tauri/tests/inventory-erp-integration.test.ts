@@ -16,11 +16,18 @@ class ScriptedDatabase implements DatabaseExecutor {
   async close(): Promise<void> {}
 }
 
+const movement = (quantityDelta: string) => ({
+  product_id: "product-1",
+  warehouse_id: "warehouse-1",
+  zone_id: null,
+  location_id: null,
+  quantity_delta: quantityDelta,
+});
+
 test("warehouse delete is blocked by nonzero stock, open documents, and movement history", async () => {
   const db = new ScriptedDatabase([
-    [{ quantity: "2.500" }],
+    [movement("5"), movement("-2.5")],
     [{ count: 1 }],
-    [{ count: 7 }],
   ]);
   const result = await new InventoryWarehouseDependencyGuard(db).check({
     companyId: "company-1",
@@ -35,9 +42,9 @@ test("warehouse delete is blocked by nonzero stock, open documents, and movement
   ]);
 });
 
-test("warehouse deactivate preserves history but blocks only current operational dependencies", async () => {
+test("warehouse deactivate preserves history when authoritative net stock is zero and no document is open", async () => {
   const db = new ScriptedDatabase([
-    [{ quantity: "0.000" }],
+    [movement("5.000"), movement("-5")],
     [{ count: 0 }],
   ]);
   const result = await new InventoryWarehouseDependencyGuard(db).check({
@@ -49,11 +56,10 @@ test("warehouse deactivate preserves history but blocks only current operational
   assert.equal(result.blockers.length, 0);
 });
 
-test("location move treats immutable movement history as a blocker", async () => {
+test("location move treats immutable movement history as a blocker even when net stock is zero", async () => {
   const db = new ScriptedDatabase([
-    [{ quantity: "0" }],
+    [movement("3"), movement("-3")],
     [{ count: 0 }],
-    [{ count: 3 }],
   ]);
   const result = await new InventoryWarehouseDependencyGuard(db).check({
     companyId: "company-1",
