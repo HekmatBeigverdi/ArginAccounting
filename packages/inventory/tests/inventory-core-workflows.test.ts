@@ -17,6 +17,7 @@ import {
   submitInventoryDocument,
 } from "../src/index.ts";
 import type {
+  ConfirmInventoryCoreDocumentInput,
   InventoryDocumentSnapshot,
   InventoryDomainErrorCode,
   InventoryOpeningBalanceKey,
@@ -65,7 +66,9 @@ function operation(quantity: string) {
 }
 
 function draft(type: "receipt" | "issue" | "opening" | "transfer" | "adjustment", quantity = "5", id = `doc-${type}`): InventoryDocumentSnapshot {
-  const op = operation(quantity);
+  const lines = type === "transfer"
+    ? []
+    : [{ lineId: "line-1", position: 1, productId: "product-1", operation: operation(quantity) }];
   return createInventoryDocument({
     documentId: id,
     companyId,
@@ -73,7 +76,7 @@ function draft(type: "receipt" | "issue" | "opening" | "transfer" | "adjustment"
     documentNumber: "000001",
     businessDate: "2026-09-08",
     scope: { branchId: null, fiscalYearId: "fy-2026", fiscalPeriodId: "fp-09" },
-    lines: [{ lineId: "line-1", position: 1, productId: "product-1", operation: op }],
+    lines,
     createdAt: at,
   });
 }
@@ -131,7 +134,6 @@ test("issue confirmation emits a negative delta and enforces current stock", () 
   const result = confirmInventoryReceiptIssueOpening(confirmInput(approved("issue", "3"), baseLedger("10")));
   assert.equal(result.movements[0]?.quantityDelta, "-3");
   assert.equal(getInventoryStockBalance(result.ledger, result.movements[0]!.stockKey).quantity, "7");
-
   rejects(() => confirmInventoryReceiptIssueOpening(confirmInput(approved("issue", "11", "doc-issue-too-large"), baseLedger("10"))), codes.negativeStock);
 });
 
@@ -227,6 +229,12 @@ test("resolution and movement identity sets must match document lines exactly", 
     ...confirmInput(document),
     movementIdentities: [{ lineId: "line-1", movementId: "same" }, { lineId: "extra", movementId: "same" }],
   }), codes.movementIdentityMismatch);
+});
+
+test("missing ledger and malformed opening guard cannot be treated as empty state", () => {
+  const input = confirmInput(approved("receipt"));
+  rejects(() => confirmInventoryReceiptIssueOpening({ ...input, ledger: undefined } as unknown as ConfirmInventoryCoreDocumentInput), codes.inputInvalid);
+  rejects(() => confirmInventoryReceiptIssueOpening({ ...input, openingKeys: {} } as unknown as ConfirmInventoryCoreDocumentInput), codes.openingKeyInvalid);
 });
 
 test("caller balance projection is ignored and rebuilt from immutable movement facts", () => {
