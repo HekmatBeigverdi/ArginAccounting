@@ -112,8 +112,8 @@ export function createInventoryStockKey(input: {
     companyId: id(input.companyId, "stockKey.companyId"),
     productId: id(input.productId, "stockKey.productId"),
     warehouseId: warehouse.warehouseId,
-    zoneId: warehouse.zoneId,
-    locationId: warehouse.locationId,
+    zoneId: warehouse.zoneId ?? null,
+    locationId: warehouse.locationId ?? null,
   });
 }
 
@@ -201,7 +201,7 @@ export function rehydrateInventoryStockMovement(
 ): InventoryStockMovementSnapshot {
   if (!input || typeof input !== "object") return fail(codes.inputInvalid, "movement");
   if (!input.stockKey || typeof input.stockKey !== "object") return fail(codes.stockKeyInvalid, "stockKey");
-  const warehouse = createWarehouseOperationalReference({
+  const warehouse = reference({
     warehouseId: input.stockKey.warehouseId,
     zoneId: input.stockKey.zoneId,
     locationId: input.stockKey.locationId,
