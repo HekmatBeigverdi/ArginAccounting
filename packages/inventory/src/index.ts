@@ -184,6 +184,10 @@ export type {
 } from "./application/contracts/inventory-unit-of-work.ts";
 export type {
   ConfirmInventorySourceDocumentRequest,
+  InventoryMovementFeedEntry,
+  InventoryMovementFeedPage,
+  InventoryMovementFeedReader,
+  InventoryMovementFeedRequest,
   InventoryQuantityConfirmationPort,
   InventorySourceDocumentPort,
   InventorySourceDocumentResult,
