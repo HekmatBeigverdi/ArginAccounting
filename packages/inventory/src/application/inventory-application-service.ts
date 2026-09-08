@@ -105,6 +105,10 @@ function operationName(prefix: string, documentId: string): string {
   return `${prefix}:${required(documentId, "documentId")}`;
 }
 
+function stockPolicy(value: boolean | undefined): { readonly allowNegativeStock?: boolean } {
+  return value === undefined ? {} : { allowNegativeStock: value };
+}
+
 function replayResult(record: InventoryIdempotencyRecord): InventoryApplicationMutationResult {
   return Object.freeze({
     documentId: record.documentId,
@@ -352,6 +356,7 @@ export class InventoryApplicationService {
         let movements: readonly InventoryStockMovementSnapshot[];
         let balances: readonly InventoryStockBalanceSnapshot[];
         let openingKeysToAdd: readonly InventoryOpeningBalanceKey[] = [];
+        const policy = stockPolicy(command.allowNegativeStock);
 
         if (document.documentType === "receipt" || document.documentType === "issue" || document.documentType === "opening") {
           const existingOpenings = await existingOpeningKeys(context, document);
@@ -365,7 +370,7 @@ export class InventoryApplicationService {
             lineResolutions: await resolveCoreLines(this.deps, document),
             ledger,
             openingKeys: existingOpenings,
-            allowNegativeStock: command.allowNegativeStock,
+            ...policy,
           });
           confirmed = result.document;
           movements = result.movements;
@@ -384,7 +389,7 @@ export class InventoryApplicationService {
             movementIdentities: transferMovementIdentities(this.deps, document),
             lineResolutions: await resolveTransferLines(this.deps, document),
             ledger,
-            allowNegativeStock: command.allowNegativeStock,
+            ...policy,
           });
           confirmed = result.document;
           movements = result.movements;
@@ -399,7 +404,7 @@ export class InventoryApplicationService {
             movementIdentities: coreMovementIdentities(this.deps, document),
             lineResolutions: await resolveCoreLines(this.deps, document),
             ledger,
-            allowNegativeStock: command.allowNegativeStock,
+            ...policy,
           });
           confirmed = result.document;
           movements = result.movements;
@@ -459,7 +464,7 @@ export class InventoryApplicationService {
           businessOrder,
           movementIdentities: identities,
           ledger,
-          allowNegativeStock: command.allowNegativeStock === true,
+          ...stockPolicy(command.allowNegativeStock),
         });
         await context.movements.appendBatch(result.movements);
         await context.balances.replaceBatch(result.ledger.balances);
