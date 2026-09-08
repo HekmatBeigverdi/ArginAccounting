@@ -35,6 +35,7 @@
 ## architecture
 
 - [Inventory Document Domain Foundation](architecture/inventory-documents.md)
+- [Inventory Transfer, Adjustment, and Reversal Workflows](architecture/inventory-transfer-adjustment-workflows.md)
 - [Architecture Overview](architecture/overview.md)
 - [Party Argin Bridge Contract](architecture/party-argin-bridge-contract.md)
 - [Party Shared Platform and Accounting Integration Boundary](architecture/party-shared-platform-integration.md)
