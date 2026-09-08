@@ -4,6 +4,7 @@ import type {
   InventoryLifecycleActionInput,
   ReverseInventoryDocumentInput,
 } from "../../domain/inventory-document.ts";
+import type { InventoryDocumentScope } from "../../domain/inventory-scope.ts";
 
 export interface InventoryCommandMetadata {
   readonly companyId: string;
@@ -31,8 +32,10 @@ export interface InventoryLifecycleCommand extends InventoryCommandMetadata {
 export interface ReverseInventoryCommand extends InventoryCommandMetadata {
   readonly documentId: string;
   readonly expectedVersion: number;
-  /** Business date of the compensating reversal operation; fiscal/lock validation uses this date. */
+  /** Business date and fiscal/organizational scope belong to the compensating operation, not the original document. */
   readonly businessDate: string;
+  readonly reversalScope: InventoryDocumentScope;
+  readonly allowNegativeStock?: boolean;
   readonly action: ReverseInventoryDocumentInput;
 }
 
