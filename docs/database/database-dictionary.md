@@ -31,6 +31,9 @@ For every table record:
 | Coding Templates | `coding_templates`, normalized version-item tables, application mappings/history, import batches | Phase 12 |
 | Journal Voucher Engine | `journal_vouchers`, `journal_lines`, `journal_line_dimension_assignments` | Phase 13 |
 | Parties | `parties`, `party_roles`, `party_contacts`, `party_addresses`, `party_external_references` | Phase 17 |
+| Products and Services | `products`, identifiers/barcodes/external refs, `product_units`, `product_master_data`, sync/idempotency tables | Phase 18 |
+| Warehouses | `warehouses`, external refs, `warehouse_zones`, `warehouse_locations`, sync/idempotency tables | Phase 19 |
+| Inventory Documents | documents/lines/lifecycle, immutable stock movements, opening facts, balance projections, business orders, idempotency | Phase 20 |
 
 ## Phase 10 — Chart of Accounts
 
@@ -153,3 +156,92 @@ Indexes support company/status/name paging, classification/name search, update-o
 
 - `apps/desktop/src-tauri/migrations/0016_parties.sql`
 - `apps/desktop/src-tauri/migrations/0017_party_sync_metadata.sql`
+
+## Phase 18 — Products and Services
+
+Product/Service persistence is normalized across `products`, identifier/barcode/external-reference tables, `product_units`, `product_master_data`, synchronization metadata and durable idempotency. Durable Product IDs remain distinct from codes, barcodes and 13-digit Taxpayer goods/service identifiers. Product Unit rows retain internal unit identity and optional official Taxpayer unit code.
+
+### Migrations
+
+- `apps/desktop/src-tauri/migrations/0018_taxpayer_unit_reference_data.sql`
+- `apps/desktop/src-tauri/migrations/0019_products_services.sql`
+- `apps/desktop/src-tauri/migrations/0020_product_sync_metadata.sql`
+- `apps/desktop/src-tauri/migrations/0021_product_idempotency.sql`
+
+## Phase 19 — Warehouses
+
+Warehouse persistence is normalized across `warehouses`, external references, `warehouse_zones`, `warehouse_locations`, synchronization metadata and durable idempotency. Warehouse/Zone/Location IDs are durable references; code/title changes do not rewrite downstream identity. Zone/Location tombstones are distinct from ordinary active/inactive status.
+
+### Migrations
+
+- `apps/desktop/src-tauri/migrations/0022_warehouses.sql`
+- `apps/desktop/src-tauri/migrations/0023_warehouse_sync_metadata.sql`
+- `apps/desktop/src-tauri/migrations/0024_warehouse_idempotency.sql`
+- `apps/desktop/src-tauri/migrations/0025_warehouse_maintenance_tombstones.sql`
+
+## Phase 20 — Inventory Documents
+
+### `inventory_documents`
+
+Company-scoped Inventory aggregate root using durable TEXT `id`. Stores document type/status, display document number, Gregorian business date, origin/destination Branch scope, fiscal year/period, source-system identity, optimistic `version`, timestamps, Draft-only `deleted_at` tombstone metadata and future Bridge metadata (`sync_origin`, nullable `server_revision`, `sync_changed_at`).
+
+Important integrity rules:
+
+- document type is one of receipt/issue/opening/transfer/adjustment;
+- lifecycle status is one of draft/submitted/approved/confirmed/cancelled/reversed;
+- document number uniqueness is Company + fiscal year + origin Branch + document type;
+- source-system document identity is company-scoped when present;
+- non-Draft rows cannot carry `deleted_at`;
+- `version >= 1`.
+
+### `inventory_document_lines`
+
+Stable line identity and position under one Inventory document. Stores Product identity, optional source reference, exact entered/base decimal quantity strings, unit snapshot payload and source/destination Warehouse/Zone/Location references. Incomplete Draft lines may omit operation data; populated operation shape is constrained relationally and revalidated by Domain/Application code.
+
+### `inventory_document_lifecycle`
+
+Append-only transition history keyed by `(document_id, sequence)`. Stores from/to status, actor, UTC occurrence time, reason and reversal-related document identity. SQLite triggers reject UPDATE and DELETE.
+
+### `inventory_stock_movements`
+
+Authoritative append-only quantity facts. Each row stores durable `movement_id`, document/line, optional `transfer_id`, optional `reversal_of_movement_id`, Product/StockKey, Gregorian business date, durable positive `business_order`, UTC `recorded_at`, and signed exact base-unit `quantity_delta` as TEXT.
+
+Important integrity rules:
+
+- movement rows cannot be updated or deleted;
+- duplicate source document-line + normalized StockKey facts are rejected;
+- one original movement can be compensated at most once;
+- Warehouse/Zone/Location references remain same-company/same-hierarchy;
+- Kardex index follows the canonical business chronology fields.
+
+### `inventory_opening_balances`
+
+Append-only uniqueness facts for opening inventory. The business uniqueness boundary is Company + fiscal year + Product + Warehouse + normalized nullable Zone/Location. It stores the originating document/line for traceability.
+
+### `inventory_stock_balances`
+
+Rebuildable on-hand projection keyed by canonical `stock_key`, with exact quantity TEXT and optional last-movement chronology metadata. This table is not authoritative; mutation services must derive it from `inventory_stock_movements` and replace it atomically inside the Inventory UoW.
+
+### `inventory_business_orders`
+
+Durable per-Company/per-business-date allocator state. `last_order` is positive and exists only to provide deterministic same-date movement chronology; callers cannot supply business order directly.
+
+### `inventory_idempotency`
+
+Company-scoped durable request result keyed by `(company_id, request_key)`. Stores operation, payload fingerprint, outcome kind, document identity, resulting document version/status and recording timestamp so a completed request can be replayed after restart without creating duplicate stock facts.
+
+### Index policy
+
+Indexes cover bounded document lists, type/date and Branch/date filters, fiscal scope, document-line Product/Warehouse use, StockKey Kardex chronology, Product/date movement feeds, transfer grouping, reversal uniqueness, Warehouse/Product balance lookup, tombstones, synchronization changes and idempotency/document diagnostics. Nullable Zone/Location identity in hard uniqueness boundaries is normalized with expression indexes using `COALESCE`.
+
+### Cross-row responsibilities
+
+Negative historical stock, exact transfer conservation, reversal quantity equality, current master eligibility, payload fingerprint semantics and concurrent StockKey mutation cannot be fully expressed as isolated SQLite row checks. They remain authoritative Application/UoW rules and must execute inside the real transaction implemented in Step 13.
+
+### Migration
+
+- `apps/desktop/src-tauri/migrations/0026_inventory_documents.sql`
+
+### Retention and sensitivity
+
+Confirmed lifecycle/movement/opening facts are retained and corrected through compensating facts, not destructive deletion. Draft tombstones support future synchronization. Inventory data is company-confidential operational/financial data and follows the same local database protection and backup policy as other accounting records.
