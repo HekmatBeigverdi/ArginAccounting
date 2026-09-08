@@ -23,6 +23,7 @@ export const INVENTORY_DOMAIN_ERROR_CODES = Object.freeze({
   referenceIneligible: "inventory.reference.ineligible",
   operationMismatch: "inventory.operation.mismatch",
   stockKeyInvalid: "inventory.stock-key.invalid",
+  stockOrderInvalid: "inventory.stock.order-invalid",
   duplicateMovementId: "inventory.movement.id-duplicate",
   duplicateMovementSource: "inventory.movement.source-duplicate",
   negativeStock: "inventory.stock.negative",
