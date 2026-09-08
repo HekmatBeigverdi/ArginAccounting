@@ -88,7 +88,7 @@ test("reversal appends exact inverse fact and links original lifecycle to compen
     ledger,
   });
   assert.equal(result.document.status, "reversed");
-  assert.equal(result.document.lifecycleHistory.at(-1)?.relatedDocumentId, "reversal-1");
+  assert.equal(result.document.lifecycleHistory[result.document.lifecycleHistory.length - 1]?.relatedDocumentId, "reversal-1");
   assert.equal(result.movements[0]?.documentId, "reversal-1");
   assert.equal(result.movements[0]?.quantityDelta, "-10");
   assert.equal(result.movements[0]?.reversalOfMovementId, "receipt-movement");
