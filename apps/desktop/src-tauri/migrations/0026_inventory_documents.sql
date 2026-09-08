@@ -11,7 +11,7 @@ CREATE TABLE inventory_documents (
     document_number TEXT,
     business_date TEXT NOT NULL,
     description TEXT,
-    origin_branch_id TEXT NOT NULL,
+    origin_branch_id TEXT,
     destination_branch_id TEXT,
     fiscal_year_id TEXT NOT NULL,
     fiscal_period_id TEXT NOT NULL,
@@ -97,7 +97,6 @@ CREATE TABLE inventory_documents (
         CHECK (server_revision IS NULL OR server_revision >= 0)
 );
 
--- Branchless scopes are normalized explicitly because SQLite UNIQUE treats NULL values as distinct.
 CREATE UNIQUE INDEX uq_inventory_documents_number_scope
 ON inventory_documents(
     company_id,
