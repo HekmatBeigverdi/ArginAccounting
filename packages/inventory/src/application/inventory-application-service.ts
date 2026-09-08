@@ -436,7 +436,7 @@ export class InventoryApplicationService {
 
       try {
         await validateInventoryDocumentScope(
-          Object.freeze({ ...document, businessDate: command.businessDate }),
+          Object.freeze({ ...document, businessDate: command.businessDate, scope: command.reversalScope }),
           scopeContext,
           this.deps.scopeReaders,
         );
@@ -459,7 +459,7 @@ export class InventoryApplicationService {
           businessOrder,
           movementIdentities: identities,
           ledger,
-          allowNegativeStock: false,
+          allowNegativeStock: command.allowNegativeStock === true,
         });
         await context.movements.appendBatch(result.movements);
         await context.balances.replaceBatch(result.ledger.balances);
