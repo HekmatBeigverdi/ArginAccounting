@@ -19,12 +19,14 @@ import {
   submitInventoryDocument,
 } from "../src/index.ts";
 import type {
+  ConfirmInventoryTransferInput,
   InventoryDocumentSnapshot,
   InventoryDomainErrorCode,
   InventoryProductReference,
   InventoryScopeContext,
   InventoryScopeReaders,
   InventoryStockLedgerSnapshot,
+  InventoryWarehouseResolution,
 } from "../src/index.ts";
 
 const companyId = "company-1";
@@ -139,7 +141,12 @@ async function rejects(action: () => Promise<unknown>, code: InventoryDomainErro
   await assert.rejects(action, (error: unknown) => error instanceof InventoryDomainError && error.code === code);
 }
 
-function transferInput(document: InventoryDocumentSnapshot, ledger: InventoryStockLedgerSnapshot, sourceWarehouse: unknown, destinationWarehouse: unknown) {
+function transferInput(
+  document: InventoryDocumentSnapshot,
+  ledger: InventoryStockLedgerSnapshot,
+  sourceWarehouse: InventoryWarehouseResolution,
+  destinationWarehouse: InventoryWarehouseResolution,
+): ConfirmInventoryTransferInput {
   return {
     document,
     action: { occurredAt: confirmAt, actorUserId },
@@ -150,7 +157,7 @@ function transferInput(document: InventoryDocumentSnapshot, ledger: InventorySto
     movementIdentities: [{ lineId: "line-1", sourceMovementId: "transfer-source-1", destinationMovementId: "transfer-destination-1" }],
     lineResolutions: [{ lineId: "line-1", product: product(), sourceWarehouse, destinationWarehouse }],
     ledger,
-  } as const;
+  };
 }
 
 test("inter-Warehouse transfer creates a conserved linked pair and preserves company total", async () => {
@@ -227,7 +234,7 @@ test("positive and negative adjustments preserve signed quantity and mandatory r
     ledger: ledgerWith("5"),
   });
   assert.equal(positive.movements[0]?.quantityDelta, "2");
-  assert.equal(positive.document.lifecycleHistory.at(-1)?.reason, "Count correction");
+  assert.equal(positive.document.lifecycleHistory[positive.document.lifecycleHistory.length - 1]?.reason, "Count correction");
 
   const negative = await confirmInventoryQuantityAdjustment({
     document: approvedAdjustment("-2", "adjust-minus"),
