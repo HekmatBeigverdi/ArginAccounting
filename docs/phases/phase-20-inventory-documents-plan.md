@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–4 are complete. Step 5 implementation and focused test coverage are complete, with executable validation awaiting an environment that can run the repository. Steps 6–22 are Not started; stock posting, persistence and Desktop integration remain pending.
+In Progress. Steps 1–5 are complete and Step 5 has been explicitly owner-accepted. Step 6 implementation and focused test definitions are complete; executable workspace validation remains pending. Steps 7–22 are Not started; workflow orchestration, persistence and Desktop integration remain pending.
 
 ## Governance
 
@@ -78,7 +78,9 @@ Implemented at Step 3: InventoryQuantitySnapshot, InventoryUnitSnapshot and Inve
 
 Implemented at Step 5: the six-state InventoryDocumentStatus contract, explicit transition matrix, immutable lifecycle history, Draft-only edit/delete guards, approval invalidation before correction and confirmed-document reversal linkage.
 
-Still planned in owning steps: StockMovement, StockKey, OnHandBalance projection, TransferGroup and stock-effective ReversalReference behavior.
+Implemented at Step 6: `InventoryStockKey`, immutable `InventoryStockMovementSnapshot`, exact signed base-unit arithmetic, deterministic `businessDate -> businessOrder -> durable tie-breakers` chronology, rebuildable `InventoryStockBalanceSnapshot` projections, duplicate-fact guards and default negative-history rejection.
+
+Still planned in owning steps: receipt/issue/opening movement generation, TransferGroup, adjustment/reversal compensation semantics, persistence and stock-effective Application/UoW orchestration.
 
 A physical reference includes warehouseId and optional zoneId/locationId under the existing hierarchy contract. Historical references remain resolvable when master data changes. No mutable title/code is identity.
 
@@ -106,8 +108,8 @@ Persian RTL and Phase 14 density/accessibility; Jalali business dates with Grego
 | 2 | Inventory Document Domain Model | Completed |
 | 3 | Quantity, Units and Operational References | Completed |
 | 4 | Company, Branch, Fiscal Scope and Numbering | Completed |
-| 5 | Document Lifecycle, Approval and Correction Rules | Implemented — validation pending |
-| 6 | Stock Movement Ledger and Balance Rules | Not started |
+| 5 | Document Lifecycle, Approval and Correction Rules | Completed |
+| 6 | Stock Movement Ledger and Balance Rules | Implemented — validation pending |
 | 7 | Receipt, Issue and Opening Balance Workflows | Not started |
 | 8 | Atomic Transfer and Quantity Adjustment Workflows | Not started |
 | 9 | Application, Query and Repository Contracts | Not started |
@@ -354,7 +356,7 @@ Concurrent in-memory allocation does not certify durable SQLite uniqueness or tr
 
 Next: Step 5 — preserve the frozen lifecycle step below. Compose these scope checks with current Product/physical-reference checks and transaction-bound readers in later authoritative services. Number reservation alone does not authorize confirmation or guarantee retry idempotency; failed commits require shared UoW rollback. Existing unit snapshots and durable IDs must remain stable.
 
-### Step 5 — Document Lifecycle, Approval and Correction Rules — Implemented; Validation Pending
+### Step 5 — Document Lifecycle, Approval and Correction Rules — Completed
 
 - Reconciled implementation against the frozen Step 5 text before closure. The canonical six-state vocabulary is `draft`, `submitted`, `approved`, `confirmed`, `cancelled`, `reversed`; an earlier intermediate three-state implementation was replaced before this checkpoint and is not the accepted contract.
 - Added/exported `INVENTORY_DOCUMENT_TRANSITIONS` with explicit legal edges: Draft submit/cancel; Submitted return/approve/cancel; Approved return/confirm/cancel; Confirmed reverse; Cancelled/Reversed terminal.
@@ -367,6 +369,7 @@ Next: Step 5 — preserve the frozen lifecycle step below. Compose these scope c
 - Preserved Argin Bridge preparation: lifecycle version/history and reversal links use durable identities and UTC metadata, while display numbers and SQLite positions remain non-identities. This does not claim the Step 12 synchronization envelope or live transport.
 - Updated the canonical Inventory architecture document and public package exports. No migration, persistence adapter, permission catalog, shared Audit/Approval composition, event or Desktop UI was added; those remain in their frozen owning steps.
 - Reworked focused lifecycle tests to cover the six-state matrix, completeness, approval/confirmation separation, approval invalidation, Draft deletion versus cancellation, confirmed reversal linkage, terminal immutability, monotonic timestamps and persisted-history tamper rejection. Existing document regression tests were aligned with lifecycle history while retaining Step 2 structural assertions.
+- The repository owner explicitly accepted Step 5 in chat before requesting Step 6. Raw local command output was not pasted into the conversation; acceptance and executable evidence remain distinct facts.
 
 #### Step 5 Validation Evidence
 
@@ -374,15 +377,46 @@ Next: Step 5 — preserve the frozen lifecycle step below. Compose these scope c
 | --- | --- |
 | Frozen Step 5 wording vs implementation | Reconciled; all six required states and required distinctions are represented |
 | Public exports and old Step 2 document tests | Updated to the six-state/history contract |
-| Focused lifecycle tests | Added/rewritten in `packages/inventory/tests/inventory-lifecycle.test.ts`; execution not observed in this environment |
-| GitHub Check Runs on the working Step 5 commit | No check runs are configured/reported for the branch head during this checkpoint |
-| Assistant-side clone/test attempt | Could not start: execution environment failed DNS resolution for `github.com` before clone, so no test result is claimed |
+| Focused lifecycle tests | Added/rewritten in `packages/inventory/tests/inventory-lifecycle.test.ts`; execution was not observed by the assistant environment |
+| GitHub Check Runs during Step 5 checkpoint | No check runs were configured/reported |
+| Owner acceptance | Explicitly accepted in chat before Step 6 |
 
-Implementation and test definitions are complete, but the repository governance distinguishes that from executable validation and owner acceptance. Do not promote this row to `Completed` until focused Inventory test/typecheck/build are actually run successfully (locally or by CI) and recorded.
+Step 5 is therefore closed by owner acceptance while retaining truthful validation provenance.
 
 #### Step 6 Handoff
 
-After Step 5 validation/acceptance, Step 6 consumes only the Confirmed lifecycle gate to define append-only StockMovement facts and rebuildable balances. Do not make Approval stock-effective. Do not delete or rewrite confirmed history; future reversal produces compensating facts linked through the separate reversal document identity.
+Step 6 consumes only the Confirmed lifecycle gate to define append-only StockMovement facts and rebuildable balances. Approval remains non-stock-effective. Confirmed history is never deleted or rewritten; later reversal produces compensating facts linked through the separate reversal document identity.
+
+### Step 6 — Stock Movement Ledger and Balance Rules — Implemented; Validation Pending
+
+- Added/exported `InventoryStockKey` using durable Company + Product + Warehouse + optional Zone + optional Location identity. Warehouse-only, Zone-level and Location-level stock positions remain distinct; mutable display codes/titles and database row positions are excluded from identity.
+- Added immutable `InventoryStockMovementSnapshot` facts with durable `movementId`, source document/line IDs, `businessDate`, positive stable `businessOrder`, UTC `recordedAt`, StockKey and signed Product-base-unit `quantityDelta`.
+- Added defensive movement rehydration that revalidates Company/StockKey structure, canonical quantity/date/time/order values and rejects tampered hierarchy or Company identity.
+- Added exact stock addition with canonical decimal strings and BigInt coefficient arithmetic. Values such as `0.1 + 0.2` and quantities above JavaScript's safe-integer range are not processed with floating point.
+- Added deterministic chronology: `businessDate -> businessOrder -> documentId -> lineId -> movementId`. `businessOrder` is the explicit same-day business ordering fact; later authoritative confirmation/UoW code owns durable allocation/persistence. UUID lexical order, SQLite rowid, local arrival order and `recordedAt` are not treated as business chronology.
+- Added `rebuildInventoryStockLedger` to derive balances from immutable movements only. It rehydrates/sorts all facts, rejects duplicate movement IDs and duplicate source-line facts for the same StockKey, and emits frozen balance projections.
+- Default negative-stock policy validates the running quantity at every historical position. A backdated candidate is rejected when it would make any historical StockKey balance negative even if a later receipt would make the final ending balance positive. Same-date `businessOrder` participates in the same rule.
+- Added explicit `allowNegativeStock: true` policy support for deployments that intentionally permit negative inventory; permissive mode does not alter fact identity, chronology or rebuild rules.
+- Added functional `appendInventoryStockMovement`: candidate insertion rebuilds chronology and never mutates the caller ledger. Rejected duplicate/backdated/negative candidates therefore leave the original snapshot intact.
+- Added derived zero-balance lookup for StockKeys with no movement facts, avoiding invention of a mutable authoritative balance record.
+- Preserved Step 7/8 boundaries: generic movement facts do not yet decide receipt/issue/opening signs, opening uniqueness, transfer source/destination conservation, adjustment reason/effect or reversal compensation generation.
+- Preserved Step 10–13 boundaries: no SQLite schema, durable `businessOrder` allocator, transaction lock, idempotency persistence, confirmation UoW or balance cache table is implemented here.
+- Added 17 focused Step 6 test definitions covering StockKey hierarchy/isolation, immutable movement round-trip, invalid order/date/time/zero, exact decimal arithmetic, rebuild-only balances, input-order independence, same-day business ordering, current/backdated negative-stock rejection, permissive policy, key isolation, zero projection, duplicate fact protection, transfer-compatible distinct StockKeys and tamper rejection.
+- Added [ADR-0019](../adr/ADR-0019-inventory-stock-ledger.md) and updated the canonical Inventory architecture record.
+
+#### Step 6 Validation Evidence
+
+| Check | Result |
+| --- | --- |
+| Frozen Step 6 wording vs implementation | Reconciled: append-only facts, rebuildable balances, deterministic business-date/order chronology, default negative-history rejection and no floating point are represented |
+| Focused Step 6 test definitions | Added in `packages/inventory/tests/inventory-stock.test.ts`; 17 tests defined |
+| Static defensive review | Corrected same-day ordering to use explicit `businessOrder` rather than accidental UUID/document ordering; corrected sparse-array rehydration path and deterministic StockKey sort |
+| Assistant execution environment | Node `v22.16.0` and TypeScript `5.8.3` are present, but no complete repository checkout/workspace is available, so the real package test/typecheck/build is not claimed |
+| GitHub branch CI | Branch protection reports no required checks; no successful Step 6 workspace run is claimed |
+
+#### Step 7 Handoff
+
+Step 7 should convert confirmed receipt/issue/opening documents into the generic Step 6 movement facts while revalidating current scope/master eligibility and stock at confirmation. It must add duplicate-opening guards and must not let import bypass the same lifecycle or negative-history policy. Transfer/adjustment/reversal movement generation remains Step 8.
 
 ## Testing
 
@@ -392,7 +426,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The last actually executed Inventory suite remains the Step 4 result: 72 passing tests. Step 5 adds focused lifecycle/regression tests but their execution has not been observed in the assistant environment because repository checkout could not start and the branch reports no GitHub Check Runs. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
+Planning/Step 1 checks and actual Steps 2–4 validation are recorded above. The last assistant-observed full Inventory package run remains the Step 4 result: 72 passing tests. Step 5 and Step 6 add focused lifecycle/stock tests but their workspace execution has not been observed in the assistant environment. Step 5 has explicit owner acceptance. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -412,13 +446,17 @@ Step 1: updated this record, roadmap, phase index, changelog, module registry an
 
 Step 2: added the Inventory Domain architecture record and glossary terms, updated package/module registration and phase status, and regenerated the documentation index.
 
-Step 5: updated this canonical record and the Inventory Domain architecture record for the six-state lifecycle, approval invalidation, Draft deletion/cancellation separation and linked reversal boundary. No new documentation path or H1 title was introduced.
+Step 5: updated this canonical record and the Inventory Domain architecture record for the six-state lifecycle, approval invalidation, Draft deletion/cancellation separation and linked reversal boundary.
 
-During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Add an ADR for consequential movement/lifecycle/stock-policy decisions and link it here when accepted. Keep all repository documentation and commits in English.
+Step 6: added ADR-0019 and updated this canonical record plus Inventory architecture for durable StockKey identity, append-only movement facts, exact arithmetic, stable `businessOrder`, rebuildable balances and negative-history policy.
+
+During implementation: canonical Inventory architecture and Bridge contracts, database design/dictionary, permissions/approval policy, module registry/map and domain glossary. Keep all repository documentation and commits in English.
 
 ## Related ADRs
 
 [ADR-0018 — Exact Inventory Quantities and Historical Unit Snapshots](../adr/ADR-0018-inventory-quantity-snapshots.md) records the Step 3 representation decision.
+
+[ADR-0019 — Append-only Inventory Stock Ledger and Rebuildable Balances](../adr/ADR-0019-inventory-stock-ledger.md) records the Step 6 movement source-of-truth, exact arithmetic, deterministic business ordering and negative-history policy.
 
 Follow [Offline First](../adr/ADR-0001-offline-first.md), [Database-independent Domain](../adr/ADR-0002-database-independent-domain.md), [UoW](../adr/ADR-0005-repository-unit-of-work.md), [Application Services](../adr/ADR-0006-application-services.md), [Approval Concurrency](../adr/ADR-0008-approval-optimistic-concurrency.md) and [Shared Platform](../adr/ADR-0009-platform-infrastructure-first.md).
 
