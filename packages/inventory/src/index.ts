@@ -103,11 +103,31 @@ export type {
   InventoryNumberingGateway,
 } from "./application/inventory-application-service.ts";
 
+export { SecuredInventoryService } from "./application/secured-inventory-service.ts";
+export type { SecuredInventoryServiceDependencies } from "./application/secured-inventory-service.ts";
+
 export {
   INVENTORY_APPLICATION_ERROR_CODES,
   InventoryApplicationError,
 } from "./application/contracts/inventory-errors.ts";
 export type { InventoryApplicationErrorCode } from "./application/contracts/inventory-errors.ts";
+
+export {
+  INVENTORY_APPROVAL_REQUEST_TYPE,
+  inventoryCorrelationId,
+  inventoryPermissions,
+} from "./application/contracts/inventory-security.ts";
+export type {
+  InventoryApprovalGateway,
+  InventoryApprovalReference,
+  InventoryAuditAction,
+  InventoryAuditEvent,
+  InventoryAuditSink,
+  InventoryAuthorizationContext,
+  InventoryAuthorizationPolicy,
+  InventoryPermission,
+  InventorySecurityContext,
+} from "./application/contracts/inventory-security.ts";
 
 export {
   INVENTORY_QUERY_LIMITS,
