@@ -70,14 +70,20 @@ function id(value: string, field: string): string {
   return value.trim();
 }
 
+function transferIdentity(value: string): string {
+  if (typeof value !== "string" || !value.trim()) return fail(codes.transferIdentityInvalid, "transferId");
+  return value.trim();
+}
+
 function reason(value: string | null | undefined): string {
   if (typeof value !== "string" || !value.trim()) return fail(codes.adjustmentReasonRequired, "reason");
   return value.trim();
 }
 
 function assertBaseInput(
-  input: { readonly businessOrder: number; readonly ledger: InventoryStockLedgerSnapshot },
+  input: { readonly action: InventoryLifecycleActionInput; readonly businessOrder: number; readonly ledger: InventoryStockLedgerSnapshot },
 ): void {
+  if (!input.action || typeof input.action !== "object") fail(codes.inputInvalid, "action");
   if (!Number.isSafeInteger(input.businessOrder) || input.businessOrder < 1) {
     fail(codes.stockOrderInvalid, "businessOrder");
   }
@@ -135,7 +141,7 @@ export async function confirmInventoryTransfer(
 ): Promise<InventoryStockWorkflowResult> {
   if (!input || typeof input !== "object") return fail(codes.inputInvalid, "transferConfirmation");
   assertBaseInput(input);
-  const transferId = id(input.transferId, "transferId");
+  const transferId = transferIdentity(input.transferId);
   const document = rehydrateInventoryDocument(input.document);
   if (document.documentType !== "transfer") return fail(codes.stockWorkflowUnsupported, "documentType");
   assertApprovedComplete(document);
@@ -244,7 +250,7 @@ export async function confirmInventoryQuantityAdjustment(
 ): Promise<InventoryStockWorkflowResult> {
   if (!input || typeof input !== "object") return fail(codes.inputInvalid, "adjustmentConfirmation");
   assertBaseInput(input);
-  reason(input.action?.reason);
+  const normalizedReason = reason(input.action.reason);
   const document = rehydrateInventoryDocument(input.document);
   if (document.documentType !== "adjustment") return fail(codes.stockWorkflowUnsupported, "documentType");
   assertApprovedComplete(document);
@@ -286,6 +292,6 @@ export async function confirmInventoryQuantityAdjustment(
   const ledger = rebuildInventoryStockLedger([...input.ledger.movements, ...movements], {
     allowNegativeStock: input.allowNegativeStock === true,
   });
-  const confirmed = confirmInventoryDocument(scopedDocument, { ...input.action, reason: reason(input.action.reason) });
+  const confirmed = confirmInventoryDocument(scopedDocument, { ...input.action, reason: normalizedReason });
   return Object.freeze({ document: confirmed, movements: Object.freeze(movements), ledger });
 }
