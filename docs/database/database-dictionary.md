@@ -33,7 +33,7 @@ For every table record:
 | Parties | `parties`, `party_roles`, `party_contacts`, `party_addresses`, `party_external_references` | Phase 17 |
 | Products and Services | `products`, identifiers/barcodes/external refs, `product_units`, `product_master_data`, sync/idempotency tables | Phase 18 |
 | Warehouses | `warehouses`, external refs, `warehouse_zones`, `warehouse_locations`, sync/idempotency tables | Phase 19 |
-| Inventory Documents | documents/lines/lifecycle, immutable stock movements, opening facts, balance projections, business orders, idempotency | Phase 20 |
+| Inventory Documents | documents/lines/lifecycle, ordinary + compensation movement facts, opening facts, balance projections, business orders, idempotency | Phase 20 |
 
 ## Phase 10 — Chart of Accounts
 
@@ -196,7 +196,7 @@ Important integrity rules:
 
 ### `inventory_document_lines`
 
-Stable line identity and position under one Inventory document. Stores Product identity, optional source reference, exact entered/base decimal quantity strings, unit snapshot payload and source/destination Warehouse/Zone/Location references. Incomplete Draft lines may omit operation data; populated operation shape is constrained relationally and revalidated by Domain/Application code.
+Stable line identity and position under one Inventory document. Stores Product identity, optional source reference, exact entered/base decimal quantity strings, unit columns, complete historical `InventoryLineOperationSnapshot` JSON in `quantity_snapshot`, and source/destination Warehouse/Zone/Location references. Current master eligibility is revalidated by Application services; historical operation snapshots are not rewritten when master data changes.
 
 ### `inventory_document_lifecycle`
 
@@ -204,44 +204,68 @@ Append-only transition history keyed by `(document_id, sequence)`. Stores from/t
 
 ### `inventory_stock_movements`
 
-Authoritative append-only quantity facts. Each row stores durable `movement_id`, document/line, optional `transfer_id`, optional `reversal_of_movement_id`, Product/StockKey, Gregorian business date, durable positive `business_order`, UTC `recorded_at`, and signed exact base-unit `quantity_delta` as TEXT.
+Append-only physical partition for ordinary confirmation and transfer quantity facts. Each row stores durable `movement_id`, document/line, optional `transfer_id`, Product/StockKey, Gregorian business date, positive `business_order`, UTC `recorded_at`, and signed exact base-unit `quantity_delta` as TEXT.
 
 Important integrity rules:
 
-- movement rows cannot be updated or deleted;
+- rows cannot be updated or deleted;
 - duplicate source document-line + normalized StockKey facts are rejected;
-- one original movement can be compensated at most once;
 - Warehouse/Zone/Location references remain same-company/same-hierarchy;
-- Kardex index follows the canonical business chronology fields.
+- transfer facts retain one durable `transfer_id` across source/destination rows.
+
+### `inventory_stock_movement_compensations`
+
+Append-only physical partition introduced by migration `0027_inventory_reversal_persistence.sql` for reversal facts. A compensation has its own durable `movement_id` and `effect_document_id`, retains the original durable `source_line_id`, and references `original_movement_id`.
+
+Important integrity rules:
+
+- one original movement can be compensated only once;
+- original movement and source line are durable foreign references;
+- StockKey/Product/Warehouse hierarchy is preserved;
+- UPDATE and DELETE are blocked by triggers;
+- `effect_document_id` deliberately represents the separate compensating operation identity without inventing a mutable/redundant Inventory header.
+
+### `inventory_all_stock_movements` view
+
+Repository-facing `UNION ALL` view over `inventory_stock_movements` and `inventory_stock_movement_compensations`. It restores the single public `InventoryStockMovementSnapshot` shape by mapping compensation `effect_document_id -> document_id`, `source_line_id -> line_id`, and `original_movement_id -> reversal_of_movement_id`.
+
+This view is the authoritative logical quantity ledger. Physical partitioning is an SQLite implementation detail and must not leak into Domain, Argin Bridge or future PostgreSQL contracts.
 
 ### `inventory_opening_balances`
 
-Append-only uniqueness facts for opening inventory. The business uniqueness boundary is Company + fiscal year + Product + Warehouse + normalized nullable Zone/Location. It stores the originating document/line for traceability.
+Append-only uniqueness facts for opening inventory. The business uniqueness boundary is Company + fiscal year + Product + Warehouse + normalized nullable Zone/Location. The SQLite repository resolves originating document/line/time from the just-appended opening movement inside the same transaction before persisting the trace row.
 
 ### `inventory_stock_balances`
 
-Rebuildable on-hand projection keyed by canonical `stock_key`, with exact quantity TEXT and optional last-movement chronology metadata. This table is not authoritative; mutation services must derive it from `inventory_stock_movements` and replace it atomically inside the Inventory UoW.
+Rebuildable on-hand projection keyed by canonical `stock_key`, with exact quantity TEXT. This table is not authoritative. `@argin/inventory-tauri` derives movement count/latest movement from `inventory_all_stock_movements`; projection metadata may be omitted when the latest logical movement is a compensation that cannot satisfy a primary-table FK.
 
 ### `inventory_business_orders`
 
-Durable per-Company/per-business-date allocator state. `last_order` is positive and exists only to provide deterministic same-date movement chronology; callers cannot supply business order directly.
+Durable per-Company/per-business-date allocator state. `last_order` is positive and exists only to provide deterministic same-date movement chronology. The SQLite adapter allocates it with one transaction-bound upsert/`RETURNING`; callers cannot supply business order directly.
 
 ### `inventory_idempotency`
 
-Company-scoped durable request result keyed by `(company_id, request_key)`. Stores operation, payload fingerprint, outcome kind, document identity, resulting document version/status and recording timestamp so a completed request can be replayed after restart without creating duplicate stock facts.
+Company-scoped durable request result keyed by `(company_id, request_key)`. Stores operation, payload fingerprint, outcome kind, document identity, resulting document version/status and recording timestamp so a completed request can be replayed after restart without creating duplicate stock facts. Its write is inside the same UoW transaction as the stock effect.
+
+### SQLite Application Adapter
+
+`@argin/inventory-tauri` supplies concrete document, movement, balance, opening, business-order and idempotency repositories plus `SqliteInventoryUnitOfWork`. Document updates use Company/document/expected-version compare-and-swap and map stale rows to the stable Inventory concurrency error.
+
+Production `@argin/database-tauri` transactions are backed by a Rust-side pinned SQLx `PoolConnection<Sqlite>`. The transaction starts with `BEGIN IMMEDIATE`, all reads/writes in the callback use that same connection, and completion uses `COMMIT` or `ROLLBACK`. This closes the stock read-check-write race and provides actual rollback semantics for Confirmation/Transfer/Reversal.
 
 ### Index policy
 
-Indexes cover bounded document lists, type/date and Branch/date filters, fiscal scope, document-line Product/Warehouse use, StockKey Kardex chronology, Product/date movement feeds, transfer grouping, reversal uniqueness, Warehouse/Product balance lookup, tombstones, synchronization changes and idempotency/document diagnostics. Nullable Zone/Location identity in hard uniqueness boundaries is normalized with expression indexes using `COALESCE`.
+Indexes cover bounded document lists, type/date and Branch/date filters, fiscal scope, document-line Product/Warehouse use, StockKey Kardex chronology, Product/date movement feeds, transfer grouping, reversal effect/original lookup, Warehouse/Product balance lookup, tombstones, synchronization changes and idempotency/document diagnostics. Nullable Zone/Location identity in hard uniqueness boundaries is normalized with expression indexes using `COALESCE`.
 
 ### Cross-row responsibilities
 
-Negative historical stock, exact transfer conservation, reversal quantity equality, current master eligibility, payload fingerprint semantics and concurrent StockKey mutation cannot be fully expressed as isolated SQLite row checks. They remain authoritative Application/UoW rules and must execute inside the real transaction implemented in Step 13.
+Negative historical stock, exact transfer conservation, reversal quantity equality, current master eligibility, payload fingerprint semantics and concurrent StockKey mutation cannot be fully expressed as isolated SQLite row checks. They remain authoritative Application/UoW rules and execute inside the real transaction delivered in Step 13.
 
-### Migration
+### Migrations
 
 - `apps/desktop/src-tauri/migrations/0026_inventory_documents.sql`
+- `apps/desktop/src-tauri/migrations/0027_inventory_reversal_persistence.sql`
 
 ### Retention and sensitivity
 
-Confirmed lifecycle/movement/opening facts are retained and corrected through compensating facts, not destructive deletion. Draft tombstones support future synchronization. Inventory data is company-confidential operational/financial data and follows the same local database protection and backup policy as other accounting records.
+Confirmed lifecycle/movement/opening/compensation facts are retained and corrected through compensating facts, not destructive deletion. Draft tombstones support future synchronization. Inventory data is company-confidential operational/financial data and follows the same local database protection and backup policy as other accounting records.
