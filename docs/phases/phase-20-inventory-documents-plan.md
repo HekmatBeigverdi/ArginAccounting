@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–9 are complete; Steps 5–9 have been explicitly owner-accepted. Step 10 implementation and focused Application-service test definitions are complete; executable workspace validation remains pending. Steps 11–22 are Not started; migrations, Argin Bridge envelopes, SQLite integration, permissions/Audit, Desktop UI and final validation remain pending.
+In Progress. Steps 1–10 are complete; Steps 5–10 have been explicitly owner-accepted. Step 11 implementation, migration registration, database documentation and focused migration-contract tests are complete; executable SQLite/workspace validation remains pending. Steps 12–22 are Not started; Argin Bridge envelopes, concrete SQLite repositories/UoW, permissions/Audit, Desktop UI and final validation remain pending.
 
 ## Governance
 
@@ -65,6 +65,8 @@ References:
 - [Transfer, adjustment and reversal workflows](../architecture/inventory-transfer-adjustment-workflows.md)
 - [Inventory Application contracts](../architecture/inventory-application-contracts.md)
 - [Inventory Application Services](../architecture/inventory-application-services.md)
+- [Database Design](../database/database-design.md)
+- [Database Dictionary](../database/database-dictionary.md)
 
 ### Argin Bridge Rules
 
@@ -88,7 +90,7 @@ Implemented through Steps 2–10:
 - Persistence-neutral commands, bounded queries, repositories, typed errors and UoW contracts.
 - `InventoryApplicationService` orchestration for lifecycle actions, confirmation, replay-safe idempotency, expected-version checks, UoW-scoped business ordering and reversal scope/date validation.
 
-Still planned in owning steps: migrations, Bridge envelopes, concrete SQLite transactions/adapters, authorization/Audit integration, dependency guards, Desktop surfaces, reporting/export/print and final validation.
+Step 11 adds the durable SQLite schema only. Concrete repository SQL and transaction behavior remain Step 13.
 
 ## Application Service Rules — Step 10
 
@@ -112,6 +114,35 @@ Document optimistic concurrency alone is insufficient for stock. Two different d
 
 Callers cannot supply `businessOrder`; it is allocated inside the UoW. Reversal carries its own `businessDate` and `reversalScope`, so a compensating operation may be validated in a different open fiscal period from the original document without rewriting the original document's date/scope.
 
+## Persistence Model — Step 11
+
+Migration `0026_inventory_documents.sql` is the next unused migration after the verified Phase 19 migration `0025_warehouse_maintenance_tombstones.sql` and is registered as Tauri migration version 26.
+
+It creates:
+
+- `inventory_documents`
+- `inventory_document_lines`
+- `inventory_document_lifecycle`
+- `inventory_stock_movements`
+- `inventory_opening_balances`
+- `inventory_stock_balances`
+- `inventory_business_orders`
+- `inventory_idempotency`
+
+Key schema decisions:
+
+- Durable TEXT IDs remain separate from display document numbers.
+- Company-wide documents are allowed with nullable origin Branch; number uniqueness normalizes null Branch with `COALESCE`.
+- Exact entered/base quantities, movement deltas and balance quantities are TEXT decimal representations, never SQLite `REAL`.
+- Document number, source identity, movement source StockKey, reversal-original identity, opening StockKey and idempotency request-key uniqueness are enforced in SQLite where row/index constraints can express them safely.
+- Nullable Zone/Location dimensions in StockKey uniqueness use expression indexes with `COALESCE` so SQLite NULL semantics cannot admit duplicate logical keys.
+- `inventory_stock_movements`, lifecycle history and opening facts have UPDATE/DELETE blocking triggers and are append-only.
+- `inventory_stock_balances` is a rebuildable projection only; movement facts remain authoritative.
+- Draft `deleted_at` is synchronization tombstone metadata; non-Draft documents cannot carry a tombstone.
+- Document rows carry local sync-origin/server-revision/change metadata needed by the Step 12 Bridge contract without implementing transport.
+- Kardex/list/balance/tombstone/sync indexes are defined now; representative query-plan validation remains Step 21.
+- Negative historical stock, transfer conservation, exact reversal compensation, current-master eligibility, idempotency fingerprint behavior and concurrent StockKey mutation remain Application/UoW rules because they require multi-row transactional context.
+
 ## Step Status
 
 | Step | Title | Status |
@@ -125,8 +156,8 @@ Callers cannot supply `businessOrder`; it is allocated inside the UoW. Reversal 
 | 7 | Receipt, Issue and Opening Balance Workflows | Completed |
 | 8 | Atomic Transfer and Quantity Adjustment Workflows | Completed |
 | 9 | Application, Query and Repository Contracts | Completed |
-| 10 | Application Services, Idempotency and Concurrency | Implemented — validation pending |
-| 11 | Migration, Schema, Constraints and Indexing | Not started |
+| 10 | Application Services, Idempotency and Concurrency | Completed |
+| 11 | Migration, Schema, Constraints and Indexing | Implemented — validation pending |
 | 12 | Argin Bridge and Future Synchronization Contract | Not started |
 | 13 | SQLite Repository, Unit of Work and Atomic Confirmation | Not started |
 | 14 | Permissions, Audit and Shared Approval Integration | Not started |
@@ -244,62 +275,73 @@ Reconcile Step Status with actual evidence and owner acceptance, review deferred
 - Six-state lifecycle and explicit transition matrix delivered.
 - Approval and confirmation remain distinct; approval has no stock effect.
 - Confirmed facts cannot be directly edited/deleted and reversal is linked through a separate durable identity.
-- Owner explicitly accepted Step 5. Workspace execution after Step 4 was not observed by the assistant environment.
+- Owner explicitly accepted Step 5.
 
 ### Step 6 — Stock Movement Ledger and Balance Rules — Completed
 
 - Durable StockKey, append-only movements, exact arithmetic and deterministic business ordering delivered.
 - Rebuildable balances and default historical negative-stock rejection delivered.
-- Owner explicitly accepted Step 6. Focused Step 6 tests exist; current raw workspace output was not observed by the assistant environment.
+- Owner explicitly accepted Step 6.
 
 ### Step 7 — Receipt, Issue and Opening Balance Workflows — Completed
 
 - Persistence-neutral receipt/issue/opening confirmation and current scope/master/stock revalidation delivered.
 - Fiscal-year opening uniqueness and import/lifecycle bypass protection delivered.
-- Owner explicitly accepted Step 7. Focused Step 7 tests exist; current raw workspace output was not observed by the assistant environment.
+- Owner explicitly accepted Step 7.
 
 ### Step 8 — Atomic Transfer and Quantity Adjustment Workflows — Completed
 
 - Transfer pairing/conservation, intra/inter-Warehouse transfer, signed reasoned adjustment and append-only reversal compensation delivered.
 - Reversal reference integrity and duplicate-compensation protection delivered.
-- Owner explicitly accepted Step 8. Focused Step 8 tests exist; current raw workspace output was not observed by the assistant environment.
+- Owner explicitly accepted Step 8.
 
 ### Step 9 — Application, Query and Repository Contracts — Completed
 
 - Persistence-neutral commands, bounded queries, read DTOs, typed Application errors, repository ports, UoW and future ERP consumer ports delivered.
 - Query reader is separated from mutation repositories; caller-controlled `businessOrder` is prohibited.
-- Owner explicitly accepted Step 9 before requesting Step 10.
-- Focused Step 9 tests exist in `packages/inventory/tests/inventory-contracts.test.ts`; raw package execution was not pasted into the conversation, so owner acceptance and executable evidence remain distinct.
+- Owner explicitly accepted Step 9.
 
-### Step 10 — Application Services, Idempotency and Concurrency — Implemented; Validation Pending
+### Step 10 — Application Services, Idempotency and Concurrency — Completed
 
-- Added/exported `InventoryApplicationService` for submit/approve/cancel/confirm/reverse orchestration.
-- Idempotency is checked before mutation using Company + request key. Same operation/fingerprint replays the stored outcome; changed operation/fingerprint conflicts.
-- Idempotency records now retain resulting document status/version so replay does not depend on later lifecycle mutations.
-- Every mutation reloads the document inside the UoW and compares `expectedVersion`; stale callers fail before stock writes.
-- Confirmation rebuilds authoritative ledger state from movement facts for all affected StockKeys inside the UoW before evaluating a new candidate.
-- `businessOrder` is allocated inside the UoW; callers cannot inject chronology.
-- Confirmation composes the existing receipt/issue/opening/transfer/adjustment workflows and writes movement batch, balance projection, opening keys, document version and idempotency outcome through the same UoW context.
-- UoW contract now explicitly requires conflicting StockKey mutation transactions to serialize or surface a serialization/optimistic conflict. Concrete SQLite enforcement remains Step 13.
-- Reversal now carries independent `businessDate` and `reversalScope`, validates the compensating operation against current fiscal/lock rules and never rewrites the original document date/scope.
-- Added focused Application-service tests covering same-key replay without duplicate movement, fingerprint conflict, stale expected version and concurrent reductions against the same StockKey where only one mutation may succeed.
-- Added [Inventory Application Services, Idempotency, and Concurrency](../architecture/inventory-application-services.md).
-- Strict `exactOptionalPropertyTypes` review corrected optional negative-stock policy composition.
+- `InventoryApplicationService` orchestration, idempotent replay/conflict semantics, stale-version checks, UoW-scoped business ordering and concurrent StockKey validation delivered.
+- Reversal has independent business date/scope validation.
+- Focused Step 10 tests cover replay, fingerprint conflict, stale version and competing StockKey reductions.
+- Owner explicitly accepted Step 10 before requesting Step 11.
+- Raw local command output was not pasted into the conversation; owner acceptance and executable evidence remain distinct facts.
 
-#### Step 10 Validation Evidence
+### Step 11 — Migration, Schema, Constraints and Indexing — Implemented; Validation Pending
+
+- Re-inventoried the runtime migration registry and verified `0025_warehouse_maintenance_tombstones.sql` as the latest existing migration before allocation.
+- Added and registered `0026_inventory_documents.sql` as Tauri migration version 26; no released migration was changed.
+- Added normalized durable tables for documents, lines, lifecycle history, movement facts, opening uniqueness facts, balance projections, business-order allocation and idempotency outcomes.
+- Added same-company Product/Warehouse/Branch references and Warehouse/Zone/Location hierarchy foreign keys where the existing schema exposes compatible composite keys.
+- Preserved Company-wide Inventory scope by keeping origin Branch nullable; expression uniqueness normalizes null Branch for document numbering.
+- Stored exact quantities/deltas/balances as TEXT, not `REAL`, preserving the Domain's decimal-string boundary.
+- Added hard uniqueness for document numbers, source documents, movement source StockKeys, one-time reversal compensation, fiscal opening StockKeys, balance StockKeys and Company-scoped request keys.
+- Added append-only UPDATE/DELETE blockers for lifecycle, movement and opening fact tables.
+- Added Draft-only tombstone constraint plus future Bridge origin/server-revision/change metadata on documents.
+- Added bounded list/fiscal/Branch indexes, Product/Warehouse usage indexes, canonical Kardex chronology, transfer/reversal lookup, balance lookup, tombstone and sync-change indexes.
+- Updated [Database Design](../database/database-design.md) and [Database Dictionary](../database/database-dictionary.md) with authoritative-vs-projection rules, migration purpose, constraints, compatibility and deferred transactional responsibilities.
+- Added `apps/desktop/tests/inventory-migration-contract.test.ts` with six focused source-contract tests for runner registration, table set, append-only triggers, nullable StockKey uniqueness, idempotency/reversal identity and key read-path indexes.
+- During defensive review, corrected an initial schema mismatch that made `origin_branch_id` non-null even though the Domain permits Company-wide scope.
+- No concrete Inventory SQLite repository, query reader, transaction implementation, locking strategy or adapter package was added; those remain Step 13.
+
+#### Step 11 Validation Evidence
 
 | Check | Result |
 | --- | --- |
-| Frozen Step 10 wording vs implementation | Reconciled: validation/numbering/lifecycle/confirmation orchestration, request-key replay/conflict, expected-version comparison, UoW-scoped business order and concurrent StockKey validation are represented |
-| Public API | `InventoryApplicationService` and dependency/result contracts exported from `@argin/inventory` |
-| Focused Step 10 tests | Added in `packages/inventory/tests/inventory-application-service.test.ts`; 4 high-value orchestration tests defined |
-| Race coverage | Two independent documents compete for the same StockKey; serialized UoW fixture permits only one stock-reducing confirmation |
-| Persistence boundary | No SQL, migration, SQLite adapter, Tauri or HTTP implementation added; concrete transaction/isolation remains Step 13 |
-| Executable package validation | Not observed by the assistant environment; no pass claim is made until local/CI `test`, `typecheck` and `build` output is available |
+| Migration inventory | Verified runtime runner through version 25 before assigning version 26 |
+| Migration convention | Followed additive numbered migration; no released migration modified |
+| Tauri registration | `version: 26` / `0026_inventory_documents.sql` added to `database_migrations()` |
+| Focused migration-contract tests | 6 tests defined in `apps/desktop/tests/inventory-migration-contract.test.ts` |
+| Domain/schema review | Corrected Company-wide nullable Branch mismatch; preserved exact TEXT quantity and append-only movement boundaries |
+| Database documentation | `database-design.md` and `database-dictionary.md` updated |
+| Real SQLite empty/upgrade/constraint execution | Not observed yet; no pass claim is made before local/Step 20 execution |
+| Desktop test/typecheck/build and Rust check | Not observed yet; no pass claim is made |
 
-#### Step 11 Handoff
+#### Step 12 Handoff
 
-Step 11 must translate the completed Domain/Application contracts into durable schema constraints and indexes without changing released migrations. It must inventory the actual current migration registry before assigning the next number and must encode document/source/movement/opening/idempotency/business-order uniqueness, exact quantity storage, versions, tombstones, sync metadata and balance projection. SQLite repository behavior itself remains Step 13.
+Step 12 must freeze the Argin Bridge/future synchronization envelope on top of the durable schema now established. It must preserve document/line/movement/transfer/reversal identities, operation/request/fingerprint metadata, local version/server revision/origin/change timestamps and indivisible transfer/reversal batches. It must not synchronize `inventory_stock_balances` as an independent authoritative value or implement live transport.
 
 ## Testing
 
@@ -309,7 +351,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–10 add focused lifecycle/stock/workflow/contract/orchestration tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–9 have explicit owner acceptance. No migration, performance gate or manual Desktop acceptance has been run in this phase yet.
+The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–11 add focused lifecycle/stock/workflow/contract/orchestration/migration-contract tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–10 have explicit owner acceptance. Real migration upgrade/constraint/rollback validation remains required in Step 20 and final gates in Step 21.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -324,8 +366,9 @@ Required implementation gates, to be executed and recorded at Steps 19–21:
 ## Documentation Impact
 
 - Steps 2–9 created/updated the canonical Inventory Domain/workflow/Application-contract records and ADR-0018 through ADR-0020 as applicable.
-- Step 10 added `inventory-application-services.md`, updated Application/UoW/idempotency/reversal contracts, exported the orchestration service and updated this canonical plan.
-- Database design/dictionary, Bridge contract, permissions/approval policy, module registry/map and final generated documentation index remain updated in their owning steps.
+- Step 10 added `inventory-application-services.md` and recorded idempotent/concurrent orchestration.
+- Step 11 added migration `0026_inventory_documents.sql`, registered it in the Desktop runner, updated database design/dictionary and recorded schema/index/immutability rules in this canonical plan.
+- Bridge contract, permissions/approval policy, module integration and final generated documentation index remain updated in their owning steps.
 
 ## Related ADRs
 
