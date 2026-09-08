@@ -18,5 +18,6 @@
 | ADR-0014 | Five-layer Persian RTL desktop UI foundation with global Compact/Comfortable/Spacious display density | Accepted | Phase 14 |
 | [ADR-0018](../adr/ADR-0018-inventory-quantity-snapshots.md) | Exact Inventory quantities and historical unit snapshots | Accepted | Phase 20 Step 3 |
 | [ADR-0019](../adr/ADR-0019-inventory-stock-ledger.md) | Append-only Inventory stock ledger and rebuildable balances | Accepted | Phase 20 Step 6 |
+| [ADR-0020](../adr/ADR-0020-inventory-transfer-adjustment-workflows.md) | Atomic Inventory transfer and signed quantity adjustment workflows | Accepted | Phase 20 Step 8 |
 
 The detailed records live under `docs/adr/`. This registry must be updated whenever an ADR is added, superseded, or deprecated.
