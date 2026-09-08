@@ -145,6 +145,7 @@ function compareInventoryStockQuantities(left: string, right: string): number {
 }
 
 export function serializeInventoryStockKey(key: InventoryStockKey): string {
+  if (!key || typeof key !== "object") return fail(codes.stockKeyInvalid, "stockKey");
   const normalized = createInventoryStockKey({
     companyId: key.companyId,
     productId: key.productId,
@@ -190,17 +191,19 @@ export function rehydrateInventoryStockMovement(
   input: InventoryStockMovementSnapshot,
 ): InventoryStockMovementSnapshot {
   if (!input || typeof input !== "object") return fail(codes.inputInvalid, "movement");
+  if (!input.stockKey || typeof input.stockKey !== "object") return fail(codes.stockKeyInvalid, "stockKey");
+  const warehouse = createWarehouseOperationalReference({
+    warehouseId: input.stockKey.warehouseId,
+    zoneId: input.stockKey.zoneId,
+    locationId: input.stockKey.locationId,
+  });
   const movement = createInventoryStockMovement({
     movementId: input.movementId,
     companyId: input.companyId,
     documentId: input.documentId,
     lineId: input.lineId,
-    productId: input.stockKey?.productId,
-    warehouse: input.stockKey ? createWarehouseOperationalReference({
-      warehouseId: input.stockKey.warehouseId,
-      zoneId: input.stockKey.zoneId,
-      locationId: input.stockKey.locationId,
-    }) : null as never,
+    productId: input.stockKey.productId,
+    warehouse,
     businessDate: input.businessDate,
     recordedAt: input.recordedAt,
     quantityDelta: input.quantityDelta,
@@ -248,7 +251,12 @@ export function rebuildInventoryStockLedger(
   for (const movement of movements) {
     if (movementIds.has(movement.movementId)) return fail(codes.duplicateMovementId, "movementId");
     movementIds.add(movement.movementId);
-    const sourceKey = JSON.stringify([movement.companyId, movement.documentId, movement.lineId, serializeInventoryStockKey(movement.stockKey)]);
+    const sourceKey = JSON.stringify([
+      movement.companyId,
+      movement.documentId,
+      movement.lineId,
+      serializeInventoryStockKey(movement.stockKey),
+    ]);
     if (sourceFacts.has(sourceKey)) return fail(codes.duplicateMovementSource, "lineId");
     sourceFacts.add(sourceKey);
 
