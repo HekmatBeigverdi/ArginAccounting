@@ -35,6 +35,7 @@
 ## architecture
 
 - [Inventory Application, Query and Repository Contracts](architecture/inventory-application-contracts.md)
+- [Inventory Application Services, Idempotency, and Concurrency](architecture/inventory-application-services.md)
 - [Inventory Document Domain Foundation](architecture/inventory-documents.md)
 - [Inventory Transfer, Adjustment, and Reversal Workflows](architecture/inventory-transfer-adjustment-workflows.md)
 - [Architecture Overview](architecture/overview.md)
