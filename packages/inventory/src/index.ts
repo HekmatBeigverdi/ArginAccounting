@@ -103,6 +103,9 @@ export type {
   InventoryNumberingGateway,
 } from "./application/inventory-application-service.ts";
 
+export { InventoryDraftService } from "./application/inventory-draft-service.ts";
+export type { InventoryDraftMutationResult } from "./application/inventory-draft-service.ts";
+
 export { SecuredInventoryService } from "./application/secured-inventory-service.ts";
 export type { SecuredInventoryServiceDependencies } from "./application/secured-inventory-service.ts";
 export { SecuredInventoryQuantityConfirmationPort } from "./application/inventory-erp-integration.ts";
