@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–14 are complete; Steps 5–14 have been explicitly owner-accepted. Step 15 concrete Warehouse dependency probing, secured ERP confirmation boundary, stable movement feed and focused integration tests are implemented; executable workspace/Desktop validation remains pending. Steps 16–22 are Not started.
+In Progress. Steps 1–15 are complete; Steps 5–15 have been explicitly owner-accepted. Step 16 Persian RTL Inventory document workspace, draft editor, secured lifecycle composition, Jalali UI date boundary, bounded selectors and focused Desktop contract tests are implemented; executable workspace/Desktop validation remains pending. Steps 17–22 are Not started.
 
 ## Governance
 
@@ -69,6 +69,7 @@ References:
 - [Inventory SQLite persistence](../architecture/inventory-sqlite-persistence.md)
 - [Inventory Security, Approval, and Audit](../security/inventory-security-approval-audit.md)
 - [Inventory Master Data Dependency Guards and ERP Integration](../architecture/inventory-master-data-erp-integration.md)
+- [Inventory Desktop Workspace](../architecture/inventory-desktop-workspace.md)
 - [Database Design](../database/database-design.md)
 - [Database Dictionary](../database/database-dictionary.md)
 
@@ -82,7 +83,7 @@ Only eligible unconfirmed document deletion may produce a tombstone. Confirmed m
 
 ## Domain and Application Model
 
-Implemented through Steps 2–15:
+Implemented through Steps 2–16:
 
 - Immutable `InventoryDocumentSnapshot` and stable line/source identities.
 - Exact decimal quantity and historical unit snapshots.
@@ -97,6 +98,7 @@ Implemented through Steps 2–15:
 - Concrete SQLite repositories/UoW plus a production pinned-connection transaction bridge with real `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK` semantics.
 - Separate Inventory permissions, persisted-document Company/Branch authorization, shared Phase 8 Approval gateway and shared immutable Audit adapter around successful lifecycle operations.
 - Concrete Inventory-backed Warehouse dependency guard, secured ERP confirmation adapter and bounded immutable movement feed for valuation/later consumers.
+- Persian RTL Desktop workspace with Application-owned draft mutation, bounded list/detail read model, Jalali input/display, exact quantity/unit editing and secured lifecycle actions.
 
 ## Application Service Rules — Step 10
 
@@ -173,7 +175,7 @@ Submission re-invokes the idempotent Approval gateway even when Inventory itself
 
 ## Master Data Dependency Guards and ERP Integration — Step 15
 
-`InventoryWarehouseDependencyGuard` implements the Phase 19 `WarehouseDependencyGuard` contract with Company-scoped durable Warehouse/Zone/Location IDs. It detects non-zero stock, open Inventory documents and immutable movement history.
+`InventoryWarehouseDependencyGuard` is structurally compatible with the Phase 19 `WarehouseDependencyGuard` contract while avoiding a reverse package dependency from Inventory infrastructure into Warehouse infrastructure. It uses Company-scoped durable Warehouse/Zone/Location IDs and checks non-zero stock from authoritative movement facts, open Inventory documents and immutable movement history.
 
 Protection policy is operation-sensitive:
 
@@ -188,6 +190,22 @@ Confirmed Inventory lines retain exact entered/base quantities and historical un
 `InventoryMovementFeedReader` is the immutable quantity-fact boundary for Phase 21 and later consumers. `SqliteInventoryMovementFeedReader` reads `inventory_all_stock_movements`, is Company-scoped, bounded to 500 rows and orders by `businessDate -> businessOrder -> documentId -> lineId -> movementId`. Continuation resolves the full chronology tuple from the previous movement identity; movement ID alone is never treated as chronology. Balance projections are not exposed as equivalent authoritative facts.
 
 Concrete Purchase/Sales/Manufacturing draft staging remains in their owning future phases because those source lifecycles do not exist yet; Phase 20 freezes the public `InventorySourceDocumentPort` contract without inventing their transactional models.
+
+## Persian RTL Inventory Document Workspace — Step 16
+
+`InventoryDraftService` adds the missing persistence-neutral create/save/delete draft boundary required by the existing Step 9 commands. Draft creation, optimistic save and eligible deletion run through `InventoryUnitOfWork` and durable idempotency records; the React UI does not write Inventory tables directly.
+
+`SqliteInventoryWorkspaceReader` supplies Company-scoped, bounded list/detail reads for the Desktop workspace without implementing Step 17 Kardex/balance reports. Search, list pagination, deterministic sorting and line counts remain bounded.
+
+Desktop route `/inventory/documents` and navigation permission `inventory.documents.view` expose a dense Persian RTL list/detail workspace. It supports all five Phase 20 quantity document types, stable line editing, bounded Product/Warehouse selectors, subordinate Zone/Location selection, transfer destinations, lifecycle controls, shared Approval navigation and lifecycle history.
+
+Business dates remain Gregorian internally. The Desktop accepts/displays Solar Hijri values, normalizes Persian/Arabic digits and validates Jalali dates by round-trip conversion before passing Gregorian `YYYY-MM-DD` to Application persistence. Fiscal Period selection is resolved through the Fiscal repository rather than direct table writes.
+
+Quantities remain exact decimal strings. Quantity, document number, Product/Warehouse identifiers and date-entry controls are explicitly LTR inside the RTL workspace; entered and base quantity snapshots can be inspected without floating-point conversion.
+
+Draft and lifecycle commands carry `expectedVersion`. A concurrency conflict reloads the persisted document and surfaces a Persian stale-version message rather than silently overwriting the newer version.
+
+Step 16 does not implement Kardex/balance drill-down, import/export, print/PDF or valuation.
 
 ## Step Status
 
@@ -207,8 +225,8 @@ Concrete Purchase/Sales/Manufacturing draft staging remains in their owning futu
 | 12 | Argin Bridge and Future Synchronization Contract | Completed |
 | 13 | SQLite Repository, Unit of Work and Atomic Confirmation | Completed |
 | 14 | Permissions, Audit and Shared Approval Integration | Completed |
-| 15 | Master Data Dependency Guards and ERP Integration | Implemented — validation pending |
-| 16 | Persian RTL Inventory Document Workspace | Not started |
+| 15 | Master Data Dependency Guards and ERP Integration | Completed |
+| 16 | Persian RTL Inventory Document Workspace | Implemented — validation pending |
 | 17 | Quantity Kardex, Stock Balances and Source Drill-down | Not started |
 | 18 | Import, Export, Print and PDF | Not started |
 | 19 | Domain and Application Tests | Not started |
@@ -389,36 +407,48 @@ Reconcile Step Status with actual evidence and owner acceptance, review deferred
 - Added five focused Inventory security/integration tests and [Inventory Security, Approval, and Audit](../security/inventory-security-approval-audit.md).
 - Owner explicitly accepted Step 14 before requesting Step 15. Raw local execution was not pasted into the conversation.
 
-### Step 15 — Master Data Dependency Guards and ERP Integration — Implemented; Validation Pending
+### Step 15 — Master Data Dependency Guards and ERP Integration — Completed
 
-- Added `InventoryWarehouseDependencyGuard`, implementing the existing Phase 19 Warehouse dependency contract without changing Warehouse Domain ownership.
-- Guard checks non-zero stock projection, open Inventory documents referencing source/destination Warehouse paths, and immutable history in `inventory_all_stock_movements`.
-- Delete operations block on history; deactivate/archive preserve historical identities; Location move also blocks on history to prevent reinterpretation of historical StockKeys.
-- Added `InventoryMovementFeedReader` public contract and `SqliteInventoryMovementFeedReader` implementation with Company isolation, 500-row bound and deterministic chronology cursoring.
-- Added `SecuredInventoryQuantityConfirmationPort`; future Purchase/Sales/Manufacturing confirmation therefore flows through Step 14 security/Approval and Step 13 atomic/idempotent confirmation rather than direct movement writes.
-- Preserved Product/unit history through immutable quantity/unit/conversion snapshots; current master edits are not allowed to rewrite confirmed line facts.
-- Added `@argin/warehouse` to `@argin/inventory-tauri` for the public dependency-guard interface and added Inventory packages to Desktop dependencies for future composition.
-- Added five focused SQLite guard/feed tests and one focused secured ERP confirmation-port test.
-- Added [Inventory Master Data Dependency Guards and ERP Integration](../architecture/inventory-master-data-erp-integration.md).
-- Concrete Purchase/Sales/Manufacturing draft staging remains deferred to the owning future phases; Phase 20 does not invent their source-document lifecycle.
+- Added `InventoryWarehouseDependencyGuard` using exact authoritative movement facts plus open-document/history probes for Warehouse/Zone/Location maintenance.
+- Destructive delete and historical Location move preserve immutable reference meaning; deactivate/archive do not treat history alone as a blocker.
+- Added bounded `InventoryMovementFeedReader` over `inventory_all_stock_movements` for Phase 21/later consumers.
+- Added `SecuredInventoryQuantityConfirmationPort`, preserving Step 14 authorization/Approval and Step 13 stock transaction/idempotency for future Purchase/Sales/Manufacturing consumers.
+- Preserved Product/unit history through immutable quantity/unit/conversion snapshots.
+- Added focused guard/feed/ERP confirmation tests and [Inventory Master Data Dependency Guards and ERP Integration](../architecture/inventory-master-data-erp-integration.md).
+- Owner explicitly accepted Step 15 before requesting Step 16. Raw local execution was not pasted into the conversation.
 
-#### Step 15 Validation Evidence
+### Step 16 — Persian RTL Inventory Document Workspace — Implemented; Validation Pending
+
+- Added `InventoryDraftService` so create/save/delete draft operations stay inside persistence-neutral Application/UoW/idempotency boundaries rather than UI SQL writes.
+- Added `SqliteInventoryWorkspaceReader` for bounded Company-scoped list/detail reads and stable line counts without pulling Step 17 reporting into the workspace.
+- Added Desktop composition across Inventory, Fiscal Number Series/Period, Product selectors, Warehouse selectors and shared Approval/Audit services.
+- Added `/inventory/documents` route and `inventory.documents.view` navigation entry.
+- Added Persian RTL list/detail workspace for receipt, issue, opening, transfer and adjustment documents with exact line quantities, unit snapshots and Warehouse/Zone/Location selectors.
+- Added Jalali input/display with Gregorian persistence boundary and Persian/Arabic digit normalization.
+- Added separate Submit/Approve/Confirm/Cancel/Reverse controls gated by Inventory permissions; Confirm still passes through shared Approval and atomic stock confirmation.
+- Added lifecycle history and navigation to the deterministic shared Approval request.
+- Added stale-version recovery: optimistic concurrency conflict reloads the persisted document and surfaces a Persian warning instead of overwriting it.
+- Added `apps/desktop/tests/inventory-workspace-contract.test.ts` covering route/nav permission, RTL/Jalali/LTR conventions, secured composition/stale recovery and Step 17/18 scope exclusion.
+- Added [Inventory Desktop Workspace](../architecture/inventory-desktop-workspace.md).
+
+#### Step 16 Validation Evidence
 
 | Check | Result |
 | --- | --- |
-| Warehouse dependency contract | Concrete Inventory implementation added against Phase 19 public `WarehouseDependencyGuard` |
-| Non-zero stock | Guard detects non-zero balance projection rows without floating-point conversion |
-| Open documents | Guard checks Draft/Submitted/Approved Inventory source and destination Warehouse references |
-| Historical movement protection | Delete and Location move block on authoritative immutable movement history |
-| ERP confirmation | Public adapter routes through `SecuredInventoryService.confirm()` |
-| Valuation/later consumer feed | Company-scoped bounded immutable movement feed implemented over `inventory_all_stock_movements` |
-| Product/unit history | Historical quantity/unit/conversion snapshots remain immutable facts |
-| Focused Step 15 tests | 6 tests defined across Inventory and Inventory-Tauri integration suites |
-| Executable package/Desktop validation | Not observed by the assistant environment; no pass claim is made before local output |
+| Desktop route/navigation | `/inventory/documents` + `inventory.documents.view` implemented |
+| Draft editing | Application/UoW-based create/save/delete boundary implemented |
+| Persian/Jalali boundary | RTL workspace, Persian messages and Jalali input/display with Gregorian persistence implemented |
+| Exact quantities | entered/base quantities remain decimal strings; code/quantity fields are explicit LTR |
+| Selectors | Product 50-row and Warehouse 100-row bounded selectors plus subordinate Zone/Location lookup |
+| Lifecycle security | Submit/Approve/Confirm/Cancel/Reverse route through secured Inventory composition |
+| Approval/history | Shared Approval deep-link plus lifecycle history rendered |
+| Stale-version recovery | concurrency conflict reloads current persisted document and reports the conflict |
+| Focused Step 16 tests | 4 Desktop workspace contract tests defined |
+| Executable workspace/Desktop validation | Not observed by the assistant environment; no pass claim is made before local output |
 
-#### Step 16 Handoff
+#### Step 17 Handoff
 
-Step 16 must build the Persian RTL Inventory document workspace on the secured/public boundaries already established. It must not let UI callers write movement/balance tables, bypass shared Approval, invent valuation fields or replace durable Warehouse/Product identities with display codes.
+Step 17 must add permission-scoped quantity Kardex, stock balances, opening/in/out/closing reconciliation and source document/line drill-down on the existing read contracts. It must not turn `inventory_stock_balances` into an authoritative mutable source, introduce valuation, or duplicate the Step 16 document editor.
 
 ## Testing
 
@@ -428,7 +458,7 @@ Representative acceptance: receipt 10 units, issue 3, transfer 2 to another elig
 
 ## Validation Evidence
 
-The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–15 add focused lifecycle/stock/workflow/contract/orchestration/migration/Bridge/SQLite/security/integration tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–14 have explicit owner acceptance. Real migration upgrade/constraint/rollback/restart and Desktop composition/master-data guard wiring validation remain required in Step 20; final monorepo gates remain Step 21.
+The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–16 add focused lifecycle/stock/workflow/contract/orchestration/migration/Bridge/SQLite/security/integration/Desktop tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–15 have explicit owner acceptance. Real migration upgrade/constraint/rollback/restart and Desktop composition/master-data guard wiring validation remain required in Step 20; final monorepo gates remain Step 21.
 
 Required implementation gates, to be executed and recorded at Steps 19–21:
 
@@ -449,7 +479,8 @@ Required implementation gates, to be executed and recorded at Steps 19–21:
 - Step 13 created `@argin/inventory-tauri`, added migration `0027_inventory_reversal_persistence.sql`, added `inventory-sqlite-persistence.md`, and implemented the real Desktop SQLite transaction bridge.
 - Step 14 added `inventory-security-approval-audit.md`, secured Inventory lifecycle composition, shared Phase 8 Approval integration and shared replay-safe Audit adapters.
 - Step 15 added `inventory-master-data-erp-integration.md`, the concrete Warehouse dependency guard, secured ERP confirmation adapter and stable movement feed.
-- Desktop Inventory UI documentation remains Step 16 onward; generated documentation index refresh remains Step 21.
+- Step 16 added `inventory-desktop-workspace.md`, Application-owned draft mutation, bounded workspace reader and Persian RTL Desktop route/editor.
+- Generated documentation index refresh remains Step 21.
 
 ## Related ADRs
 
