@@ -24,6 +24,7 @@ import { PartiesPage } from "../../pages/party/parties-page";
 import { ProductsPage } from "../../pages/product/products-page";
 import { WarehousesPage } from "../../pages/warehouse/warehouses-page";
 import { InventoryDocumentsPage } from "../../pages/inventory/inventory-documents-page";
+import { InventoryQuantityReportsPage } from "../../pages/inventory/inventory-quantity-reports-page";
 
 export function AppRouter() {
   return (
@@ -42,6 +43,7 @@ export function AppRouter() {
           <Route path="/master-data/products" element={<ProductsPage />} />
           <Route path="/inventory/warehouses" element={<WarehousesPage />} />
           <Route path="/inventory/documents" element={<InventoryDocumentsPage />} />
+          <Route path="/inventory/reports" element={<InventoryQuantityReportsPage />} />
           <Route path="/fiscal/years" element={<FiscalYearsPage />} />
           <Route path="/fiscal/years/new" element={<NewFiscalYearPage />} />
           <Route path="/approval/requests" element={<ApprovalRequestsPage />} />
