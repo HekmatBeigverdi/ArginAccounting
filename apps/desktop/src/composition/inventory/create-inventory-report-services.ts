@@ -33,7 +33,7 @@ export interface InventoryReportServices {
     cursor?: string | null;
     limit?: number;
   }): Promise<InventoryKardexReport>;
-  getDocument(companyId: string, documentId: string): Promise<InventoryDocumentDetail | null>;
+  getDocument(companyId: string, branchId: string | null, documentId: string): Promise<InventoryDocumentDetail | null>;
   selectProducts(companyId: string, search?: string): Promise<readonly ProductSelectorItemDto[]>;
   selectWarehouses(companyId: string, branchId: string | null): Promise<readonly WarehouseListItemDto[]>;
   listZones(companyId: string, warehouseId: string): Promise<readonly WarehouseZoneDto[]>;
@@ -87,9 +87,13 @@ export function createInventoryReportServices(input: {
         limit: args.limit ?? 100,
       });
     },
-    async getDocument(companyId, documentId) {
-      requireView();
-      return documents.getDocument(companyId, documentId);
+    async getDocument(companyId, branchId, documentId) {
+      requireView(); requireBranch(branchId);
+      const detail = await documents.getDocument(companyId, documentId);
+      if (!detail || fullAccess) return detail;
+      const originBranchId = detail.document.scope?.branchId ?? null;
+      if (originBranchId !== null && originBranchId !== branchId) throw new Error("جزئیات این سند خارج از محدوده شعبه فعال است.");
+      return detail;
     },
     async selectProducts(companyId, search) {
       requireView();
