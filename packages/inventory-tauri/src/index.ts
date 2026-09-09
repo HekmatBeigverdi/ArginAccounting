@@ -19,3 +19,4 @@ export type {
 } from "./inventory-warehouse-dependency-guard.ts";
 export { SqliteInventoryMovementFeedReader } from "./sqlite-inventory-movement-feed.ts";
 export { SqliteInventoryWorkspaceReader } from "./sqlite-inventory-workspace-reader.ts";
+export { SqliteInventoryQuantityReportReader } from "./sqlite-inventory-quantity-report-reader.ts";
