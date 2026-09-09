@@ -24,6 +24,12 @@ export const navigationItems: NavigationItem[] = [
     requiredPermission: "master-data.products.view",
   },
   {
+    label: "اسناد انبار",
+    path: "/inventory/documents",
+    group: "انبار و موجودی",
+    requiredPermission: "inventory.documents.view",
+  },
+  {
     label: "انبارها",
     path: "/inventory/warehouses",
     group: "انبار و موجودی",
