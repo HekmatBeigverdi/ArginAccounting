@@ -38,7 +38,7 @@ function fakeExecutor(): DatabaseExecutor {
   const receipt = movementRow({ movementId: "receipt", date: "2026-01-02", order: 1, delta: "10" });
   const issue = movementRow({ movementId: "issue", date: "2026-01-03", order: 1, delta: "-3" });
   const session: DatabaseSession = {
-    async execute() { return { rowsAffected: 0, lastInsertId: null }; },
+    async execute() { return { rowsAffected: 0 }; },
     async query<T>(sql: string): Promise<T[]> {
       if (sql.includes("SELECT m.*,d.document_number")) {
         mainCall += 1;
