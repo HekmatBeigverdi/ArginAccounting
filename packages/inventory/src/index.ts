@@ -165,6 +165,17 @@ export type {
 
 export type { InventoryQueryReader } from "./application/contracts/inventory-reader.ts";
 export type {
+  InventoryKardexCursorPayload,
+  InventoryKardexReport,
+  InventoryKardexReportEntry,
+  InventoryKardexReportQuery,
+  InventoryKardexSourceReference,
+  InventoryQuantityBalanceReport,
+  InventoryQuantityBalanceReportQuery,
+  InventoryQuantityBalanceReportRow,
+  InventoryQuantityReportReader,
+} from "./application/contracts/inventory-reporting.ts";
+export type {
   ConfirmInventoryDocumentCommand,
   CreateInventoryDocumentCommand,
   DeleteInventoryDraftCommand,
