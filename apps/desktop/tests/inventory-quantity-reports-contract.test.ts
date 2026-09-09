@@ -20,7 +20,7 @@ test("inventory quantity reports are routed and permission gated", async () => {
 
 test("quantity reports explain chronology, on-hand semantics and exact LTR display", async () => {
   const page = await read("src/pages/inventory/inventory-quantity-reports-page.tsx");
-  assert.match(page, /تاریخ عملیات ← ترتیب روز ← شناسه سند ← شناسه ردیف ← شناسه movement/);
+  assert.match(page.replace(/\s+/g, " "), /تاریخ عملیات ← ترتیب روز ← شناسه سند ← شناسه ردیف ← شناسه movement/);
   assert.match(page, /On-hand/);
   assert.match(page, /Available-to-Promise/);
   assert.match(page, /dir="ltr"/);

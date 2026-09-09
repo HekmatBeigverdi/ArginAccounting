@@ -59,7 +59,7 @@ export function createInventoryReportServices(input: {
     if (!input.actor.branchIds.includes(branchId)) throw new Error("شعبه انتخاب‌شده در محدوده دسترسی کاربر نیست.");
   };
 
-  return Object.freeze({
+  return Object.freeze<InventoryReportServices>({
     canView,
     async readBalances(args) {
       requireView(); requireBranch(args.branchId);

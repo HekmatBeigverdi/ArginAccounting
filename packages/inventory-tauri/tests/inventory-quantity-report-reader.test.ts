@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DatabaseExecutor, DatabaseSession } from "@argin/database";
+import type { DatabaseExecutor, DatabaseSession, DatabaseValue } from "@argin/database";
 import { InventoryApplicationError } from "@argin/inventory";
 import { SqliteInventoryQuantityReportReader } from "../src/sqlite-inventory-quantity-report-reader.ts";
 
@@ -99,7 +99,7 @@ test("returns exact canonical balance strings without floating-point conversion"
   const exact = "12345678901234567890.000000000000000001";
   const database = fakeExecutor();
   const originalQuery = database.query.bind(database);
-  database.query = async function <T>(sql: string, parameters) {
+  database.query = async function <T>(sql: string, parameters?: readonly DatabaseValue[]) {
     if (sql.includes("FROM inventory_stock_balances b")) {
       return [{
         stock_key: "key-1", company_id: "company-1", product_id: "product-1", warehouse_id: "warehouse-1",
