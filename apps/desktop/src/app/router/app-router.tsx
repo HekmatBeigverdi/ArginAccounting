@@ -23,6 +23,7 @@ import { JournalVouchersRoute } from "../../pages/accounting/journal-vouchers-ro
 import { PartiesPage } from "../../pages/party/parties-page";
 import { ProductsPage } from "../../pages/product/products-page";
 import { WarehousesPage } from "../../pages/warehouse/warehouses-page";
+import { InventoryDocumentsPage } from "../../pages/inventory/inventory-documents-page";
 
 export function AppRouter() {
   return (
@@ -40,6 +41,7 @@ export function AppRouter() {
           <Route path="/master-data/parties" element={<PartiesPage />} />
           <Route path="/master-data/products" element={<ProductsPage />} />
           <Route path="/inventory/warehouses" element={<WarehousesPage />} />
+          <Route path="/inventory/documents" element={<InventoryDocumentsPage />} />
           <Route path="/fiscal/years" element={<FiscalYearsPage />} />
           <Route path="/fiscal/years/new" element={<NewFiscalYearPage />} />
           <Route path="/approval/requests" element={<ApprovalRequestsPage />} />
