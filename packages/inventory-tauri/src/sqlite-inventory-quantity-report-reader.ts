@@ -35,8 +35,10 @@ interface BalanceRow {
   product_code: string; product_title: string; warehouse_code: string; warehouse_title: string;
   zone_code: string | null; zone_title: string | null; location_code: string | null; location_title: string | null;
 }
+interface WarehouseScopeRow { organizational_scope: "company" | "branch"; branch_id: string | null; }
 
 function invalid(field: string): never { throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.invalidRequest, field); }
+function unauthorized(field: string): never { throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.unauthorized, field); }
 function assertLimit(limit: number): void { if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_LIMIT) invalid("limit"); }
 function assertDate(value: string | null | undefined, field: string): void {
   if (value == null) return;
@@ -88,10 +90,22 @@ const positiveMagnitude = (value: string): string => {
 
 export class SqliteInventoryQuantityReportReader implements InventoryQuantityReportReader {
   constructor(private readonly database: DatabaseExecutor) {}
+
   private normalizeKey(query: InventoryKardexReportQuery): InventoryStockKey {
     if (query.companyId !== query.stockKey.companyId) invalid("companyId");
     return createInventoryStockKey({ companyId: query.companyId, productId: query.stockKey.productId, warehouse: query.stockKey });
   }
+
+  private async requireWarehouseVisibility(companyId: string, branchId: string | null | undefined, warehouseId: string): Promise<void> {
+    if (branchId == null) return;
+    const warehouse = await this.database.queryOne<WarehouseScopeRow>(
+      "SELECT organizational_scope,branch_id FROM warehouses WHERE company_id=? AND id=? AND deleted_at IS NULL",
+      [companyId, warehouseId],
+    );
+    if (!warehouse) unauthorized("warehouseId");
+    if (warehouse.organizational_scope === "branch" && warehouse.branch_id !== branchId) unauthorized("branchId");
+  }
+
   /** Exact opening before this page. Every SQLite prefix read is bounded to CHUNK facts. */
   private async openingQuantity(query: InventoryKardexReportQuery, pageCursor: InventoryKardexCursorPayload | null): Promise<string> {
     const base = stockKeyClauses(this.normalizeKey(query)); let total="0"; let chunkCursor:InventoryKardexCursorPayload|null=null;
@@ -109,10 +123,12 @@ export class SqliteInventoryQuantityReportReader implements InventoryQuantityRep
     }
     return total;
   }
+
   async readKardex(query: InventoryKardexReportQuery): Promise<InventoryKardexReport> {
     assertLimit(query.limit);assertDate(query.businessDateFrom,"businessDateFrom");assertDate(query.businessDateTo,"businessDateTo");
     if(query.businessDateFrom&&query.businessDateTo&&query.businessDateFrom>query.businessDateTo) invalid("businessDateFrom");
-    const key=this.normalizeKey(query),cursor=decodeCursor(query.cursor),base=stockKeyClauses(key),clauses=[base.sql],params:DatabaseValue[]=[...base.params];
+    const key=this.normalizeKey(query); await this.requireWarehouseVisibility(query.companyId,query.branchId,key.warehouseId);
+    const cursor=decodeCursor(query.cursor),base=stockKeyClauses(key),clauses=[base.sql],params:DatabaseValue[]=[...base.params];
     if(query.businessDateFrom){clauses.push("m.business_date>=?");params.push(query.businessDateFrom);} if(query.businessDateTo){clauses.push("m.business_date<=?");params.push(query.businessDateTo);}
     if(cursor){const after=chronologyAfter(cursor);clauses.push(after.sql);params.push(...after.params);}
     const rows=await this.database.query<MovementRow>(`SELECT m.*,d.document_number,d.document_type,l.position AS line_position,
@@ -130,10 +146,12 @@ export class SqliteInventoryQuantityReportReader implements InventoryQuantityRep
     const last=pageRows.at(-1);return Object.freeze({stockKey:key,openingQuantity,incomingQuantity:incoming,outgoingQuantity:outgoing,closingQuantity:running,entries:Object.freeze(entries),
       nextCursor:hasMore&&last?encodeCursor(cursorFromRow(last)):null});
   }
+
   async readBalances(query: InventoryQuantityBalanceReportQuery): Promise<InventoryQuantityBalanceReport> {
     assertLimit(query.limit);const clauses=["b.company_id=?"],params:DatabaseValue[]=[query.companyId];
     const add=(sql:string,value:string|null|undefined)=>{if(value!=null&&value!==""){clauses.push(sql);params.push(value);}};
     add("b.product_id=?",query.productId);add("b.warehouse_id=?",query.warehouseId);add("b.zone_id=?",query.zoneId);add("b.location_id=?",query.locationId);
+    if(query.branchId!=null){clauses.push("(w.organizational_scope='company' OR (w.organizational_scope='branch' AND w.branch_id=?))");params.push(query.branchId);}
     if(!query.includeZero)clauses.push("b.quantity NOT IN ('0','0.0','-0','-0.0')");if(query.cursor){clauses.push("b.stock_key > ?");params.push(query.cursor);}
     const rows=await this.database.query<BalanceRow>(`SELECT b.stock_key,b.company_id,b.product_id,b.warehouse_id,b.zone_id,b.location_id,b.quantity,b.last_movement_id,
       p.code AS product_code,p.title AS product_title,w.code AS warehouse_code,w.title AS warehouse_title,z.code AS zone_code,z.title AS zone_title,l.code AS location_code,l.title AS location_title
