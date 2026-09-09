@@ -52,6 +52,8 @@ export interface InventoryQuantityBalanceReport {
 
 export interface InventoryKardexReportQuery {
   readonly companyId: string;
+  /** Null means company-wide context; a Branch limits branch-owned Warehouses while keeping company-wide Warehouses visible. */
+  readonly branchId?: string | null;
   readonly stockKey: InventoryStockKey;
   readonly businessDateFrom?: string | null;
   readonly businessDateTo?: string | null;
@@ -61,6 +63,7 @@ export interface InventoryKardexReportQuery {
 
 export interface InventoryQuantityBalanceReportQuery {
   readonly companyId: string;
+  readonly branchId?: string | null;
   readonly productId?: string | null;
   readonly warehouseId?: string | null;
   readonly zoneId?: string | null;
