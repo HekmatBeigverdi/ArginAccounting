@@ -30,6 +30,12 @@ export const navigationItems: NavigationItem[] = [
     requiredPermission: "inventory.documents.view",
   },
   {
+    label: "گزارش‌های موجودی",
+    path: "/inventory/reports",
+    group: "انبار و موجودی",
+    requiredPermission: "inventory.documents.view",
+  },
+  {
     label: "انبارها",
     path: "/inventory/warehouses",
     group: "انبار و موجودی",
