@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { DatabaseExecutor, DatabaseSession } from "@argin/database";
+import { InventoryApplicationError } from "@argin/inventory";
 import { SqliteInventoryQuantityReportReader } from "../src/sqlite-inventory-quantity-report-reader.ts";
 
 const key = Object.freeze({ companyId: "company-1", productId: "product-1", warehouseId: "warehouse-1", zoneId: null, locationId: null });
@@ -111,4 +112,25 @@ test("returns exact canonical balance strings without floating-point conversion"
   };
   const result = await new SqliteInventoryQuantityReportReader(database).readBalances({ companyId: "company-1", limit: 100 });
   assert.equal(result.items[0]?.quantity, exact);
+});
+
+test("rejects kardex access to a warehouse owned by another branch", async () => {
+  const database = fakeExecutor();
+  database.queryOne = async function <T>(sql: string) {
+    if (sql.includes("FROM warehouses")) {
+      return { organizational_scope: "branch", branch_id: "branch-2" } as T;
+    }
+    return null;
+  };
+
+  await assert.rejects(
+    () => new SqliteInventoryQuantityReportReader(database).readKardex({
+      companyId: "company-1",
+      branchId: "branch-1",
+      stockKey: key,
+      limit: 100,
+    }),
+    (error: unknown) => error instanceof InventoryApplicationError
+      && error.code === "inventory.application.unauthorized",
+  );
 });
