@@ -14,7 +14,6 @@ import "./inventory-quantity-reports-page.css";
 type Tab = "balances" | "kardex";
 
 const todayJalali = (): string => gregorianToJalali(new Date().toISOString().slice(0, 10));
-const quantity = (value: string): string => new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 18 }).format(Number(value));
 const ltr = (value: string | null): string => value ?? "—";
 
 export function InventoryQuantityReportsPage() {
