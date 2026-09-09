@@ -4,7 +4,6 @@ import {
   type InventoryStockMovementSnapshot,
 } from "../../domain/inventory-stock.ts";
 import {
-  INVENTORY_DOCUMENT_STATUSES,
   rehydrateInventoryDocument,
   type InventoryDocumentSnapshot,
   type InventoryDocumentStatus,

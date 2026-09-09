@@ -19,7 +19,7 @@ test("Inventory workspace keeps Persian RTL presentation with Jalali UI dates an
   assert.match(page, /dir="rtl"/u);
   assert.match(page, /fa-IR-u-ca-persian/u);
   assert.match(page, /jalaliToGregorian/u);
-  assert.match(page, /input required dir="ltr" inputMode="decimal"/u);
+  assert.match(page, /input\s+required\s+dir="ltr"\s+inputMode="decimal"/u);
   assert.match(page, /enteredQuantity/u);
   assert.match(page, /baseQuantity/u);
 });

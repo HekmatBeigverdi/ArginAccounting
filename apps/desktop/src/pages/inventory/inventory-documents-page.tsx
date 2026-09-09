@@ -1,4 +1,10 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useNavigate } from "react-router";
 import {
   InventoryApplicationError,
@@ -14,11 +20,18 @@ import {
 import { getDesktopDatabase } from "@argin/database-tauri";
 import { SqliteFiscalPeriodRepository } from "@argin/fiscal-tauri";
 import type { ProductDto, ProductSelectorItemDto } from "@argin/product";
-import type { WarehouseListItemDto, WarehouseLocationDto, WarehouseZoneDto } from "@argin/warehouse";
+import type {
+  WarehouseListItemDto,
+  WarehouseLocationDto,
+  WarehouseZoneDto,
+} from "@argin/warehouse";
 import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { useAuditServices } from "../../composition/audit";
-import { createInventoryWorkspaceServices, type InventoryWorkspaceServices } from "../../composition/inventory/create-inventory-workspace-services";
+import {
+  createInventoryWorkspaceServices,
+  type InventoryWorkspaceServices,
+} from "../../composition/inventory/create-inventory-workspace-services";
 import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
 import "./inventory-documents-page.css";
@@ -38,75 +51,1042 @@ const STATUS_LABELS: Record<InventoryDocumentStatus, string> = {
   cancelled: "لغوشده",
   reversed: "برگشت‌شده",
 };
-const faDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" });
-const faDateTime = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-const latinDigits = (value: string): string => value
-  .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
-  .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
+const faDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+const faDateTime = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const latinDigits = (value: string): string =>
+  value
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
 
-function div(a: number, b: number): number { return Math.trunc(a / b); }
-function mod(a: number, b: number): number { return a - Math.trunc(a / b) * b; }
+function div(a: number, b: number): number {
+  return Math.trunc(a / b);
+}
+function mod(a: number, b: number): number {
+  return a - Math.trunc(a / b) * b;
+}
 function jalCal(jy: number) {
-  const breaks = [-61,9,38,199,426,686,756,818,1111,1181,1210,1635,2060,2097,2192,2262,2324,2394,2456,3178];
-  let leapJ = -14; let jp = breaks[0]!; let jump = 0;
-  if (jy < jp || jy >= breaks[breaks.length - 1]!) throw new Error("تاریخ شمسی خارج از محدوده مجاز است.");
-  for (let i=1;i<breaks.length;i+=1){const jm=breaks[i]!;jump=jm-jp;if(jy<jm)break;leapJ+=div(jump,33)*8+div(mod(jump,33),4);jp=jm;}
-  let n=jy-jp;leapJ+=div(n,33)*8+div(mod(n,33)+3,4);if(mod(jump,33)===4&&jump-n===4)leapJ+=1;
-  const gy=jy+621;const leapG=div(gy,4)-div((div(gy,100)+1)*3,4)-150;const march=20+leapJ-leapG;
-  if(jump-n<6)n=n-jump+div(jump+4,33)*33;let leap=mod(mod(n+1,33)-1,4);if(leap===-1)leap=4;return{leap,gy,march};
-}
-function g2d(gy:number,gm:number,gd:number){let d=div((gy+div(gm-8,6)+100100)*1461,4)+div(153*mod(gm+9,12)+2,5)+gd-34840408;d=d-div(div(gy+100100+div(gm-8,6),100)*3,4)+752;return d;}
-function d2g(jdn:number){let j=4*jdn+139361631;j=j+div(div(4*jdn+183187720,146097)*3,4)*4-3908;const i=div(mod(j,1461),4)*5+308;const gd=div(mod(i,153),5)+1;const gm=mod(div(i,153),12)+1;const gy=div(j,1461)-100100+div(8-gm,6);return{gy,gm,gd};}
-function j2d(jy:number,jm:number,jd:number){const r=jalCal(jy);return g2d(r.gy,3,r.march)+(jm-1)*31-div(jm,7)*(jm-7)+jd-1;}
-function d2j(jdn:number){const g=d2g(jdn);let jy=g.gy-621;const r=jalCal(jy);const jdn1f=g2d(g.gy,3,r.march);let k=jdn-jdn1f;let jm:number,jd:number;if(k>=0){if(k<=185){jm=1+div(k,31);jd=mod(k,31)+1;return{jy,jm,jd};}k-=186;}else{jy-=1;k+=179;if(r.leap===1)k+=1;}jm=7+div(k,30);jd=mod(k,30)+1;return{jy,jm,jd};}
-function gregorianToJalali(value:string):string{const[gy,gm,gd]=value.split("-").map(Number);if(!gy||!gm||!gd)return"";const j=d2j(g2d(gy,gm,gd));return`${j.jy}/${String(j.jm).padStart(2,"0")}/${String(j.jd).padStart(2,"0")}`;}
-function jalaliToGregorian(value:string):string{const normalized=latinDigits(value).trim().replace(/-/g,"/");const m=/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(normalized);if(!m)throw new Error("تاریخ را به‌صورت ۱۴۰۵/۰۶/۱۸ وارد کنید.");const jy=Number(m[1]),jm=Number(m[2]),jd=Number(m[3]);if(jm<1||jm>12||jd<1||jd>31)throw new Error("تاریخ شمسی معتبر نیست.");const jdn=j2d(jy,jm,jd);const round=d2j(jdn);if(round.jy!==jy||round.jm!==jm||round.jd!==jd)throw new Error("تاریخ شمسی معتبر نیست.");const g=d2g(jdn);return`${g.gy}-${String(g.gm).padStart(2,"0")}-${String(g.gd).padStart(2,"0")}`;}
-
-interface NewDraft { documentType: InventoryDocumentType; businessDate: string; description: string; }
-interface LineDraft { lineId:string|null; productId:string; quantity:string; unitId:string; warehouseId:string; zoneId:string; locationId:string; destinationWarehouseId:string; destinationZoneId:string; destinationLocationId:string; description:string; }
-const emptyLine=():LineDraft=>({lineId:null,productId:"",quantity:"",unitId:"",warehouseId:"",zoneId:"",locationId:"",destinationWarehouseId:"",destinationZoneId:"",destinationLocationId:"",description:""});
-
-function errorMessage(error:unknown):string{
-  if(error instanceof InventoryApplicationError){
-    if(error.code==="inventory.application.concurrency-conflict")return"این سند هم‌زمان در بخش دیگری تغییر کرده است. نسخه جدید بارگذاری شد؛ تغییرات خود را بررسی و دوباره ذخیره کنید.";
-    if(error.code==="inventory.application.unauthorized")return"برای این عملیات مجوز کافی ندارید.";
-    if(error.code==="inventory.application.stock-conflict")return"این عملیات باعث مغایرت یا موجودی منفی می‌شود.";
-    if(error.code==="inventory.application.invalid-request")return`اطلاعات سند معتبر نیست${error.field?`؛ فیلد: ${error.field}`:""}.`;
+  const breaks = [
+    -61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097,
+    2192, 2262, 2324, 2394, 2456, 3178,
+  ];
+  let leapJ = -14;
+  let jp = breaks[0]!;
+  let jump = 0;
+  if (jy < jp || jy >= breaks[breaks.length - 1]!)
+    throw new Error("تاریخ شمسی خارج از محدوده مجاز است.");
+  for (let i = 1; i < breaks.length; i += 1) {
+    const jm = breaks[i]!;
+    jump = jm - jp;
+    if (jy < jm) break;
+    leapJ += div(jump, 33) * 8 + div(mod(jump, 33), 4);
+    jp = jm;
   }
-  return error instanceof Error?error.message:"عملیات با خطا مواجه شد.";
+  let n = jy - jp;
+  leapJ += div(n, 33) * 8 + div(mod(n, 33) + 3, 4);
+  if (mod(jump, 33) === 4 && jump - n === 4) leapJ += 1;
+  const gy = jy + 621;
+  const leapG = div(gy, 4) - div((div(gy, 100) + 1) * 3, 4) - 150;
+  const march = 20 + leapJ - leapG;
+  if (jump - n < 6) n = n - jump + div(jump + 4, 33) * 33;
+  let leap = mod(mod(n + 1, 33) - 1, 4);
+  if (leap === -1) leap = 4;
+  return { leap, gy, march };
+}
+function g2d(gy: number, gm: number, gd: number) {
+  let d =
+    div((gy + div(gm - 8, 6) + 100100) * 1461, 4) +
+    div(153 * mod(gm + 9, 12) + 2, 5) +
+    gd -
+    34840408;
+  d = d - div(div(gy + 100100 + div(gm - 8, 6), 100) * 3, 4) + 752;
+  return d;
+}
+function d2g(jdn: number) {
+  let j = 4 * jdn + 139361631;
+  j = j + div(div(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908;
+  const i = div(mod(j, 1461), 4) * 5 + 308;
+  const gd = div(mod(i, 153), 5) + 1;
+  const gm = mod(div(i, 153), 12) + 1;
+  const gy = div(j, 1461) - 100100 + div(8 - gm, 6);
+  return { gy, gm, gd };
+}
+function j2d(jy: number, jm: number, jd: number) {
+  const r = jalCal(jy);
+  return g2d(r.gy, 3, r.march) + (jm - 1) * 31 - div(jm, 7) * (jm - 7) + jd - 1;
+}
+function d2j(jdn: number) {
+  const g = d2g(jdn);
+  let jy = g.gy - 621;
+  const r = jalCal(jy);
+  const jdn1f = g2d(g.gy, 3, r.march);
+  let k = jdn - jdn1f;
+  let jm: number, jd: number;
+  if (k >= 0) {
+    if (k <= 185) {
+      jm = 1 + div(k, 31);
+      jd = mod(k, 31) + 1;
+      return { jy, jm, jd };
+    }
+    k -= 186;
+  } else {
+    jy -= 1;
+    k += 179;
+    if (r.leap === 1) k += 1;
+  }
+  jm = 7 + div(k, 30);
+  jd = mod(k, 30) + 1;
+  return { jy, jm, jd };
+}
+function gregorianToJalali(value: string): string {
+  const [gy, gm, gd] = value.split("-").map(Number);
+  if (!gy || !gm || !gd) return "";
+  const j = d2j(g2d(gy, gm, gd));
+  return `${j.jy}/${String(j.jm).padStart(2, "0")}/${String(j.jd).padStart(2, "0")}`;
+}
+function jalaliToGregorian(value: string): string {
+  const normalized = latinDigits(value).trim().replace(/-/g, "/");
+  const m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(normalized);
+  if (!m) throw new Error("تاریخ را به‌صورت ۱۴۰۵/۰۶/۱۸ وارد کنید.");
+  const jy = Number(m[1]),
+    jm = Number(m[2]),
+    jd = Number(m[3]);
+  if (jm < 1 || jm > 12 || jd < 1 || jd > 31)
+    throw new Error("تاریخ شمسی معتبر نیست.");
+  const jdn = j2d(jy, jm, jd);
+  const round = d2j(jdn);
+  if (round.jy !== jy || round.jm !== jm || round.jd !== jd)
+    throw new Error("تاریخ شمسی معتبر نیست.");
+  const g = d2g(jdn);
+  return `${g.gy}-${String(g.gm).padStart(2, "0")}-${String(g.gd).padStart(2, "0")}`;
 }
 
-export function InventoryDocumentsPage(){
-  const active=useActiveContext();const{session}=useAuthSession();const audit=useAuditServices();const navigate=useNavigate();
-  const[services,setServices]=useState<InventoryWorkspaceServices|null>(null);const[items,setItems]=useState<readonly InventoryDocumentListItem[]>([]);const[selected,setSelected]=useState<InventoryDocumentSnapshot|null>(null);
-  const[search,setSearch]=useState("");const[page,setPage]=useState(1);const[total,setTotal]=useState(0);const[loading,setLoading]=useState(false);const[saving,setSaving]=useState(false);const[error,setError]=useState("");const[message,setMessage]=useState("");
-  const[newOpen,setNewOpen]=useState(false);const[lineOpen,setLineOpen]=useState(false);const[newDraft,setNewDraft]=useState<NewDraft>({documentType:"receipt",businessDate:gregorianToJalali(new Date().toISOString().slice(0,10)),description:""});const[lineDraft,setLineDraft]=useState<LineDraft>(emptyLine());
-  const[products,setProducts]=useState<readonly ProductSelectorItemDto[]>([]);const[product,setProduct]=useState<ProductDto|null>(null);const[warehouses,setWarehouses]=useState<readonly WarehouseListItemDto[]>([]);const[zones,setZones]=useState<readonly WarehouseZoneDto[]>([]);const[locations,setLocations]=useState<readonly WarehouseLocationDto[]>([]);const[destinationZones,setDestinationZones]=useState<readonly WarehouseZoneDto[]>([]);const[destinationLocations,setDestinationLocations]=useState<readonly WarehouseLocationDto[]>([]);
-  const actor=useMemo(()=>({id:session?.user.id??"desktop-local-user",displayName:session?.user.displayName??session?.user.username??"کاربر محلی",permissions:session?.user.permissions??[],branchIds:session?.user.branchIds??[]}),[session]);
-  useEffect(()=>{let mounted=true;void getDesktopDatabase().then(db=>{if(mounted)setServices(createInventoryWorkspaceServices({database:db,actor,audit}));}).catch(e=>mounted&&setError(errorMessage(e)));return()=>{mounted=false;};},[actor,audit]);
-  const can=useCallback((permission:string)=>services?.can(permission)??false,[services]);
-  const reload=useCallback(async()=>{if(!services||!active.companyId)return;setLoading(true);try{const result=await services.list(active.companyId,page,search);setItems(result.items);setTotal(result.totalItems);}catch(e){setError(errorMessage(e));}finally{setLoading(false);}},[services,active.companyId,page,search]);
-  useEffect(()=>{void reload();},[reload]);
-  const openDocument=useCallback(async(id:string)=>{if(!services||!active.companyId)return;try{const detail=await services.get(active.companyId,id);setSelected(detail?.document??null);}catch(e){setError(errorMessage(e));}},[services,active.companyId]);
+interface NewDraft {
+  documentType: InventoryDocumentType;
+  businessDate: string;
+  description: string;
+}
+interface LineDraft {
+  lineId: string | null;
+  productId: string;
+  quantity: string;
+  unitId: string;
+  warehouseId: string;
+  zoneId: string;
+  locationId: string;
+  destinationWarehouseId: string;
+  destinationZoneId: string;
+  destinationLocationId: string;
+  description: string;
+}
+const emptyLine = (): LineDraft => ({
+  lineId: null,
+  productId: "",
+  quantity: "",
+  unitId: "",
+  warehouseId: "",
+  zoneId: "",
+  locationId: "",
+  destinationWarehouseId: "",
+  destinationZoneId: "",
+  destinationLocationId: "",
+  description: "",
+});
 
-  async function createDraft(event:FormEvent){event.preventDefault();if(!services||!active.companyId||!active.fiscalYearId)return;setSaving(true);setError("");try{const businessDate=jalaliToGregorian(newDraft.businessDate);const db=await getDesktopDatabase();const period=await new SqliteFiscalPeriodRepository(db).findByDate(active.fiscalYearId,businessDate);if(!period||period.status!=="open")throw new Error("برای این تاریخ، دوره مالی باز پیدا نشد.");const doc=await services.createDraft({companyId:active.companyId,branchId:active.branchId||null,fiscalYearId:active.fiscalYearId,fiscalPeriodId:period.id,documentType:newDraft.documentType,businessDate,description:newDraft.description.trim()||null});setNewOpen(false);setSelected(doc);setMessage("پیش‌نویس سند ایجاد شد.");await reload();}catch(e){setError(errorMessage(e));}finally{setSaving(false);}}
-  async function startLine(line?:InventoryDocumentLineSnapshot){if(!services||!selected)return;try{setProducts(await services.selectProducts(selected.companyId));setWarehouses(await services.selectWarehouses(selected.companyId,selected.scope?.branchId??null));if(line?.operation){const p=await services.getProduct(selected.companyId,line.productId);setProduct(p);setLineDraft({lineId:line.lineId,productId:line.productId,quantity:line.operation.quantity.enteredQuantity,unitId:line.operation.quantity.enteredUnit.unitId,warehouseId:line.operation.warehouse.warehouseId,zoneId:line.operation.warehouse.zoneId??"",locationId:line.operation.warehouse.locationId??"",destinationWarehouseId:line.operation.destination?.warehouseId??"",destinationZoneId:line.operation.destination?.zoneId??"",destinationLocationId:line.operation.destination?.locationId??"",description:line.description??""});}else{setProduct(null);setLineDraft(emptyLine());}setLineOpen(true);}catch(e){setError(errorMessage(e));}}
-  async function chooseProduct(id:string){setLineDraft(d=>({...d,productId:id,unitId:""}));if(!services||!selected||!id){setProduct(null);return;}const p=await services.getProduct(selected.companyId,id);setProduct(p);if(p?.units)setLineDraft(d=>({...d,unitId:p.units?.baseUnitId??""}));}
-  async function chooseWarehouse(id:string,destination=false){if(!services||!selected)return;const zs=id?await services.listZones(selected.companyId,id):[];if(destination){setDestinationZones(zs);setDestinationLocations([]);setLineDraft(d=>({...d,destinationWarehouseId:id,destinationZoneId:"",destinationLocationId:""}));}else{setZones(zs);setLocations([]);setLineDraft(d=>({...d,warehouseId:id,zoneId:"",locationId:""}));}}
-  async function chooseZone(id:string,destination=false){if(!services||!selected)return;const wid=destination?lineDraft.destinationWarehouseId:lineDraft.warehouseId;const ls=wid&&id?await services.listLocations(selected.companyId,wid,id):[];if(destination){setDestinationLocations(ls);setLineDraft(d=>({...d,destinationZoneId:id,destinationLocationId:""}));}else{setLocations(ls);setLineDraft(d=>({...d,zoneId:id,locationId:""}));}}
-  async function saveLine(event:FormEvent){event.preventDefault();if(!services||!selected)return;setSaving(true);setError("");try{const operation=await services.buildOperation({companyId:selected.companyId,productId:lineDraft.productId,enteredQuantity:latinDigits(lineDraft.quantity),unitId:lineDraft.unitId,warehouseId:lineDraft.warehouseId,zoneId:lineDraft.zoneId||null,locationId:lineDraft.locationId||null,destinationWarehouseId:selected.documentType==="transfer"?lineDraft.destinationWarehouseId||null:null,destinationZoneId:lineDraft.destinationZoneId||null,destinationLocationId:lineDraft.destinationLocationId||null});const old=selected.lines.find(l=>l.lineId===lineDraft.lineId);const line=createInventoryDocumentLine({lineId:lineDraft.lineId??crypto.randomUUID(),position:old?.position??selected.lines.length+1,productId:lineDraft.productId,description:lineDraft.description.trim()||null,operation});const lines=lineDraft.lineId?selected.lines.map(l=>l.lineId===line.lineId?line:l):[...selected.lines,line];const saved=await services.saveDraft(rehydrateInventoryDocument({...selected,lines,updatedAt:new Date().toISOString()}));setSelected(saved);setLineOpen(false);setMessage("ردیف سند ذخیره شد.");await reload();}catch(e){if(e instanceof InventoryApplicationError&&e.code==="inventory.application.concurrency-conflict")await openDocument(selected.documentId);setError(errorMessage(e));}finally{setSaving(false);}}
-  async function removeLine(id:string){if(!services||!selected||!window.confirm("ردیف انتخاب‌شده حذف شود؟"))return;setSaving(true);try{const lines=selected.lines.filter(l=>l.lineId!==id).map((l,i)=>createInventoryDocumentLine({...l,position:i+1}));const saved=await services.saveDraft(rehydrateInventoryDocument({...selected,lines,updatedAt:new Date().toISOString()}));setSelected(saved);await reload();}catch(e){setError(errorMessage(e));}finally{setSaving(false);}}
-  async function lifecycle(action:"submit"|"approve"|"confirm"|"cancel"|"reverse"){if(!services||!selected)return;const reason=action==="reverse"?window.prompt("علت برگشت سند را وارد کنید:",""):null;if(action==="reverse"&&!reason?.trim())return;setSaving(true);setError("");try{if(action==="submit")await services.submit(selected,reason);else if(action==="approve")await services.approve(selected,reason);else if(action==="confirm")await services.confirm(selected,reason);else if(action==="cancel")await services.cancel(selected,reason);else await services.reverse(selected,reason!.trim());await openDocument(selected.documentId);await reload();setMessage("عملیات با موفقیت انجام شد.");}catch(e){if(e instanceof InventoryApplicationError&&e.code==="inventory.application.concurrency-conflict")await openDocument(selected.documentId);setError(errorMessage(e));}finally{setSaving(false);}}
+function errorMessage(error: unknown): string {
+  if (error instanceof InventoryApplicationError) {
+    if (error.code === "inventory.application.concurrency-conflict")
+      return "این سند هم‌زمان در بخش دیگری تغییر کرده است. نسخه جدید بارگذاری شد؛ تغییرات خود را بررسی و دوباره ذخیره کنید.";
+    if (error.code === "inventory.application.unauthorized")
+      return "برای این عملیات مجوز کافی ندارید.";
+    if (error.code === "inventory.application.stock-conflict")
+      return "این عملیات باعث مغایرت یا موجودی منفی می‌شود.";
+    if (error.code === "inventory.application.invalid-request")
+      return `اطلاعات سند معتبر نیست${error.field ? `؛ فیلد: ${error.field}` : ""}.`;
+  }
+  return error instanceof Error ? error.message : "عملیات با خطا مواجه شد.";
+}
 
-  const totalPages=Math.max(1,Math.ceil(total/50));const approvalRequestId=selected?`inventory-document:${selected.companyId}:${selected.documentId}`:"";const canCreate=can(inventoryPermissions.create)&&Boolean(active.companyId&&active.fiscalYearId);
-  return <Page aria-label="اسناد انبار"><div className="inventory-workspace" dir="rtl">
-    <div className="inventory-workspace__toolbar"><input aria-label="جست‌وجوی اسناد انبار" placeholder="جست‌وجو در شماره یا شرح سند…" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/><button type="button" onClick={()=>void reload()} disabled={loading}>بازخوانی</button>{can(inventoryPermissions.create)&&<button className="primary" type="button" disabled={!canCreate} onClick={()=>setNewOpen(true)}>سند جدید</button>}</div>
-    {error&&<Feedback tone="error">{error}</Feedback>}{message&&<Feedback tone="success">{message}</Feedback>}
-    <div className="inventory-workspace__grid"><section className="inventory-list" aria-label="فهرست اسناد انبار"><div className="inventory-list__header"><span>تاریخ</span><span>نوع / شماره</span><span>وضعیت</span></div>{items.map(item=><button key={item.documentId} type="button" className={`inventory-list__row ${selected?.documentId===item.documentId?"is-active":""}`} onClick={()=>void openDocument(item.documentId)}><span>{faDate.format(new Date(`${item.businessDate}T00:00:00Z`))}</span><span><strong>{TYPE_LABELS[item.documentType]}</strong><small dir="ltr">{item.documentNumber??"—"}</small></span><span className={`status status--${item.status}`}>{STATUS_LABELS[item.status]}</span></button>)}{!loading&&items.length===0&&<p className="empty">سندی یافت نشد.</p>}<footer><button type="button" disabled={page<=1} onClick={()=>setPage(p=>p-1)}>قبلی</button><span>صفحه {page} از {totalPages}</span><button type="button" disabled={page>=totalPages} onClick={()=>setPage(p=>p+1)}>بعدی</button></footer></section>
-      <section className="inventory-detail" aria-label="جزئیات سند انبار">{!selected?<div className="empty">برای مشاهده جزئیات، یک سند را انتخاب کنید.</div>:<><header><div><h2>{TYPE_LABELS[selected.documentType]}</h2><div className="meta"><span>شماره <b dir="ltr">{selected.documentNumber??"پیش‌نویس بدون شماره"}</b></span><span>تاریخ {gregorianToJalali(selected.businessDate)}</span><span>نسخه <b dir="ltr">{selected.version}</b></span></div></div><span className={`status status--${selected.status}`}>{STATUS_LABELS[selected.status]}</span></header><div className="inventory-detail__actions">{selected.status==="draft"&&can(inventoryPermissions.edit)&&<button type="button" onClick={()=>void startLine()}>افزودن ردیف</button>}{selected.status==="draft"&&can(inventoryPermissions.submit)&&<button type="button" className="primary" disabled={saving||selected.lines.length===0} onClick={()=>void lifecycle("submit")}>ارسال برای تأیید</button>}{selected.status==="submitted"&&can(inventoryPermissions.approve)&&<button type="button" className="primary" onClick={()=>void lifecycle("approve")}>تأیید</button>}{selected.status==="approved"&&can(inventoryPermissions.confirm)&&<button type="button" className="primary" onClick={()=>void lifecycle("confirm")}>قطعی‌کردن و اثر موجودی</button>}{(["draft","submitted","approved"] as InventoryDocumentStatus[]).includes(selected.status)&&can(inventoryPermissions.cancel)&&<button type="button" className="danger" onClick={()=>void lifecycle("cancel")}>لغو</button>}{selected.status==="confirmed"&&can(inventoryPermissions.reverse)&&<button type="button" className="danger" onClick={()=>void lifecycle("reverse")}>برگشت کامل</button>}<button type="button" onClick={()=>navigate(`/approval/requests/${encodeURIComponent(approvalRequestId)}`)}>گردش تأیید</button></div><div className="inventory-summary"><div><span>شرح</span><strong>{selected.description??"—"}</strong></div><div><span>تعداد ردیف</span><strong dir="ltr">{selected.lines.length}</strong></div><div><span>آخرین تغییر</span><strong>{faDateTime.format(new Date(selected.updatedAt))}</strong></div></div>
-        <div className="inventory-lines-wrap"><table className="inventory-lines"><thead><tr><th>#</th><th>کالا</th><th>مقدار</th><th>واحد</th><th>انبار / ناحیه / موقعیت</th>{selected.documentType==="transfer"&&<th>مقصد</th>}<th>شرح</th><th/></tr></thead><tbody>{selected.lines.map(line=><tr key={line.lineId}><td dir="ltr">{line.position}</td><td dir="ltr">{line.productId}</td><td dir="ltr"><strong>{line.operation?.quantity.enteredQuantity??"—"}</strong>{line.operation&&<small> / پایه: {line.operation.quantity.baseQuantity}</small>}</td><td>{line.operation?.quantity.enteredUnit.title??"—"}</td><td dir="ltr">{line.operation?`${line.operation.warehouse.warehouseId}${line.operation.warehouse.zoneId?` / ${line.operation.warehouse.zoneId}`:""}${line.operation.warehouse.locationId?` / ${line.operation.warehouse.locationId}`:""}`:"—"}</td>{selected.documentType==="transfer"&&<td dir="ltr">{line.operation?.destination?.warehouseId??"—"}</td>}<td>{line.description??"—"}</td><td>{selected.status==="draft"&&can(inventoryPermissions.edit)&&<><button type="button" className="link" onClick={()=>void startLine(line)}>ویرایش</button><button type="button" className="link danger-text" onClick={()=>void removeLine(line.lineId)}>حذف</button></>}</td></tr>)}</tbody></table></div>
-        <details className="inventory-history"><summary>تاریخچه گردش سند</summary>{selected.lifecycleHistory.length===0?<p>هنوز رویداد گردش ثبت نشده است.</p>:<ol>{selected.lifecycleHistory.map((h,i)=><li key={`${h.occurredAt}-${i}`}><b>{STATUS_LABELS[h.fromStatus]} ← {STATUS_LABELS[h.toStatus]}</b><span>{faDateTime.format(new Date(h.occurredAt))}</span><span>{h.reason??"بدون توضیح"}</span></li>)}</ol>}</details></>}</section></div>
-    {newOpen&&<div className="inventory-modal" role="presentation"><form onSubmit={createDraft} role="dialog" aria-modal="true" aria-label="ایجاد سند انبار"><h2>سند انبار جدید</h2><label>نوع سند<select value={newDraft.documentType} onChange={e=>setNewDraft(d=>({...d,documentType:e.target.value as InventoryDocumentType}))}>{Object.entries(TYPE_LABELS).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label>تاریخ شمسی<input dir="ltr" inputMode="numeric" placeholder="1405/06/18" required value={newDraft.businessDate} onChange={e=>setNewDraft(d=>({...d,businessDate:e.target.value}))}/></label><label>شرح<textarea value={newDraft.description} onChange={e=>setNewDraft(d=>({...d,description:e.target.value}))}/></label><footer><button type="button" onClick={()=>setNewOpen(false)}>انصراف</button><button className="primary" disabled={saving}>ایجاد پیش‌نویس</button></footer></form></div>}
-    {lineOpen&&selected&&<div className="inventory-modal" role="presentation"><form className="line-form" onSubmit={saveLine} role="dialog" aria-modal="true" aria-label="ویرایش ردیف سند"><h2>{lineDraft.lineId?"ویرایش ردیف":"ردیف جدید"}</h2><label>کالا<select required value={lineDraft.productId} onChange={e=>void chooseProduct(e.target.value)}><option value="">انتخاب کنید…</option>{products.map(p=><option key={p.productId} value={p.productId}>{p.code} — {p.title}</option>)}</select></label><label>مقدار<input required dir="ltr" inputMode="decimal" value={lineDraft.quantity} onChange={e=>setLineDraft(d=>({...d,quantity:e.target.value}))}/></label><label>واحد<select required value={lineDraft.unitId} onChange={e=>setLineDraft(d=>({...d,unitId:e.target.value}))}><option value="">انتخاب کنید…</option>{product?.units?.units.map(u=><option key={u.unitId} value={u.unitId}>{u.title} ({u.code})</option>)}</select></label><label>انبار<select required value={lineDraft.warehouseId} onChange={e=>void chooseWarehouse(e.target.value)}><option value="">انتخاب کنید…</option>{warehouses.map(w=><option key={w.warehouseId} value={w.warehouseId}>{w.code} — {w.title}</option>)}</select></label><label>ناحیه<select value={lineDraft.zoneId} onChange={e=>void chooseZone(e.target.value)}><option value="">بدون ناحیه</option>{zones.map(z=><option key={z.zoneId} value={z.zoneId}>{z.code} — {z.title}</option>)}</select></label><label>موقعیت<select value={lineDraft.locationId} onChange={e=>setLineDraft(d=>({...d,locationId:e.target.value}))}><option value="">بدون موقعیت</option>{locations.map(l=><option key={l.locationId} value={l.locationId}>{l.code} — {l.title}</option>)}</select></label>{selected.documentType==="transfer"&&<><label>انبار مقصد<select required value={lineDraft.destinationWarehouseId} onChange={e=>void chooseWarehouse(e.target.value,true)}><option value="">انتخاب کنید…</option>{warehouses.map(w=><option key={w.warehouseId} value={w.warehouseId}>{w.code} — {w.title}</option>)}</select></label><label>ناحیه مقصد<select value={lineDraft.destinationZoneId} onChange={e=>void chooseZone(e.target.value,true)}><option value="">بدون ناحیه</option>{destinationZones.map(z=><option key={z.zoneId} value={z.zoneId}>{z.code} — {z.title}</option>)}</select></label><label>موقعیت مقصد<select value={lineDraft.destinationLocationId} onChange={e=>setLineDraft(d=>({...d,destinationLocationId:e.target.value}))}><option value="">بدون موقعیت</option>{destinationLocations.map(l=><option key={l.locationId} value={l.locationId}>{l.code} — {l.title}</option>)}</select></label></>}<label className="wide">شرح ردیف<input value={lineDraft.description} onChange={e=>setLineDraft(d=>({...d,description:e.target.value}))}/></label><footer className="wide"><button type="button" onClick={()=>setLineOpen(false)}>انصراف</button><button className="primary" disabled={saving}>ذخیره ردیف</button></footer></form></div>}
-  </div></Page>;
+export function InventoryDocumentsPage() {
+  const active = useActiveContext();
+  const { session } = useAuthSession();
+  const audit = useAuditServices();
+  const navigate = useNavigate();
+  const [services, setServices] = useState<InventoryWorkspaceServices | null>(
+    null,
+  );
+  const [items, setItems] = useState<readonly InventoryDocumentListItem[]>([]);
+  const [selected, setSelected] = useState<InventoryDocumentSnapshot | null>(
+    null,
+  );
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [newOpen, setNewOpen] = useState(false);
+  const [lineOpen, setLineOpen] = useState(false);
+  const [newDraft, setNewDraft] = useState<NewDraft>({
+    documentType: "receipt",
+    businessDate: gregorianToJalali(new Date().toISOString().slice(0, 10)),
+    description: "",
+  });
+  const [lineDraft, setLineDraft] = useState<LineDraft>(emptyLine());
+  const [products, setProducts] = useState<readonly ProductSelectorItemDto[]>(
+    [],
+  );
+  const [product, setProduct] = useState<ProductDto | null>(null);
+  const [warehouses, setWarehouses] = useState<readonly WarehouseListItemDto[]>(
+    [],
+  );
+  const [zones, setZones] = useState<readonly WarehouseZoneDto[]>([]);
+  const [locations, setLocations] = useState<readonly WarehouseLocationDto[]>(
+    [],
+  );
+  const [destinationZones, setDestinationZones] = useState<
+    readonly WarehouseZoneDto[]
+  >([]);
+  const [destinationLocations, setDestinationLocations] = useState<
+    readonly WarehouseLocationDto[]
+  >([]);
+  const actor = useMemo(
+    () => ({
+      id: session?.user.id ?? "desktop-local-user",
+      displayName:
+        session?.user.displayName ?? session?.user.username ?? "کاربر محلی",
+      permissions: session?.user.permissions ?? [],
+      branchIds: session?.user.branchIds ?? [],
+    }),
+    [session],
+  );
+  useEffect(() => {
+    let mounted = true;
+    void getDesktopDatabase()
+      .then((db) => {
+        if (mounted)
+          setServices(
+            createInventoryWorkspaceServices({ database: db, actor, audit }),
+          );
+      })
+      .catch((e) => mounted && setError(errorMessage(e)));
+    return () => {
+      mounted = false;
+    };
+  }, [actor, audit]);
+  const can = useCallback(
+    (permission: string) => services?.can(permission) ?? false,
+    [services],
+  );
+  const reload = useCallback(async () => {
+    if (!services || !active.companyId) return;
+    setLoading(true);
+    try {
+      const result = await services.list(active.companyId, page, search);
+      setItems(result.items);
+      setTotal(result.totalItems);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [services, active.companyId, page, search]);
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+  const openDocument = useCallback(
+    async (id: string) => {
+      if (!services || !active.companyId) return;
+      try {
+        const detail = await services.get(active.companyId, id);
+        setSelected(detail?.document ?? null);
+      } catch (e) {
+        setError(errorMessage(e));
+      }
+    },
+    [services, active.companyId],
+  );
+
+  async function createDraft(event: FormEvent) {
+    event.preventDefault();
+    if (!services || !active.companyId || !active.fiscalYearId) return;
+    setSaving(true);
+    setError("");
+    try {
+      const businessDate = jalaliToGregorian(newDraft.businessDate);
+      const db = await getDesktopDatabase();
+      const period = await new SqliteFiscalPeriodRepository(db).findByDate(
+        active.fiscalYearId,
+        businessDate,
+      );
+      if (!period || period.status !== "open")
+        throw new Error("برای این تاریخ، دوره مالی باز پیدا نشد.");
+      const doc = await services.createDraft({
+        companyId: active.companyId,
+        branchId: active.branchId || null,
+        fiscalYearId: active.fiscalYearId,
+        fiscalPeriodId: period.id,
+        documentType: newDraft.documentType,
+        businessDate,
+        description: newDraft.description.trim() || null,
+      });
+      setNewOpen(false);
+      setSelected(doc);
+      setMessage("پیش‌نویس سند ایجاد شد.");
+      await reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function startLine(line?: InventoryDocumentLineSnapshot) {
+    if (!services || !selected) return;
+    try {
+      setProducts(await services.selectProducts(selected.companyId));
+      setWarehouses(
+        await services.selectWarehouses(
+          selected.companyId,
+          selected.scope?.branchId ?? null,
+        ),
+      );
+      if (line?.operation) {
+        const p = await services.getProduct(selected.companyId, line.productId);
+        setProduct(p);
+        setLineDraft({
+          lineId: line.lineId,
+          productId: line.productId,
+          quantity: line.operation.quantity.enteredQuantity,
+          unitId: line.operation.quantity.enteredUnit.unitId,
+          warehouseId: line.operation.warehouse.warehouseId,
+          zoneId: line.operation.warehouse.zoneId ?? "",
+          locationId: line.operation.warehouse.locationId ?? "",
+          destinationWarehouseId: line.operation.destination?.warehouseId ?? "",
+          destinationZoneId: line.operation.destination?.zoneId ?? "",
+          destinationLocationId: line.operation.destination?.locationId ?? "",
+          description: line.description ?? "",
+        });
+      } else {
+        setProduct(null);
+        setLineDraft(emptyLine());
+      }
+      setLineOpen(true);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+  async function chooseProduct(id: string) {
+    setLineDraft((d) => ({ ...d, productId: id, unitId: "" }));
+    if (!services || !selected || !id) {
+      setProduct(null);
+      return;
+    }
+    const p = await services.getProduct(selected.companyId, id);
+    setProduct(p);
+    if (p?.units)
+      setLineDraft((d) => ({ ...d, unitId: p.units?.baseUnitId ?? "" }));
+  }
+  async function chooseWarehouse(id: string, destination = false) {
+    if (!services || !selected) return;
+    const zs = id ? await services.listZones(selected.companyId, id) : [];
+    if (destination) {
+      setDestinationZones(zs);
+      setDestinationLocations([]);
+      setLineDraft((d) => ({
+        ...d,
+        destinationWarehouseId: id,
+        destinationZoneId: "",
+        destinationLocationId: "",
+      }));
+    } else {
+      setZones(zs);
+      setLocations([]);
+      setLineDraft((d) => ({
+        ...d,
+        warehouseId: id,
+        zoneId: "",
+        locationId: "",
+      }));
+    }
+  }
+  async function chooseZone(id: string, destination = false) {
+    if (!services || !selected) return;
+    const wid = destination
+      ? lineDraft.destinationWarehouseId
+      : lineDraft.warehouseId;
+    const ls =
+      wid && id
+        ? await services.listLocations(selected.companyId, wid, id)
+        : [];
+    if (destination) {
+      setDestinationLocations(ls);
+      setLineDraft((d) => ({
+        ...d,
+        destinationZoneId: id,
+        destinationLocationId: "",
+      }));
+    } else {
+      setLocations(ls);
+      setLineDraft((d) => ({ ...d, zoneId: id, locationId: "" }));
+    }
+  }
+  async function saveLine(event: FormEvent) {
+    event.preventDefault();
+    if (!services || !selected) return;
+    setSaving(true);
+    setError("");
+    try {
+      const operation = await services.buildOperation({
+        companyId: selected.companyId,
+        productId: lineDraft.productId,
+        enteredQuantity: latinDigits(lineDraft.quantity),
+        unitId: lineDraft.unitId,
+        warehouseId: lineDraft.warehouseId,
+        zoneId: lineDraft.zoneId || null,
+        locationId: lineDraft.locationId || null,
+        destinationWarehouseId:
+          selected.documentType === "transfer"
+            ? lineDraft.destinationWarehouseId || null
+            : null,
+        destinationZoneId: lineDraft.destinationZoneId || null,
+        destinationLocationId: lineDraft.destinationLocationId || null,
+      });
+      const old = selected.lines.find((l) => l.lineId === lineDraft.lineId);
+      const line = createInventoryDocumentLine({
+        lineId: lineDraft.lineId ?? crypto.randomUUID(),
+        position: old?.position ?? selected.lines.length + 1,
+        productId: lineDraft.productId,
+        description: lineDraft.description.trim() || null,
+        operation,
+      });
+      const lines = lineDraft.lineId
+        ? selected.lines.map((l) => (l.lineId === line.lineId ? line : l))
+        : [...selected.lines, line];
+      const saved = await services.saveDraft(
+        rehydrateInventoryDocument({
+          ...selected,
+          lines,
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+      setSelected(saved);
+      setLineOpen(false);
+      setMessage("ردیف سند ذخیره شد.");
+      await reload();
+    } catch (e) {
+      if (
+        e instanceof InventoryApplicationError &&
+        e.code === "inventory.application.concurrency-conflict"
+      )
+        await openDocument(selected.documentId);
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function removeLine(id: string) {
+    if (!services || !selected || !window.confirm("ردیف انتخاب‌شده حذف شود؟"))
+      return;
+    setSaving(true);
+    try {
+      const lines = selected.lines
+        .filter((l) => l.lineId !== id)
+        .map((l, i) => createInventoryDocumentLine({ ...l, position: i + 1 }));
+      const saved = await services.saveDraft(
+        rehydrateInventoryDocument({
+          ...selected,
+          lines,
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+      setSelected(saved);
+      await reload();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function lifecycle(
+    action: "submit" | "approve" | "confirm" | "cancel" | "reverse",
+  ) {
+    if (!services || !selected) return;
+    const reason =
+      action === "reverse"
+        ? window.prompt("علت برگشت سند را وارد کنید:", "")
+        : null;
+    if (action === "reverse" && !reason?.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      if (action === "submit") await services.submit(selected, reason);
+      else if (action === "approve") await services.approve(selected, reason);
+      else if (action === "confirm") await services.confirm(selected, reason);
+      else if (action === "cancel") await services.cancel(selected, reason);
+      else await services.reverse(selected, reason!.trim());
+      await openDocument(selected.documentId);
+      await reload();
+      setMessage("عملیات با موفقیت انجام شد.");
+    } catch (e) {
+      if (
+        e instanceof InventoryApplicationError &&
+        e.code === "inventory.application.concurrency-conflict"
+      )
+        await openDocument(selected.documentId);
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const totalPages = Math.max(1, Math.ceil(total / 50));
+  const approvalRequestId = selected
+    ? `inventory-document:${selected.companyId}:${selected.documentId}`
+    : "";
+  const canCreate =
+    can(inventoryPermissions.create) &&
+    Boolean(active.companyId && active.fiscalYearId);
+  return (
+    <Page aria-label="اسناد انبار">
+      <div className="inventory-workspace" dir="rtl">
+        <div className="inventory-workspace__toolbar">
+          <input
+            aria-label="جست‌وجوی اسناد انبار"
+            placeholder="جست‌وجو در شماره یا شرح سند…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => void reload()}
+            disabled={loading}
+          >
+            بازخوانی
+          </button>
+          {can(inventoryPermissions.create) && (
+            <button
+              className="primary"
+              type="button"
+              disabled={!canCreate}
+              onClick={() => setNewOpen(true)}
+            >
+              سند جدید
+            </button>
+          )}
+        </div>
+        {error && <Feedback tone="error">{error}</Feedback>}
+        {message && <Feedback tone="success">{message}</Feedback>}
+        <div className="inventory-workspace__grid">
+          <section className="inventory-list" aria-label="فهرست اسناد انبار">
+            <div className="inventory-list__header">
+              <span>تاریخ</span>
+              <span>نوع / شماره</span>
+              <span>وضعیت</span>
+            </div>
+            {items.map((item) => (
+              <button
+                key={item.documentId}
+                type="button"
+                className={`inventory-list__row ${selected?.documentId === item.documentId ? "is-active" : ""}`}
+                onClick={() => void openDocument(item.documentId)}
+              >
+                <span>
+                  {faDate.format(new Date(`${item.businessDate}T00:00:00Z`))}
+                </span>
+                <span>
+                  <strong>{TYPE_LABELS[item.documentType]}</strong>
+                  <small dir="ltr">{item.documentNumber ?? "—"}</small>
+                </span>
+                <span className={`status status--${item.status}`}>
+                  {STATUS_LABELS[item.status]}
+                </span>
+              </button>
+            ))}
+            {!loading && items.length === 0 && (
+              <p className="empty">سندی یافت نشد.</p>
+            )}
+            <footer>
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                قبلی
+              </button>
+              <span>
+                صفحه {page} از {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                بعدی
+              </button>
+            </footer>
+          </section>
+          <section className="inventory-detail" aria-label="جزئیات سند انبار">
+            {!selected ? (
+              <div className="empty">
+                برای مشاهده جزئیات، یک سند را انتخاب کنید.
+              </div>
+            ) : (
+              <>
+                <header>
+                  <div>
+                    <h2>{TYPE_LABELS[selected.documentType]}</h2>
+                    <div className="meta">
+                      <span>
+                        شماره{" "}
+                        <b dir="ltr">
+                          {selected.documentNumber ?? "پیش‌نویس بدون شماره"}
+                        </b>
+                      </span>
+                      <span>
+                        تاریخ {gregorianToJalali(selected.businessDate)}
+                      </span>
+                      <span>
+                        نسخه <b dir="ltr">{selected.version}</b>
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`status status--${selected.status}`}>
+                    {STATUS_LABELS[selected.status]}
+                  </span>
+                </header>
+                <div className="inventory-detail__actions">
+                  {selected.status === "draft" &&
+                    can(inventoryPermissions.edit) && (
+                      <button type="button" onClick={() => void startLine()}>
+                        افزودن ردیف
+                      </button>
+                    )}
+                  {selected.status === "draft" &&
+                    can(inventoryPermissions.submit) && (
+                      <button
+                        type="button"
+                        className="primary"
+                        disabled={saving || selected.lines.length === 0}
+                        onClick={() => void lifecycle("submit")}
+                      >
+                        ارسال برای تأیید
+                      </button>
+                    )}
+                  {selected.status === "submitted" &&
+                    can(inventoryPermissions.approve) && (
+                      <button
+                        type="button"
+                        className="primary"
+                        onClick={() => void lifecycle("approve")}
+                      >
+                        تأیید
+                      </button>
+                    )}
+                  {selected.status === "approved" &&
+                    can(inventoryPermissions.confirm) && (
+                      <button
+                        type="button"
+                        className="primary"
+                        onClick={() => void lifecycle("confirm")}
+                      >
+                        قطعی‌کردن و اثر موجودی
+                      </button>
+                    )}
+                  {(
+                    [
+                      "draft",
+                      "submitted",
+                      "approved",
+                    ] as InventoryDocumentStatus[]
+                  ).includes(selected.status) &&
+                    can(inventoryPermissions.cancel) && (
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => void lifecycle("cancel")}
+                      >
+                        لغو
+                      </button>
+                    )}
+                  {selected.status === "confirmed" &&
+                    can(inventoryPermissions.reverse) && (
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => void lifecycle("reverse")}
+                      >
+                        برگشت کامل
+                      </button>
+                    )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/approval/requests/${encodeURIComponent(approvalRequestId)}`,
+                      )
+                    }
+                  >
+                    گردش تأیید
+                  </button>
+                </div>
+                <div className="inventory-summary">
+                  <div>
+                    <span>شرح</span>
+                    <strong>{selected.description ?? "—"}</strong>
+                  </div>
+                  <div>
+                    <span>تعداد ردیف</span>
+                    <strong dir="ltr">{selected.lines.length}</strong>
+                  </div>
+                  <div>
+                    <span>آخرین تغییر</span>
+                    <strong>
+                      {faDateTime.format(new Date(selected.updatedAt))}
+                    </strong>
+                  </div>
+                </div>
+                <div className="inventory-lines-wrap">
+                  <table className="inventory-lines">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>کالا</th>
+                        <th>مقدار</th>
+                        <th>واحد</th>
+                        <th>انبار / ناحیه / موقعیت</th>
+                        {selected.documentType === "transfer" && <th>مقصد</th>}
+                        <th>شرح</th>
+                        <th />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.lines.map((line) => (
+                        <tr key={line.lineId}>
+                          <td dir="ltr">{line.position}</td>
+                          <td dir="ltr">{line.productId}</td>
+                          <td dir="ltr">
+                            <strong>
+                              {line.operation?.quantity.enteredQuantity ?? "—"}
+                            </strong>
+                            {line.operation && (
+                              <small>
+                                {" "}
+                                / پایه: {line.operation.quantity.baseQuantity}
+                              </small>
+                            )}
+                          </td>
+                          <td>
+                            {line.operation?.quantity.enteredUnit.title ?? "—"}
+                          </td>
+                          <td dir="ltr">
+                            {line.operation
+                              ? `${line.operation.warehouse.warehouseId}${line.operation.warehouse.zoneId ? ` / ${line.operation.warehouse.zoneId}` : ""}${line.operation.warehouse.locationId ? ` / ${line.operation.warehouse.locationId}` : ""}`
+                              : "—"}
+                          </td>
+                          {selected.documentType === "transfer" && (
+                            <td dir="ltr">
+                              {line.operation?.destination?.warehouseId ?? "—"}
+                            </td>
+                          )}
+                          <td>{line.description ?? "—"}</td>
+                          <td>
+                            {selected.status === "draft" &&
+                              can(inventoryPermissions.edit) && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="link"
+                                    onClick={() => void startLine(line)}
+                                  >
+                                    ویرایش
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="link danger-text"
+                                    onClick={() => void removeLine(line.lineId)}
+                                  >
+                                    حذف
+                                  </button>
+                                </>
+                              )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <details className="inventory-history">
+                  <summary>تاریخچه گردش سند</summary>
+                  {selected.lifecycleHistory.length === 0 ? (
+                    <p>هنوز رویداد گردش ثبت نشده است.</p>
+                  ) : (
+                    <ol>
+                      {selected.lifecycleHistory.map((h, i) => (
+                        <li key={`${h.occurredAt}-${i}`}>
+                          <b>
+                            {STATUS_LABELS[h.fromStatus]} ←{" "}
+                            {STATUS_LABELS[h.toStatus]}
+                          </b>
+                          <span>
+                            {faDateTime.format(new Date(h.occurredAt))}
+                          </span>
+                          <span>{h.reason ?? "بدون توضیح"}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </details>
+              </>
+            )}
+          </section>
+        </div>
+        {newOpen && (
+          <div className="inventory-modal" role="presentation">
+            <form
+              onSubmit={createDraft}
+              role="dialog"
+              aria-modal="true"
+              aria-label="ایجاد سند انبار"
+            >
+              <h2>سند انبار جدید</h2>
+              <label>
+                نوع سند
+                <select
+                  value={newDraft.documentType}
+                  onChange={(e) =>
+                    setNewDraft((d) => ({
+                      ...d,
+                      documentType: e.target.value as InventoryDocumentType,
+                    }))
+                  }
+                >
+                  {Object.entries(TYPE_LABELS).map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                تاریخ شمسی
+                <input
+                  dir="ltr"
+                  inputMode="numeric"
+                  placeholder="1405/06/18"
+                  required
+                  value={newDraft.businessDate}
+                  onChange={(e) =>
+                    setNewDraft((d) => ({ ...d, businessDate: e.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                شرح
+                <textarea
+                  value={newDraft.description}
+                  onChange={(e) =>
+                    setNewDraft((d) => ({ ...d, description: e.target.value }))
+                  }
+                />
+              </label>
+              <footer>
+                <button type="button" onClick={() => setNewOpen(false)}>
+                  انصراف
+                </button>
+                <button className="primary" disabled={saving}>
+                  ایجاد پیش‌نویس
+                </button>
+              </footer>
+            </form>
+          </div>
+        )}
+        {lineOpen && selected && (
+          <div className="inventory-modal" role="presentation">
+            <form
+              className="line-form"
+              onSubmit={saveLine}
+              role="dialog"
+              aria-modal="true"
+              aria-label="ویرایش ردیف سند"
+            >
+              <h2>{lineDraft.lineId ? "ویرایش ردیف" : "ردیف جدید"}</h2>
+              <label>
+                کالا
+                <select
+                  required
+                  value={lineDraft.productId}
+                  onChange={(e) => void chooseProduct(e.target.value)}
+                >
+                  <option value="">انتخاب کنید…</option>
+                  {products.map((p) => (
+                    <option key={p.productId} value={p.productId}>
+                      {p.code} — {p.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                مقدار
+                <input
+                  required
+                  dir="ltr"
+                  inputMode="decimal"
+                  value={lineDraft.quantity}
+                  onChange={(e) =>
+                    setLineDraft((d) => ({ ...d, quantity: e.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                واحد
+                <select
+                  required
+                  value={lineDraft.unitId}
+                  onChange={(e) =>
+                    setLineDraft((d) => ({ ...d, unitId: e.target.value }))
+                  }
+                >
+                  <option value="">انتخاب کنید…</option>
+                  {product?.units?.units.map((u) => (
+                    <option key={u.unitId} value={u.unitId}>
+                      {u.title} ({u.code})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                انبار
+                <select
+                  required
+                  value={lineDraft.warehouseId}
+                  onChange={(e) => void chooseWarehouse(e.target.value)}
+                >
+                  <option value="">انتخاب کنید…</option>
+                  {warehouses.map((w) => (
+                    <option key={w.warehouseId} value={w.warehouseId}>
+                      {w.code} — {w.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                ناحیه
+                <select
+                  value={lineDraft.zoneId}
+                  onChange={(e) => void chooseZone(e.target.value)}
+                >
+                  <option value="">بدون ناحیه</option>
+                  {zones.map((z) => (
+                    <option key={z.zoneId} value={z.zoneId}>
+                      {z.code} — {z.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                موقعیت
+                <select
+                  value={lineDraft.locationId}
+                  onChange={(e) =>
+                    setLineDraft((d) => ({ ...d, locationId: e.target.value }))
+                  }
+                >
+                  <option value="">بدون موقعیت</option>
+                  {locations.map((l) => (
+                    <option key={l.locationId} value={l.locationId}>
+                      {l.code} — {l.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selected.documentType === "transfer" && (
+                <>
+                  <label>
+                    انبار مقصد
+                    <select
+                      required
+                      value={lineDraft.destinationWarehouseId}
+                      onChange={(e) =>
+                        void chooseWarehouse(e.target.value, true)
+                      }
+                    >
+                      <option value="">انتخاب کنید…</option>
+                      {warehouses.map((w) => (
+                        <option key={w.warehouseId} value={w.warehouseId}>
+                          {w.code} — {w.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    ناحیه مقصد
+                    <select
+                      value={lineDraft.destinationZoneId}
+                      onChange={(e) => void chooseZone(e.target.value, true)}
+                    >
+                      <option value="">بدون ناحیه</option>
+                      {destinationZones.map((z) => (
+                        <option key={z.zoneId} value={z.zoneId}>
+                          {z.code} — {z.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    موقعیت مقصد
+                    <select
+                      value={lineDraft.destinationLocationId}
+                      onChange={(e) =>
+                        setLineDraft((d) => ({
+                          ...d,
+                          destinationLocationId: e.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">بدون موقعیت</option>
+                      {destinationLocations.map((l) => (
+                        <option key={l.locationId} value={l.locationId}>
+                          {l.code} — {l.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </>
+              )}
+              <label className="wide">
+                شرح ردیف
+                <input
+                  value={lineDraft.description}
+                  onChange={(e) =>
+                    setLineDraft((d) => ({ ...d, description: e.target.value }))
+                  }
+                />
+              </label>
+              <footer className="wide">
+                <button type="button" onClick={() => setLineOpen(false)}>
+                  انصراف
+                </button>
+                <button className="primary" disabled={saving}>
+                  ذخیره ردیف
+                </button>
+              </footer>
+            </form>
+          </div>
+        )}
+      </div>
+    </Page>
+  );
 }

@@ -151,6 +151,12 @@ importers:
       '@argin/fiscal-tauri':
         specifier: workspace:*
         version: link:../../packages/fiscal-tauri
+      '@argin/inventory':
+        specifier: workspace:*
+        version: link:../../packages/inventory
+      '@argin/inventory-tauri':
+        specifier: workspace:*
+        version: link:../../packages/inventory-tauri
       '@argin/party':
         specifier: workspace:*
         version: link:../../packages/party
