@@ -18,3 +18,4 @@ export type {
   InventoryWarehouseProtectedOperation,
 } from "./inventory-warehouse-dependency-guard.ts";
 export { SqliteInventoryMovementFeedReader } from "./sqlite-inventory-movement-feed.ts";
+export { SqliteInventoryWorkspaceReader } from "./sqlite-inventory-workspace-reader.ts";
