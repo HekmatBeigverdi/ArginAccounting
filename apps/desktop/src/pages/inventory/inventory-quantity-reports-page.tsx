@@ -75,6 +75,7 @@ export function InventoryQuantityReportsPage() {
     try {
       setBalances(await services.readBalances({
         companyId: active.companyId,
+        branchId: active.branchId || null,
         productId: productId || null,
         warehouseId: warehouseId || null,
         zoneId: zoneId || null,
@@ -87,9 +88,9 @@ export function InventoryQuantityReportsPage() {
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "خواندن موجودی با خطا مواجه شد.");
     } finally { setLoading(false); }
-  }, [services, active.companyId, productId, warehouseId, zoneId, locationId, includeZero, balanceCursor]);
+  }, [services, active.companyId, active.branchId, productId, warehouseId, zoneId, locationId, includeZero, balanceCursor]);
 
-  useEffect(() => { if (services && active.companyId && tab === "balances") void loadBalances(null); }, [services, active.companyId, tab]);
+  useEffect(() => { if (services && active.companyId && tab === "balances") void loadBalances(null); }, [services, active.companyId, active.branchId, tab]);
 
   async function chooseWarehouse(value: string): Promise<void> {
     setWarehouseId(value); setZoneId(""); setLocationId(""); setLocations([]);
@@ -114,14 +115,22 @@ export function InventoryQuantityReportsPage() {
       const from = dateFrom.trim() ? jalaliToGregorian(dateFrom) : null;
       const to = dateTo.trim() ? jalaliToGregorian(dateTo) : null;
       if (from && to && from > to) throw new Error("تاریخ شروع نمی‌تواند بعد از تاریخ پایان باشد.");
-      setKardex(await services.readKardex({ companyId: active.companyId, stockKey: key, businessDateFrom: from, businessDateTo: to, cursor, limit: 100 }));
+      setKardex(await services.readKardex({
+        companyId: active.companyId,
+        branchId: active.branchId || null,
+        stockKey: key,
+        businessDateFrom: from,
+        businessDateTo: to,
+        cursor,
+        limit: 100,
+      }));
       setKardexCursor(cursor);
       setSelectedStockKey(key);
       setTab("kardex");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "خواندن کاردکس با خطا مواجه شد.");
     } finally { setLoading(false); }
-  }, [services, active.companyId, dateFrom, dateTo]);
+  }, [services, active.companyId, active.branchId, dateFrom, dateTo]);
 
   function openBalanceKardex(row: InventoryQuantityBalanceReportRow): void {
     setKardexCursorStack([]);
@@ -132,7 +141,7 @@ export function InventoryQuantityReportsPage() {
     if (!services || !active.companyId) return;
     setLoading(true); setError("");
     try {
-      setSourceDetail(await services.getDocument(active.companyId, documentId));
+      setSourceDetail(await services.getDocument(active.companyId, active.branchId || null, documentId));
       setSourceLineId(lineId);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "بازکردن سند مبدأ با خطا مواجه شد.");
