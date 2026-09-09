@@ -15,6 +15,7 @@ export interface InventoryReportServices {
   readonly canView: boolean;
   readBalances(input: {
     companyId: string;
+    branchId: string | null;
     productId?: string | null;
     warehouseId?: string | null;
     zoneId?: string | null;
@@ -25,6 +26,7 @@ export interface InventoryReportServices {
   }): Promise<InventoryQuantityBalanceReport>;
   readKardex(input: {
     companyId: string;
+    branchId: string | null;
     stockKey: InventoryStockKey;
     businessDateFrom?: string | null;
     businessDateTo?: string | null;
@@ -46,21 +48,44 @@ export function createInventoryReportServices(input: {
   const documents = new SqliteInventoryWorkspaceReader(input.database);
   const products = new SqliteProductSelectorReader(input.database);
   const warehouses = new SqliteWarehouseReader(input.database);
-  const canView = input.actor.permissions.includes("system.full-access") || input.actor.permissions.includes(inventoryPermissions.view);
+  const fullAccess = input.actor.permissions.includes("system.full-access");
+  const canView = fullAccess || input.actor.permissions.includes(inventoryPermissions.view);
 
   const requireView = (): void => {
     if (!canView) throw new Error("برای مشاهده گزارش‌های موجودی مجوز کافی ندارید.");
+  };
+  const requireBranch = (branchId: string | null): void => {
+    if (fullAccess || branchId === null) return;
+    if (!input.actor.branchIds.includes(branchId)) throw new Error("شعبه انتخاب‌شده در محدوده دسترسی کاربر نیست.");
   };
 
   return Object.freeze({
     canView,
     async readBalances(args) {
-      requireView();
-      return reports.readBalances({ ...args, limit: args.limit ?? 100 });
+      requireView(); requireBranch(args.branchId);
+      return reports.readBalances({
+        companyId: args.companyId,
+        branchId: args.branchId,
+        productId: args.productId ?? null,
+        warehouseId: args.warehouseId ?? null,
+        zoneId: args.zoneId ?? null,
+        locationId: args.locationId ?? null,
+        includeZero: args.includeZero ?? false,
+        cursor: args.cursor ?? null,
+        limit: args.limit ?? 100,
+      });
     },
     async readKardex(args) {
-      requireView();
-      return reports.readKardex({ ...args, limit: args.limit ?? 100 });
+      requireView(); requireBranch(args.branchId);
+      return reports.readKardex({
+        companyId: args.companyId,
+        branchId: args.branchId,
+        stockKey: args.stockKey,
+        businessDateFrom: args.businessDateFrom ?? null,
+        businessDateTo: args.businessDateTo ?? null,
+        cursor: args.cursor ?? null,
+        limit: args.limit ?? 100,
+      });
     },
     async getDocument(companyId, documentId) {
       requireView();
@@ -71,7 +96,7 @@ export function createInventoryReportServices(input: {
       return products.select({ companyId, search: search ?? null, kinds: ["product"], statuses: ["active"], stockTracking: true, limit: 100 });
     },
     async selectWarehouses(companyId, branchId) {
-      requireView();
+      requireView(); requireBranch(branchId);
       return warehouses.select({ companyId, branchId: branchId ?? undefined, includeCompanyWide: true, statuses: ["active"], limit: 100 });
     },
     async listZones(companyId, warehouseId) {
