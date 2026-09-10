@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
+const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
 const router = await readFile(new URL("../src/app/router/app-router.tsx", import.meta.url), "utf8");
 const navigation = await readFile(new URL("../src/app/navigation/navigation-items.ts", import.meta.url), "utf8");
 const transferCenter = await readFile(new URL("../src/pages/inventory/inventory-transfer-center-page.tsx", import.meta.url), "utf8");
-const warehousePage = await readFile(new URL("../src/pages/warehouse/warehouses-page.tsx", import.meta.url), "utf8");
 const workspaceComposition = await readFile(new URL("../src/composition/inventory/create-inventory-workspace-services.ts", import.meta.url), "utf8");
+const warehouseIntegration = await readFile(new URL("../src/composition/warehouse/inventory-warehouse-integration-provider.tsx", import.meta.url), "utf8");
 
 test("Inventory desktop routes expose documents reports and transfer center", () => {
   assert.match(router, /path="\/inventory\/documents"/u);
@@ -34,9 +35,10 @@ test("Inventory workspace uses secured lifecycle composition rather than direct 
   assert.doesNotMatch(workspaceComposition, /INSERT INTO inventory_stock_movements/u);
 });
 
-test("Warehouse maintenance is expected to compose the concrete Inventory dependency guard", () => {
-  // Step 20 release gate: this source-level assertion intentionally fails until the production
-  // WarehouseService composition supplies InventoryWarehouseDependencyGuard(database).
-  assert.match(warehousePage, /InventoryWarehouseDependencyGuard/u);
-  assert.match(warehousePage, /dependencyGuard:\s*new InventoryWarehouseDependencyGuard\(database\)/u);
+test("Desktop registers the concrete Inventory Warehouse dependency guard before routes render", () => {
+  assert.match(app, /InventoryWarehouseIntegrationProvider/u);
+  assert.match(warehouseIntegration, /registerWarehouseDependencyGuard/u);
+  assert.match(warehouseIntegration, /new InventoryWarehouseDependencyGuard\(database\)/u);
+  assert.match(warehouseIntegration, /if \(!ready\)/u);
+  assert.match(warehouseIntegration, /registerWarehouseDependencyGuard\(null\)/u);
 });
