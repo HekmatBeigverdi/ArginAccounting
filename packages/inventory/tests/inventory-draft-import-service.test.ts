@@ -11,8 +11,8 @@ test("inventory import uses deterministic batch and document request identity", 
 });
 
 test("generated createdAt metadata is excluded from retry fingerprint", () => {
-  assert.match(source, /key !== "createdAt"/u);
-  assert.match(source, /canonicalize\(document\)/u);
+  assert.match(source, /createdAt:\s*_createdAt/u);
+  assert.match(source, /canonicalize\(businessPayload\)/u);
 });
 
 test("bulk import persists through InventoryDraftService only", () => {
