@@ -32,6 +32,7 @@ function canonicalize(value: unknown): unknown {
   if (value !== null && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Readonly<Record<string, unknown>>)
+        .filter(([key]) => key !== "createdAt")
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([key, nested]) => [key, canonicalize(nested)]),
     );
@@ -39,11 +40,9 @@ function canonicalize(value: unknown): unknown {
   return value;
 }
 
-/** createdAt is generated presentation/persistence metadata, not import business identity. */
-function stableFingerprint(document: CreateInventoryDocumentInput): string {
-  const { createdAt: _createdAt, ...businessPayload } = document;
-  return JSON.stringify(canonicalize(businessPayload));
-}
+/** Generated timestamps are deliberately excluded from the retry identity. */
+const stableFingerprint = (document: CreateInventoryDocumentInput): string =>
+  JSON.stringify(canonicalize(document));
 
 /**
  * Persists only Draft Inventory documents. Preview/master-data validation happens before this boundary.
