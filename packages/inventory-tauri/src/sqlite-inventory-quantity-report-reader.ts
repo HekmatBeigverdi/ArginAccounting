@@ -10,6 +10,10 @@ import {
   type InventoryKardexReport,
   type InventoryKardexReportEntry,
   type InventoryKardexReportQuery,
+  type InventoryProductBalanceSummaryQuery,
+  type InventoryProductBalanceSummaryReport,
+  type InventoryProductBalanceSummaryRow,
+  type InventoryProductWarehouseBalanceRow,
   type InventoryQuantityBalanceReport,
   type InventoryQuantityBalanceReportQuery,
   type InventoryQuantityReportReader,
@@ -37,6 +41,14 @@ interface BalanceRow {
   zone_code: string | null; zone_title: string | null; location_code: string | null; location_title: string | null;
 }
 interface WarehouseScopeRow { organizational_scope: "company" | "branch"; branch_id: string | null; }
+interface ProductSeedRow { product_id: string; product_code: string; product_title: string; }
+interface ProductStockRow {
+  stock_key: string;
+  warehouse_id: string;
+  warehouse_code: string;
+  warehouse_title: string;
+  quantity: string;
+}
 
 function invalid(field: string): never { throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.invalidRequest, field); }
 function unauthorized(field: string): never { throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.unauthorized, field); }
@@ -88,6 +100,7 @@ function movement(row: MovementRow): InventoryStockMovementSnapshot {
 const positiveMagnitude = (value: string): string => {
   const normalized = normalizeInventoryQuantity(value); return normalized.startsWith("-") ? normalized.slice(1) : normalized;
 };
+const isZero = (value: string): boolean => normalizeInventoryQuantity(value) === "0";
 
 export class SqliteInventoryQuantityReportReader implements InventoryQuantityReportReader {
   constructor(private readonly database: DatabaseExecutor) {}
@@ -171,5 +184,57 @@ export class SqliteInventoryQuantityReportReader implements InventoryQuantityRep
       stockKey:Object.freeze({companyId:row.company_id,productId:row.product_id,warehouseId:row.warehouse_id,zoneId:row.zone_id,locationId:row.location_id}),quantity:normalizeInventoryQuantity(row.quantity),
       productCode:row.product_code,productTitle:row.product_title,warehouseCode:row.warehouse_code,warehouseTitle:row.warehouse_title,zoneCode:row.zone_code,zoneTitle:row.zone_title,
       locationCode:row.location_code,locationTitle:row.location_title,lastMovementId:row.last_movement_id}))),nextCursor:hasMore&&pageRows.length?pageRows[pageRows.length-1]!.stock_key:null});
+  }
+
+  private async aggregateProduct(query: InventoryProductBalanceSummaryQuery, seed: ProductSeedRow): Promise<InventoryProductBalanceSummaryRow | null> {
+    let total="0"; let stockKeyCount=0; let cursor:string|null=null;
+    const warehouseMap=new Map<string,{warehouseId:string;warehouseCode:string;warehouseTitle:string;quantity:string;stockKeyCount:number}>();
+    while(true){
+      const clauses=["b.company_id=?","b.product_id=?"],params:DatabaseValue[]=[query.companyId,seed.product_id];
+      if(query.branchId!=null){clauses.push("(w.organizational_scope='company' OR (w.organizational_scope='branch' AND w.branch_id=?))");params.push(query.branchId);}
+      if(cursor){clauses.push("b.stock_key > ?");params.push(cursor);}
+      const rows=await this.database.query<ProductStockRow>(`SELECT b.stock_key,b.warehouse_id,w.code AS warehouse_code,w.title AS warehouse_title,b.quantity
+        FROM inventory_stock_balances b JOIN warehouses w ON w.company_id=b.company_id AND w.id=b.warehouse_id
+        WHERE ${clauses.join(" AND ")} ORDER BY b.stock_key LIMIT ?`,[...params,CHUNK]);
+      for(const row of rows){
+        const amount=normalizeInventoryQuantity(row.quantity); total=addInventoryStockQuantities(total,amount); stockKeyCount+=1;
+        const existing=warehouseMap.get(row.warehouse_id)??{warehouseId:row.warehouse_id,warehouseCode:row.warehouse_code,warehouseTitle:row.warehouse_title,quantity:"0",stockKeyCount:0};
+        existing.quantity=addInventoryStockQuantities(existing.quantity,amount);existing.stockKeyCount+=1;warehouseMap.set(row.warehouse_id,existing);
+      }
+      if(rows.length<CHUNK)break;cursor=rows[rows.length-1]!.stock_key;
+    }
+    const warehouses:Array<InventoryProductWarehouseBalanceRow>=[];
+    for(const value of warehouseMap.values()){
+      if(!query.includeZero&&isZero(value.quantity))continue;
+      warehouses.push(Object.freeze({...value,quantity:normalizeInventoryQuantity(value.quantity)}));
+    }
+    warehouses.sort((a,b)=>a.warehouseCode.localeCompare(b.warehouseCode,"fa"));
+    if(!query.includeZero&&isZero(total))return null;
+    return Object.freeze({companyId:query.companyId,productId:seed.product_id,productCode:seed.product_code,productTitle:seed.product_title,
+      totalQuantity:normalizeInventoryQuantity(total),warehouseCount:warehouses.length,stockKeyCount,warehouses:Object.freeze(warehouses)});
+  }
+
+  async readProductSummaries(query: InventoryProductBalanceSummaryQuery): Promise<InventoryProductBalanceSummaryReport> {
+    assertLimit(query.limit);
+    const result:Array<InventoryProductBalanceSummaryRow>=[]; let scanCursor=query.cursor??null; let exhausted=false;
+    while(result.length<=query.limit&&!exhausted){
+      const clauses=["p.company_id=?"],params:DatabaseValue[]=[query.companyId];
+      if(query.productId){clauses.push("p.id=?");params.push(query.productId);}
+      if(scanCursor){clauses.push("p.id > ?");params.push(scanCursor);}
+      const visibility=query.branchId==null?"":" AND (w.organizational_scope='company' OR (w.organizational_scope='branch' AND w.branch_id=?))";
+      if(query.branchId!=null)params.push(query.branchId);
+      params.push(Math.min(CHUNK,query.limit+1));
+      const seeds=await this.database.query<ProductSeedRow>(`SELECT p.id AS product_id,p.code AS product_code,p.title AS product_title
+        FROM products p WHERE ${clauses.join(" AND ")} AND EXISTS(SELECT 1 FROM inventory_stock_balances b
+          JOIN warehouses w ON w.company_id=b.company_id AND w.id=b.warehouse_id
+          WHERE b.company_id=p.company_id AND b.product_id=p.id${visibility})
+        ORDER BY p.id LIMIT ?`,params);
+      if(!seeds.length){exhausted=true;break;}
+      for(const seed of seeds){scanCursor=seed.product_id;const summary=await this.aggregateProduct(query,seed);if(summary)result.push(summary);if(result.length>query.limit)break;}
+      if(seeds.length<Math.min(CHUNK,query.limit+1))exhausted=true;
+    }
+    const hasMore=result.length>query.limit;const items=result.slice(0,query.limit);
+    const nextCursor=hasMore&&items.length?items[items.length-1]!.productId:null;
+    return Object.freeze({items:Object.freeze(items),nextCursor});
   }
 }
