@@ -39,13 +39,25 @@ export interface WarehouseDependencyGuard {
   }): Promise<WarehouseDependencyCheck>;
 }
 
+let registeredDownstreamGuard: WarehouseDependencyGuard | null = null;
+
 /**
- * Used until Inventory/Purchase/Sales/Manufacturing modules provide concrete
- * dependency probes. Structural dependencies inside Warehouse are still
- * enforced by WarehouseService itself and are never bypassed by this guard.
+ * Desktop composition may register the concrete downstream Inventory guard once the
+ * database is available. Explicit per-service dependencyGuard injection still wins.
+ * Passing null during provider cleanup restores the Phase 19 unintegrated fallback.
+ */
+export function registerWarehouseDependencyGuard(guard: WarehouseDependencyGuard | null): void {
+  registeredDownstreamGuard = guard;
+}
+
+/**
+ * Backward-compatible fallback for pre-Inventory composition roots. Once a downstream
+ * guard is registered, the same stable object delegates every protected operation to it,
+ * so existing WarehouseService instances do not need to be reconstructed.
  */
 export const allowUnintegratedWarehouseDependencies: WarehouseDependencyGuard = Object.freeze({
-  async check() {
+  async check(input) {
+    if (registeredDownstreamGuard) return registeredDownstreamGuard.check(input);
     return Object.freeze({ allowed: true, blockers: Object.freeze([]) });
   },
 });
