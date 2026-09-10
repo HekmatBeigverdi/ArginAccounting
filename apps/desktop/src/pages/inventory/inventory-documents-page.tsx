@@ -19,6 +19,8 @@ import {
 } from "@argin/inventory";
 import { getDesktopDatabase } from "@argin/database-tauri";
 import { SqliteFiscalPeriodRepository } from "@argin/fiscal-tauri";
+import { FiscalValidationError } from "@argin/fiscal";
+import type { InventoryLineLocationTitles } from "@argin/inventory-tauri";
 import type { ProductDto, ProductSelectorItemDto } from "@argin/product";
 import type {
   WarehouseListItemDto,
@@ -35,6 +37,7 @@ import {
 import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
 import "./inventory-documents-page.css";
+import { formatInventoryLineLocation } from "./inventory-line-location";
 
 const TYPE_LABELS: Record<InventoryDocumentType, string> = {
   receipt: "رسید انبار",
@@ -203,6 +206,9 @@ const emptyLine = (): LineDraft => ({
 });
 
 function errorMessage(error: unknown): string {
+  if (error instanceof FiscalValidationError) {
+    return error.issues.map((issue) => issue.message).join("؛ ");
+  }
   if (error instanceof InventoryApplicationError) {
     if (error.code === "inventory.application.concurrency-conflict")
       return "این سند هم‌زمان در بخش دیگری تغییر کرده است. نسخه جدید بارگذاری شد؛ تغییرات خود را بررسی و دوباره ذخیره کنید.";
@@ -210,10 +216,23 @@ function errorMessage(error: unknown): string {
       return "برای این عملیات مجوز کافی ندارید.";
     if (error.code === "inventory.application.stock-conflict")
       return "این عملیات باعث مغایرت یا موجودی منفی می‌شود.";
+    if (error.code === "inventory.application.invalid-request" && error.field === "reason")
+      return "علت عملیات را وارد کنید؛ برای قطعی‌کردن اصلاح مقدار، ثبت علت اصلاح الزامی است.";
     if (error.code === "inventory.application.invalid-request")
       return `اطلاعات سند معتبر نیست${error.field ? `؛ فیلد: ${error.field}` : ""}.`;
   }
-  return error instanceof Error ? error.message : "عملیات با خطا مواجه شد.";
+  // Tauri commands can reject with a string or a serialized error object.
+  if (typeof error === "string" && error.trim()) return error;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.trim()
+  ) {
+    return error.message;
+  }
+  return "عملیات با خطا مواجه شد.";
 }
 
 export function InventoryDocumentsPage() {
@@ -224,6 +243,9 @@ export function InventoryDocumentsPage() {
   const [services, setServices] = useState<InventoryWorkspaceServices | null>(
     null,
   );
+  const [lineLocationTitles, setLineLocationTitles] = useState<
+    ReadonlyMap<string, InventoryLineLocationTitles>
+  >(new Map());
   const [items, setItems] = useState<readonly InventoryDocumentListItem[]>([]);
   const [selected, setSelected] = useState<InventoryDocumentSnapshot | null>(
     null,
@@ -237,6 +259,10 @@ export function InventoryDocumentsPage() {
   const [message, setMessage] = useState("");
   const [newOpen, setNewOpen] = useState(false);
   const [lineOpen, setLineOpen] = useState(false);
+  const [reverseOpen, setReverseOpen] = useState(false);
+  const [reverseReason, setReverseReason] = useState("");
+  const [adjustmentConfirmOpen, setAdjustmentConfirmOpen] = useState(false);
+  const [adjustmentReason, setAdjustmentReason] = useState("");
   const [newDraft, setNewDraft] = useState<NewDraft>({
     documentType: "receipt",
     businessDate: gregorianToJalali(new Date().toISOString().slice(0, 10)),
@@ -316,6 +342,27 @@ export function InventoryDocumentsPage() {
     },
     [services, active.companyId],
   );
+
+  useEffect(() => {
+    let current = true;
+    setLineLocationTitles(new Map());
+    if (services && selected) {
+      void services
+        .getLineLocationTitles(selected.companyId, selected.documentId)
+        .then((titles) => {
+          if (current)
+            setLineLocationTitles(
+              new Map(titles.map((item) => [item.lineId, item])),
+            );
+        })
+        .catch((reason) => {
+          if (current) setError(errorMessage(reason));
+        });
+    }
+    return () => {
+      current = false;
+    };
+  }, [services, selected]);
 
   async function createDraft(event: FormEvent) {
     event.preventDefault();
@@ -519,28 +566,42 @@ export function InventoryDocumentsPage() {
   }
   async function lifecycle(
     action: "submit" | "approve" | "confirm" | "cancel" | "reverse",
+    reason: string | null = null,
   ) {
-    if (!services || !selected) return;
-    const reason =
-      action === "reverse"
-        ? window.prompt("علت برگشت سند را وارد کنید:", "")
-        : null;
+    if (!services || !selected || saving) return;
     if (action === "reverse" && !reason?.trim()) return;
+    if (action === "confirm" && selected.documentType === "adjustment" && !reason?.trim()) {
+      setError("");
+      setMessage("");
+      setAdjustmentReason("");
+      setAdjustmentConfirmOpen(true);
+      return;
+    }
     setSaving(true);
     setError("");
+    setMessage("");
     try {
       if (action === "submit") await services.submit(selected, reason);
       else if (action === "approve") await services.approve(selected, reason);
-      else if (action === "confirm") await services.confirm(selected, reason);
+      else if (action === "confirm") await services.confirm(selected, reason?.trim() ?? null);
       else if (action === "cancel") await services.cancel(selected, reason);
       else await services.reverse(selected, reason!.trim());
       await openDocument(selected.documentId);
       await reload();
+      if (action === "confirm") {
+        setAdjustmentConfirmOpen(false);
+        setAdjustmentReason("");
+      }
+      if (action === "reverse") {
+        setReverseOpen(false);
+        setReverseReason("");
+      }
       setMessage("عملیات با موفقیت انجام شد.");
     } catch (e) {
       if (
-        e instanceof InventoryApplicationError &&
-        e.code === "inventory.application.concurrency-conflict"
+        action === "submit" ||
+        (e instanceof InventoryApplicationError &&
+          e.code === "inventory.application.concurrency-conflict")
       )
         await openDocument(selected.documentId);
       setError(errorMessage(e));
@@ -682,7 +743,19 @@ export function InventoryDocumentsPage() {
                         disabled={saving || selected.lines.length === 0}
                         onClick={() => void lifecycle("submit")}
                       >
-                        ارسال برای تأیید
+                        {saving ? "در حال ارسال…" : "ارسال برای تأیید"}
+                      </button>
+                    )}
+                  {selected.status === "submitted" &&
+                    can(inventoryPermissions.submit) && (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void lifecycle("submit")}
+                      >
+                        {saving
+                          ? "در حال ارسال…"
+                          : "تلاش مجدد ارسال برای تأیید"}
                       </button>
                     )}
                   {selected.status === "submitted" &&
@@ -726,9 +799,15 @@ export function InventoryDocumentsPage() {
                       <button
                         type="button"
                         className="danger"
-                        onClick={() => void lifecycle("reverse")}
+                        disabled={saving}
+                        onClick={() => {
+                          setError("");
+                          setMessage("");
+                          setReverseReason("");
+                          setReverseOpen(true);
+                        }}
                       >
-                        برگشت کامل
+                        {saving ? "در حال انجام…" : "برگشت کامل"}
                       </button>
                     )}
                   <button
@@ -776,7 +855,21 @@ export function InventoryDocumentsPage() {
                       {selected.lines.map((line) => (
                         <tr key={line.lineId}>
                           <td dir="ltr">{line.position}</td>
-                          <td dir="ltr">{line.productId}</td>
+                          <td>
+                            <strong>
+                              {lineLocationTitles.get(line.lineId)
+                                ?.productTitle ?? "نام کالا در دسترس نیست"}
+                            </strong>
+                            {lineLocationTitles.get(line.lineId)
+                              ?.productCode && (
+                              <small dir="ltr">
+                                {
+                                  lineLocationTitles.get(line.lineId)
+                                    ?.productCode
+                                }
+                              </small>
+                            )}
+                          </td>
                           <td dir="ltr">
                             <strong>
                               {line.operation?.quantity.enteredQuantity ?? "—"}
@@ -791,14 +884,19 @@ export function InventoryDocumentsPage() {
                           <td>
                             {line.operation?.quantity.enteredUnit.title ?? "—"}
                           </td>
-                          <td dir="ltr">
-                            {line.operation
-                              ? `${line.operation.warehouse.warehouseId}${line.operation.warehouse.zoneId ? ` / ${line.operation.warehouse.zoneId}` : ""}${line.operation.warehouse.locationId ? ` / ${line.operation.warehouse.locationId}` : ""}`
-                              : "—"}
+                          <td>
+                            {formatInventoryLineLocation(
+                              line,
+                              lineLocationTitles.get(line.lineId),
+                            )}
                           </td>
                           {selected.documentType === "transfer" && (
-                            <td dir="ltr">
-                              {line.operation?.destination?.warehouseId ?? "—"}
+                            <td>
+                              {formatInventoryLineLocation(
+                                line,
+                                lineLocationTitles.get(line.lineId),
+                                true,
+                              )}
                             </td>
                           )}
                           <td>{line.description ?? "—"}</td>
@@ -908,6 +1006,103 @@ export function InventoryDocumentsPage() {
                 </button>
                 <button className="primary" disabled={saving}>
                   ایجاد پیش‌نویس
+                </button>
+              </footer>
+            </form>
+          </div>
+        )}
+        {adjustmentConfirmOpen && selected?.documentType === "adjustment" && selected.status === "approved" && (
+          <div className="inventory-modal" role="presentation">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (adjustmentReason.trim()) void lifecycle("confirm", adjustmentReason);
+              }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="inventory-adjustment-confirm-title"
+            >
+              <h2 id="inventory-adjustment-confirm-title">قطعی‌کردن اصلاح مقدار</h2>
+              <p>برای اعمال تغییر موجودی، علت اصلاح مقدار را وارد کنید.</p>
+              {error && <p role="alert">{error}</p>}
+              <label>
+                علت اصلاح مقدار
+                <textarea
+                  required
+                  autoFocus
+                  maxLength={500}
+                  disabled={saving}
+                  value={adjustmentReason}
+                  onChange={(event) => setAdjustmentReason(event.target.value)}
+                />
+              </label>
+              <footer>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setAdjustmentConfirmOpen(false)}
+                >
+                  انصراف
+                </button>
+                <button
+                  type="submit"
+                  className="primary"
+                  disabled={saving || !adjustmentReason.trim()}
+                >
+                  {saving ? "در حال انجام…" : "قطعی‌کردن و اثر موجودی"}
+                </button>
+              </footer>
+            </form>
+          </div>
+        )}
+        {reverseOpen && selected?.status === "confirmed" && (
+          <div
+            className="inventory-modal"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.currentTarget === event.target && !saving) {
+                setReverseOpen(false);
+              }
+            }}
+          >
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void lifecycle("reverse", reverseReason);
+              }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="inventory-reverse-title"
+            >
+              <h2 id="inventory-reverse-title">برگشت کامل سند انبار</h2>
+              <p>
+                اثر موجودی این سند با گردش‌های معکوس خنثی می‌شود. علت برگشت را
+                وارد کنید.
+              </p>
+              <label>
+                علت برگشت
+                <textarea
+                  required
+                  autoFocus
+                  maxLength={500}
+                  value={reverseReason}
+                  onChange={(event) => setReverseReason(event.target.value)}
+                />
+              </label>
+              <footer>
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => setReverseOpen(false)}
+                >
+                  انصراف
+                </button>
+                <button
+                  type="submit"
+                  className="danger"
+                  disabled={saving || !reverseReason.trim()}
+                >
+                  {saving ? "در حال انجام…" : "تأیید برگشت کامل"}
                 </button>
               </footer>
             </form>

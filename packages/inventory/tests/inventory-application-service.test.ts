@@ -13,6 +13,7 @@ import {
   createInventoryLineOperation,
   createInventoryStockMovement,
   rebuildInventoryStockLedger,
+  rehydrateInventoryDocument,
   serializeInventoryOpeningBalanceKey,
   serializeInventoryStockKey,
   submitInventoryDocument,
@@ -198,7 +199,7 @@ class SerialMemoryUnitOfWork implements InventoryUnitOfWork {
   }
 }
 
-function serviceFixture() {
+function serviceFixture(numbering?: InventoryApplicationServiceDependencies["numbering"]) {
   const store = new MemoryStore();
   const context = repositories(store);
   const deps: InventoryApplicationServiceDependencies = {
@@ -213,10 +214,35 @@ function serviceFixture() {
       movementId: input => `${input.documentId}:${input.lineId}:${input.role}`,
       transferId: input => `transfer:${input.documentId}`,
     },
-    numbering: { assign: async document => document },
+    numbering: numbering ?? { assign: async document => document },
   };
-  return { store, service: new InventoryApplicationService(deps) };
+  return { store, context, service: new InventoryApplicationService(deps) };
 }
+
+test("submission passes its active transaction to numbering and persists the assigned number", async () => {
+  let numberingContext: InventoryUnitOfWorkContext | undefined;
+  const { store, context, service } = serviceFixture({
+    async assign(document, transaction) {
+      numberingContext = transaction;
+      return rehydrateInventoryDocument({ ...document, documentNumber: "REC-000001" });
+    },
+  });
+  const template = approvedAdjustment("receipt-submit", "2");
+  const draft = createInventoryDocument({
+    documentId: template.documentId,
+    companyId,
+    documentType: "receipt",
+    businessDate: template.businessDate,
+    scope: template.scope,
+    lines: template.lines,
+    createdAt,
+  });
+  store.documents.set(`${companyId}:${draft.documentId}`, draft);
+  const result = await service.submit(command(draft, "submit-1", "submit-payload"));
+  assert.equal(numberingContext, context);
+  assert.equal(result.status, "submitted");
+  assert.equal(store.documents.get(`${companyId}:${draft.documentId}`)?.documentNumber, "REC-000001");
+});
 
 function command(document: InventoryDocumentSnapshot, requestKey: string, fingerprint: string): ConfirmInventoryDocumentCommand {
   return {

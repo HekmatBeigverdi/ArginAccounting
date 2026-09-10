@@ -8,6 +8,8 @@ export {
 
 export { SqliteInventoryOpeningBalanceRepository } from "./sqlite-inventory-opening-repository.ts";
 export { SqliteInventoryUnitOfWork } from "./sqlite-inventory-unit-of-work.ts";
+export { ensureInventoryNumberSeries } from "./ensure-inventory-number-series.ts";
+export type { InventoryLineLocationTitles } from "./sqlite-inventory-workspace-reader.ts";
 export { SharedInventoryApprovalGateway } from "./shared-inventory-approval-gateway.ts";
 export { SharedInventoryAuditSink } from "./shared-inventory-audit-sink.ts";
 export { InventoryWarehouseDependencyGuard } from "./inventory-warehouse-dependency-guard.ts";

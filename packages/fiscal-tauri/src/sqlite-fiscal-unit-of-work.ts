@@ -45,6 +45,13 @@ export class SqliteFiscalUnitOfWork
     private readonly database: DatabaseExecutor
   ) {}
 
+  /** Join an existing transaction; its owner controls commit and rollback. */
+  static fromSession(database: DatabaseSession): FiscalUnitOfWork {
+    return {
+      run: (operation) => operation(createRepositories(database))
+    };
+  }
+
   async run<T>(
     operation: (
       repositories: FiscalUnitOfWorkRepositories

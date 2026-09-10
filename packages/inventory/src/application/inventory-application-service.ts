@@ -73,8 +73,8 @@ export interface InventoryCurrentMasterResolver {
 }
 
 export interface InventoryNumberingGateway {
-  /** Called only when submission requires a display number and the document has none. */
-  assign(document: InventoryDocumentSnapshot): Promise<InventoryDocumentSnapshot>;
+  /** Assign a missing display number within the current inventory transaction. */
+  assign(document: InventoryDocumentSnapshot, context: InventoryUnitOfWorkContext): Promise<InventoryDocumentSnapshot>;
 }
 
 export interface InventoryApplicationServiceDependencies {
@@ -312,7 +312,7 @@ export class InventoryApplicationService {
       assertExpectedVersion(current, command.expectedVersion);
       try {
         if (kind === "submit" && current.documentNumber === null) {
-          current = await this.deps.numbering.assign(current);
+          current = await this.deps.numbering.assign(current, context);
         }
         const next = kind === "submit"
           ? submitInventoryDocument(current, command.action)

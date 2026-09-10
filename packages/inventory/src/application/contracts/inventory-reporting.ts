@@ -1,12 +1,19 @@
 import type { InventoryDocumentType } from "../../domain/inventory-document.ts";
-import type { InventoryStockKey, InventoryStockMovementSnapshot } from "../../domain/inventory-stock.ts";
+import type {
+  InventoryStockKey,
+  InventoryStockMovementSnapshot,
+} from "../../domain/inventory-stock.ts";
 
 export interface InventoryKardexSourceReference {
+  /** User-facing source document; reversal facts resolve to the original document. */
   readonly documentId: string;
   readonly documentNumber: string | null;
   readonly documentType: InventoryDocumentType;
+  readonly documentDescription: string | null;
   readonly lineId: string;
   readonly linePosition: number;
+  readonly lineDescription: string | null;
+  readonly isReversal: boolean;
   readonly sourceSystem: string | null;
   readonly sourceDocumentType: string | null;
   readonly sourceDocumentId: string | null;
@@ -75,7 +82,9 @@ export interface InventoryQuantityBalanceReportQuery {
 
 export interface InventoryQuantityReportReader {
   readKardex(query: InventoryKardexReportQuery): Promise<InventoryKardexReport>;
-  readBalances(query: InventoryQuantityBalanceReportQuery): Promise<InventoryQuantityBalanceReport>;
+  readBalances(
+    query: InventoryQuantityBalanceReportQuery,
+  ): Promise<InventoryQuantityBalanceReport>;
 }
 
 /** Cursor is opaque outside Inventory and encodes the full deterministic movement chronology tuple. */

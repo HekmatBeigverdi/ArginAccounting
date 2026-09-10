@@ -34,7 +34,23 @@ type Tab = "balances" | "kardex";
 
 const todayJalali = (): string =>
   gregorianToJalali(new Date().toISOString().slice(0, 10));
-const ltr = (value: string | null): string => value ?? "—";
+
+const DOCUMENT_TYPE_LABELS = {
+  receipt: "رسید انبار",
+  issue: "حواله انبار",
+  opening: "موجودی اول دوره",
+  transfer: "انتقال بین انبارها",
+  adjustment: "اصلاح موجودی",
+} as const;
+
+const DOCUMENT_STATUS_LABELS = {
+  draft: "پیش‌نویس",
+  submitted: "ارسال‌شده",
+  approved: "تأییدشده",
+  confirmed: "قطعی",
+  cancelled: "لغوشده",
+  reversed: "برگشت‌شده",
+} as const;
 
 export function InventoryQuantityReportsPage() {
   const active = useActiveContext();
@@ -58,6 +74,8 @@ export function InventoryQuantityReportsPage() {
   );
   const [selectedStockKey, setSelectedStockKey] =
     useState<InventoryStockKey | null>(null);
+  const [selectedBalance, setSelectedBalance] =
+    useState<InventoryQuantityBalanceReportRow | null>(null);
   const [sourceDetail, setSourceDetail] =
     useState<InventoryDocumentDetail | null>(null);
   const [sourceLineId, setSourceLineId] = useState<string | null>(null);
@@ -240,6 +258,7 @@ export function InventoryQuantityReportsPage() {
 
   function openBalanceKardex(row: InventoryQuantityBalanceReportRow): void {
     setKardexCursorStack([]);
+    setSelectedBalance(row);
     void loadKardex(row.stockKey, null);
   }
 
@@ -470,6 +489,27 @@ export function InventoryQuantityReportsPage() {
 
       {tab === "kardex" && selectedStockKey && (
         <>
+          {selectedBalance && (
+            <section
+              className="inventory-kardex-heading"
+              aria-label="مشخصات کاردکس کالا"
+            >
+              <div>
+                <span>کالا</span>
+                <strong>{selectedBalance.productTitle}</strong>
+                <bdi dir="ltr">کد: {selectedBalance.productCode}</bdi>
+              </div>
+              <div>
+                <span>انبار و محل نگهداری</span>
+                <strong>{selectedBalance.warehouseTitle}</strong>
+                <small>
+                  {[selectedBalance.zoneTitle, selectedBalance.locationTitle]
+                    .filter(Boolean)
+                    .join(" / ") || "بدون ناحیه و موقعیت"}
+                </small>
+              </div>
+            </section>
+          )}
           <form
             className="inventory-report-filters inventory-report-filters--kardex"
             onSubmit={(event) => {
@@ -524,41 +564,63 @@ export function InventoryQuantityReportsPage() {
           )}
           <div className="inventory-report-table-wrap">
             <table className="inventory-report-table inventory-report-table--kardex">
+              <colgroup>
+                <col className="kardex-col-row" />
+                <col className="kardex-col-date" />
+                <col className="kardex-col-type" />
+                <col className="kardex-col-number" />
+                <col className="kardex-col-description" />
+                <col className="kardex-col-quantity" />
+                <col className="kardex-col-quantity" />
+                <col className="kardex-col-balance" />
+                <col className="kardex-col-action" />
+              </colgroup>
               <thead>
                 <tr>
+                  <th>ردیف</th>
                   <th>تاریخ</th>
-                  <th>ترتیب</th>
-                  <th>سند / ردیف</th>
-                  <th>ورودی</th>
-                  <th>خروجی</th>
+                  <th>نوع سند</th>
+                  <th>شماره سند</th>
+                  <th>شرح</th>
+                  <th>وارده</th>
+                  <th>صادره</th>
                   <th>مانده</th>
-                  <th>مبدأ</th>
+                  <th>عملیات</th>
                 </tr>
               </thead>
               <tbody>
-                {kardex?.entries.map((entry) => (
+                {kardex?.entries.map((entry, index) => (
                   <tr key={entry.movement.movementId}>
+                    <td className="inventory-kardex-number">{index + 1}</td>
                     <td>{gregorianToJalali(entry.movement.businessDate)}</td>
-                    <td dir="ltr">{entry.movement.businessOrder}</td>
                     <td>
-                      <bdi dir="ltr">
-                        {entry.source.documentNumber ?? entry.source.documentId}
-                      </bdi>
-                      <small>ردیف {entry.source.linePosition}</small>
+                      {entry.source.isReversal ? "برگشت " : ""}
+                      {DOCUMENT_TYPE_LABELS[entry.source.documentType]}
                     </td>
                     <td dir="ltr">
+                      {entry.source.documentNumber ?? "بدون شماره"}
+                    </td>
+                    <td className="inventory-kardex-description">
+                      {entry.source.lineDescription ??
+                        entry.source.documentDescription ??
+                        "—"}
+                    </td>
+                    <td dir="ltr" className="inventory-kardex-quantity">
                       {entry.incomingQuantity === "0"
                         ? "—"
                         : entry.incomingQuantity}
                     </td>
-                    <td dir="ltr">
+                    <td dir="ltr" className="inventory-kardex-quantity">
                       {entry.outgoingQuantity === "0"
                         ? "—"
                         : entry.outgoingQuantity}
                     </td>
-                    <td dir="ltr">{entry.runningQuantity}</td>
+                    <td dir="ltr" className="inventory-kardex-balance">
+                      {entry.runningQuantity}
+                    </td>
                     <td>
                       <button
+                        className="inventory-kardex-detail-button"
                         type="button"
                         onClick={() =>
                           void openSource(
@@ -567,22 +629,14 @@ export function InventoryQuantityReportsPage() {
                           )
                         }
                       >
-                        جزئیات
+                        مشاهده سند
                       </button>
-                      {entry.source.sourceSystem && (
-                        <small>
-                          <bdi dir="ltr">{entry.source.sourceSystem}</bdi> /{" "}
-                          <bdi dir="ltr">
-                            {ltr(entry.source.sourceDocumentId)}
-                          </bdi>
-                        </small>
-                      )}
                     </td>
                   </tr>
                 ))}
                 {!loading && kardex?.entries.length === 0 && (
                   <tr>
-                    <td colSpan={7}>در این بازه movementی وجود ندارد.</td>
+                    <td colSpan={9}>در این بازه گردش انباری وجود ندارد.</td>
                   </tr>
                 )}
               </tbody>
@@ -625,8 +679,7 @@ export function InventoryQuantityReportsPage() {
             <div>
               <h3>سند مبدأ</h3>
               <bdi dir="ltr">
-                {sourceDetail.document.documentNumber ??
-                  sourceDetail.document.documentId}
+                {sourceDetail.document.documentNumber ?? "بدون شماره"}
               </bdi>
             </div>
             <button type="button" onClick={() => setSourceDetail(null)}>
@@ -636,7 +689,9 @@ export function InventoryQuantityReportsPage() {
           <dl>
             <div>
               <dt>نوع</dt>
-              <dd>{sourceDetail.document.documentType}</dd>
+              <dd>
+                {DOCUMENT_TYPE_LABELS[sourceDetail.document.documentType]}
+              </dd>
             </div>
             <div>
               <dt>تاریخ</dt>
@@ -644,7 +699,7 @@ export function InventoryQuantityReportsPage() {
             </div>
             <div>
               <dt>وضعیت</dt>
-              <dd>{sourceDetail.document.status}</dd>
+              <dd>{DOCUMENT_STATUS_LABELS[sourceDetail.document.status]}</dd>
             </div>
           </dl>
           <h4>ردیف اثرگذار</h4>
@@ -653,14 +708,42 @@ export function InventoryQuantityReportsPage() {
             .map((line) => (
               <div className="inventory-source-line" key={line.lineId}>
                 <span>ردیف {line.position}</span>
-                <bdi dir="ltr">Product: {line.productId}</bdi>
-                <bdi dir="ltr">
-                  Quantity: {line.operation?.quantity.enteredQuantity ?? "—"}
-                </bdi>
-                <bdi dir="ltr">Line ID: {line.lineId}</bdi>
+                <strong>
+                  {selectedBalance?.productTitle ?? "کالای انتخاب‌شده"}
+                  {selectedBalance?.productCode && (
+                    <>
+                      {" "}
+                      — <bdi dir="ltr">{selectedBalance.productCode}</bdi>
+                    </>
+                  )}
+                </strong>
+                <span>
+                  مقدار:{" "}
+                  <bdi dir="ltr">
+                    {line.operation?.quantity.enteredQuantity ?? "—"}
+                  </bdi>
+                  {line.operation?.quantity.enteredUnit.title
+                    ? ` ${line.operation.quantity.enteredUnit.title}`
+                    : ""}
+                </span>
+                <span>
+                  محل:{" "}
+                  {selectedBalance
+                    ? [
+                        selectedBalance.warehouseTitle,
+                        selectedBalance.zoneTitle,
+                        selectedBalance.locationTitle,
+                      ]
+                        .filter(Boolean)
+                        .join(" / ")
+                    : "—"}
+                </span>
+                <span>
+                  شرح:{" "}
+                  {line.description ?? sourceDetail.document.description ?? "—"}
+                </span>
               </div>
             ))}
-          <p>شناسه‌های بالا durable هستند؛ شماره سند فقط برای نمایش است.</p>
         </aside>
       )}
     </Page>

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { DatabaseExecuteResult, DatabaseExecutor, DatabaseSession, DatabaseValue } from "@argin/database";
-import { InventoryApplicationError } from "@argin/inventory";
+import { InventoryApplicationError, type InventoryUnitOfWorkContext } from "@argin/inventory";
 import {
   SqliteInventoryBusinessOrderRepository,
   SqliteInventoryDocumentRepository,
@@ -43,6 +43,24 @@ test("Inventory UoW exposes all repositories through one database transaction", 
   });
   assert.equal(result, "ok");
   assert.equal(db.transactionCount, 1);
+});
+
+test("Inventory exposes only active sessions and releases them after success or failure", async () => {
+  const db = new RecordingDatabase();
+  const uow = new SqliteInventoryUnitOfWork(db);
+  let captured!: InventoryUnitOfWorkContext;
+  await uow.execute(async (context) => {
+    captured = context;
+    assert.equal(uow.sessionFor(context), db);
+  });
+  assert.throws(() => uow.sessionFor(captured), /not active/);
+  await assert.rejects(() => uow.execute(async (context) => {
+    captured = context;
+    assert.equal(uow.sessionFor(context), db);
+    throw new Error("forced rollback");
+  }), /forced rollback/);
+  assert.throws(() => uow.sessionFor(captured), /not active/);
+  assert.equal(db.transactionCount, 2);
 });
 
 test("business order uses one atomic UPSERT RETURNING statement", async () => {

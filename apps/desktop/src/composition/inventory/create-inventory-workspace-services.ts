@@ -22,6 +22,8 @@ import {
 import {
   SqliteInventoryUnitOfWork,
   SqliteInventoryWorkspaceReader,
+  ensureInventoryNumberSeries,
+  type InventoryLineLocationTitles,
 } from "@argin/inventory-tauri";
 import type { DatabaseExecutor } from "@argin/database";
 import { SqliteCompanyRepository, SqliteBranchRepository } from "@argin/company-tauri";
@@ -49,6 +51,7 @@ export interface InventoryWorkspaceServices {
   readonly can: (permission: string) => boolean;
   list(companyId: string, page: number, search: string): Promise<InventoryPage<InventoryDocumentListItem>>;
   get(companyId: string, documentId: string): Promise<InventoryDocumentDetail | null>;
+  getLineLocationTitles(companyId: string, documentId: string): Promise<readonly InventoryLineLocationTitles[]>;
   createDraft(input: {
     companyId: string;
     branchId: string | null;
@@ -106,7 +109,6 @@ export function createInventoryWorkspaceServices(input: {
   const warehouseReader = new SqliteWarehouseReader(database);
   const productReader = new SqliteProductReader(database);
   const productSelector = new SqliteProductSelectorReader(database);
-  const fiscalUow = new SqliteFiscalUnitOfWork(database);
 
   const can = (permission: string): boolean => actor.permissions.includes("system.full-access") || actor.permissions.includes(permission);
   const authorization: InventoryAuthorizationPolicy = {
@@ -218,8 +220,10 @@ export function createInventoryWorkspaceServices(input: {
       transferId: () => crypto.randomUUID(),
     },
     numbering: {
-      async assign(document) {
+      async assign(document, context) {
         if (!document.scope) throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.invalidRequest, "scope");
+        const fiscalUow = SqliteFiscalUnitOfWork.fromSession(uow.sessionFor(context));
+        await ensureInventoryNumberSeries(uow.sessionFor(context), document.companyId, document.documentType);
         const number = await generateDocumentNumber(fiscalUow, {
           companyId: document.companyId,
           branchId: document.scope.branchId,
@@ -259,6 +263,7 @@ export function createInventoryWorkspaceServices(input: {
     can,
     list: (companyId, page, search) => reader.listDocuments({ filter: { companyId, search: search || null }, page: { page, pageSize: 50 }, sort: { field: "businessDate", direction: "desc" } }),
     get: (companyId, documentId) => reader.getDocument(companyId, documentId),
+    getLineLocationTitles: (companyId, documentId) => reader.getLineLocationTitles(companyId, documentId),
     async createDraft(args) {
       if (!can(inventoryPermissions.create)) throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.unauthorized);
       if (args.branchId !== null && !actor.permissions.includes("system.full-access") && !actor.branchIds.includes(args.branchId)) throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.unauthorized);
@@ -293,7 +298,35 @@ export function createInventoryWorkspaceServices(input: {
       if (!can(inventoryPermissions.edit)) throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.unauthorized);
       await drafts.delete({ companyId: document.companyId, documentId: document.documentId, requestKey: requestKey(), payloadFingerprint: fingerprint([document.documentId, document.version]), expectedVersion: document.version, deletedAt: now() });
     },
-    async submit(document, reason) { await secured.submit(security, life(document, reason)); },
+    async submit(document, reason) {
+      if (document.status !== "submitted") {
+        await secured.submit(security, life(document, reason));
+        return;
+      }
+      // Inventory may have committed before the shared Approval service failed.
+      const current = (await reader.getDocument(document.companyId, document.documentId))?.document;
+      if (!current) throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.notFound);
+      const requestId = requestKey();
+      await authorization.require({
+        actorId: actor.id,
+        companyId: current.companyId,
+        branchId: current.scope?.branchId ?? null,
+        requestId,
+        correlationId: requestId,
+      }, inventoryPermissions.submit);
+      if (current.status !== "submitted" || current.version !== document.version) {
+        throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.concurrencyConflict);
+      }
+      await approval.submit({
+        companyId: current.companyId,
+        branchId: current.scope?.branchId ?? null,
+        documentId: current.documentId,
+        documentNumber: current.documentNumber,
+        actorId: actor.id,
+        actorDisplayName: actor.displayName,
+        correlationId: requestId,
+      });
+    },
     async approve(document, reason) { await secured.approve(security, life(document, reason)); },
     async confirm(document, reason) { await secured.confirm(security, { ...life(document, reason), allowNegativeStock: false }); },
     async cancel(document, reason) { await secured.cancel(security, life(document, reason)); },

@@ -19,24 +19,56 @@ test("inventory quantity reports are routed and permission gated", async () => {
 });
 
 test("quantity reports explain chronology, on-hand semantics and exact LTR display", async () => {
-  const page = await read("src/pages/inventory/inventory-quantity-reports-page.tsx");
-  assert.match(page.replace(/\s+/g, " "), /تاریخ عملیات ← ترتیب روز ← شناسه سند ← شناسه ردیف ← شناسه movement/);
+  const page = await read(
+    "src/pages/inventory/inventory-quantity-reports-page.tsx",
+  );
+  assert.match(
+    page.replace(/\s+/g, " "),
+    /تاریخ عملیات ← ترتیب روز ← شناسه سند ← شناسه ردیف ← شناسه movement/,
+  );
   assert.match(page, /On-hand/);
   assert.match(page, /Available-to-Promise/);
   assert.match(page, /dir="ltr"/);
   assert.doesNotMatch(page, /Number\(row\.quantity\)/);
 });
 
-test("source drill-down resolves durable document and line identities", async () => {
-  const page = await read("src/pages/inventory/inventory-quantity-reports-page.tsx");
+test("source drill-down resolves the document and line without exposing technical identities", async () => {
+  const page = await read(
+    "src/pages/inventory/inventory-quantity-reports-page.tsx",
+  );
   assert.match(page, /entry\.source\.documentId/);
   assert.match(page, /entry\.source\.lineId/);
   assert.match(page, /sourceLineId/);
-  assert.match(page, /durable/);
+  assert.match(page, /DOCUMENT_STATUS_LABELS/u);
+  assert.doesNotMatch(page, /Product:|Line ID:|durable/u);
+});
+
+test("kardex presents balanced business columns without technical hashes", async () => {
+  const [page, css] = await Promise.all([
+    read("src/pages/inventory/inventory-quantity-reports-page.tsx"),
+    read("src/pages/inventory/inventory-quantity-reports-page.css"),
+  ]);
+  for (const heading of [
+    "نوع سند",
+    "شماره سند",
+    "شرح",
+    "وارده",
+    "صادره",
+    "مانده",
+  ]) {
+    assert.match(page, new RegExp(`<th>${heading}</th>`));
+  }
+  assert.doesNotMatch(page, /<th>ترتیب<\/th>|Product:|Line ID:|durable/u);
+  assert.match(page, /DOCUMENT_TYPE_LABELS\[entry\.source\.documentType\]/u);
+  assert.match(page, /entry\.source\.isReversal/u);
+  assert.match(css, /table-layout: fixed/u);
+  assert.match(css, /font-variant-numeric: tabular-nums/u);
 });
 
 test("Step 17 does not add valuation or print export actions", async () => {
-  const page = await read("src/pages/inventory/inventory-quantity-reports-page.tsx");
+  const page = await read(
+    "src/pages/inventory/inventory-quantity-reports-page.tsx",
+  );
   assert.match(page, /بدون ارزش‌گذاری ریالی/);
   assert.doesNotMatch(page, /چاپ|PDF|Excel|XLSX|CSV/);
 });

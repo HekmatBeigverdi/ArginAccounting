@@ -26,7 +26,8 @@ interface MovementRow {
   product_id: string; warehouse_id: string; zone_id: string | null; location_id: string | null;
   business_date: string; business_order: number; recorded_at: string; quantity_delta: string;
   document_number: string | null; document_type: "receipt" | "issue" | "opening" | "transfer" | "adjustment";
-  line_position: number; source_system: string | null; source_document_type: string | null;
+  display_document_id: string; document_description: string | null; line_description: string | null;
+  line_position: number; is_reversal: number; source_system: string | null; source_document_type: string | null;
   source_document_id: string | null; source_line_id: string | null;
 }
 interface BalanceRow {
@@ -131,17 +132,24 @@ export class SqliteInventoryQuantityReportReader implements InventoryQuantityRep
     const cursor=decodeCursor(query.cursor),base=stockKeyClauses(key),clauses=[base.sql],params:DatabaseValue[]=[...base.params];
     if(query.businessDateFrom){clauses.push("m.business_date>=?");params.push(query.businessDateFrom);} if(query.businessDateTo){clauses.push("m.business_date<=?");params.push(query.businessDateTo);}
     if(cursor){const after=chronologyAfter(cursor);clauses.push(after.sql);params.push(...after.params);}
-    const rows=await this.database.query<MovementRow>(`SELECT m.*,d.document_number,d.document_type,l.position AS line_position,
+    const rows=await this.database.query<MovementRow>(`SELECT m.*,
+      COALESCE(original.document_id,m.document_id) AS display_document_id,
+      d.document_number,d.document_type,d.description AS document_description,
+      l.position AS line_position,l.description AS line_description,
+      CASE WHEN m.reversal_of_movement_id IS NULL THEN 0 ELSE 1 END AS is_reversal,
       COALESCE(l.source_system,d.source_system) AS source_system,COALESCE(l.source_document_type,d.source_document_type) AS source_document_type,
       COALESCE(l.source_document_id,d.source_document_id) AS source_document_id,COALESCE(l.source_line_id,d.source_line_id) AS source_line_id
-      FROM inventory_all_stock_movements m JOIN inventory_documents d ON d.company_id=m.company_id AND d.id=m.document_id
-      JOIN inventory_document_lines l ON l.company_id=m.company_id AND l.document_id=m.document_id AND l.id=m.line_id
+      FROM inventory_all_stock_movements m
+      LEFT JOIN inventory_stock_movements original ON original.company_id=m.company_id AND original.movement_id=m.reversal_of_movement_id
+      JOIN inventory_documents d ON d.company_id=m.company_id AND d.id=COALESCE(original.document_id,m.document_id)
+      JOIN inventory_document_lines l ON l.company_id=m.company_id AND l.document_id=d.id AND l.id=m.line_id
       WHERE ${clauses.join(" AND ")} ORDER BY m.business_date,m.business_order,m.document_id,m.line_id,m.movement_id LIMIT ?`,[...params,query.limit+1]);
     const hasMore=rows.length>query.limit,pageRows=rows.slice(0,query.limit),openingQuantity=await this.openingQuantity(query,cursor);let running=openingQuantity,incoming="0",outgoing="0";
     const entries:InventoryKardexReportEntry[]=pageRows.map((row)=>{const fact=movement(row);running=addInventoryStockQuantities(running,fact.quantityDelta);
       if(fact.quantityDelta.startsWith("-"))outgoing=addInventoryStockQuantities(outgoing,positiveMagnitude(fact.quantityDelta));else incoming=addInventoryStockQuantities(incoming,fact.quantityDelta);
       return Object.freeze({movement:fact,incomingQuantity:fact.quantityDelta.startsWith("-")?"0":fact.quantityDelta,outgoingQuantity:fact.quantityDelta.startsWith("-")?positiveMagnitude(fact.quantityDelta):"0",runningQuantity:running,
-        source:Object.freeze({documentId:row.document_id,documentNumber:row.document_number,documentType:row.document_type,lineId:row.line_id,linePosition:row.line_position,
+        source:Object.freeze({documentId:row.display_document_id,documentNumber:row.document_number,documentType:row.document_type,
+          documentDescription:row.document_description,lineId:row.line_id,linePosition:row.line_position,lineDescription:row.line_description,isReversal:row.is_reversal===1,
           sourceSystem:row.source_system,sourceDocumentType:row.source_document_type,sourceDocumentId:row.source_document_id,sourceLineId:row.source_line_id})});});
     const last=pageRows.at(-1);return Object.freeze({stockKey:key,openingQuantity,incomingQuantity:incoming,outgoingQuantity:outgoing,closingQuantity:running,entries:Object.freeze(entries),
       nextCursor:hasMore&&last?encodeCursor(cursorFromRow(last)):null});

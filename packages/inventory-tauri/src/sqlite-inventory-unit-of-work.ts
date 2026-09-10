@@ -24,9 +24,26 @@ const contextFor = (database: DatabaseSession): InventoryUnitOfWorkContext => Ob
  * that guarantee for desktop connections as of Phase 20 Step 13.
  */
 export class SqliteInventoryUnitOfWork implements InventoryUnitOfWork {
+  private readonly sessions = new WeakMap<InventoryUnitOfWorkContext, DatabaseSession>();
+
   constructor(private readonly database: DatabaseExecutor) {}
 
+  /** Share the active transaction with other SQLite repositories without nesting transactions. */
+  sessionFor(context: InventoryUnitOfWorkContext): DatabaseSession {
+    const session = this.sessions.get(context);
+    if (!session) throw new Error("Inventory transaction context is not active.");
+    return session;
+  }
+
   execute<T>(work: (context: InventoryUnitOfWorkContext) => Promise<T>): Promise<T> {
-    return this.database.transaction(async (transaction) => work(contextFor(transaction)));
+    return this.database.transaction(async (transaction) => {
+      const context = contextFor(transaction);
+      this.sessions.set(context, transaction);
+      try {
+        return await work(context);
+      } finally {
+        this.sessions.delete(context);
+      }
+    });
   }
 }
