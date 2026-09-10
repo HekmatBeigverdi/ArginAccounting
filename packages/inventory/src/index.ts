@@ -105,6 +105,13 @@ export type {
 
 export { InventoryDraftService } from "./application/inventory-draft-service.ts";
 export type { InventoryDraftMutationResult } from "./application/inventory-draft-service.ts";
+export { InventoryDraftImportService } from "./application/inventory-draft-import-service.ts";
+export type {
+  InventoryDraftImportFailure,
+  InventoryDraftImportIdentityFactory,
+  InventoryDraftImportResult,
+  PreparedInventoryImportDocument,
+} from "./application/inventory-draft-import-service.ts";
 
 export { SecuredInventoryService } from "./application/secured-inventory-service.ts";
 export type { SecuredInventoryServiceDependencies } from "./application/secured-inventory-service.ts";
