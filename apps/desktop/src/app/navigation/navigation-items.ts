@@ -36,6 +36,12 @@ export const navigationItems: NavigationItem[] = [
     requiredPermission: "inventory.documents.view",
   },
   {
+    label: "ورود، خروجی و چاپ",
+    path: "/inventory/transfer-center",
+    group: "انبار و موجودی",
+    requiredAnyPermissions: ["inventory.documents.import", "inventory.documents.export"],
+  },
+  {
     label: "انبارها",
     path: "/inventory/warehouses",
     group: "انبار و موجودی",
