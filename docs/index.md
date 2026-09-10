@@ -37,7 +37,10 @@
 - [Inventory Application, Query and Repository Contracts](architecture/inventory-application-contracts.md)
 - [Inventory Application Services, Idempotency, and Concurrency](architecture/inventory-application-services.md)
 - [Inventory Argin Bridge and Future Synchronization Contract](architecture/inventory-argin-bridge-contract.md)
+- [Inventory Desktop Workspace](architecture/inventory-desktop-workspace.md)
 - [Inventory Document Domain Foundation](architecture/inventory-documents.md)
+- [Inventory Master Data Dependency Guards and ERP Integration](architecture/inventory-master-data-erp-integration.md)
+- [Inventory Quantity Kardex, Balances and Source Drill-down](architecture/inventory-quantity-reports.md)
 - [Inventory SQLite Persistence and Atomic Unit of Work](architecture/inventory-sqlite-persistence.md)
 - [Inventory Transfer, Adjustment, and Reversal Workflows](architecture/inventory-transfer-adjustment-workflows.md)
 - [Architecture Overview](architecture/overview.md)
@@ -84,6 +87,7 @@
 
 - [Domain Dictionary](glossary/domain-dictionary.md)
 - [Domain Glossary](glossary/domain-glossary.md)
+- [Inventory Glossary](glossary/inventory-glossary.md)
 
 ## localization
 
@@ -92,6 +96,7 @@
 ## modules
 
 - [Future Modules](modules/future-modules.md)
+- [Inventory Documents Module](modules/inventory-documents.md)
 - [Module Map](modules/module-map.md)
 
 ## phases
@@ -160,6 +165,7 @@
 
 ## security
 
+- [Inventory Security, Approval, and Audit](security/inventory-security-approval-audit.md)
 - [Party Security and Audit](security/party-security.md)
 - [Product and Service Security, Audit, and Approval Boundary](security/product-security-and-approval.md)
 - [Security Model](security/security-model.md)
@@ -175,6 +181,12 @@
 - [Phase Checklist](templates/phase-checklist.md)
 - [Phase NN — Title](templates/phase-template.md)
 - [Release vX.Y.Z](templates/release-template.md)
+
+## testing
+
+- [Phase 20 Domain/Application Test Matrix](testing/phase-20-domain-application-tests.md)
+- [Phase 20 Performance, Accessibility, Quality, and Documentation Evidence](testing/phase-20-performance-accessibility-quality.md)
+- [Phase 20 SQLite and Desktop Integration Tests](testing/phase-20-sqlite-desktop-integration-tests.md)
 
 ## ui
 
