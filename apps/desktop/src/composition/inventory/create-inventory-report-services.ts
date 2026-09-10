@@ -1,4 +1,4 @@
-import { inventoryPermissions, type InventoryDocumentDetail, type InventoryKardexReport, type InventoryQuantityBalanceReport, type InventoryStockKey } from "@argin/inventory";
+import { inventoryPermissions, type InventoryDocumentDetail, type InventoryKardexReport, type InventoryProductBalanceSummaryReport, type InventoryQuantityBalanceReport, type InventoryStockKey } from "@argin/inventory";
 import { SqliteInventoryQuantityReportReader, SqliteInventoryWorkspaceReader } from "@argin/inventory-tauri";
 import type { DatabaseExecutor } from "@argin/database";
 import { SqliteProductSelectorReader } from "@argin/product-tauri";
@@ -13,6 +13,15 @@ export interface InventoryReportActor {
 
 export interface InventoryReportServices {
   readonly canView: boolean;
+  readonly canViewCompanyWide: boolean;
+  readProductSummaries(input: {
+    companyId: string;
+    branchId: string | null;
+    productId?: string | null;
+    includeZero?: boolean;
+    cursor?: string | null;
+    limit?: number;
+  }): Promise<InventoryProductBalanceSummaryReport>;
   readBalances(input: {
     companyId: string;
     branchId: string | null;
@@ -55,12 +64,25 @@ export function createInventoryReportServices(input: {
     if (!canView) throw new Error("برای مشاهده گزارش‌های موجودی مجوز کافی ندارید.");
   };
   const requireBranch = (branchId: string | null): void => {
-    if (fullAccess || branchId === null) return;
+    if (fullAccess) return;
+    if (branchId === null) throw new Error("نمای کل شرکت فقط برای کاربر دارای دسترسی کامل مجاز است.");
     if (!input.actor.branchIds.includes(branchId)) throw new Error("شعبه انتخاب‌شده در محدوده دسترسی کاربر نیست.");
   };
 
   return Object.freeze<InventoryReportServices>({
     canView,
+    canViewCompanyWide: fullAccess,
+    async readProductSummaries(args) {
+      requireView(); requireBranch(args.branchId);
+      return reports.readProductSummaries({
+        companyId: args.companyId,
+        branchId: args.branchId,
+        productId: args.productId ?? null,
+        includeZero: args.includeZero ?? false,
+        cursor: args.cursor ?? null,
+        limit: args.limit ?? 50,
+      });
+    },
     async readBalances(args) {
       requireView(); requireBranch(args.branchId);
       return reports.readBalances({
