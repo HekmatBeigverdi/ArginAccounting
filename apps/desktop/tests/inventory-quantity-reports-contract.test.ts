@@ -15,27 +15,33 @@ test("inventory quantity reports are routed and permission gated", async () => {
   assert.match(navigation, /گزارش‌های موجودی/);
   assert.match(navigation, /inventory\.documents\.view/);
   assert.match(composition, /requireBranch/);
-  assert.match(composition, /branchId/);
+  assert.match(composition, /canViewCompanyWide/);
+  assert.match(composition, /readProductSummaries/);
+});
+
+test("inventory balance UI offers both product summary and warehouse-location views", async () => {
+  const page = await read("src/pages/inventory/inventory-quantity-reports-page.tsx");
+  assert.match(page, /تجمیعی کالا/);
+  assert.match(page, /تفکیک انبار و موقعیت/);
+  assert.match(page, /تفکیک انبارها/);
+  assert.match(page, /نمایش ریز انبار/);
+  assert.match(page, /موجودی کل/);
+  assert.match(page, /واحد پایه کالا/);
+  assert.match(page, /کل شرکت/);
+  assert.match(page, /محدوده شعبه فعال/);
 });
 
 test("quantity reports explain chronology, on-hand semantics and exact LTR display", async () => {
-  const page = await read(
-    "src/pages/inventory/inventory-quantity-reports-page.tsx",
-  );
-  assert.match(
-    page.replace(/\s+/g, " "),
-    /تاریخ عملیات ← ترتیب روز ← شناسه سند ← شناسه ردیف ← شناسه movement/,
-  );
+  const page = await read("src/pages/inventory/inventory-quantity-reports-page.tsx");
+  assert.match(page.replace(/\s+/g, " "), /تاریخ عملیات ← ترتیب روز ← سند ← ردیف ← movement/);
   assert.match(page, /On-hand/);
   assert.match(page, /Available-to-Promise/);
   assert.match(page, /dir="ltr"/);
-  assert.doesNotMatch(page, /Number\(row\.quantity\)/);
+  assert.doesNotMatch(page, /Number\(row\.quantity\)|Number\(.*totalQuantity/);
 });
 
 test("source drill-down resolves the document and line without exposing technical identities", async () => {
-  const page = await read(
-    "src/pages/inventory/inventory-quantity-reports-page.tsx",
-  );
+  const page = await read("src/pages/inventory/inventory-quantity-reports-page.tsx");
   assert.match(page, /entry\.source\.documentId/);
   assert.match(page, /entry\.source\.lineId/);
   assert.match(page, /sourceLineId/);
@@ -48,14 +54,7 @@ test("kardex presents balanced business columns without technical hashes", async
     read("src/pages/inventory/inventory-quantity-reports-page.tsx"),
     read("src/pages/inventory/inventory-quantity-reports-page.css"),
   ]);
-  for (const heading of [
-    "نوع سند",
-    "شماره سند",
-    "شرح",
-    "وارده",
-    "صادره",
-    "مانده",
-  ]) {
+  for (const heading of ["نوع سند", "شماره سند", "شرح", "وارده", "صادره", "مانده"]) {
     assert.match(page, new RegExp(`<th>${heading}</th>`));
   }
   assert.doesNotMatch(page, /<th>ترتیب<\/th>|Product:|Line ID:|durable/u);
@@ -63,12 +62,11 @@ test("kardex presents balanced business columns without technical hashes", async
   assert.match(page, /entry\.source\.isReversal/u);
   assert.match(css, /table-layout: fixed/u);
   assert.match(css, /font-variant-numeric: tabular-nums/u);
+  assert.match(css, /inventory-product-breakdown/u);
 });
 
 test("Step 17 does not add valuation or print export actions", async () => {
-  const page = await read(
-    "src/pages/inventory/inventory-quantity-reports-page.tsx",
-  );
+  const page = await read("src/pages/inventory/inventory-quantity-reports-page.tsx");
   assert.match(page, /بدون ارزش‌گذاری ریالی/);
   assert.doesNotMatch(page, /چاپ|PDF|Excel|XLSX|CSV/);
 });
