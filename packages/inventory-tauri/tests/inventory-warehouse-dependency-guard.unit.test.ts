@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DatabaseExecutor, DatabaseValue } from "@argin/database";
+import type { DatabaseExecutor, DatabaseSession, DatabaseValue } from "@argin/database";
 import { InventoryWarehouseDependencyGuard } from "../src/index.ts";
 
 interface FakeState {
@@ -27,7 +27,7 @@ function fakeDatabase(state: FakeState): DatabaseExecutor {
       if (!sql.includes("inventory_documents")) throw new Error(`Unexpected queryOne: ${sql}`);
       return { count: state.openDocumentCount } as unknown as T;
     },
-    async transaction<T>(operation: Parameters<DatabaseExecutor["transaction"]>[0]): Promise<T> {
+    async transaction<T>(operation: (transaction: DatabaseSession) => Promise<T>): Promise<T> {
       return operation(this);
     },
     async close() {},
