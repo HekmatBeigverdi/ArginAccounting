@@ -306,6 +306,6 @@ Reports must not sum economically incompatible currencies into one numeric total
 - [ADR-0015 — Journal Lifecycle Architecture](ADR-0015-journal-lifecycle.md)
 - [ADR-0013 — Journal Voucher Engine Architecture](ADR-0013-journal-voucher-engine.md)
 - [ADR-0014 — UI Foundation and Global Display Density](ADR-0014-ui-foundation-and-global-density.md)
-- [ADR-0011 — Accounting Dimensions](ADR-0011-accounting-dimensions.md)
+- [ADR-0011 — Accounting Dimensions](ADR-0011-independent-accounting-dimensions.md)
 - [Accounting Engine](../accounting/accounting-engine.md)
 - [Roadmap](../../ROADMAP.md)
