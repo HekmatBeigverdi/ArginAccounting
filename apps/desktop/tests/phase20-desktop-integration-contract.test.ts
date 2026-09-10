@@ -30,8 +30,16 @@ test("transfer center composes import export print through authenticated company
 
 test("Inventory workspace uses secured lifecycle composition rather than direct stock SQL", () => {
   assert.match(workspaceComposition, /SecuredInventoryService/u);
-  assert.match(workspaceComposition, /SharedInventoryApprovalGateway/u);
-  assert.match(workspaceComposition, /SharedInventoryAuditSink/u);
+  assert.match(workspaceComposition, /const approval:\s*InventoryApprovalGateway\s*=/u);
+  assert.match(workspaceComposition, /audit\.createApprovalRequest\(/u);
+  assert.match(workspaceComposition, /audit\.submitApprovalRequest\(/u);
+  assert.match(workspaceComposition, /audit\.approveApprovalRequest\(/u);
+  assert.match(workspaceComposition, /const auditSink:\s*InventoryAuditSink\s*=/u);
+  assert.match(workspaceComposition, /audit\.recordAuditEntry\(/u);
+  assert.match(
+    workspaceComposition,
+    /new SecuredInventoryService\(\{[\s\S]*?authorization,\s*approval,\s*audit:\s*auditSink,\s*\}\)/u,
+  );
   assert.doesNotMatch(workspaceComposition, /INSERT INTO inventory_stock_movements/u);
 });
 

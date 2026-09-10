@@ -1,6 +1,6 @@
 use std::{path::PathBuf, time::{SystemTime, UNIX_EPOCH}};
 
-use sqlx::{Connection, Executor, Row, SqliteConnection};
+use sqlx::{Connection, Row, SqliteConnection};
 
 const MIGRATIONS: [&str; 27] = [
     include_str!("../migrations/0001_initialize_database.sql"),
