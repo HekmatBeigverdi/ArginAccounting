@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–16 are complete; Steps 5–16 have been explicitly owner-accepted. Step 17 quantity Kardex, on-hand balance reporting, Branch-aware source drill-down, exact opening/in/out/closing reconciliation and focused adapter/Desktop tests are implemented; executable workspace/Desktop validation remains pending. Steps 18–22 are Not started.
+In Progress. Steps 1–18 are complete and owner-accepted. Step 19 Domain/Application test coverage is implemented; executable focused validation is pending. Steps 20–22 are Not started.
 
 ## Governance
 
@@ -71,6 +71,7 @@ References:
 - [Inventory Master Data Dependency Guards and ERP Integration](../architecture/inventory-master-data-erp-integration.md)
 - [Inventory Desktop Workspace](../architecture/inventory-desktop-workspace.md)
 - [Inventory Quantity Kardex, Balances and Source Drill-down](../architecture/inventory-quantity-reports.md)
+- [Phase 20 Domain/Application Test Matrix](../testing/phase-20-domain-application-tests.md)
 - [Database Design](../database/database-design.md)
 - [Database Dictionary](../database/database-dictionary.md)
 
@@ -84,7 +85,7 @@ Only eligible unconfirmed document deletion may produce a tombstone. Confirmed m
 
 ## Domain and Application Model
 
-Implemented through Steps 2–17:
+Implemented through Steps 2–19:
 
 - Immutable `InventoryDocumentSnapshot` and stable line/source identities.
 - Exact decimal quantity and historical unit snapshots.
@@ -100,81 +101,25 @@ Implemented through Steps 2–17:
 - Separate Inventory permissions, persisted-document Company/Branch authorization, shared Phase 8 Approval gateway and shared immutable Audit adapter around successful lifecycle operations.
 - Concrete Inventory-backed Warehouse dependency guard, secured ERP confirmation adapter and bounded immutable movement feed for valuation/later consumers.
 - Persian RTL Desktop workspace with Application-owned draft mutation, bounded list/detail read model, Jalali input/display, exact quantity/unit editing and secured lifecycle actions.
-- Branch-aware quantity reporting contract and SQLite reader with exact Kardex reconciliation, on-hand balance projection, full chronology cursor and durable source document/line drill-down.
+- Branch-aware quantity reporting with aggregate Product view, Warehouse/location breakdown, exact Kardex reconciliation and durable source drill-down.
+- Previewed retry-safe Draft import plus Excel/Print/PDF output without implicit confirmation.
+- Focused Domain/Application regression matrix for lifecycle, quantity, scope, stock chronology, workflows, replay/concurrency, dependency policy and Bridge invariants.
 
-## Application Service Rules — Step 10
+## Core Invariants
 
-`InventoryApplicationService` executes stock-changing work through one `InventoryUnitOfWork.execute(...)` boundary:
-
-1. Company-scoped idempotency lookup.
-2. Durable document reload.
-3. `expectedVersion` comparison.
-4. Current scope/master validation.
-5. Authoritative movement reads for affected StockKeys.
-6. `businessOrder` allocation inside the UoW.
-7. Workflow execution.
-8. Movement append and balance projection replacement.
-9. Opening-key persistence when applicable.
-10. Document update.
-11. Idempotency outcome persistence.
+`InventoryApplicationService` executes stock-changing work through one `InventoryUnitOfWork.execute(...)` boundary: idempotency lookup, durable document reload, `expectedVersion`, current scope/master validation, authoritative movement read, business-order allocation, workflow execution, movement append, balance projection replacement, opening-key persistence where applicable, document update and idempotency outcome persistence.
 
 Same `requestKey + operation + payloadFingerprint` replays the original recorded outcome without adding another movement. Reusing the same request key with changed operation or fingerprint returns `inventory.application.idempotency-conflict`.
 
 Document optimistic concurrency alone is insufficient for stock. Different documents can compete for the same StockKey, so stock facts must be read/rebuilt inside the same committing UoW. Callers cannot supply `businessOrder`; it is allocated inside the UoW.
 
-## Persistence Model — Steps 11 and 13
-
 Migration `0026_inventory_documents.sql` creates normalized document/line/lifecycle/movement/opening/balance/business-order/idempotency persistence. Migration `0027_inventory_reversal_persistence.sql` adds append-only reversal compensation facts and `inventory_all_stock_movements` as the authoritative logical movement ledger.
 
-Key rules:
+Exact entered/base quantities, movement deltas and balance quantities are TEXT decimal representations, never SQLite `REAL`. Movement facts, reversal compensation, lifecycle history and opening facts are append-only. `inventory_stock_balances` is a rebuildable projection only.
 
-- Durable TEXT IDs remain separate from display document numbers.
-- Exact entered/base quantities, movement deltas and balance quantities are TEXT decimal representations, never SQLite `REAL`.
-- Nullable Zone/Location dimensions use normalized uniqueness semantics.
-- Movement facts, reversal compensation, lifecycle history and opening facts are append-only.
-- `inventory_stock_balances` is a rebuildable projection only; `inventory_all_stock_movements` is authoritative for quantity history.
-- Document rows carry local synchronization metadata for future Bridge use without implementing live transport.
-- Document CAS, business-order allocation and durable idempotency participate in the real transaction boundary.
+Inventory freezes ten independent permissions: view, create, edit, submit, approve, confirm, reverse, cancel, import and export. Approval and confirmation remain separate authorities.
 
-## Security, Approval and Audit — Step 14
-
-Inventory freezes ten independent permissions: view, create, edit, submit, approve, confirm, reverse, cancel, import and export. Approval and confirmation are separate authorities. `SecuredInventoryService` authorizes against persisted Company/Branch, delegates approval to the shared Phase 8 engine and records replay-safe Audit evidence.
-
-## Master Data Dependency Guards and ERP Integration — Step 15
-
-`InventoryWarehouseDependencyGuard` protects Warehouse/Zone/Location maintenance using non-zero stock, open documents and immutable history. Destructive delete and historical Location move preserve historical meaning; deactivate/archive allow history alone but block active stock/open documents.
-
-`SecuredInventoryQuantityConfirmationPort` is the future Purchase/Sales/Manufacturing quantity-confirmation boundary. `InventoryMovementFeedReader` exposes bounded immutable facts for Phase 21/later consumers and never treats the balance projection as equivalent authoritative history.
-
-## Persian RTL Inventory Document Workspace — Step 16
-
-`InventoryDraftService` supplies create/save/delete Draft behavior inside Application/UoW/idempotency boundaries. `SqliteInventoryWorkspaceReader` supplies bounded Company-scoped list/detail reads. Desktop route `/inventory/documents` provides the Persian RTL receipt/issue/opening/transfer/adjustment editor with Product/Warehouse/Zone/Location selectors, Jalali input/display, exact quantity snapshots, separate lifecycle actions, shared Approval/history and stale-version recovery.
-
-Business dates remain Gregorian internally. Quantity, codes and identifiers are explicitly LTR inside the RTL UI. Step 16 does not implement reports, import/export/print/PDF or valuation.
-
-## Quantity Kardex, Stock Balances and Source Drill-down — Step 17
-
-`InventoryQuantityReportReader` freezes the persistence-neutral reporting boundary. `SqliteInventoryQuantityReportReader` implements it with a maximum 500-row request size; Desktop requests 100 rows.
-
-Kardex reads `inventory_all_stock_movements`, not the balance projection. Canonical chronology remains:
-
-`businessDate -> businessOrder -> documentId -> lineId -> movementId`.
-
-The opaque continuation cursor carries that full tuple. Arrival time, SQLite row order and movement ID alone never define chronology.
-
-Kardex returns opening, incoming, outgoing, closing and per-row running quantities. All arithmetic uses exact canonical decimal strings through `addInventoryStockQuantities`; no JavaScript floating point or SQLite `REAL` accumulation is used. Historical prefix reconstruction uses bounded keyset chunks of 500 facts. The continuation invariant is:
-
-`closing(page N) == opening(page N + 1)`.
-
-For a date-filtered first page, opening includes all authoritative facts before the requested start date. For later pages, opening includes the previous page's cursor movement because the next page starts strictly after that fact.
-
-Balance reporting reads `inventory_stock_balances` as a rebuildable on-hand projection and joins Product/Warehouse/Zone/Location only for display labels. Quantity is returned as the canonical decimal string. Filters include Product, Warehouse, Zone, Location and include-zero.
-
-Branch scope is enforced twice: Desktop composition validates the active Branch against the authenticated actor, and the SQLite report reader permits company-wide Warehouses plus Warehouses owned by the active Branch. Kardex rejects a Branch-owned Warehouse outside the requested Branch scope. Source-document drill-down is likewise Branch guarded unless `system.full-access` applies.
-
-Desktop route `/inventory/reports` adds Persian RTL balance/Kardex views, Jalali date filters, exact LTR quantity/code display and durable source drill-down by `documentId + lineId`. It explicitly explains backdated effects and distinguishes **On-hand** from deferred reservations / Available-to-Promise.
-
-Step 17 does not add valuation, monetary/Rial totals, import/export, Excel, print or PDF.
+Kardex canonical chronology is `businessDate -> businessOrder -> documentId -> lineId -> movementId`; backdated facts are validated in this chronology. The default stock policy rejects a negative running balance at any historical point, not merely a negative final balance.
 
 ## Step Status
 
@@ -196,9 +141,9 @@ Step 17 does not add valuation, monetary/Rial totals, import/export, Excel, prin
 | 14 | Permissions, Audit and Shared Approval Integration | Completed |
 | 15 | Master Data Dependency Guards and ERP Integration | Completed |
 | 16 | Persian RTL Inventory Document Workspace | Completed |
-| 17 | Quantity Kardex, Stock Balances and Source Drill-down | Implemented — validation pending |
-| 18 | Import, Export, Print and PDF | Not started |
-| 19 | Domain and Application Tests | Not started |
+| 17 | Quantity Kardex, Stock Balances and Source Drill-down | Completed |
+| 18 | Import, Export, Print and PDF | Completed |
+| 19 | Domain and Application Tests | Implemented — validation pending |
 | 20 | SQLite, Migration and Desktop Integration Tests | Not started |
 | 21 | Performance, Accessibility, Quality and Documentation | Not started |
 | 22 | Final Review, Merge and Release Preparation | Not started |
@@ -273,88 +218,86 @@ Reconcile Step Status with actual evidence and owner acceptance, review deferred
 
 ## Consolidated Completion Records
 
-### Steps 1–4 — Completed with Executed Validation
+### Steps 1–15 — Completed
 
-- Step 1 froze the branch/scope/22-step sequence and reconciled Phase 19/develop baseline.
-- Step 2 established the Inventory Domain package and immutable document model.
-- Step 3 added exact quantity/unit snapshots and Warehouse operational references.
-- Step 4 added Company/Branch/fiscal validation and numbering boundaries.
-- Last assistant-observed full package run remains Step 4: 72 tests passed, typecheck passed and build passed.
+- Steps 1–4 established the phase baseline, Domain, exact quantity/unit snapshots and Company/Branch/fiscal boundaries; the last assistant-observed full package execution was at Step 4: 72 tests passed, typecheck passed and build passed.
+- Steps 5–15 delivered lifecycle, append-only stock, core workflows, transfer/adjustment/reversal, Application contracts/services, persistence, Bridge contract, SQLite UoW, security/approval/audit, master-data guards and ERP integration.
+- Steps 5–15 were explicitly owner-accepted. Raw local outputs for later steps were not pasted into the conversation; owner acceptance and executable evidence remain distinct facts.
 
-### Steps 5–15 — Completed and Owner Accepted
-
-- Step 5 delivered the six-state lifecycle and correction/reversal rules.
-- Step 6 delivered append-only exact quantity ledger and rebuildable balances.
-- Step 7 delivered receipt/issue/opening workflows and opening uniqueness.
-- Step 8 delivered atomic transfer, quantity adjustment and append-only reversal compensation.
-- Step 9 delivered Application/query/repository/UoW/future-consumer contracts.
-- Step 10 delivered orchestration, idempotency, optimistic concurrency and stock race handling.
-- Step 11 delivered migration `0026_inventory_documents.sql` and constraints/indexes.
-- Step 12 delivered versioned Argin Bridge document/movement-batch contracts.
-- Step 13 delivered `@argin/inventory-tauri`, migration `0027`, pinned SQLite transactions, CAS, business-order and durable idempotency.
-- Step 14 delivered independent permissions, shared Approval integration and replay-safe Audit.
-- Step 15 delivered Warehouse dependency guards, secured ERP confirmation and immutable movement feed.
-- Each of Steps 5–15 was explicitly owner-accepted. Raw local outputs were not pasted for the later steps; owner acceptance and executable evidence remain distinct facts.
-
-### Step 16 — Persian RTL Inventory Document Workspace — Completed
+### Step 16 — Persian RTL Inventory Document Workspace — Completed and Owner Accepted
 
 - Added Application-owned create/save/delete Draft operations and bounded SQLite list/detail reader.
 - Added `/inventory/documents`, Persian RTL editor, Jalali boundary, exact line quantity/unit snapshots and bounded Product/Warehouse/Zone/Location selectors.
 - Added secured Submit/Approve/Confirm/Cancel/Reverse actions, shared Approval/history and stale-version reload behavior.
-- Added four Desktop workspace contract tests and [Inventory Desktop Workspace](../architecture/inventory-desktop-workspace.md).
-- Owner explicitly accepted Step 16 before requesting Step 17. Raw executable output was not pasted into the conversation.
 
-### Step 17 — Quantity Kardex, Stock Balances and Source Drill-down — Implemented; Validation Pending
+### Step 17 — Quantity Kardex, Stock Balances and Source Drill-down — Completed and Owner Accepted
 
-- Added persistence-neutral quantity reporting contracts in `@argin/inventory`.
-- Added `SqliteInventoryQuantityReportReader` over authoritative `inventory_all_stock_movements` for Kardex and rebuildable `inventory_stock_balances` for current on-hand balances.
-- Added full chronology cursoring and exact opening/in/out/closing/running quantity arithmetic.
-- Added bounded keyset prefix reconstruction and corrected page continuity so `closing(page N) == opening(page N + 1)`.
-- Added Product/Warehouse/Zone/Location balance filters and bounded cursor pagination.
-- Added Branch-aware Warehouse visibility and source-document drill-down guards.
-- Added `/inventory/reports` Persian RTL balance/Kardex workspace with Jalali date filters, backdated-order explanation, exact LTR quantities and durable document/line source detail.
-- Added three focused Inventory-Tauri tests: page reconciliation, exact large-decimal preservation and cross-Branch Kardex rejection.
-- Added four Desktop contract tests covering route/permission, chronology/on-hand semantics, source drill-down and Step 18/Phase 21 scope exclusion.
-- Added [Inventory Quantity Kardex, Balances and Source Drill-down](../architecture/inventory-quantity-reports.md).
+- Added persistence-neutral quantity reporting contracts and SQLite quantity reader.
+- Added aggregate Product view across visible Warehouses plus detailed Warehouse/Zone/Location view.
+- Kardex uses authoritative `inventory_all_stock_movements`, full chronology cursoring and exact opening/in/out/closing/running arithmetic.
+- Added Branch-aware visibility, source-document/line drill-down and Persian RTL reporting UI.
+- Owner explicitly accepted Step 17 before requesting Step 18.
 
-#### Step 17 Validation Evidence
+### Step 18 — Import, Export, Print and PDF — Completed and Owner Accepted
+
+- Added XLSX/CSV import codec and Persian/English import template.
+- Import preview resolves Product, Unit, Warehouse, Zone, Location and open fiscal period before persistence.
+- Invalid preview rows block commit; successful import creates Draft documents only and never submits/approves/confirms them.
+- File-content batch identity plus logical document key supplies deterministic Draft/request identity for retry-safe re-import.
+- `createdAt` is excluded from the import business fingerprint so a later retry converges on the original Draft.
+- Added Excel export plus full-screen RTL print preview and native browser Print/Save PDF for documents, balances, Product summaries and Kardex.
+- Print model owns page orientation; preview and `@page` use the same orientation, preserving landscape reports.
+- Owner explicitly accepted Step 18 before requesting Step 19.
+
+### Step 19 — Domain and Application Tests — Implemented; Validation Pending
+
+Step 19 reconciles the complete Domain/Application suite against the frozen exit criteria and adds missing/high-value regressions:
+
+- exact decimal arithmetic with large integer/fractional values;
+- backdated issue rejection when chronological history becomes negative despite a positive final net quantity;
+- Argin Bridge transfer pair/conservation validation;
+- Argin Bridge reversal dependencies on the owner document and original immutable movement;
+- Draft-only Bridge tombstone enforcement;
+- Warehouse/Zone/Location dependency-guard semantics with a fake executor, deliberately not real SQLite;
+- corrected Step 18 import fingerprint test so it reflects the canonical `createdAt` exclusion implementation.
+
+Existing focused coverage remains authoritative for lifecycle/approval, unit conversion/snapshots, scope, opening uniqueness, receipt/issue/opening, adjustment/reversal, idempotency conflict, stale expectedVersion and concurrent issues against the same StockKey. See [Phase 20 Domain/Application Test Matrix](../testing/phase-20-domain-application-tests.md).
+
+The concurrent-stock Application test starts two reductions against the same StockKey through a serialized in-memory UoW. Only one may succeed when both cannot be satisfied; the other must return `inventory.application.stock-conflict` and the rebuilt ledger must retain the correct quantity. Step 20 must separately prove this against real SQLite.
+
+#### Step 19 Validation Evidence
 
 | Check | Result |
 | --- | --- |
-| Authoritative Kardex | Reads `inventory_all_stock_movements` in canonical business chronology |
-| Balance semantics | Reads rebuildable on-hand projection; projection is not promoted to authoritative history |
-| Exact arithmetic | Opening/in/out/closing/running values use canonical decimal strings and Inventory exact addition |
-| Cursor continuity | Full chronology tuple; next-page opening includes prior page cursor fact |
-| Bounded reads | Report request max 500; historical prefix reconstruction uses 500-fact keyset chunks |
-| Branch scope | Company-wide + active-Branch Warehouses only; cross-Branch Kardex is rejected |
-| Source drill-down | Durable `documentId + lineId`, guarded by Company/Branch context |
-| Desktop UI | `/inventory/reports`, Persian RTL, Jalali date filters, exact LTR quantities, On-hand/ATP explanation |
-| Focused Step 17 tests | 3 Inventory-Tauri + 4 Desktop contract tests defined |
-| Executable package/Desktop validation | Not observed by the assistant environment; no pass claim is made before local output |
+| Domain/Application test matrix | Reconciled with all frozen Step 19 exit criteria |
+| Backdated historical-negative regression | Test defined |
+| Large exact-decimal regression | Test defined |
+| Concurrent same-StockKey issue | Existing behavioral Application test retained |
+| Idempotency payload conflict / stale version | Existing behavioral Application tests retained |
+| Transfer/reversal Bridge invariants | New behavioral contract regressions defined |
+| Dependency probes | New fake-executor policy tests defined; real SQLite deferred to Step 20 |
+| Import retry fingerprint | Stale source assertion corrected for canonical implementation |
+| Real SQLite/migration/rollback/restart | Not part of Step 19; remains Step 20 |
+| Executable focused validation | Pending; no pass claim until command output is observed |
 
-#### Step 18 Handoff
+#### Step 20 Handoff
 
-Step 18 must add preview/validation and retry-safe Draft import, Excel export, and native print/PDF for Inventory documents and quantity reports using shared tooling. It must preserve Persian RTL, established full-screen print preview behavior, orientation/pagination and bottom spacing. Import must never bypass explicit authorized confirmation. Step 18 must not add valuation or monetary stock amounts.
+Step 20 must exercise actual SQLite migration/upgrade, unique/check constraints, pinned transaction rollback, durable idempotency across restart, balance reconstruction, transfer/reversal indivisibility, cross-Company isolation, import/export/Desktop composition and concrete Warehouse guard wiring. Source-text assertions or fake executors cannot substitute for those integration proofs.
 
 ## Testing
 
-Cover domain transitions, precise units, fiscal locks, scope, concurrent stock updates, retry payload conflicts, same-day/backdated ordering, no negative historical balances under the default policy, reversal over-consumption, transfer conservation, dependency guard behavior and stock reconstruction. A confirmed source may not be silently replaced or applied twice by future consumers.
+Representative quantity acceptance remains: receipt 10 units, issue 3, transfer 2 to another eligible Warehouse -> source 5, destination 2, company total 7. Repeating the same transfer request leaves those values unchanged. A failed destination write changes neither side.
 
-Representative acceptance: receipt 10 units, issue 3, transfer 2 to another eligible Warehouse -> source 5, destination 2, company total 7. Repeating the same transfer request leaves those values unchanged. A failed destination write changes neither side.
+Focused Step 19 commands:
 
-## Validation Evidence
+```bash
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/inventory-tauri typecheck
+pnpm --filter @argin/inventory-tauri test
+```
 
-The last assistant-observed full Inventory package execution remains Step 4: 72 tests passed, typecheck passed and build passed. Steps 5–17 define focused lifecycle/stock/workflow/contract/orchestration/migration/Bridge/SQLite/security/integration/Desktop/reporting tests, but their current workspace execution has not been observed by the assistant environment. Steps 5–16 have explicit owner acceptance. Real migration upgrade/constraint/rollback/restart and Desktop integration validation remain required in Step 20; final monorepo gates remain Step 21.
-
-Required implementation gates, to be executed and recorded at Steps 19–21:
-
-- Frozen dependency install.
-- Inventory and SQLite adapter tests/typechecks.
-- Related Product/Warehouse/Fiscal/Security/Audit and Desktop regression suites.
-- Full monorepo lint, typecheck, test and build.
-- Desktop Rust `cargo check` and applicable repository Rust gates.
-- Documentation index generation/link checks and manual Desktop/print acceptance.
-- Add `pnpm validate:phase20` in Step 21.
+The last assistant-observed full Inventory package execution remains Step 4. Later owner acceptance is recorded separately from executable output. Step 20 provides the actual SQLite/Desktop integration gates; Step 21 provides full monorepo, Rust, performance, accessibility and documentation gates.
 
 ## Documentation Impact
 
@@ -366,7 +309,9 @@ Required implementation gates, to be executed and recorded at Steps 19–21:
 - Step 14 added `inventory-security-approval-audit.md`.
 - Step 15 added `inventory-master-data-erp-integration.md`.
 - Step 16 added `inventory-desktop-workspace.md`.
-- Step 17 added `inventory-quantity-reports.md`, reporting contracts/reader and Persian RTL quantity report route.
+- Step 17 added `inventory-quantity-reports.md` and the aggregate/detailed quantity-report UX.
+- Step 18 added Inventory import/export/print/PDF implementation and focused contract coverage.
+- Step 19 added `phase-20-domain-application-tests.md` and high-value behavioral regressions.
 - Generated documentation index refresh remains Step 21.
 
 ## Related ADRs
