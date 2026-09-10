@@ -17,7 +17,7 @@ interface FakeState {
 function fakeDatabase(state: FakeState): DatabaseExecutor {
   return {
     async execute() {
-      return { rowsAffected: 0, lastInsertId: null };
+      return { rowsAffected: 0 };
     },
     async query<T>(sql: string, _parameters?: readonly DatabaseValue[]): Promise<T[]> {
       if (!sql.includes("inventory_all_stock_movements")) throw new Error(`Unexpected query: ${sql}`);
