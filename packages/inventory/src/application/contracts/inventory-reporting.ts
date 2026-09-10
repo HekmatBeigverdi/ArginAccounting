@@ -57,6 +57,32 @@ export interface InventoryQuantityBalanceReport {
   readonly nextCursor: string | null;
 }
 
+/** Exact product quantity grouped by one visible Warehouse; quantity is always in the Product base unit. */
+export interface InventoryProductWarehouseBalanceRow {
+  readonly warehouseId: string;
+  readonly warehouseCode: string;
+  readonly warehouseTitle: string;
+  readonly quantity: string;
+  readonly stockKeyCount: number;
+}
+
+/** Management-oriented product summary across the caller's visible Warehouse scope. */
+export interface InventoryProductBalanceSummaryRow {
+  readonly companyId: string;
+  readonly productId: string;
+  readonly productCode: string;
+  readonly productTitle: string;
+  readonly totalQuantity: string;
+  readonly warehouseCount: number;
+  readonly stockKeyCount: number;
+  readonly warehouses: readonly InventoryProductWarehouseBalanceRow[];
+}
+
+export interface InventoryProductBalanceSummaryReport {
+  readonly items: readonly InventoryProductBalanceSummaryRow[];
+  readonly nextCursor: string | null;
+}
+
 export interface InventoryKardexReportQuery {
   readonly companyId: string;
   /** Null means company-wide context; a Branch limits branch-owned Warehouses while keeping company-wide Warehouses visible. */
@@ -80,11 +106,24 @@ export interface InventoryQuantityBalanceReportQuery {
   readonly limit: number;
 }
 
+export interface InventoryProductBalanceSummaryQuery {
+  readonly companyId: string;
+  readonly branchId?: string | null;
+  readonly productId?: string | null;
+  readonly includeZero?: boolean;
+  /** Opaque product cursor. */
+  readonly cursor?: string | null;
+  readonly limit: number;
+}
+
 export interface InventoryQuantityReportReader {
   readKardex(query: InventoryKardexReportQuery): Promise<InventoryKardexReport>;
   readBalances(
     query: InventoryQuantityBalanceReportQuery,
   ): Promise<InventoryQuantityBalanceReport>;
+  readProductSummaries(
+    query: InventoryProductBalanceSummaryQuery,
+  ): Promise<InventoryProductBalanceSummaryReport>;
 }
 
 /** Cursor is opaque outside Inventory and encodes the full deterministic movement chronology tuple. */
