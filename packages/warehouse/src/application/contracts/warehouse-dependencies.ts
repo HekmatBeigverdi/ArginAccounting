@@ -55,7 +55,7 @@ export function registerWarehouseDependencyGuard(guard: WarehouseDependencyGuard
  * guard is registered, the same stable object delegates every protected operation to it,
  * so existing WarehouseService instances do not need to be reconstructed.
  */
-export const allowUnintegratedWarehouseDependencies: WarehouseDependencyGuard = Object.freeze({
+export const allowUnintegratedWarehouseDependencies: WarehouseDependencyGuard = Object.freeze<WarehouseDependencyGuard>({
   async check(input) {
     if (registeredDownstreamGuard) return registeredDownstreamGuard.check(input);
     return Object.freeze({ allowed: true, blockers: Object.freeze([]) });
