@@ -500,6 +500,9 @@ importers:
       '@argin/inventory':
         specifier: workspace:*
         version: link:../inventory
+      xlsx:
+        specifier: 0.18.5
+        version: 0.18.5
     devDependencies:
       '@types/node':
         specifier: ^20
