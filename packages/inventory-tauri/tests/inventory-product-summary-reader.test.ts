@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { DatabaseExecutor, DatabaseSession } from "@argin/database";
+import type { DatabaseExecutor, DatabaseSession, DatabaseValue } from "@argin/database";
 import { SqliteInventoryQuantityReportReader } from "../src/sqlite-inventory-quantity-report-reader.ts";
 
 function executor(): DatabaseExecutor {
@@ -50,7 +50,7 @@ test("keeps aggregation branch-scoped when a branch context is supplied", async 
   let sawBranchScope = false;
   const database = executor();
   const originalQuery = database.query.bind(database);
-  database.query = async function <T>(sql: string, parameters) {
+  database.query = async function <T>(sql: string, parameters?: readonly DatabaseValue[]) {
     if (sql.includes("w.organizational_scope='branch' AND w.branch_id=?")) sawBranchScope = true;
     return originalQuery<T>(sql, parameters);
   };
