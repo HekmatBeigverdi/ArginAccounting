@@ -109,7 +109,10 @@ export type {
   WarehouseZoneDto,
 } from "./application/contracts/warehouse-dto.ts";
 
-export { allowUnintegratedWarehouseDependencies } from "./application/contracts/warehouse-dependencies.ts";
+export {
+  allowUnintegratedWarehouseDependencies,
+  registerWarehouseDependencyGuard,
+} from "./application/contracts/warehouse-dependencies.ts";
 export type {
   WarehouseDependencyBlocker,
   WarehouseDependencyCheck,

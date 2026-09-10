@@ -24,6 +24,24 @@ export const navigationItems: NavigationItem[] = [
     requiredPermission: "master-data.products.view",
   },
   {
+    label: "اسناد انبار",
+    path: "/inventory/documents",
+    group: "انبار و موجودی",
+    requiredPermission: "inventory.documents.view",
+  },
+  {
+    label: "گزارش‌های موجودی",
+    path: "/inventory/reports",
+    group: "انبار و موجودی",
+    requiredPermission: "inventory.documents.view",
+  },
+  {
+    label: "ورود، خروجی و چاپ",
+    path: "/inventory/transfer-center",
+    group: "انبار و موجودی",
+    requiredAnyPermissions: ["inventory.documents.import", "inventory.documents.export"],
+  },
+  {
     label: "انبارها",
     path: "/inventory/warehouses",
     group: "انبار و موجودی",

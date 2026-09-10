@@ -1,0 +1,29 @@
+{
+  "name": "@argin/inventory",
+  "version": "0.20.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "node --experimental-strip-types --experimental-transform-types --test tests/*.test.ts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@argin/company": "workspace:*",
+    "@argin/fiscal": "workspace:*",
+    "@argin/platform": "workspace:*",
+    "@argin/product": "workspace:*",
+    "@argin/security": "workspace:*",
+    "@argin/warehouse": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "rimraf": "^6.0.0",
+    "typescript": "^5.9.0"
+  }
+}

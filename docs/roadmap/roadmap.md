@@ -6,11 +6,7 @@ This file remains as a stable compatibility path for earlier links. Do not maint
 
 ## Current State
 
-- Phase 01–14: completed and merged
-- Phase 13: Journal Voucher Engine released as `v0.13.0`
-- Phase 14: UI Foundation Consolidation released as `v0.14.0`
-- Phase 15: Journal Lifecycle is the current implementation target
-- The insertion of Phase 14 shifted every previously planned phase after Phase 13 by one
+See the [canonical roadmap](../../ROADMAP.md) for current phase status and numbering, and the [phase index](../phases/README.md) for implementation records. This compatibility page deliberately delegates status to those sources.
 
 ## Permanent Rule
 

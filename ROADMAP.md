@@ -78,7 +78,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - CSV/XLSX import/export, Persian RTL desktop workspace and bounded future-module selector contracts
    - Repository/migration/Desktop regression coverage plus representative 50,000-row query-plan validation gate
    - Implementation, documentation and final merge preparation complete; semantic release `v0.18.0` prepared for manual publication
-19. 🚧 Warehouses
+19. ✅ Warehouses
    - Canonical company-scoped Warehouse Master Data with durable `warehouseId`, classification, lifecycle and company/Branch organizational scope
    - Extensible `Warehouse -> Zone -> Location` physical hierarchy with nested Location parentage, edit/status/delete/restore/move rules and cycle prevention
    - SQLite persistence, optimistic concurrency, durable idempotency, dependency guards, tombstone-compatible deletion and Argin Bridge-ready change contracts
@@ -86,12 +86,19 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Persian RTL dense Warehouse workspace plus bounded Company/Branch-aware reusable selectors for future ERP consumers
    - Explicit Inventory/ERP ownership boundaries: stock, movement, valuation, documents, posting, manufacturing and Taxpayer workflow remain in their owning phases
    - Domain/Application and SQLite/Migration/Desktop regression suites plus representative 50,000-Warehouse query-plan performance validation
-   - Steps 1–19 complete on the phase branch; final review, merge and semantic release preparation remain Step 20
+   - Steps 1–20 complete per the canonical Phase 19 record; Tag/GitHub Release publication remains manual
 
 ## Inventory
 
-20. ⏳ Inventory Documents
-21. ⏳ Inventory Valuation
+20. ✅ Inventory Documents
+   - Receipt, issue, opening, atomic transfer, quantity-adjustment and linked reversal workflows
+   - Immutable exact-quantity movement ledger, rebuildable on-hand balances and deterministic quantity Kardex
+   - Company/Branch/fiscal scope, numbering, Approval/Audit, idempotency, optimistic concurrency and pinned SQLite transaction boundary
+   - Persian RTL document workspace, aggregate/detailed inventory views, source drill-down, Draft-only import, Excel and Print/PDF
+   - Warehouse/Zone/Location dependency guards and persistence-neutral ERP/Argin Bridge contracts
+   - Real SQLite migration/rollback/restart/balance-rebuild tests, performance/query-plan validation and Phase 20 quality gate
+   - All 22 fixed steps completed and owner-accepted; semantic tag/GitHub Release `v0.20.0` remains manual
+21. 🚧 Inventory Valuation
 
 ## Purchases
 
@@ -164,8 +171,8 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 19 — Warehouses.
+[Phase 21 — Inventory Valuation](docs/roadmap/roadmap.md). Phase 21 must consume immutable Phase 20 quantity movements without rewriting quantity history.
 
-## Latest Completed Master Data Milestone
+## Latest Completed Inventory Milestone
 
-Phase 18 — Products and Services, implementation and merge preparation completed; semantic release `v0.18.0` prepared for manual GitHub publication.
+Phase 20 — Inventory Documents, all 22 fixed steps complete and owner-accepted. Semantic tag/GitHub Release `v0.20.0` remains a manual repository-owner action.
