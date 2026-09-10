@@ -45,10 +45,11 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Current implementation target: [Phase 20 — Inventory Documents](phases/phase-20-inventory-documents-plan.md)
+- Latest completed implementation: [Phase 20 — Inventory Documents](phases/phase-20-inventory-documents-plan.md)
 - Phase 20 module record: [Inventory Documents Module](modules/inventory-documents.md)
-- Phase 20 quantity foundation, SQLite/Desktop integration and quality gates are implemented through Step 21; full Step 21 executable/manual validation remains owner-run before final Step 22 closure.
-- Next architectural dependency: Phase 21 Inventory Valuation consumes immutable Phase 20 movement facts without rewriting quantity history.
+- All 22 fixed Phase 20 steps are complete and owner-accepted; semantic Tag/GitHub Release `v0.20.0` remains a manual repository-owner action.
+- Current implementation target: Phase 21 — Inventory Valuation.
+- Phase 21 must consume immutable Phase 20 movement facts and must not rewrite quantity history.
 - Canonical roadmap: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Source-of-Truth Policy
