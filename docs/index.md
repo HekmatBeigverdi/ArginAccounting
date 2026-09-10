@@ -184,9 +184,9 @@
 
 ## testing
 
-- [Phase 20 Domain/Application Test Matrix](testing/phase-20-domain-application-tests.md)
+- [Phase 20 — Domain and Application Test Matrix](testing/phase-20-domain-application-tests.md)
 - [Phase 20 Performance, Accessibility, Quality, and Documentation Evidence](testing/phase-20-performance-accessibility-quality.md)
-- [Phase 20 SQLite and Desktop Integration Tests](testing/phase-20-sqlite-desktop-integration-tests.md)
+- [Phase 20 — SQLite, Migration and Desktop Integration Tests](testing/phase-20-sqlite-desktop-integration-tests.md)
 
 ## ui
 
