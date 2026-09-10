@@ -22,3 +22,16 @@ export type {
 export { SqliteInventoryMovementFeedReader } from "./sqlite-inventory-movement-feed.ts";
 export { SqliteInventoryWorkspaceReader } from "./sqlite-inventory-workspace-reader.ts";
 export { SqliteInventoryQuantityReportReader } from "./sqlite-inventory-quantity-report-reader.ts";
+export {
+  INVENTORY_IMPORT_TEMPLATE_HEADERS,
+  INVENTORY_TABULAR_LIMITS,
+  InventoryTabularCodecError,
+  createInventoryImportTemplateXlsx,
+  createInventoryXlsx,
+  parseInventoryCsv,
+  parseInventoryXlsx,
+} from "./inventory-tabular-codec.ts";
+export type {
+  InventoryTabularData,
+  InventoryTabularRow,
+} from "./inventory-tabular-codec.ts";
