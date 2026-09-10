@@ -2,7 +2,7 @@
 
 ## Status
 
-In Progress. Steps 1–18 are complete and owner-accepted. Step 19 Domain/Application test coverage is implemented; executable focused validation is pending. Steps 20–22 are Not started.
+In Progress. Steps 1–19 are complete and owner-accepted. Step 20 real SQLite migration/upgrade, constraint, rollback, restart, balance-rebuild and Desktop integration coverage is implemented; executable validation is pending. Steps 21–22 are Not started.
 
 ## Governance
 
@@ -72,6 +72,7 @@ References:
 - [Inventory Desktop Workspace](../architecture/inventory-desktop-workspace.md)
 - [Inventory Quantity Kardex, Balances and Source Drill-down](../architecture/inventory-quantity-reports.md)
 - [Phase 20 Domain/Application Test Matrix](../testing/phase-20-domain-application-tests.md)
+- [Phase 20 SQLite/Desktop Integration Tests](../testing/phase-20-sqlite-desktop-integration-tests.md)
 - [Database Design](../database/database-design.md)
 - [Database Dictionary](../database/database-dictionary.md)
 
@@ -85,7 +86,7 @@ Only eligible unconfirmed document deletion may produce a tombstone. Confirmed m
 
 ## Domain and Application Model
 
-Implemented through Steps 2–19:
+Implemented through Steps 2–20:
 
 - Immutable `InventoryDocumentSnapshot` and stable line/source identities.
 - Exact decimal quantity and historical unit snapshots.
@@ -104,6 +105,7 @@ Implemented through Steps 2–19:
 - Branch-aware quantity reporting with aggregate Product view, Warehouse/location breakdown, exact Kardex reconciliation and durable source drill-down.
 - Previewed retry-safe Draft import plus Excel/Print/PDF output without implicit confirmation.
 - Focused Domain/Application regression matrix for lifecycle, quantity, scope, stock chronology, workflows, replay/concurrency, dependency policy and Bridge invariants.
+- Real SQLx SQLite migration/upgrade, constraint, rollback, restart and balance-rebuild integration suites plus production Desktop dependency-guard bootstrap.
 
 ## Core Invariants
 
@@ -143,8 +145,8 @@ Kardex canonical chronology is `businessDate -> businessOrder -> documentId -> l
 | 16 | Persian RTL Inventory Document Workspace | Completed |
 | 17 | Quantity Kardex, Stock Balances and Source Drill-down | Completed |
 | 18 | Import, Export, Print and PDF | Completed |
-| 19 | Domain and Application Tests | Implemented — validation pending |
-| 20 | SQLite, Migration and Desktop Integration Tests | Not started |
+| 19 | Domain and Application Tests | Completed |
+| 20 | SQLite, Migration and Desktop Integration Tests | Implemented — validation pending |
 | 21 | Performance, Accessibility, Quality and Documentation | Not started |
 | 22 | Final Review, Merge and Release Preparation | Not started |
 
@@ -218,86 +220,79 @@ Reconcile Step Status with actual evidence and owner acceptance, review deferred
 
 ## Consolidated Completion Records
 
-### Steps 1–15 — Completed
+### Steps 1–18 — Completed and Owner Accepted
 
-- Steps 1–4 established the phase baseline, Domain, exact quantity/unit snapshots and Company/Branch/fiscal boundaries; the last assistant-observed full package execution was at Step 4: 72 tests passed, typecheck passed and build passed.
-- Steps 5–15 delivered lifecycle, append-only stock, core workflows, transfer/adjustment/reversal, Application contracts/services, persistence, Bridge contract, SQLite UoW, security/approval/audit, master-data guards and ERP integration.
-- Steps 5–15 were explicitly owner-accepted. Raw local outputs for later steps were not pasted into the conversation; owner acceptance and executable evidence remain distinct facts.
+- Steps 1–15 established Domain, quantity/unit snapshots, scope, lifecycle, ledger, workflows, Application contracts/services, migrations, Bridge, SQLite UoW, security/approval/audit, dependency guards and ERP boundaries.
+- Step 16 delivered the Persian RTL Inventory workspace.
+- Step 17 delivered Product-aggregate and Warehouse/location quantity reporting plus exact Kardex/source drill-down.
+- Step 18 delivered retry-safe Draft import, Excel export and RTL Print/PDF.
+- The last assistant-observed full Inventory package execution remains Step 4; later owner acceptance is distinct from executable evidence.
 
-### Step 16 — Persian RTL Inventory Document Workspace — Completed and Owner Accepted
+### Step 19 — Domain and Application Tests — Completed and Owner Accepted
 
-- Added Application-owned create/save/delete Draft operations and bounded SQLite list/detail reader.
-- Added `/inventory/documents`, Persian RTL editor, Jalali boundary, exact line quantity/unit snapshots and bounded Product/Warehouse/Zone/Location selectors.
-- Added secured Submit/Approve/Confirm/Cancel/Reverse actions, shared Approval/history and stale-version reload behavior.
+- Reconciled the focused Domain/Application suite against every frozen Step 19 criterion.
+- Added exact large-decimal and historical backdated-negative regressions.
+- Added Bridge transfer/reversal/tombstone contract regressions.
+- Retained concurrent same-StockKey Application behavior, idempotency conflict and optimistic-version tests.
+- Added fake-executor Warehouse dependency policy tests without pretending they are real SQLite tests.
+- Owner explicitly accepted Step 19 before requesting Step 20.
 
-### Step 17 — Quantity Kardex, Stock Balances and Source Drill-down — Completed and Owner Accepted
+### Step 20 — SQLite, Migration and Desktop Integration Tests — Implemented; Validation Pending
 
-- Added persistence-neutral quantity reporting contracts and SQLite quantity reader.
-- Added aggregate Product view across visible Warehouses plus detailed Warehouse/Zone/Location view.
-- Kardex uses authoritative `inventory_all_stock_movements`, full chronology cursoring and exact opening/in/out/closing/running arithmetic.
-- Added Branch-aware visibility, source-document/line drill-down and Persian RTL reporting UI.
-- Owner explicitly accepted Step 17 before requesting Step 18.
+- Added `phase20_inventory_sqlite_integration.rs`, which opens real SQLx SQLite connections and executes the checked-in migration chain.
+- Added a Phase 19 schema (`0025`) -> Inventory (`0026`/`0027`) upgrade scenario and verifies pre-existing master data survives.
+- Added real SQLite constraint checks for scoped numbering, Company isolation and append-only movement triggers.
+- Added a failed-transfer `BEGIN IMMEDIATE` rollback scenario proving no partial document or movement remains.
+- Added successful two-fact transfer conservation, one-time reversal compensation and unified authoritative ledger checks.
+- Added file-backed database close/reopen validation for durable movement and idempotency state.
+- Added `phase20_inventory_balance_rebuild.rs`, which deliberately corrupts and rebuilds `inventory_stock_balances` from `inventory_all_stock_movements` without rewriting authoritative facts.
+- Added Desktop integration contract coverage for routes, secured lifecycle composition and Step 18 import/export/print composition.
+- Added a production `InventoryWarehouseIntegrationProvider` at the Desktop composition root. It registers the concrete `InventoryWarehouseDependencyGuard` before routes render and cleans it up on unmount.
+- Extended the Phase 19 Warehouse dependency port with runtime registration while preserving explicit per-service dependency injection priority and package direction.
+- Added behavioral Warehouse registration tests so guard wiring is not represented only by a source-text assertion.
+- See [Phase 20 SQLite/Desktop Integration Tests](../testing/phase-20-sqlite-desktop-integration-tests.md).
 
-### Step 18 — Import, Export, Print and PDF — Completed and Owner Accepted
-
-- Added XLSX/CSV import codec and Persian/English import template.
-- Import preview resolves Product, Unit, Warehouse, Zone, Location and open fiscal period before persistence.
-- Invalid preview rows block commit; successful import creates Draft documents only and never submits/approves/confirms them.
-- File-content batch identity plus logical document key supplies deterministic Draft/request identity for retry-safe re-import.
-- `createdAt` is excluded from the import business fingerprint so a later retry converges on the original Draft.
-- Added Excel export plus full-screen RTL print preview and native browser Print/Save PDF for documents, balances, Product summaries and Kardex.
-- Print model owns page orientation; preview and `@page` use the same orientation, preserving landscape reports.
-- Owner explicitly accepted Step 18 before requesting Step 19.
-
-### Step 19 — Domain and Application Tests — Implemented; Validation Pending
-
-Step 19 reconciles the complete Domain/Application suite against the frozen exit criteria and adds missing/high-value regressions:
-
-- exact decimal arithmetic with large integer/fractional values;
-- backdated issue rejection when chronological history becomes negative despite a positive final net quantity;
-- Argin Bridge transfer pair/conservation validation;
-- Argin Bridge reversal dependencies on the owner document and original immutable movement;
-- Draft-only Bridge tombstone enforcement;
-- Warehouse/Zone/Location dependency-guard semantics with a fake executor, deliberately not real SQLite;
-- corrected Step 18 import fingerprint test so it reflects the canonical `createdAt` exclusion implementation.
-
-Existing focused coverage remains authoritative for lifecycle/approval, unit conversion/snapshots, scope, opening uniqueness, receipt/issue/opening, adjustment/reversal, idempotency conflict, stale expectedVersion and concurrent issues against the same StockKey. See [Phase 20 Domain/Application Test Matrix](../testing/phase-20-domain-application-tests.md).
-
-The concurrent-stock Application test starts two reductions against the same StockKey through a serialized in-memory UoW. Only one may succeed when both cannot be satisfied; the other must return `inventory.application.stock-conflict` and the rebuilt ledger must retain the correct quantity. Step 20 must separately prove this against real SQLite.
-
-#### Step 19 Validation Evidence
+#### Step 20 Validation Evidence
 
 | Check | Result |
 | --- | --- |
-| Domain/Application test matrix | Reconciled with all frozen Step 19 exit criteria |
-| Backdated historical-negative regression | Test defined |
-| Large exact-decimal regression | Test defined |
-| Concurrent same-StockKey issue | Existing behavioral Application test retained |
-| Idempotency payload conflict / stale version | Existing behavioral Application tests retained |
-| Transfer/reversal Bridge invariants | New behavioral contract regressions defined |
-| Dependency probes | New fake-executor policy tests defined; real SQLite deferred to Step 20 |
-| Import retry fingerprint | Stale source assertion corrected for canonical implementation |
-| Real SQLite/migration/rollback/restart | Not part of Step 19; remains Step 20 |
-| Executable focused validation | Pending; no pass claim until command output is observed |
+| Real SQLite migration chain | Integration test defined with SQLx SQLite |
+| Upgrade 0025 -> 0026/0027 | Integration test defined; preserves seeded Company/Product/Warehouse data |
+| Unique/FK/append-only constraints | Real SQLite assertions defined |
+| Failed transfer rollback | Real `BEGIN IMMEDIATE`/`ROLLBACK` integration scenario defined |
+| Successful transfer/reversal | Real SQLite conservation + compensation uniqueness checks defined |
+| Durable retry/restart | File-backed close/reopen + idempotency uniqueness test defined |
+| Balance rebuild | Real SQLite projection corruption/rebuild test defined |
+| Desktop import/export/secured composition | Desktop integration contract defined |
+| Warehouse master-data guard wiring | Production provider + behavioral registration test defined |
+| Executable validation | Pending; no pass claim until actual local/CI command output is observed |
 
-#### Step 20 Handoff
+#### Step 21 Handoff
 
-Step 20 must exercise actual SQLite migration/upgrade, unique/check constraints, pinned transaction rollback, durable idempotency across restart, balance reconstruction, transfer/reversal indivisibility, cross-Company isolation, import/export/Desktop composition and concrete Warehouse guard wiring. Source-text assertions or fake executors cannot substitute for those integration proofs.
+Step 21 must execute representative large-data query plans, accessibility/manual Desktop acceptance, full focused and monorepo gates, Rust checks, documentation index/link validation and final canonical documentation reconciliation. It must record actual command outputs rather than infer pass status from committed test definitions.
 
 ## Testing
 
 Representative quantity acceptance remains: receipt 10 units, issue 3, transfer 2 to another eligible Warehouse -> source 5, destination 2, company total 7. Repeating the same transfer request leaves those values unchanged. A failed destination write changes neither side.
 
-Focused Step 19 commands:
+Step 20 executable gates:
 
 ```bash
-pnpm --filter @argin/inventory typecheck
 pnpm --filter @argin/inventory test
-pnpm --filter @argin/inventory-tauri typecheck
+pnpm --filter @argin/inventory typecheck
 pnpm --filter @argin/inventory-tauri test
-```
+pnpm --filter @argin/inventory-tauri typecheck
+pnpm --filter @argin/warehouse test
+pnpm --filter @argin/warehouse typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop build
 
-The last assistant-observed full Inventory package execution remains Step 4. Later owner acceptance is recorded separately from executable output. Step 20 provides the actual SQLite/Desktop integration gates; Step 21 provides full monorepo, Rust, performance, accessibility and documentation gates.
+cd apps/desktop/src-tauri
+cargo test --test phase20_inventory_sqlite_integration
+cargo test --test phase20_inventory_balance_rebuild
+cargo check
+```
 
 ## Documentation Impact
 
@@ -312,6 +307,7 @@ The last assistant-observed full Inventory package execution remains Step 4. Lat
 - Step 17 added `inventory-quantity-reports.md` and the aggregate/detailed quantity-report UX.
 - Step 18 added Inventory import/export/print/PDF implementation and focused contract coverage.
 - Step 19 added `phase-20-domain-application-tests.md` and high-value behavioral regressions.
+- Step 20 added `phase-20-sqlite-desktop-integration-tests.md`, real SQLx SQLite integration tests and Desktop Warehouse/Inventory guard bootstrap.
 - Generated documentation index refresh remains Step 21.
 
 ## Related ADRs
