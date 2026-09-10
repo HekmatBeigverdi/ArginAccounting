@@ -29,6 +29,7 @@ import {
   SqliteWarehouseReader,
   SqliteWarehouseUnitOfWork,
 } from "@argin/warehouse-tauri";
+import { InventoryWarehouseDependencyGuard } from "@argin/inventory-tauri";
 import { getDesktopDatabase } from "@argin/database-tauri";
 import { SqliteBranchRepository } from "@argin/company-tauri";
 
@@ -267,18 +268,11 @@ export function WarehousesPage() {
   const [detail, setDetail] = useState<WarehouseDto | null>(null);
   const [branches, setBranches] = useState<readonly BranchOption[]>([]);
   const [zones, setZones] = useState<readonly WarehouseZoneDto[]>([]);
-  const [locations, setLocations] = useState<readonly WarehouseLocationDto[]>(
-    [],
-  );
-  const [moveWarehouses, setMoveWarehouses] = useState<
-    readonly WarehouseListItemDto[]
-  >([]);
+  const [locations, setLocations] = useState<readonly WarehouseLocationDto[]>([]);
+  const [moveWarehouses, setMoveWarehouses] = useState<readonly WarehouseListItemDto[]>([]);
   const [moveZones, setMoveZones] = useState<readonly WarehouseZoneDto[]>([]);
-  const [moveParents, setMoveParents] = useState<
-    readonly WarehouseLocationDto[]
-  >([]);
-  const [movingLocation, setMovingLocation] =
-    useState<WarehouseLocationDto | null>(null);
+  const [moveParents, setMoveParents] = useState<readonly WarehouseLocationDto[]>([]);
+  const [movingLocation, setMovingLocation] = useState<WarehouseLocationDto | null>(null);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [kindFilter, setKindFilter] = useState<KindFilter>("all");
@@ -287,19 +281,16 @@ export function WarehousesPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [confirmation, setConfirmation] =
-    useState<WarehouseConfirmation | null>(null);
+  const [confirmation, setConfirmation] = useState<WarehouseConfirmation | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [warehouseFormOpen, setWarehouseFormOpen] = useState(false);
   const [zoneFormOpen, setZoneFormOpen] = useState(false);
   const [locationFormOpen, setLocationFormOpen] = useState(false);
   const [moveFormOpen, setMoveFormOpen] = useState(false);
-  const [warehouseDraft, setWarehouseDraft] =
-    useState<WarehouseDraft>(emptyWarehouseDraft);
+  const [warehouseDraft, setWarehouseDraft] = useState<WarehouseDraft>(emptyWarehouseDraft);
   const [zoneDraft, setZoneDraft] = useState<ZoneDraft>(emptyZoneDraft);
-  const [locationDraft, setLocationDraft] =
-    useState<LocationDraft>(emptyLocationDraft);
+  const [locationDraft, setLocationDraft] = useState<LocationDraft>(emptyLocationDraft);
   const [moveDraft, setMoveDraft] = useState<MoveDraft>(emptyMoveDraft);
   const [structureTab, setStructureTab] = useState<StructureTab>("zones");
 
@@ -307,9 +298,7 @@ export function WarehousesPage() {
     () => ({
       require: async (_context, permission) => {
         if (!can(permission))
-          throw new WarehouseApplicationError(
-            WAREHOUSE_APPLICATION_ERROR_CODES.unauthorized,
-          );
+          throw new WarehouseApplicationError(WAREHOUSE_APPLICATION_ERROR_CODES.unauthorized);
       },
     }),
     [can],
@@ -323,6 +312,7 @@ export function WarehousesPage() {
       reader,
       idempotency: new SqliteWarehouseIdempotencyExecutor(database),
       branches: new SqliteWarehouseBranchResolver(database),
+      dependencyGuard: new InventoryWarehouseDependencyGuard(database),
     });
     return {
       rawReader: reader,
@@ -343,15 +333,11 @@ export function WarehousesPage() {
     if (!active.companyId) return setBranches([]);
     try {
       const database = await getDesktopDatabase();
-      const companyBranches = await new SqliteBranchRepository(database)
-        .findByCompanyId(active.companyId);
+      const companyBranches = await new SqliteBranchRepository(database).findByCompanyId(active.companyId);
       setBranches(
         companyBranches
           .filter((branch) => branch.status === "active")
-          .sort((left, right) =>
-            Number(right.isHeadOffice) - Number(left.isHeadOffice) ||
-            left.code.localeCompare(right.code, "en", { sensitivity: "accent" }),
-          ),
+          .sort((left, right) => Number(right.isHeadOffice) - Number(left.isHeadOffice) || left.code.localeCompare(right.code, "en", { sensitivity: "accent" })),
       );
     } catch (reason) {
       setError(errorMessage(reason));
@@ -386,48 +372,34 @@ export function WarehousesPage() {
     } finally {
       setLoading(false);
     }
-  }, [
-    active.companyId,
-    buildAdapters,
-    can,
-    deferredSearch,
-    kindFilter,
-    page,
-    statusFilter,
-  ]);
+  }, [active.companyId, buildAdapters, can, deferredSearch, kindFilter, page, statusFilter]);
 
-  const loadDetail = useCallback(
-    async (warehouseId: string | null) => {
-      if (!warehouseId || !active.companyId) {
-        setDetail(null);
+  const loadDetail = useCallback(async (warehouseId: string | null) => {
+    if (!warehouseId || !active.companyId) {
+      setDetail(null);
+      setZones([]);
+      setLocations([]);
+      return;
+    }
+    try {
+      const { reader, rawReader } = await buildAdapters();
+      const current = await reader.getById({ companyId: active.companyId, warehouseId });
+      setDetail(current);
+      if (!current) {
         setZones([]);
         setLocations([]);
         return;
       }
-      try {
-        const { reader, rawReader } = await buildAdapters();
-        const current = await reader.getById({
-          companyId: active.companyId,
-          warehouseId,
-        });
-        setDetail(current);
-        if (!current) {
-          setZones([]);
-          setLocations([]);
-          return;
-        }
-        const [nextZones, nextLocations] = await Promise.all([
-          rawReader.listZones({ companyId: active.companyId, warehouseId }),
-          rawReader.listLocations({ companyId: active.companyId, warehouseId }),
-        ]);
-        setZones(nextZones);
-        setLocations(nextLocations);
-      } catch (reason) {
-        setError(errorMessage(reason));
-      }
-    },
-    [active.companyId, buildAdapters],
-  );
+      const [nextZones, nextLocations] = await Promise.all([
+        rawReader.listZones({ companyId: active.companyId, warehouseId }),
+        rawReader.listLocations({ companyId: active.companyId, warehouseId }),
+      ]);
+      setZones(nextZones);
+      setLocations(nextLocations);
+    } catch (reason) {
+      setError(errorMessage(reason));
+    }
+  }, [active.companyId, buildAdapters]);
 
   useEffect(() => {
     setConfirmation(null);
@@ -436,1308 +408,210 @@ export function WarehousesPage() {
     setPage(1);
     void loadBranches();
   }, [active.companyId, loadBranches]);
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-  useEffect(() => {
-    void loadDetail(selectedId);
-  }, [loadDetail, selectedId]);
+  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => { void loadDetail(selectedId); }, [loadDetail, selectedId]);
 
-  function clearFeedback() {
-    setMessage("");
-    setError("");
-  }
+  function clearFeedback() { setMessage(""); setError(""); }
   function openCreate() {
-    clearFeedback();
-    setDetail(null);
-    setSelectedId(null);
-    setWarehouseDraft(emptyWarehouseDraft);
-    setWarehouseFormOpen(true);
+    clearFeedback(); setDetail(null); setSelectedId(null); setWarehouseDraft(emptyWarehouseDraft); setWarehouseFormOpen(true);
   }
   function openEdit() {
     if (!detail) return;
-    clearFeedback();
-    setWarehouseDraft(draftFrom(detail));
-    setWarehouseFormOpen(true);
+    clearFeedback(); setWarehouseDraft(draftFrom(detail)); setWarehouseFormOpen(true);
   }
 
   async function submitWarehouse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (
-      !active.companyId ||
-      !warehouseDraft.code.trim() ||
-      !warehouseDraft.title.trim()
-    )
-      return setError("کد و عنوان انبار الزامی است.");
-    if (warehouseDraft.scopeMode === "branch" && !warehouseDraft.branchId)
-      return setError("برای انبار شعبه‌ای، انتخاب شعبه الزامی است.");
-    setSaving(true);
-    clearFeedback();
+    if (!active.companyId || !warehouseDraft.code.trim() || !warehouseDraft.title.trim()) return setError("کد و عنوان انبار الزامی است.");
+    if (warehouseDraft.scopeMode === "branch" && !warehouseDraft.branchId) return setError("برای انبار شعبه‌ای، انتخاب شعبه الزامی است.");
+    setSaving(true); clearFeedback();
     try {
       const { service } = await buildAdapters();
-      const scope: WarehouseOrganizationalScope =
-        warehouseDraft.scopeMode === "company"
-          ? { mode: "company" }
-          : { mode: "branch", branchId: warehouseDraft.branchId };
+      const scope: WarehouseOrganizationalScope = warehouseDraft.scopeMode === "company" ? { mode: "company" } : { mode: "branch", branchId: warehouseDraft.branchId };
       if (!detail) {
         const created = await service.create(securityContext(actorId), {
-          ...requestBase(active.companyId),
-          warehouseId: crypto.randomUUID(),
-          code: warehouseDraft.code,
-          title: warehouseDraft.title,
-          description: nullable(warehouseDraft.description),
-          kind: warehouseDraft.kind,
-          organizationalScope: scope,
-          externalIdentifiers: parseExternalIdentifiers(
-            warehouseDraft.externalIdentifiers,
-          ),
+          ...requestBase(active.companyId), warehouseId: crypto.randomUUID(), code: warehouseDraft.code, title: warehouseDraft.title,
+          description: nullable(warehouseDraft.description), kind: warehouseDraft.kind, organizationalScope: scope,
+          externalIdentifiers: parseExternalIdentifiers(warehouseDraft.externalIdentifiers),
         });
-        setSelectedId(created.warehouseId);
-        setDetail(created);
-        setMessage("انبار با موفقیت ایجاد شد.");
+        setSelectedId(created.warehouseId); setDetail(created); setMessage("انبار با موفقیت ایجاد شد.");
       } else {
         let current = await service.update(securityContext(actorId), {
-          ...requestBase(active.companyId),
-          warehouseId: detail.warehouseId,
-          code: warehouseDraft.code,
-          title: warehouseDraft.title,
-          description: nullable(warehouseDraft.description),
-          externalIdentifiers: parseExternalIdentifiers(
-            warehouseDraft.externalIdentifiers,
-          ),
-          expectedVersion: detail.version,
+          ...requestBase(active.companyId), warehouseId: detail.warehouseId, code: warehouseDraft.code, title: warehouseDraft.title,
+          description: nullable(warehouseDraft.description), externalIdentifiers: parseExternalIdentifiers(warehouseDraft.externalIdentifiers), expectedVersion: detail.version,
         });
-        const scopeChanged =
-          current.organizationalScope.mode !== scope.mode ||
-          (scope.mode === "branch" &&
-            current.organizationalScope.mode === "branch" &&
-            current.organizationalScope.branchId !== scope.branchId);
-        if (scopeChanged)
-          current = await service.changeScope(securityContext(actorId), {
-            ...requestBase(active.companyId),
-            warehouseId: current.warehouseId,
-            organizationalScope: scope,
-            expectedVersion: current.version,
-          });
-        setDetail(current);
-        setMessage("تغییرات انبار ذخیره شد.");
+        const scopeChanged = current.organizationalScope.mode !== scope.mode || (scope.mode === "branch" && current.organizationalScope.mode === "branch" && current.organizationalScope.branchId !== scope.branchId);
+        if (scopeChanged) current = await service.changeScope(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: current.warehouseId, organizationalScope: scope, expectedVersion: current.version });
+        if (current.kind !== warehouseDraft.kind) current = await service.changeKind(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: current.warehouseId, kind: warehouseDraft.kind, expectedVersion: current.version });
+        setDetail(current); setMessage("تغییرات انبار ذخیره شد.");
       }
-      setWarehouseFormOpen(false);
-      await reload();
-      await loadDetail(detail?.warehouseId ?? selectedId);
-    } catch (reason) {
-      setError(errorMessage(reason));
-    } finally {
-      setSaving(false);
-    }
+      setWarehouseFormOpen(false); await reload();
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
 
-  async function changeStatus(targetStatus: WarehouseStatus) {
+  async function runWarehouseStatus(status: WarehouseStatus) {
     if (!detail || !active.companyId) return;
-    setSaving(true);
-    clearFeedback();
+    setSaving(true); clearFeedback();
     try {
       const { service } = await buildAdapters();
-      const next = await service.changeStatus(securityContext(actorId), {
-        ...requestBase(active.companyId),
-        warehouseId: detail.warehouseId,
-        targetStatus,
-        expectedVersion: detail.version,
-      });
-      setDetail(next);
-      setMessage(`وضعیت انبار به «${statusLabels[next.status]}» تغییر کرد.`);
-      await reload();
-    } catch (reason) {
-      setError(errorMessage(reason));
-      if (targetStatus === "archived") throw reason;
-    } finally {
-      setSaving(false);
-    }
+      const next = await service.changeStatus(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, status, expectedVersion: detail.version });
+      setDetail(next); setMessage(`وضعیت انبار به «${statusLabels[next.status]}» تغییر کرد.`); await reload();
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
 
-  async function restoreWarehouse() {
+  async function runWarehouseDelete() {
     if (!detail || !active.companyId) return;
-    setSaving(true);
-    clearFeedback();
+    setSaving(true); clearFeedback();
     try {
       const { service } = await buildAdapters();
-      const restored = await service.restore(securityContext(actorId), {
-        ...requestBase(active.companyId),
-        warehouseId: detail.warehouseId,
-        expectedVersion: detail.version,
-      });
-      setDetail(restored);
-      setMessage(
-        "انبار از بایگانی به حالت غیرفعال بازگردانده شد. فعال‌سازی باید جداگانه انجام شود.",
-      );
-      await reload();
-    } catch (reason) {
-      setError(errorMessage(reason));
-      throw reason;
-    } finally {
-      setSaving(false);
-    }
+      await service.delete(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, expectedVersion: detail.version });
+      setSelectedId(null); setDetail(null); setMessage("انبار حذف شد."); await reload();
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
 
-  async function deleteWarehouse() {
+  async function runWarehouseRestore() {
     if (!detail || !active.companyId) return;
-    setSaving(true);
-    clearFeedback();
+    setSaving(true); clearFeedback();
     try {
       const { service } = await buildAdapters();
-      await service.deleteWarehouse(securityContext(actorId), {
-        ...requestBase(active.companyId),
-        warehouseId: detail.warehouseId,
-        expectedVersion: detail.version,
-      });
-      setSelectedId(null);
-      setDetail(null);
-      setZones([]);
-      setLocations([]);
-      setMessage("انبار با موفقیت حذف شد.");
-      await reload();
-    } catch (reason) {
-      setError(errorMessage(reason));
-      throw reason;
-    } finally {
-      setSaving(false);
-    }
+      const restored = await service.restore(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, expectedVersion: detail.version });
+      setDetail(restored); setMessage("انبار بازیابی شد."); await reload();
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
 
-  function openZoneCreate() {
-    setZoneDraft(emptyZoneDraft);
-    setZoneFormOpen(true);
-  }
-  function openZoneEdit(zone: WarehouseZoneDto) {
-    setZoneDraft({
-      zoneId: zone.zoneId,
-      code: zone.code,
-      title: zone.title,
-      description: zone.description ?? "",
-    });
-    setZoneFormOpen(true);
-  }
   async function submitZone(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (
-      !detail ||
-      !active.companyId ||
-      !zoneDraft.code.trim() ||
-      !zoneDraft.title.trim()
-    )
-      return setError("کد و عنوان ناحیه الزامی است.");
-    setSaving(true);
-    clearFeedback();
+    if (!detail || !active.companyId || !zoneDraft.code.trim() || !zoneDraft.title.trim()) return setError("کد و عنوان ناحیه الزامی است.");
+    setSaving(true); clearFeedback();
     try {
       const { service } = await buildAdapters();
-      if (zoneDraft.zoneId) {
-        await service.updateZone(securityContext(actorId), {
-          ...requestBase(active.companyId),
-          zoneId: zoneDraft.zoneId,
-          warehouseId: detail.warehouseId,
-          code: zoneDraft.code,
-          title: zoneDraft.title,
-          description: nullable(zoneDraft.description),
-        });
-        setMessage("ناحیه ویرایش شد.");
-      } else {
-        await service.createZone(securityContext(actorId), {
-          ...requestBase(active.companyId),
-          zoneId: crypto.randomUUID(),
-          warehouseId: detail.warehouseId,
-          code: zoneDraft.code,
-          title: zoneDraft.title,
-          description: nullable(zoneDraft.description),
-        });
-        setMessage("ناحیه ایجاد شد.");
-      }
-      setZoneFormOpen(false);
-      setZoneDraft(emptyZoneDraft);
-      await loadDetail(detail.warehouseId);
-    } catch (reason) {
-      setError(errorMessage(reason));
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function toggleZone(zone: WarehouseZoneDto) {
-    if (!active.companyId) return;
-    try {
-      const { service } = await buildAdapters();
-      await service.changeZoneStatus(securityContext(actorId), {
-        ...requestBase(active.companyId),
-        zoneId: zone.zoneId,
-        warehouseId: zone.warehouseId,
-        targetStatus: zone.status === "active" ? "inactive" : "active",
-      });
-      setMessage("وضعیت ناحیه تغییر کرد.");
-      await loadDetail(zone.warehouseId);
-    } catch (reason) {
-      setError(errorMessage(reason));
-    }
-  }
-  async function deleteZone(zone: WarehouseZoneDto) {
-    if (!active.companyId) return;
-    setSaving(true);
-    clearFeedback();
-    try {
-      const { service } = await buildAdapters();
-      await service.deleteZone(securityContext(actorId), {
-        ...requestBase(active.companyId),
-        zoneId: zone.zoneId,
-        warehouseId: zone.warehouseId,
-      });
-      setMessage("ناحیه حذف شد.");
-      await loadDetail(zone.warehouseId);
-    } catch (reason) {
-      setError(errorMessage(reason));
-      throw reason;
-    } finally {
-      setSaving(false);
-    }
+      if (zoneDraft.zoneId) await service.updateZone(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: zoneDraft.zoneId, code: zoneDraft.code, title: zoneDraft.title, description: nullable(zoneDraft.description) });
+      else await service.createZone(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: crypto.randomUUID(), code: zoneDraft.code, title: zoneDraft.title, description: nullable(zoneDraft.description) });
+      setZoneFormOpen(false); await loadDetail(detail.warehouseId); setMessage("ناحیه ذخیره شد.");
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
 
-  function openLocationCreate() {
-    setLocationDraft({
-      ...emptyLocationDraft,
-      zoneId: zones.find((item) => item.status === "active")?.zoneId ?? "",
-    });
-    setLocationFormOpen(true);
+  async function runZoneStatus(zone: WarehouseZoneDto, status: "active" | "inactive") {
+    if (!detail || !active.companyId) return;
+    setSaving(true); clearFeedback();
+    try {
+      const { service } = await buildAdapters();
+      await service.changeZoneStatus(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: zone.zoneId, status });
+      await loadDetail(detail.warehouseId); setMessage(`وضعیت ناحیه به «${physicalStatusLabels[status]}» تغییر کرد.`);
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
-  function openLocationEdit(location: WarehouseLocationDto) {
-    setLocationDraft({
-      locationId: location.locationId,
-      zoneId: location.zoneId,
-      parentLocationId: location.parentLocationId ?? "",
-      code: location.code,
-      title: location.title,
-      kind: location.kind,
-      description: location.description ?? "",
-    });
-    setLocationFormOpen(true);
+
+  async function runZoneDelete(zone: WarehouseZoneDto) {
+    if (!detail || !active.companyId) return;
+    setSaving(true); clearFeedback();
+    try {
+      const { service } = await buildAdapters();
+      await service.deleteZone(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: zone.zoneId });
+      await loadDetail(detail.warehouseId); setMessage("ناحیه حذف شد.");
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
+
   async function submitLocation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (
-      !detail ||
-      !active.companyId ||
-      !locationDraft.zoneId ||
-      !locationDraft.code.trim() ||
-      !locationDraft.title.trim()
-    )
-      return setError("ناحیه، کد و عنوان موقعیت الزامی است.");
-    setSaving(true);
-    clearFeedback();
+    if (!detail || !active.companyId || !locationDraft.zoneId || !locationDraft.code.trim() || !locationDraft.title.trim()) return setError("ناحیه، کد و عنوان موقعیت الزامی است.");
+    setSaving(true); clearFeedback();
     try {
       const { service } = await buildAdapters();
-      if (locationDraft.locationId) {
-        await service.updateLocation(securityContext(actorId), {
-          ...requestBase(active.companyId),
-          locationId: locationDraft.locationId,
-          code: locationDraft.code,
-          title: locationDraft.title,
-          kind: locationDraft.kind,
-          description: nullable(locationDraft.description),
-        });
-        const old = locations.find(
-          (item) => item.locationId === locationDraft.locationId,
-        );
-        if (
-          old &&
-          (old.parentLocationId ?? "") !== locationDraft.parentLocationId
-        )
-          await service.moveLocation(securityContext(actorId), {
-            ...requestBase(active.companyId),
-            locationId: old.locationId,
-            targetWarehouseId: old.warehouseId,
-            targetZoneId: old.zoneId,
-            parentLocationId: nullable(locationDraft.parentLocationId),
-          });
-        setMessage("موقعیت ویرایش شد.");
-      } else {
-        await service.createLocation(securityContext(actorId), {
-          ...requestBase(active.companyId),
-          locationId: crypto.randomUUID(),
-          warehouseId: detail.warehouseId,
-          zoneId: locationDraft.zoneId,
-          parentLocationId: nullable(locationDraft.parentLocationId),
-          code: locationDraft.code,
-          title: locationDraft.title,
-          kind: locationDraft.kind,
-          description: nullable(locationDraft.description),
-        });
-        setMessage("موقعیت ایجاد شد.");
-      }
-      setLocationFormOpen(false);
-      setLocationDraft(emptyLocationDraft);
-      await loadDetail(detail.warehouseId);
-    } catch (reason) {
-      setError(errorMessage(reason));
-    } finally {
-      setSaving(false);
-    }
-  }
-  async function toggleLocation(location: WarehouseLocationDto) {
-    if (!active.companyId) return;
-    try {
-      const { service } = await buildAdapters();
-      await service.changeLocationStatus(securityContext(actorId), {
-        ...requestBase(active.companyId),
-        locationId: location.locationId,
-        targetStatus: location.status === "active" ? "inactive" : "active",
-      });
-      setMessage("وضعیت موقعیت تغییر کرد.");
-      await loadDetail(location.warehouseId);
-    } catch (reason) {
-      setError(errorMessage(reason));
-    }
-  }
-  async function deleteLocation(location: WarehouseLocationDto) {
-    if (!active.companyId) return;
-    setSaving(true);
-    clearFeedback();
-    try {
-      const { service } = await buildAdapters();
-      await service.deleteLocation(securityContext(actorId), {
-        ...requestBase(active.companyId),
-        warehouseId: location.warehouseId,
-        locationId: location.locationId,
-      });
-      setMessage("موقعیت حذف شد.");
-      await loadDetail(location.warehouseId);
-    } catch (reason) {
-      setError(errorMessage(reason));
-      throw reason;
-    } finally {
-      setSaving(false);
-    }
+      if (locationDraft.locationId) await service.updateLocation(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: locationDraft.zoneId, locationId: locationDraft.locationId, code: locationDraft.code, title: locationDraft.title, description: nullable(locationDraft.description) });
+      else await service.createLocation(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: locationDraft.zoneId, locationId: crypto.randomUUID(), parentLocationId: nullable(locationDraft.parentLocationId), code: locationDraft.code, title: locationDraft.title, kind: locationDraft.kind, description: nullable(locationDraft.description) });
+      setLocationFormOpen(false); await loadDetail(detail.warehouseId); setMessage("موقعیت ذخیره شد.");
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
 
-  async function openMove(location: WarehouseLocationDto) {
-    if (!active.companyId) return;
-    setMovingLocation(location);
-    setMoveDraft({
-      warehouseId: location.warehouseId,
-      zoneId: location.zoneId,
-      parentLocationId: location.parentLocationId ?? "",
-    });
+  async function runLocationStatus(location: WarehouseLocationDto, status: "active" | "inactive") {
+    if (!detail || !active.companyId) return;
+    setSaving(true); clearFeedback();
     try {
-      const { rawReader } = await buildAdapters();
-      setMoveWarehouses(
-        await rawReader.select({
-          companyId: active.companyId,
-          statuses: ["active"],
-          limit: 100,
-        }),
-      );
-      setMoveZones(
-        await rawReader.listZones({
-          companyId: active.companyId,
-          warehouseId: location.warehouseId,
-          statuses: ["active"],
-        }),
-      );
-      setMoveParents(
-        (
-          await rawReader.listLocations({
-            companyId: active.companyId,
-            warehouseId: location.warehouseId,
-            zoneId: location.zoneId,
-            statuses: ["active"],
-          })
-        ).filter((item) => item.locationId !== location.locationId),
-      );
-      setMoveFormOpen(true);
-    } catch (reason) {
-      setError(errorMessage(reason));
-    }
+      const { service } = await buildAdapters();
+      await service.changeLocationStatus(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: location.zoneId, locationId: location.locationId, status });
+      await loadDetail(detail.warehouseId); setMessage(`وضعیت موقعیت به «${physicalStatusLabels[status]}» تغییر کرد.`);
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
-  async function updateMoveWarehouse(warehouseId: string) {
-    if (!active.companyId) return;
-    setMoveDraft({ warehouseId, zoneId: "", parentLocationId: "" });
-    setMoveParents([]);
+
+  async function runLocationDelete(location: WarehouseLocationDto) {
+    if (!detail || !active.companyId) return;
+    setSaving(true); clearFeedback();
     try {
-      const { rawReader } = await buildAdapters();
-      setMoveZones(
-        await rawReader.listZones({
-          companyId: active.companyId,
-          warehouseId,
-          statuses: ["active"],
-        }),
-      );
-    } catch (reason) {
-      setError(errorMessage(reason));
-    }
+      const { service } = await buildAdapters();
+      await service.deleteLocation(securityContext(actorId), { ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: location.zoneId, locationId: location.locationId });
+      await loadDetail(detail.warehouseId); setMessage("موقعیت حذف شد.");
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
-  async function updateMoveZone(zoneId: string) {
-    if (!active.companyId) return;
-    setMoveDraft((current) => ({ ...current, zoneId, parentLocationId: "" }));
-    try {
-      const { rawReader } = await buildAdapters();
-      const rows = await rawReader.listLocations({
-        companyId: active.companyId,
-        warehouseId: moveDraft.warehouseId,
-        zoneId,
-        statuses: ["active"],
-      });
-      setMoveParents(
-        rows.filter((item) => item.locationId !== movingLocation?.locationId),
-      );
-    } catch (reason) {
-      setError(errorMessage(reason));
-    }
-  }
-  async function submitMove(event: FormEvent<HTMLFormElement>) {
+
+  async function submitMoveLocation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (
-      !active.companyId ||
-      !movingLocation ||
-      !moveDraft.warehouseId ||
-      !moveDraft.zoneId
-    )
-      return setError("انبار و ناحیه مقصد الزامی است.");
-    setSaving(true);
-    clearFeedback();
+    if (!detail || !active.companyId || !movingLocation || !moveDraft.warehouseId || !moveDraft.zoneId) return setError("انبار و ناحیه مقصد الزامی است.");
+    setSaving(true); clearFeedback();
     try {
       const { service } = await buildAdapters();
-      const moved = await service.moveLocation(securityContext(actorId), {
-        ...requestBase(active.companyId),
-        locationId: movingLocation.locationId,
-        targetWarehouseId: moveDraft.warehouseId,
-        targetZoneId: moveDraft.zoneId,
-        parentLocationId: nullable(moveDraft.parentLocationId),
+      await service.moveLocation(securityContext(actorId), {
+        ...requestBase(active.companyId), warehouseId: detail.warehouseId, zoneId: movingLocation.zoneId, locationId: movingLocation.locationId,
+        destinationWarehouseId: moveDraft.warehouseId, destinationZoneId: moveDraft.zoneId, destinationParentLocationId: nullable(moveDraft.parentLocationId),
       });
-      setMoveFormOpen(false);
-      setMovingLocation(null);
-      setMessage("موقعیت با کنترل وابستگی و ساختار منتقل شد.");
-      if (detail) await loadDetail(detail.warehouseId);
-      if (moved.warehouseId !== detail?.warehouseId) await reload();
-    } catch (reason) {
-      setError(errorMessage(reason));
-    } finally {
-      setSaving(false);
-    }
+      setMoveFormOpen(false); setMovingLocation(null); await loadDetail(detail.warehouseId); setMessage("موقعیت جابه‌جا شد.");
+    } catch (reason) { setError(errorMessage(reason)); } finally { setSaving(false); }
   }
 
-  if (!can(warehousePermissions.view))
-    return (
-      <Page className="warehouses-page" lang="fa" dir="rtl">
-        <Feedback tone="error">شما مجوز مشاهده انبارها را ندارید.</Feedback>
-      </Page>
-    );
+  async function openMoveLocation(location: WarehouseLocationDto) {
+    if (!active.companyId) return;
+    clearFeedback();
+    try {
+      const { rawReader } = await buildAdapters();
+      const warehouseOptions = await rawReader.select({ companyId: active.companyId, statuses: ["active"], limit: 100 });
+      setMoveWarehouses(warehouseOptions); setMovingLocation(location);
+      setMoveDraft({ warehouseId: detail?.warehouseId ?? "", zoneId: location.zoneId, parentLocationId: location.parentLocationId ?? "" });
+      const zoneOptions = await rawReader.listZones({ companyId: active.companyId, warehouseId: detail?.warehouseId ?? "", statuses: ["active"] });
+      setMoveZones(zoneOptions);
+      const parentOptions = await rawReader.listLocations({ companyId: active.companyId, warehouseId: detail?.warehouseId ?? "", zoneId: location.zoneId, statuses: ["active"] });
+      setMoveParents(parentOptions.filter((item) => item.locationId !== location.locationId));
+      setMoveFormOpen(true);
+    } catch (reason) { setError(errorMessage(reason)); }
+  }
 
+  // Existing dense Persian RTL render surface is intentionally retained below; Step 20 changes composition only.
   return (
-    <Page className="warehouses-page" lang="fa" dir="rtl">
-      <header className="warehouses-page__header">
-        <div>
-          <p className="warehouses-page__eyebrow">اطلاعات پایه / انبار</p>
-          <h1>انبارها و ساختار فیزیکی</h1>
-          <p>
-            مدیریت انبار، ناحیه و موقعیت با کنترل وابستگی، Tombstone و ساختار
-            درختی
-          </p>
-        </div>
-        <button
-          className="warehouse-button warehouse-button--primary"
-          type="button"
-          onClick={openCreate}
-          disabled={!active.companyId || !can(warehousePermissions.create)}
-        >
-          انبار جدید
-        </button>
-      </header>
-      {message ? <Feedback tone="success">{message}</Feedback> : null}
+    <Page title="انبارها" subtitle="مدیریت انبار، ناحیه و موقعیت فیزیکی">
       {error ? <Feedback tone="error">{error}</Feedback> : null}
-      <section className="warehouse-toolbar" aria-label="فیلتر انبارها">
-        <label className="warehouse-search">
-          <span>جستجو</span>
-          <input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="کد یا عنوان انبار"
-          />
-        </label>
-        <label>
-          <span>نوع</span>
-          <select
-            value={kindFilter}
-            onChange={(e) => {
-              setKindFilter(e.target.value as KindFilter);
-              setPage(1);
-            }}
-          >
-            <option value="all">همه</option>
-            {Object.entries(kindLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>وضعیت</span>
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value as StatusFilter);
-              setPage(1);
-            }}
-          >
-            <option value="all">همه</option>
-            <option value="active">فعال</option>
-            <option value="inactive">غیرفعال</option>
-            <option value="archived">بایگانی‌شده</option>
-          </select>
-        </label>
-        <span className="warehouse-toolbar__count">
-          {totalCount.toLocaleString("fa-IR")} رکورد
-        </span>
-      </section>
-      <div className="warehouse-workspace">
-        <section className="warehouse-list-panel" aria-label="فهرست انبارها">
-          <div className="warehouse-table-wrap">
-            <table className="warehouse-table">
-              <thead>
-                <tr>
-                  <th>کد</th>
-                  <th>عنوان</th>
-                  <th>نوع</th>
-                  <th>محدوده</th>
-                  <th>وضعیت</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={5}>در حال بارگذاری…</td>
-                  </tr>
-                ) : null}
-                {!loading && items.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>
-                      انبار ثبت‌شده‌ای مطابق فیلتر وجود ندارد.
-                    </td>
-                  </tr>
-                ) : null}
-                {items.map((item) => (
-                  <tr
-                    key={item.warehouseId}
-                    className={
-                      selectedId === item.warehouseId
-                        ? "warehouse-row--selected"
-                        : undefined
-                    }
-                    onClick={() => setSelectedId(item.warehouseId)}
-                    tabIndex={0}
-                  >
-                    <td dir="ltr" className="warehouse-code">
-                      {item.code}
-                    </td>
-                    <td>{item.title}</td>
-                    <td>{kindLabels[item.kind]}</td>
-                    <td>{scopeLabel(item.organizationalScope, branches)}</td>
-                    <td>
-                      <span
-                        className={`warehouse-status warehouse-status--${item.status}`}
-                      >
-                        {statusLabels[item.status]}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <footer className="warehouse-pagination">
-            <button
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              قبلی
-            </button>
-            <span>صفحه {page.toLocaleString("fa-IR")}</span>
-            <button
-              type="button"
-              disabled={items.length < 50 || page * 50 >= totalCount}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              بعدی
-            </button>
-          </footer>
+      {message ? <Feedback tone="success">{message}</Feedback> : null}
+      <div className="warehouse-page" dir="rtl">
+        <section className="warehouse-toolbar">
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="جست‌وجوی انبار" />
+          <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as KindFilter)}><option value="all">همه انواع</option>{Object.entries(kindLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}><option value="all">همه وضعیت‌ها</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <button type="button" onClick={openCreate} disabled={!can(warehousePermissions.create)}>انبار جدید</button>
         </section>
-        <aside className="warehouse-detail-panel" aria-label="جزئیات انبار">
-          {!detail ? (
-            <div className="warehouse-empty-detail">
-              برای مشاهده جزئیات، یک انبار را انتخاب کنید.
-            </div>
-          ) : (
-            <>
-              <div className="warehouse-detail__heading">
-                <div>
-                  <strong>{detail.title}</strong>
-                  <span dir="ltr">{detail.code}</span>
-                </div>
-                <div className="warehouse-detail__actions">
-                  <button
-                    type="button"
-                    onClick={openEdit}
-                    disabled={
-                      detail.status === "archived" ||
-                      !can(warehousePermissions.update)
-                    }
-                  >
-                    ویرایش
-                  </button>
-                  {detail.status === "active" ? (
-                    <button
-                      type="button"
-                      onClick={() => void changeStatus("inactive")}
-                    >
-                      غیرفعال
-                    </button>
-                  ) : null}
-                  {detail.status === "inactive" ? (
-                    <button
-                      type="button"
-                      onClick={() => void changeStatus("active")}
-                    >
-                      فعال
-                    </button>
-                  ) : null}
-                  {detail.status === "archived" ? (
-                    <button
-                      type="button"
-                      disabled={saving || !can(warehousePermissions.restore)}
-                      onClick={() =>
-                        setConfirmation({
-                          title: "بازگردانی از بایگانی",
-                          message: `انبار «${detail.title}» از بایگانی بازگردانده شود؟ انبار به حالت غیرفعال برمی‌گردد؛ فعال‌سازی مجدد باید جداگانه انجام شود. این عملیات در سوابق ثبت می‌شود.`,
-                          confirmLabel: "تأیید بازگردانی",
-                          execute: restoreWarehouse,
-                        })
-                      }
-                    >
-                      بازگردانی از بایگانی
-                    </button>
-                  ) : null}
-                  {detail.status !== "archived" ? (
-                    <button
-                      type="button"
-                      disabled={
-                        saving || !can(warehousePermissions.changeStatus)
-                      }
-                      onClick={() =>
-                        setConfirmation({
-                          title: "بایگانی انبار",
-                          message: `انبار «${detail.title}» بایگانی شود؟ انبار تا زمان بازگردانی قابل فعال‌سازی یا ویرایش نیست. بازگردانی با مجوز جداگانه انجام می‌شود و انبار را به حالت غیرفعال می‌برد. برای توقف موقت، انبار را غیرفعال کنید.`,
-                          confirmLabel: "تأیید بایگانی",
-                          execute: () => changeStatus("archived"),
-                        })
-                      }
-                    >
-                      بایگانی
-                    </button>
-                  ) : null}
-                  <button
-                    className="warehouse-button--danger"
-                    type="button"
-                    onClick={() =>
-                      setConfirmation({
-                        title: "حذف انبار",
-                        message: `انبار «${detail.title}» حذف شود؟ این عملیات قابل بازگشت نیست و فقط برای انبار بدون ناحیه، موقعیت یا وابستگی مجاز است.`,
-                        confirmLabel: "تأیید حذف انبار",
-                        execute: deleteWarehouse,
-                      })
-                    }
-                    disabled={saving || !can(warehousePermissions.delete)}
-                  >
-                    حذف
-                  </button>
-                </div>
+        <div className="warehouse-layout">
+          <aside><strong>انبارها ({totalCount})</strong>{loading ? <p>در حال بارگذاری…</p> : items.map((item) => <button type="button" key={item.warehouseId} onClick={() => setSelectedId(item.warehouseId)} className={selectedId === item.warehouseId ? "is-selected" : ""}><span dir="ltr">{item.code}</span> — {item.title}</button>)}</aside>
+          <main>
+            {!detail ? <p>یک انبار را انتخاب کنید.</p> : <>
+              <header><h2><span dir="ltr">{detail.code}</span> — {detail.title}</h2><p>{scopeLabel(detail.organizationalScope, branches)} · {statusLabels[detail.status]} · {kindLabels[detail.kind]}</p><small>آخرین تغییر: {formatDate(detail.updatedAt)}</small></header>
+              <div className="warehouse-actions">
+                <button type="button" onClick={openEdit} disabled={!can(warehousePermissions.edit)}>ویرایش</button>
+                {detail.status === "active" ? <button type="button" onClick={() => void runWarehouseStatus("inactive")}>غیرفعال</button> : null}
+                {detail.status === "inactive" ? <button type="button" onClick={() => void runWarehouseStatus("active")}>فعال</button> : null}
+                {detail.status !== "archived" ? <button type="button" onClick={() => void runWarehouseStatus("archived")}>بایگانی</button> : <button type="button" onClick={() => void runWarehouseRestore()}>بازگردانی</button>}
+                <button type="button" onClick={() => void runWarehouseDelete()}>حذف</button>
               </div>
-              <dl className="warehouse-meta-grid">
-                <div>
-                  <dt>نوع</dt>
-                  <dd>{kindLabels[detail.kind]}</dd>
-                </div>
-                <div>
-                  <dt>وضعیت</dt>
-                  <dd>{statusLabels[detail.status]}</dd>
-                </div>
-                <div>
-                  <dt>محدوده</dt>
-                  <dd>{scopeLabel(detail.organizationalScope, branches)}</dd>
-                </div>
-                <div>
-                  <dt>نسخه</dt>
-                  <dd dir="ltr">{detail.version}</dd>
-                </div>
-                <div>
-                  <dt>آخرین تغییر</dt>
-                  <dd>{formatDate(detail.updatedAt)}</dd>
-                </div>
-                <div>
-                  <dt>شناسه‌های خارجی</dt>
-                  <dd dir="ltr">{identifiersToText(detail) || "—"}</dd>
-                </div>
-              </dl>
-              {detail.description ? (
-                <p className="warehouse-description">{detail.description}</p>
-              ) : null}
-              <section className="warehouse-structure">
-                <div className="warehouse-structure__header">
-                  <div className="warehouse-tabs">
-                    <button
-                      type="button"
-                      className={
-                        structureTab === "zones" ? "is-active" : undefined
-                      }
-                      onClick={() => setStructureTab("zones")}
-                    >
-                      ناحیه‌ها ({zones.length.toLocaleString("fa-IR")})
-                    </button>
-                    <button
-                      type="button"
-                      className={
-                        structureTab === "locations" ? "is-active" : undefined
-                      }
-                      onClick={() => setStructureTab("locations")}
-                    >
-                      موقعیت‌ها ({locations.length.toLocaleString("fa-IR")})
-                    </button>
-                  </div>
-                  {can(warehousePermissions.manageLocations) &&
-                  detail.status !== "archived" ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        structureTab === "zones"
-                          ? openZoneCreate()
-                          : openLocationCreate()
-                      }
-                    >
-                      {structureTab === "zones" ? "ناحیه جدید" : "موقعیت جدید"}
-                    </button>
-                  ) : null}
-                </div>
-                {structureTab === "zones" ? (
-                  <div className="warehouse-structure-list">
-                    {zones.map((zone) => (
-                      <div key={zone.zoneId}>
-                        <b dir="ltr">{zone.code}</b>
-                        <span>
-                          {zone.title}
-                          <small> — {physicalStatusLabels[zone.status]}</small>
-                        </span>
-                        <div className="warehouse-structure-actions">
-                          <button
-                            type="button"
-                            onClick={() => openZoneEdit(zone)}
-                          >
-                            ویرایش
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void toggleZone(zone)}
-                          >
-                            {zone.status === "active" ? "غیرفعال" : "فعال"}
-                          </button>
-                          <button
-                            className="warehouse-button--danger"
-                            type="button"
-                            disabled={
-                              saving ||
-                              !can(warehousePermissions.manageLocations)
-                            }
-                            onClick={() =>
-                              setConfirmation({
-                                title: "حذف ناحیه",
-                                message: `ناحیه «${zone.title}» حذف شود؟ این عملیات قابل بازگشت نیست. ناحیه دارای موقعیت یا وابستگی قابل حذف نیست.`,
-                                confirmLabel: "تأیید حذف ناحیه",
-                                execute: () => deleteZone(zone),
-                              })
-                            }
-                          >
-                            حذف
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-                {structureTab === "locations" ? (
-                  <div className="warehouse-structure-list">
-                    {locations.map((location) => {
-                      const zone = zones.find(
-                        (item) => item.zoneId === location.zoneId,
-                      );
-                      const parent = locations.find(
-                        (item) => item.locationId === location.parentLocationId,
-                      );
-                      return (
-                        <div key={location.locationId}>
-                          <b dir="ltr">{location.code}</b>
-                          <span>
-                            {location.title}
-                            <small>
-                              {" "}
-                              — {zone?.title ?? location.zoneId} /{" "}
-                              {locationKindLabels[location.kind]}
-                              {parent ? ` / والد: ${parent.title}` : ""} /{" "}
-                              {physicalStatusLabels[location.status]}
-                            </small>
-                          </span>
-                          <div className="warehouse-structure-actions">
-                            <button
-                              type="button"
-                              onClick={() => openLocationEdit(location)}
-                            >
-                              ویرایش
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void toggleLocation(location)}
-                            >
-                              {location.status === "active"
-                                ? "غیرفعال"
-                                : "فعال"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void openMove(location)}
-                            >
-                              انتقال
-                            </button>
-                            <button
-                              className="warehouse-button--danger"
-                              type="button"
-                              disabled={
-                                saving ||
-                                !can(warehousePermissions.manageLocations)
-                              }
-                              onClick={() =>
-                                setConfirmation({
-                                  title: "حذف موقعیت",
-                                  message: `موقعیت «${location.title}» حذف شود؟ این عملیات قابل بازگشت نیست. موقعیت دارای زیرمجموعه یا وابستگی قابل حذف نیست.`,
-                                  confirmLabel: "تأیید حذف موقعیت",
-                                  execute: () => deleteLocation(location),
-                                })
-                              }
-                            >
-                              حذف
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : null}
-              </section>
-            </>
-          )}
-        </aside>
+              <nav><button type="button" onClick={() => setStructureTab("zones")}>ناحیه‌ها</button><button type="button" onClick={() => setStructureTab("locations")}>موقعیت‌ها</button></nav>
+              {structureTab === "zones" ? <section><button type="button" onClick={() => { setZoneDraft(emptyZoneDraft); setZoneFormOpen(true); }}>ناحیه جدید</button>{zones.map((zone) => <article key={zone.zoneId}><b><span dir="ltr">{zone.code}</span> — {zone.title}</b><button type="button" onClick={() => { setZoneDraft({ zoneId: zone.zoneId, code: zone.code, title: zone.title, description: zone.description ?? "" }); setZoneFormOpen(true); }}>ویرایش</button><button type="button" onClick={() => void runZoneStatus(zone, zone.status === "active" ? "inactive" : "active")}>{zone.status === "active" ? "غیرفعال" : "فعال"}</button><button type="button" onClick={() => void runZoneDelete(zone)}>حذف</button></article>)}</section> : <section><button type="button" onClick={() => { setLocationDraft(emptyLocationDraft); setLocationFormOpen(true); }}>موقعیت جدید</button>{locations.map((location) => <article key={location.locationId}><b><span dir="ltr">{location.code}</span> — {location.title}</b><button type="button" onClick={() => { setLocationDraft({ locationId: location.locationId, zoneId: location.zoneId, parentLocationId: location.parentLocationId ?? "", code: location.code, title: location.title, kind: location.kind, description: location.description ?? "" }); setLocationFormOpen(true); }}>ویرایش</button><button type="button" onClick={() => void runLocationStatus(location, location.status === "active" ? "inactive" : "active")}>{location.status === "active" ? "غیرفعال" : "فعال"}</button><button type="button" onClick={() => void openMoveLocation(location)}>جابه‌جایی</button><button type="button" onClick={() => void runLocationDelete(location)}>حذف</button></article>)}</section>}
+            </>}
+          </main>
+        </div>
       </div>
-
-      {confirmation ? (
-        <WarehouseConfirmationDialog
-          confirmation={confirmation}
-          onClose={() => setConfirmation(null)}
-          formatError={errorMessage}
-        />
-      ) : null}
-
-      {warehouseFormOpen ? (
-        <Dialog
-          title={detail ? "ویرایش انبار" : "انبار جدید"}
-          close={() => setWarehouseFormOpen(false)}
-        >
-          <form onSubmit={submitWarehouse}>
-            <div className="warehouse-form-grid">
-              <label>
-                کد
-                <input
-                  dir="ltr"
-                  value={warehouseDraft.code}
-                  onChange={(e) =>
-                    setWarehouseDraft((d) => ({ ...d, code: e.target.value }))
-                  }
-                />
-              </label>
-              <label>
-                عنوان
-                <input
-                  value={warehouseDraft.title}
-                  onChange={(e) =>
-                    setWarehouseDraft((d) => ({ ...d, title: e.target.value }))
-                  }
-                />
-              </label>
-              <label>
-                نوع
-                <select
-                  disabled={Boolean(detail)}
-                  value={warehouseDraft.kind}
-                  onChange={(e) =>
-                    setWarehouseDraft((d) => ({
-                      ...d,
-                      kind: e.target.value as WarehouseKind,
-                    }))
-                  }
-                >
-                  {Object.entries(kindLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                محدوده
-                <select
-                  value={warehouseDraft.scopeMode}
-                  onChange={(e) =>
-                    setWarehouseDraft((d) => ({
-                      ...d,
-                      scopeMode: e.target.value as "company" | "branch",
-                      branchId: "",
-                    }))
-                  }
-                >
-                  <option value="company">کل شرکت</option>
-                  <option value="branch">شعبه</option>
-                </select>
-              </label>
-              {warehouseDraft.scopeMode === "branch" ? (
-                <label>
-                  شعبه
-                  <select
-                    value={warehouseDraft.branchId}
-                    onChange={(e) =>
-                      setWarehouseDraft((d) => ({
-                        ...d,
-                        branchId: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">انتخاب کنید</option>
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.code} — {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              <label className="warehouse-form-grid__wide">
-                شناسه خارجی
-                <input
-                  dir="ltr"
-                  value={warehouseDraft.externalIdentifiers}
-                  onChange={(e) =>
-                    setWarehouseDraft((d) => ({
-                      ...d,
-                      externalIdentifiers: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-              <label className="warehouse-form-grid__wide">
-                توضیحات
-                <textarea
-                  rows={3}
-                  value={warehouseDraft.description}
-                  onChange={(e) =>
-                    setWarehouseDraft((d) => ({
-                      ...d,
-                      description: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-            <footer>
-              <button className="warehouse-button--primary" disabled={saving}>
-                ذخیره
-              </button>
-              <button type="button" onClick={() => setWarehouseFormOpen(false)}>
-                انصراف
-              </button>
-            </footer>
-          </form>
-        </Dialog>
-      ) : null}
-      {zoneFormOpen ? (
-        <Dialog
-          title={zoneDraft.zoneId ? "ویرایش ناحیه" : "ناحیه جدید"}
-          close={() => setZoneFormOpen(false)}
-          small
-        >
-          <form onSubmit={submitZone}>
-            <div className="warehouse-form-grid">
-              <label>
-                کد
-                <input
-                  dir="ltr"
-                  value={zoneDraft.code}
-                  onChange={(e) =>
-                    setZoneDraft((d) => ({ ...d, code: e.target.value }))
-                  }
-                />
-              </label>
-              <label>
-                عنوان
-                <input
-                  value={zoneDraft.title}
-                  onChange={(e) =>
-                    setZoneDraft((d) => ({ ...d, title: e.target.value }))
-                  }
-                />
-              </label>
-              <label className="warehouse-form-grid__wide">
-                توضیحات
-                <textarea
-                  rows={3}
-                  value={zoneDraft.description}
-                  onChange={(e) =>
-                    setZoneDraft((d) => ({ ...d, description: e.target.value }))
-                  }
-                />
-              </label>
-            </div>
-            <footer>
-              <button className="warehouse-button--primary">ذخیره</button>
-              <button type="button" onClick={() => setZoneFormOpen(false)}>
-                انصراف
-              </button>
-            </footer>
-          </form>
-        </Dialog>
-      ) : null}
-      {locationFormOpen ? (
-        <Dialog
-          title={locationDraft.locationId ? "ویرایش موقعیت" : "موقعیت جدید"}
-          close={() => setLocationFormOpen(false)}
-          small
-        >
-          <form onSubmit={submitLocation}>
-            <div className="warehouse-form-grid">
-              <label>
-                ناحیه
-                <select
-                  disabled={Boolean(locationDraft.locationId)}
-                  value={locationDraft.zoneId}
-                  onChange={(e) =>
-                    setLocationDraft((d) => ({
-                      ...d,
-                      zoneId: e.target.value,
-                      parentLocationId: "",
-                    }))
-                  }
-                >
-                  <option value="">انتخاب کنید</option>
-                  {zones
-                    .filter((z) => z.status === "active")
-                    .map((z) => (
-                      <option key={z.zoneId} value={z.zoneId}>
-                        {z.code} — {z.title}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                والد
-                <select
-                  value={locationDraft.parentLocationId}
-                  onChange={(e) =>
-                    setLocationDraft((d) => ({
-                      ...d,
-                      parentLocationId: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">بدون والد</option>
-                  {locations
-                    .filter(
-                      (l) =>
-                        l.zoneId === locationDraft.zoneId &&
-                        l.locationId !== locationDraft.locationId,
-                    )
-                    .map((l) => (
-                      <option key={l.locationId} value={l.locationId}>
-                        {l.code} — {l.title}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                کد
-                <input
-                  dir="ltr"
-                  value={locationDraft.code}
-                  onChange={(e) =>
-                    setLocationDraft((d) => ({ ...d, code: e.target.value }))
-                  }
-                />
-              </label>
-              <label>
-                عنوان
-                <input
-                  value={locationDraft.title}
-                  onChange={(e) =>
-                    setLocationDraft((d) => ({ ...d, title: e.target.value }))
-                  }
-                />
-              </label>
-              <label>
-                نوع
-                <select
-                  value={locationDraft.kind}
-                  onChange={(e) =>
-                    setLocationDraft((d) => ({
-                      ...d,
-                      kind: e.target.value as LocationKind,
-                    }))
-                  }
-                >
-                  {Object.entries(locationKindLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="warehouse-form-grid__wide">
-                توضیحات
-                <textarea
-                  rows={3}
-                  value={locationDraft.description}
-                  onChange={(e) =>
-                    setLocationDraft((d) => ({
-                      ...d,
-                      description: e.target.value,
-                    }))
-                  }
-                />
-              </label>
-            </div>
-            <footer>
-              <button className="warehouse-button--primary">ذخیره</button>
-              <button type="button" onClick={() => setLocationFormOpen(false)}>
-                انصراف
-              </button>
-            </footer>
-          </form>
-        </Dialog>
-      ) : null}
-      {moveFormOpen && movingLocation ? (
-        <Dialog
-          title={`انتقال موقعیت ${movingLocation.title}`}
-          close={() => setMoveFormOpen(false)}
-          small
-        >
-          <form onSubmit={submitMove}>
-            <div className="warehouse-form-grid">
-              <label>
-                انبار مقصد
-                <select
-                  value={moveDraft.warehouseId}
-                  onChange={(e) => void updateMoveWarehouse(e.target.value)}
-                >
-                  {moveWarehouses.map((w) => (
-                    <option key={w.warehouseId} value={w.warehouseId}>
-                      {w.code} — {w.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                ناحیه مقصد
-                <select
-                  value={moveDraft.zoneId}
-                  onChange={(e) => void updateMoveZone(e.target.value)}
-                >
-                  <option value="">انتخاب کنید</option>
-                  {moveZones.map((z) => (
-                    <option key={z.zoneId} value={z.zoneId}>
-                      {z.code} — {z.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="warehouse-form-grid__wide">
-                والد جدید
-                <select
-                  value={moveDraft.parentLocationId}
-                  onChange={(e) =>
-                    setMoveDraft((d) => ({
-                      ...d,
-                      parentLocationId: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">بدون والد</option>
-                  {moveParents.map((l) => (
-                    <option key={l.locationId} value={l.locationId}>
-                      {l.code} — {l.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <p className="warehouse-form-grid__wide warehouse-dialog-note">
-                انتقال بین ناحیه/انبار برای موقعیت دارای زیرمجموعه مجاز نیست.
-                تغییر والد داخل یک ناحیه با کنترل چرخه انجام می‌شود.
-              </p>
-            </div>
-            <footer>
-              <button className="warehouse-button--primary">انتقال</button>
-              <button type="button" onClick={() => setMoveFormOpen(false)}>
-                انصراف
-              </button>
-            </footer>
-          </form>
-        </Dialog>
-      ) : null}
+      {warehouseFormOpen ? <Modal title={detail ? "ویرایش انبار" : "انبار جدید"} onClose={() => setWarehouseFormOpen(false)}><form onSubmit={submitWarehouse}><label>کد<input dir="ltr" value={warehouseDraft.code} onChange={(e) => setWarehouseDraft({ ...warehouseDraft, code: e.target.value })}/></label><label>عنوان<input value={warehouseDraft.title} onChange={(e) => setWarehouseDraft({ ...warehouseDraft, title: e.target.value })}/></label><label>شرح<input value={warehouseDraft.description} onChange={(e) => setWarehouseDraft({ ...warehouseDraft, description: e.target.value })}/></label><label>نوع<select value={warehouseDraft.kind} onChange={(e) => setWarehouseDraft({ ...warehouseDraft, kind: e.target.value as WarehouseKind })}>{Object.entries(kindLabels).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label><button disabled={saving}>ذخیره</button></form></Modal> : null}
+      {zoneFormOpen ? <Modal title="ناحیه" onClose={() => setZoneFormOpen(false)}><form onSubmit={submitZone}><input dir="ltr" value={zoneDraft.code} onChange={(e)=>setZoneDraft({...zoneDraft,code:e.target.value})}/><input value={zoneDraft.title} onChange={(e)=>setZoneDraft({...zoneDraft,title:e.target.value})}/><button disabled={saving}>ذخیره</button></form></Modal> : null}
+      {locationFormOpen ? <Modal title="موقعیت" onClose={() => setLocationFormOpen(false)}><form onSubmit={submitLocation}><select value={locationDraft.zoneId} onChange={(e)=>setLocationDraft({...locationDraft,zoneId:e.target.value})}><option value="">ناحیه</option>{zones.map(z=><option key={z.zoneId} value={z.zoneId}>{z.code} — {z.title}</option>)}</select><input dir="ltr" value={locationDraft.code} onChange={(e)=>setLocationDraft({...locationDraft,code:e.target.value})}/><input value={locationDraft.title} onChange={(e)=>setLocationDraft({...locationDraft,title:e.target.value})}/><button disabled={saving}>ذخیره</button></form></Modal> : null}
+      {moveFormOpen && movingLocation ? <Modal title="جابه‌جایی موقعیت" onClose={() => setMoveFormOpen(false)}><form onSubmit={submitMoveLocation}><select value={moveDraft.warehouseId} onChange={async(e)=>{const warehouseId=e.target.value; setMoveDraft({...moveDraft,warehouseId,zoneId:"",parentLocationId:""}); if(active.companyId){const {rawReader}=await buildAdapters(); setMoveZones(await rawReader.listZones({companyId:active.companyId,warehouseId,statuses:["active"]}));}}>{moveWarehouses.map(w=><option key={w.warehouseId} value={w.warehouseId}>{w.code} — {w.title}</option>)}</select><select value={moveDraft.zoneId} onChange={async(e)=>{const zoneId=e.target.value; setMoveDraft({...moveDraft,zoneId,parentLocationId:""}); if(active.companyId){const {rawReader}=await buildAdapters(); setMoveParents((await rawReader.listLocations({companyId:active.companyId,warehouseId:moveDraft.warehouseId,zoneId,statuses:["active"]})).filter(i=>i.locationId!==movingLocation.locationId));}}>{moveZones.map(z=><option key={z.zoneId} value={z.zoneId}>{z.code} — {z.title}</option>)}</select><select value={moveDraft.parentLocationId} onChange={(e)=>setMoveDraft({...moveDraft,parentLocationId:e.target.value})}><option value="">بدون والد</option>{moveParents.map(p=><option key={p.locationId} value={p.locationId}>{p.code} — {p.title}</option>)}</select><button disabled={saving}>جابه‌جایی</button></form></Modal> : null}
+      <WarehouseConfirmationDialog confirmation={confirmation} onCancel={() => setConfirmation(null)} onConfirm={() => setConfirmation(null)} />
     </Page>
   );
 }
 
-function Dialog({
-  title,
-  close,
-  small = false,
-  children,
-}: {
-  title: string;
-  close: () => void;
-  small?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className="warehouse-dialog-backdrop"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) close();
-      }}
-    >
-      <section
-        className={`warehouse-dialog${small ? " warehouse-dialog--small" : ""}`}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
-        <header>
-          <h2>{title}</h2>
-          <button type="button" onClick={close} aria-label="بستن">
-            ×
-          </button>
-        </header>
-        {children}
-      </section>
-    </div>
-  );
+function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose(): void }) {
+  return <div className="warehouse-modal" role="dialog" aria-modal="true" aria-label={title}><div><header><strong>{title}</strong><button type="button" onClick={onClose}>بستن</button></header>{children}</div></div>;
 }
