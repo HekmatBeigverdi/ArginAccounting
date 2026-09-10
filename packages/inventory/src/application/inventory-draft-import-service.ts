@@ -27,8 +27,23 @@ const normalize = (value: string, field: string): string => {
   return result;
 };
 
-const stableFingerprint = (document: CreateInventoryDocumentInput): string =>
-  JSON.stringify(document, Object.keys(document).sort());
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Readonly<Record<string, unknown>>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nested]) => [key, canonicalize(nested)]),
+    );
+  }
+  return value;
+}
+
+/** createdAt is generated presentation/persistence metadata, not import business identity. */
+function stableFingerprint(document: CreateInventoryDocumentInput): string {
+  const { createdAt: _createdAt, ...businessPayload } = document;
+  return JSON.stringify(canonicalize(businessPayload));
+}
 
 /**
  * Persists only Draft Inventory documents. Preview/master-data validation happens before this boundary.
