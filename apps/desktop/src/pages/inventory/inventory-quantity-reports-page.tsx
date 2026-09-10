@@ -1,4 +1,5 @@
 import {
+  Fragment,
   type FormEvent,
   useCallback,
   useEffect,
@@ -159,15 +160,18 @@ export function InventoryQuantityReportsPage() {
     } finally { setLoading(false); }
   }, [services, active.companyId, reportBranchId, productId, includeZero, summaryCursor]);
 
-  const loadBalances = useCallback(async (cursor: string | null = balanceCursor, override?: { productId?: string; warehouseId?: string }) => {
+  const loadBalances = useCallback(async (
+    cursor: string | null = balanceCursor,
+    override?: { productId?: string; warehouseId?: string },
+  ) => {
     if (!services || !active.companyId) return;
     setLoading(true); setError("");
     try {
       setBalances(await services.readBalances({
         companyId: active.companyId,
         branchId: reportBranchId,
-        productId: override?.productId ?? productId || null,
-        warehouseId: override?.warehouseId ?? warehouseId || null,
+        productId: (override?.productId ?? productId) || null,
+        warehouseId: (override?.warehouseId ?? warehouseId) || null,
         zoneId: override ? null : zoneId || null,
         locationId: override ? null : locationId || null,
         includeZero,
@@ -282,10 +286,10 @@ export function InventoryQuantityReportsPage() {
 
         {balanceView === "summary" ? <>
           <div className="inventory-report-table-wrap"><table className="inventory-report-table inventory-product-summary-table"><thead><tr><th>کالا</th><th>موجودی کل ({scopeLabel})</th><th>تعداد انبار</th><th>محل‌های موجودی</th><th>عملیات</th></tr></thead><tbody>
-            {summaries?.items.map((row) => <>
-              <tr key={row.productId}><td><bdi dir="ltr">{row.productCode}</bdi><span>{row.productTitle}</span></td><td className="inventory-total-quantity"><bdi dir="ltr">{row.totalQuantity}</bdi><small>واحد پایه کالا</small></td><td>{row.warehouseCount}</td><td>{row.stockKeyCount}</td><td><button type="button" aria-expanded={expandedProductId === row.productId} onClick={() => setExpandedProductId((current) => current === row.productId ? null : row.productId)}>تفکیک انبارها</button></td></tr>
+            {summaries?.items.map((row) => <Fragment key={row.productId}>
+              <tr><td><bdi dir="ltr">{row.productCode}</bdi><span>{row.productTitle}</span></td><td className="inventory-total-quantity"><bdi dir="ltr">{row.totalQuantity}</bdi><small>واحد پایه کالا</small></td><td>{row.warehouseCount}</td><td>{row.stockKeyCount}</td><td><button type="button" aria-expanded={expandedProductId === row.productId} onClick={() => setExpandedProductId((current) => current === row.productId ? null : row.productId)}>تفکیک انبارها</button></td></tr>
               {expandedProductId === row.productId && <tr className="inventory-product-breakdown-row"><td colSpan={5}><div className="inventory-product-breakdown"><header><strong>{row.productTitle}</strong><span>جمع {scopeLabel}: <bdi dir="ltr">{row.totalQuantity}</bdi></span></header>{row.warehouses.map((warehouse) => <div className="inventory-warehouse-summary" key={warehouse.warehouseId}><div><bdi dir="ltr">{warehouse.warehouseCode}</bdi><strong>{warehouse.warehouseTitle}</strong></div><div><span>موجودی</span><bdi dir="ltr">{warehouse.quantity}</bdi></div><div><span>تعداد موقعیت/StockKey</span><bdi dir="ltr">{warehouse.stockKeyCount}</bdi></div><button type="button" onClick={() => void showWarehouseBreakdown(row, warehouse.warehouseId)}>نمایش ریز انبار</button></div>)}</div></td></tr>}
-            </>)}
+            </Fragment>)}
             {!loading && summaries?.items.length === 0 && <tr><td colSpan={5}>برای این محدوده موجودی ثبت‌شده‌ای وجود ندارد.</td></tr>}
           </tbody></table></div>
           <div className="inventory-report-pagination"><button type="button" disabled={!summaryCursorStack.length || loading} onClick={() => { const stack=[...summaryCursorStack]; const previous=stack.pop()??null; setSummaryCursorStack(stack); void loadSummaries(previous); }}>قبلی</button><button type="button" disabled={!summaries?.nextCursor || loading} onClick={() => { if(!summaries?.nextCursor)return; setSummaryCursorStack((s)=>[...s,summaryCursor]); void loadSummaries(summaries.nextCursor); }}>بعدی</button></div>
