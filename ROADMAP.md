@@ -90,12 +90,15 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 ## Inventory
 
-20. 🚧 Inventory Documents
-   - Steps 1–4 complete: draft Domain, exact quantities, operational references, scope checks and numbering; Step 5 is next
-   - Quantity documents, atomic transfers/reversals, movement ledger, on-hand balances and quantity kardex
-   - Shared master-data dependency guards, Persian RTL desktop workflows and Argin Bridge-compatible contracts
-   - Valuation remains Phase 21; live synchronization remains Phase 45
-21. ⏳ Inventory Valuation
+20. ✅ Inventory Documents
+   - Receipt, issue, opening, atomic transfer, quantity-adjustment and linked reversal workflows
+   - Immutable exact-quantity movement ledger, rebuildable on-hand balances and deterministic quantity Kardex
+   - Company/Branch/fiscal scope, numbering, Approval/Audit, idempotency, optimistic concurrency and pinned SQLite transaction boundary
+   - Persian RTL document workspace, aggregate/detailed inventory views, source drill-down, Draft-only import, Excel and Print/PDF
+   - Warehouse/Zone/Location dependency guards and persistence-neutral ERP/Argin Bridge contracts
+   - Real SQLite migration/rollback/restart/balance-rebuild tests, performance/query-plan validation and Phase 20 quality gate
+   - All 22 fixed steps completed and owner-accepted; semantic tag/GitHub Release `v0.20.0` remains manual
+21. 🚧 Inventory Valuation
 
 ## Purchases
 
@@ -168,8 +171,8 @@ A phase is complete only when:
 
 ## Current Target
 
-[Phase 20 — Inventory Documents](docs/phases/phase-20-inventory-documents-plan.md), Steps 1–4 complete; Company/Branch/fiscal scope and numbering are implemented; lifecycle is next at Step 5.
+[Phase 21 — Inventory Valuation](docs/roadmap/roadmap.md). Phase 21 must consume immutable Phase 20 quantity movements without rewriting quantity history.
 
-## Latest Completed Master Data Milestone
+## Latest Completed Inventory Milestone
 
-Phase 19 — Warehouses, Steps 1–20 complete per the canonical phase record; semantic release `v0.19.0` remains subject to manual Tag/GitHub Release publication.
+Phase 20 — Inventory Documents, all 22 fixed steps complete and owner-accepted. Semantic tag/GitHub Release `v0.20.0` remains a manual repository-owner action.
