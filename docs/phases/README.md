@@ -29,9 +29,11 @@ Historical Phase 01–17 documentation is retained as project history and is not
 17. [Phase 17 — Parties](phase-17-parties.md) — implementation, validation, documentation, and merge complete; semantic release `v0.17.0` prepared for manual GitHub publication
 18. [Phase 18 — Products and Services](phase-18-products-services-plan.md) — implementation and Step 20 merge preparation complete; semantic release `v0.18.0` prepared for manual Tag/GitHub Release publication
 
+19. [Phase 19 — Warehouses](phase-19-warehouses-plan.md) — Steps 1–20 complete; manual Tag/GitHub Release publication tracked separately
+
 ## Current Phase
 
-19. Phase 19 — Warehouses
+20. [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md) — Steps 1–4 complete; fixed 22-step sequence preserved; Step 5 is next
 
 ## Renumbering Rule
 

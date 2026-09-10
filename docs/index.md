@@ -24,13 +24,35 @@
 - [ADR-0012 — Versioned Coding Templates](adr/ADR-0012-versioned-coding-templates.md)
 - [ADR-0013 — Journal Voucher Engine Architecture](adr/ADR-0013-journal-voucher-engine.md)
 - [ADR-0014 — UI Foundation and Global Display Density](adr/ADR-0014-ui-foundation-and-global-density.md)
+- [ADR-0015 — Journal Lifecycle Architecture](adr/ADR-0015-journal-lifecycle.md)
+- [ADR-0016 — Accounting Reports Architecture](adr/ADR-0016-accounting-reports.md)
+- [ADR-0017 — Party Master Data Model](adr/ADR-0017-party-master-data-model.md)
+- [ADR-0018 — Exact Inventory Quantities and Historical Unit Snapshots](adr/ADR-0018-inventory-quantity-snapshots.md)
+- [ADR-0019 — Append-only Inventory Stock Ledger and Rebuildable Balances](adr/ADR-0019-inventory-stock-ledger.md)
+- [ADR-0020 — Atomic Inventory Transfer and Quantity Adjustment Workflows](adr/ADR-0020-inventory-transfer-adjustment-workflows.md)
 - [Architecture Decision Records](adr/README.md)
 
 ## architecture
 
+- [Inventory Application, Query and Repository Contracts](architecture/inventory-application-contracts.md)
+- [Inventory Application Services, Idempotency, and Concurrency](architecture/inventory-application-services.md)
+- [Inventory Argin Bridge and Future Synchronization Contract](architecture/inventory-argin-bridge-contract.md)
+- [Inventory Desktop Workspace](architecture/inventory-desktop-workspace.md)
+- [Inventory Document Domain Foundation](architecture/inventory-documents.md)
+- [Inventory Master Data Dependency Guards and ERP Integration](architecture/inventory-master-data-erp-integration.md)
+- [Inventory Quantity Kardex, Balances and Source Drill-down](architecture/inventory-quantity-reports.md)
+- [Inventory SQLite Persistence and Atomic Unit of Work](architecture/inventory-sqlite-persistence.md)
+- [Inventory Transfer, Adjustment, and Reversal Workflows](architecture/inventory-transfer-adjustment-workflows.md)
 - [Architecture Overview](architecture/overview.md)
+- [Party Argin Bridge Contract](architecture/party-argin-bridge-contract.md)
+- [Party Shared Platform and Accounting Integration Boundary](architecture/party-shared-platform-integration.md)
 - [Architecture Principles](architecture/principles.md)
+- [Product/Service Selector Contract](architecture/product-selector-contract.md)
+- [Product/Service Shared Platform and ERP Integration Boundary](architecture/product-shared-platform-integration.md)
+- [Product/Service Synchronization Contract](architecture/product-sync-contract.md)
 - [Architecture Documentation](architecture/README.md)
+- [Warehouse Inventory and ERP Integration Boundaries](architecture/warehouse-inventory-erp-integration.md)
+- [Warehouse Synchronization Contract](architecture/warehouse-sync-contract.md)
 
 ## contracts
 
@@ -65,6 +87,7 @@
 
 - [Domain Dictionary](glossary/domain-dictionary.md)
 - [Domain Glossary](glossary/domain-glossary.md)
+- [Inventory Glossary](glossary/inventory-glossary.md)
 
 ## localization
 
@@ -73,6 +96,7 @@
 ## modules
 
 - [Future Modules](modules/future-modules.md)
+- [Inventory Documents Module](modules/inventory-documents.md)
 - [Module Map](modules/module-map.md)
 
 ## phases
@@ -94,6 +118,34 @@
 - [Phase 13 — Journal Voucher Engine](phases/phase-13-journal-voucher-engine.md)
 - [Phase 14 — UI Foundation Consolidation — Fixed Implementation Plan](phases/phase-14-ui-foundation-consolidation-plan.md)
 - [Phase 14 — UI Foundation Consolidation](phases/phase-14-ui-foundation-consolidation.md)
+- [Phase 15 — Journal Lifecycle — Fixed Implementation Plan](phases/phase-15-journal-lifecycle-plan.md)
+- [Phase 15 — Journal Lifecycle](phases/phase-15-journal-lifecycle.md)
+- [Phase 15 — Manual Desktop Validation](phases/phase-15-manual-desktop-validation.md)
+- [Phase 15 — Step 15 Domain and Application Test Matrix](phases/phase-15-step-15-test-matrix.md)
+- [Phase 15 — Step 16 Regression Matrix](phases/phase-15-step-16-regression-matrix.md)
+- [Phase 15 — Step 17 Monorepo Validation and Documentation Completion](phases/phase-15-step-17-validation.md)
+- [Phase 16 — Accounting Reports — Fixed Implementation Plan](phases/phase-16-accounting-reports-plan.md)
+- [Phase 16 — Accounting Reports](phases/phase-16-accounting-reports.md)
+- [Phase 16 Merge Manifest](phases/phase-16-merge-manifest.md)
+- [Phase 16 Ready for Release](phases/phase-16-ready-for-release.md)
+- [Phase 16 Release Final](phases/phase-16-release-final.md)
+- [Phase 16 Release Instructions Source](phases/phase-16-release-instructions-source.md)
+- [Phase 16 — Accounting Reports — Release Notes](phases/phase-16-release-notes.md)
+- [Phase 16 Release Owner Action](phases/phase-16-release-owner-action.md)
+- [Phase 16 Release Pending](phases/phase-16-release-pending.md)
+- [Phase 16 Release State](phases/phase-16-release-state.md)
+- [Phase 16 — Step 12 Security Evidence](phases/phase-16-step-12-security-evidence.md)
+- [Phase 16 — Step 16 — Domain and Application Report Test Matrix](phases/phase-16-step-16-report-test-matrix.md)
+- [Phase 16 Step 17 — SQLite/Desktop/Performance and Monorepo Validation](phases/phase-16-step-17-validation-evidence.md)
+- [Phase 17 — Parties — Fixed Implementation Plan](phases/phase-17-parties-plan.md)
+- [Phase 17 — Parties](phases/phase-17-parties.md)
+- [Phase 17 — Parties — Release Notes](phases/phase-17-release-notes.md)
+- [Phase 17 Step 18 — Monorepo, Performance, Accessibility, and Quality Validation](phases/phase-17-step-18-validation-evidence.md)
+- [Phase 17 Step 19 — Documentation, ADR, and Validation Evidence](phases/phase-17-step-19-documentation-evidence.md)
+- [Phase 17 Step 20 — Final Review, Merge, and Release State](phases/phase-17-step-20-release-state.md)
+- [Phase 18 — Products and Services — Fixed Implementation Plan](phases/phase-18-products-services-plan.md)
+- [Phase 19 — Warehouses — Fixed Implementation Plan](phases/phase-19-warehouses-plan.md)
+- [Phase 20 — Inventory Documents — Fixed Implementation Plan](phases/phase-20-inventory-documents-plan.md)
 - [Phase Documentation](phases/README.md)
 
 ## registries
@@ -113,6 +165,9 @@
 
 ## security
 
+- [Inventory Security, Approval, and Audit](security/inventory-security-approval-audit.md)
+- [Party Security and Audit](security/party-security.md)
+- [Product and Service Security, Audit, and Approval Boundary](security/product-security-and-approval.md)
 - [Security Model](security/security-model.md)
 
 ## tax
@@ -126,6 +181,12 @@
 - [Phase Checklist](templates/phase-checklist.md)
 - [Phase NN — Title](templates/phase-template.md)
 - [Release vX.Y.Z](templates/release-template.md)
+
+## testing
+
+- [Phase 20 — Domain and Application Test Matrix](testing/phase-20-domain-application-tests.md)
+- [Phase 20 Performance, Accessibility, Quality, and Documentation Evidence](testing/phase-20-performance-accessibility-quality.md)
+- [Phase 20 — SQLite, Migration and Desktop Integration Tests](testing/phase-20-sqlite-desktop-integration-tests.md)
 
 ## ui
 

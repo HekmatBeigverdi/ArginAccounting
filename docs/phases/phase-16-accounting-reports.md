@@ -146,7 +146,7 @@ Print/PDF uses the same canonical preview document. Desktop printing is bridged 
 Detailed evidence is recorded in:
 
 - [Step 16 Domain and Application Report Test Matrix](phase-16-step-16-report-test-matrix.md)
-- [Step 17 SQLite/Desktop/Performance and Monorepo Validation](phase-16-step-17-validation.md)
+- [Step 17 SQLite/Desktop/Performance and Monorepo Validation](phase-16-step-17-validation-evidence.md)
 
 Coverage includes opening/period/ending balances, debit/credit sides, zero balances, hierarchy aggregation, reversal, inclusive date boundaries, Company/Branch/Fiscal scope, currency, dimensions, unposted exclusion, deterministic ordering, paging, stable errors, SQLite query shape, set-based dimension access, query-plan index usage, Desktop permissions, drill-down, traceability, Preview, Excel, native Print/PDF, and landscape orientation.
 

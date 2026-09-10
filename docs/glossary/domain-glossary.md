@@ -61,3 +61,25 @@ This glossary defines canonical English repository terms and their Persian UI me
 | Warehouse Operational Reference | مرجع عملیاتی انبار | Minimal downstream reference containing durable `warehouseId` and optional `zoneId`/`locationId`; it intentionally excludes mutable code/title metadata. |
 | Warehouse Dependency Guard | کنترل وابستگی انبار | Extension contract used by future Inventory/Purchase/Sales/Manufacturing modules to block destructive/status/move Master Data operations when stock/documents/references exist. |
 | Warehouse Tombstone | نشان حذف همگام‌سازی انبار | Soft-deletion/change-propagation metadata for Warehouse/Zone/Location retained for Audit and future Argin Bridge synchronization; distinct from lifecycle archive/inactive state. |
+| Inventory Document | سند انبار | Company-owned quantity-document aggregate with durable identity and controlled lifecycle. |
+| Inventory Document Line | ردیف سند انبار | Owned record with durable line ID and Product reference; display position does not define identity. |
+| Inventory Receipt | رسید انبار | Quantity-document type for incoming stock; stock effects require confirmation through the owning workflow. |
+| Inventory Issue | حواله انبار | Quantity-document type for outgoing stock; distinct from a commercial sales invoice. |
+| Inventory Opening Document | سند موجودی ابتدای دوره | Quantity-document type for initial stock, distinct from an accounting opening balance. |
+| Inventory Transfer | سند انتقال انبار | Quantity-document type linking source and destination stock effects; atomic behavior belongs to the transfer workflow. |
+| Inventory Adjustment | سند تعدیل موجودی | Quantity-document type for a reasoned correction to stock quantity; distinct from monetary valuation. |
+| Inventory Source Reference | مرجع مبدأ سند انبار | Company/source-system/type/document/optional-line durable reference; display number and row position are excluded. |
+| Inventory Business Date | تاریخ عملیاتی سند انبار | Gregorian internal business date presented as Jalali in UI, independent of UTC recording timestamps. |
+| Inventory Quantity Snapshot | تصویر مقدار و واحد سند انبار | Immutable entered/base decimal quantities and copied unit conversion metadata that preserve historical interpretation after Product edits. |
+| Inventory Operation Reference | مرجع عملیاتی ردیف انبار | Company/Product/version, quantity snapshot and durable source/optional destination Warehouse hierarchy references; not a posted stock movement. |
+| Inventory Document Status | وضعیت سند انبار | Canonical lifecycle state: draft, submitted, approved, confirmed, cancelled, or reversed. Approval alone does not affect stock. |
+| Inventory Confirmation | قطعی‌کردن سند انبار | Lifecycle gate that authorizes stock-effective workflow processing after approval; confirmation must be atomically combined with movement persistence in later Application/UoW steps. |
+| Inventory Stock Key | کلید موجودی | Durable quantity-ownership identity composed of Company, Product, Warehouse and optional Zone/Location. |
+| Inventory Stock Movement | گردش موجودی | Immutable append-only signed Product-base-unit quantity fact linked to durable document/line identity. |
+| Inventory Business Order | ترتیب عملیاتی موجودی | Stable positive same-business-date ordering value persisted with movement facts; local row order, arrival time, or UUID order are not substitutes. |
+| Inventory Stock Balance | مانده موجودی | Rebuildable projection calculated from immutable Stock Movement facts for one Stock Key; never the sole authoritative source of truth. |
+| Negative Stock Policy | سیاست موجودی منفی | Default rule rejecting any canonical historical point where a Stock Key running quantity becomes negative; deployments may explicitly opt into permissive mode. |
+
+## Inventory Fiscal Scope and Number Reservation
+
+Inventory fiscal scope binds a quantity document to a fiscal year/period and origin Branch, with an optional transfer destination Branch. Number reservation uses the shared series partition of Company, year, origin Branch and document type; the display number is not the durable document identity. See [Inventory scope and numbering](../architecture/inventory-documents.md).

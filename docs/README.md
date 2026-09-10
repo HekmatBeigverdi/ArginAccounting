@@ -17,8 +17,9 @@ These documents are mandatory through the final project phase.
 
 - [Complete documentation index](index.md)
 - Generator: `node scripts/generate-doc-index.mjs`
+- Local link validator: `node scripts/check-doc-links.mjs`
 
-Run the generator after adding, moving, renaming, or deleting documentation files.
+Run the generator after adding, moving, renaming, or deleting documentation files and validate links before phase closure.
 
 ## Canonical Sections
 
@@ -37,16 +38,18 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 - [Testing Convention](development/testing-convention.md)
 - [Security Model](security/security-model.md)
 - [Domain Glossary](glossary/domain-glossary.md)
+- [Inventory Glossary](glossary/inventory-glossary.md)
 - [Domain Dictionary](glossary/domain-dictionary.md)
 - [Product Vision](vision/product-vision.md)
 - [Templates](templates/)
 
 ## Current Project State
 
-- Latest completed implementation: [Phase 16 — Accounting Reports](phases/phase-16-accounting-reports.md)
-- Prepared release: `v0.16.0` — semantic tag/GitHub Release publication pending repository-owner action
-- Phase 16 architecture decision: [ADR-0016 — Accounting Reports](adr/ADR-0016-accounting-reports.md)
-- Current delivery target: Phase 17 — Parties
+- Latest completed implementation: [Phase 20 — Inventory Documents](phases/phase-20-inventory-documents-plan.md)
+- Phase 20 module record: [Inventory Documents Module](modules/inventory-documents.md)
+- All 22 fixed Phase 20 steps are complete and owner-accepted; semantic Tag/GitHub Release `v0.20.0` remains a manual repository-owner action.
+- Current implementation target: Phase 21 — Inventory Valuation.
+- Phase 21 must consume immutable Phase 20 movement facts and must not rewrite quantity history.
 - Canonical roadmap: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Source-of-Truth Policy

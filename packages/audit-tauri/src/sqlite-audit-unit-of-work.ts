@@ -38,6 +38,14 @@ implements AuditUnitOfWork {
     return this.transactionMutex
       .runExclusive(
         async () => {
+          if (this.db.transaction) {
+            return this.db.transaction(async session => action({
+              audit: new SqliteAuditRepository(session),
+              approval: new SqliteApprovalRepository(session)
+            }));
+          }
+
+          // Legacy adapters below must own a single connection.
           await this.db.execute(
             "BEGIN IMMEDIATE"
           );

@@ -6,6 +6,47 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.20.0] - Unreleased
+
+### Planning
+
+- Established the fixed 22-step Inventory Documents plan and Argin Bridge compatibility requirements; implementation has not started.
+- Planned exact quantity receipts/issues/opening, atomic transfers/adjustments/reversals, movement ledger, on-hand balances, quantity kardex and Inventory-backed master-data dependency guards.
+- Kept valuation in Phase 21 and live synchronization in Phase 45.
+- Reconciled stale roadmap and phase-index labels with the canonical completed Phase 19 record; no new release publication is claimed.
+
+### Step 1 — Baseline and Plan Freeze
+
+- Verified the phase branch descends directly from current develop and retained the fixed 22-step sequence without scope changes.
+- Inspected Product/Warehouse public integration contracts, workspace layout and migration inventory through 0025.
+- Registered planned Inventory Domain/Application and SQLite adapter boundaries; no runtime packages or migrations were created.
+- Marked Step 1 complete in the canonical record, roadmap and phase index; runtime implementation and validation remain pending.
+
+### Step 2 — Inventory Document Domain Model
+
+- Added `@argin/inventory` with immutable draft document/line snapshots and receipt, issue, opening, transfer and adjustment types.
+- Separated durable identity, display numbering/line position, Gregorian business date and UTC recording timestamps.
+- Added Company-scoped durable source references, typed field errors, defensive nested freezing and validated persisted draft rehydration.
+- Added 20 passing Domain tests; focused typecheck/build passed. Updated workspace lockfile, architecture, module registration, glossary and phase evidence.
+- Quantity/units, fiscal/lifecycle/stock behavior, SQLite and Desktop integration remain in their fixed later steps.
+
+### Step 3 — Quantity, Units and Operational References
+
+- Added exact decimal-string quantity conversion using BigInt internally and historical unit/conversion snapshots, preserving Phase 18 precision/rounding and durable identities.
+- Added current Product eligibility and Warehouse/Zone/Location identity, Company, status and hierarchy validation through public upstream contracts.
+- Integrated immutable operation snapshots with draft lines and validated historical rehydration without rereading mutable masters.
+- Added 24 tests (44 total passing); focused typecheck/build and frozen dependency install passed. Added ADR-0018 and updated canonical docs/status.
+- Company/Branch/fiscal orchestration, stock mutations, persistence and Desktop integration remain in later fixed steps.
+
+### Step 4 — Company, Branch, Fiscal Scope and Numbering
+
+- Added immutable fiscal/Branch scope, trusted Company/actor checks, explicit cross-Branch transfer policy, open year/period date validation and applicable historical locks through public upstream readers.
+- Rechecked current Warehouse eligibility at both transfer endpoints and reserved numbers through the shared Platform engine, scoped by Company/year/origin Branch/type.
+- Preserved durable Argin Bridge identities independently from display numbers; transactional persistence and replay handling retain their later owning steps.
+- Added 28 tests (72 total passing), including 50 concurrent reservations; focused typecheck/build and frozen dependency install passed. Updated the canonical Step Status and architecture.
+
+---
+
 ## [0.18.0] - 2026-09-01
 
 ### Added

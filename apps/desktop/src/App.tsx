@@ -27,6 +27,10 @@ import {
 } from "./composition/accounting/accounting-provider";
 
 import {
+  InventoryWarehouseIntegrationProvider
+} from "./composition/warehouse/inventory-warehouse-integration-provider";
+
+import {
   PlatformProvider
 } from "./platform";
 
@@ -44,11 +48,13 @@ function App() {
         <AuthSessionProvider>
           <AuditProvider>
             <AccountingProvider>
-              <ActiveContextProvider>
-                <DisplayDensityProvider>
-                  <AppRouter />
-                </DisplayDensityProvider>
-              </ActiveContextProvider>
+              <InventoryWarehouseIntegrationProvider>
+                <ActiveContextProvider>
+                  <DisplayDensityProvider>
+                    <AppRouter />
+                  </DisplayDensityProvider>
+                </ActiveContextProvider>
+              </InventoryWarehouseIntegrationProvider>
             </AccountingProvider>
           </AuditProvider>
         </AuthSessionProvider>

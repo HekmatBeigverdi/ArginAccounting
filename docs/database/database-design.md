@@ -50,6 +50,13 @@ Phase 19 adds:
 
 Warehouse, Zone and Location use stable TEXT durable IDs independent from mutable code/title metadata. Warehouse is always company-owned; Branch assignment is an organizational visibility rule rather than separate Warehouse identity. Stock quantities, movements, reservations, cost layers and Inventory documents are deliberately absent from Phase 19 persistence.
 
+Phase 20 adds:
+
+- `0026_inventory_documents.sql` for Inventory document headers/lines/lifecycle, ordinary and transfer quantity movement facts, fiscal-year opening uniqueness, rebuildable balance projections, durable business ordering, idempotency outcomes, synchronization metadata, integrity constraints and query indexes;
+- `0027_inventory_reversal_persistence.sql` for append-only reversal compensation facts and the `inventory_all_stock_movements` unified authoritative ledger view.
+
+Inventory quantities are stored as canonical decimal strings, never SQLite `REAL`. The authoritative quantity ledger is the logical union exposed by `inventory_all_stock_movements`: ordinary/transfer facts live in `inventory_stock_movements`, while compensating reversal facts live in `inventory_stock_movement_compensations`. `inventory_stock_balances` is explicitly a rebuildable projection and must never become an independently editable source of stock truth. Movement, compensation, lifecycle and opening facts are append-only at the SQLite boundary through update/delete blocking triggers. Confirmed correction remains compensating movement/reversal, not destructive mutation.
+
 ## Indexing
 
 Indexes are driven by real query paths. Company, branch, fiscal year, status, document number, date, correlation ID, and foreign-key access paths must be reviewed for each module.
@@ -66,6 +73,8 @@ Phase 17 Party read paths use bounded SQL paging/selectors and indexed duplicate
 Phase 18 Product/Service read paths use bounded paging/selectors and indexed strong-duplicate lookup. `@argin/product-tauri` provides `validate:performance`, which builds a representative 50,000-row Product/Service dataset and requires SQLite query plans to use the company/status/title list index, kind/status/title selector index, and company/SKU hard-duplicate index. Runtime latency is diagnostic only; bounded access and expected index use are the portable quality gates.
 
 Phase 19 Warehouse read paths use bounded paging and Company/Branch-aware selectors. `@argin/warehouse-tauri` provides `validate:performance`, which builds a representative 50,000-Warehouse dataset plus 5,000 Zones and 20,000 Locations. SQLite `EXPLAIN QUERY PLAN` must use accepted indexes for company/status list reads, Branch-scoped selectors, external-identifier duplicate lookup, Zone lookup and Location lookup. Runtime latency is diagnostic only; bounded access and expected index use are the portable quality gates.
+
+Phase 20 Inventory read paths add indexes for Company/status/date document lists, type/date and Branch/date filters, fiscal lookups, canonical StockKey kardex chronology, Product/date movement feeds, Warehouse/Product balance views, reversal effect/original lookup, tombstones and future incremental synchronization changes. Step 21 owns representative `EXPLAIN QUERY PLAN` validation; Steps 11/13 define the intended schema/adapters but do not claim performance execution.
 
 ## Reporting Read Model
 
@@ -105,14 +114,38 @@ Warehouse reads/selectors are bounded and Company/Branch-aware. Without Branch c
 
 Multi-write Warehouse operations use `SqliteWarehouseUnitOfWork`; root optimistic updates use version-aware compare-and-swap semantics. `warehouse_idempotency` stores durable completed request results so retries do not duplicate successful mutations. External Inventory/Purchase/Sales/Manufacturing references remain outside this schema and must later plug into the Warehouse dependency-guard contract rather than creating reverse Warehouse dependencies.
 
+## Inventory Documents and Quantity Ledger
+
+Inventory persistence is normalized across `inventory_documents`, `inventory_document_lines`, `inventory_document_lifecycle`, `inventory_stock_movements`, `inventory_stock_movement_compensations`, `inventory_opening_balances`, `inventory_stock_balances`, `inventory_business_orders`, and `inventory_idempotency`. `inventory_all_stock_movements` is the repository-facing union of both movement fact partitions.
+
+Document durable ID is separate from `document_number`. Number uniqueness is scoped by Company + fiscal year + origin Branch + document type and uses an expression index so nullable SQL semantics cannot create duplicate business numbers. Draft deletion is represented by `deleted_at`; the schema rejects tombstones for non-Draft lifecycle states. Source-system identity is stored separately from display numbering.
+
+Lines keep durable `lineId`, ordered position, Product identity, source references, exact entered/base quantity strings, and a persisted complete historical operation snapshot in `quantity_snapshot`, including unit/conversion and source/destination Warehouse identities. Current master eligibility is still revalidated by Application services; historical snapshots are not rewritten when Product or Warehouse metadata later changes.
+
+Ordinary/transfer movement rows carry durable `movementId`, document/line linkage, `transferId`, Product/StockKey, business date/order, UTC record time and exact signed base-unit delta. Reversal compensation rows carry their own `effect_document_id`, retain the original durable `source_line_id`, and reference the original immutable movement. This physical split resolves reversal ownership without changing the public `InventoryStockMovementSnapshot` or Bridge identity contract. Both partitions are append-only and the unified view restores the single logical ledger.
+
+Opening uniqueness is materialized in `inventory_opening_balances` and enforced by Company + fiscal year + Product + Warehouse + normalized nullable Zone/Location. `@argin/inventory-tauri` resolves opening trace metadata from the just-appended movement inside the same transaction before persisting the opening fact.
+
+`inventory_stock_balances` stores a rebuild cache by canonical `stock_key`. Its quantity may be replaced atomically after ledger rebuild; repositories derive movement count/latest movement from the authoritative unified ledger rather than trusting projection metadata. The table is not synchronized as an independent authoritative fact.
+
+`inventory_business_orders` owns durable positive same-date order allocation per Company. `SqliteInventoryBusinessOrderRepository.next()` uses a transaction-bound `INSERT ... ON CONFLICT ... DO UPDATE ... RETURNING` statement. `inventory_idempotency` owns Company-scoped request-key claims and the completed operation/fingerprint/document version/status outcome required for replay after restart.
+
+`SqliteInventoryDocumentRepository` applies version-aware compare-and-swap updates. `SqliteInventoryMovementRepository` writes ordinary/transfer and reversal compensation facts to the appropriate append-only partition while reading from `inventory_all_stock_movements`. `SqliteInventoryUnitOfWork` composes all confirmation-critical repositories over one transaction-bound `DatabaseSession`.
+
+Cross-row rules that depend on the complete movement set—negative historical balance, transfer conservation, exact reversal compensation, payload fingerprint semantics and concurrent stock validation—remain Application/UoW responsibilities. The Step 10 read-check-write sequence now executes through the real SQLite transaction boundary delivered in Step 13.
+
 ## Transactions
 
 Use explicit Unit of Work boundaries for operations that write multiple aggregates, history records, audit entries, number-series values, or posting results. Phase 16 report execution is read-only and does not introduce a report-write transaction.
 
-Party parent/role/contact/address writes use one Party Unit of Work transaction. Product parent/identifier/unit/master-data writes use one Product Unit of Work transaction. Warehouse root/external-identifier/physical writes use the Warehouse Unit of Work where atomic composition is required. Shared Audit is composed as a cross-cutting successful-mutation consequence; Party, Product and Warehouse do not claim a distributed cross-store transaction with Audit.
+Party parent/role/contact/address writes use one Party Unit of Work transaction. Product parent/identifier/unit/master-data writes use one Product Unit of Work transaction. Warehouse root/external-identifier/physical writes use the Warehouse Unit of Work where atomic composition is required.
+
+For production Desktop connections, `TauriSqliteExecutor.connect()` now uses a Rust-side atomic bridge backed by a pinned SQLx `PoolConnection<Sqlite>` from the same `tauri-plugin-sql` pool. Each `DatabaseExecutor.transaction()` begins with `BEGIN IMMEDIATE`, executes all callback reads/writes against that same connection, and ends with `COMMIT` or `ROLLBACK`. The TypeScript executor also serializes transaction callbacks conservatively, closing the local race window between authoritative stock revalidation and commit.
+
+Inventory confirmation/reversal therefore commits or rolls back document version/lifecycle, movement or compensation facts, balance projection, opening uniqueness, business ordering and idempotency outcome as one SQLite transaction. Permission/Audit composition is intentionally deferred to Step 14 rather than being falsely claimed here.
 
 ## Future Compatibility
 
 SQL dialect-specific logic must stay inside infrastructure packages. Domain contracts must not expose SQLite-specific types or syntax. Future PostgreSQL/API report adapters must preserve the same normalized query and canonical result semantics.
 
-Future Party, Product and Warehouse PostgreSQL/HTTP/Argin Bridge adapters must preserve durable identity, company scope, Branch visibility semantics where applicable, optimistic versioning, tombstone semantics, external-reference uniqueness, bounded selection contracts, idempotency expectations, dependency boundaries and stable Application errors. Full synchronization remains Phase 45.
+Future Party, Product, Warehouse and Inventory PostgreSQL/HTTP/Argin Bridge adapters must preserve durable identity, company scope, Branch visibility semantics where applicable, optimistic versioning, tombstone semantics, exact quantity representation, movement immutability, transfer/reversal linkage, bounded selection contracts, idempotency expectations, dependency boundaries and stable Application errors. Full synchronization remains Phase 45.

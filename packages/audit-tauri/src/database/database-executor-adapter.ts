@@ -1,5 +1,7 @@
 import type {
-  DatabaseExecutor
+  DatabaseExecutor,
+  DatabaseSession,
+  DatabaseValue
 } from "@argin/database";
 
 import type {
@@ -7,11 +9,11 @@ import type {
   SqliteExecuteResult
 } from "./sqlite-database.ts";
 
-export class DatabaseExecutorAdapter
+class DatabaseSessionAdapter
 implements SqliteDatabase {
   constructor(
     private readonly executor:
-      DatabaseExecutor
+      DatabaseSession
   ) {}
 
   async execute(
@@ -21,7 +23,7 @@ implements SqliteDatabase {
     const result =
       await this.executor.execute(
         sql,
-        parameters as any
+        parameters as DatabaseValue[] | undefined
       );
 
     const executeResult: SqliteExecuteResult = {
@@ -41,9 +43,19 @@ implements SqliteDatabase {
     sql: string,
     parameters?: unknown[]
   ): Promise<T> {
-    return await this.executor.query<T>(
+    return await this.executor.query<unknown>(
       sql,
-      parameters as any
+      parameters as DatabaseValue[] | undefined
     ) as T;
+  }
+}
+
+export class DatabaseExecutorAdapter extends DatabaseSessionAdapter {
+  constructor(private readonly database: DatabaseExecutor) {
+    super(database);
+  }
+
+  transaction<T>(operation: (session: SqliteDatabase) => Promise<T>): Promise<T> {
+    return this.database.transaction(session => operation(new DatabaseSessionAdapter(session)));
   }
 }

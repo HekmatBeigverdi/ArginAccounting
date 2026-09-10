@@ -8,206 +8,132 @@ import {
   type DatabaseValue,
 } from "@argin/database";
 
+import {
+  AtomicSqliteTransactionSession,
+  TauriAtomicSqliteTransactionBridge,
+  type AtomicSqliteTransactionBridge,
+} from "./atomic-sqlite-transaction-bridge.ts";
 import { DESKTOP_DATABASE_URL } from "./constants";
 
 function getErrorMessage(error: unknown): string | null {
-  if (error instanceof Error) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (typeof error === "object" && error !== null && "message" in error && typeof error.message === "string") {
     return error.message;
   }
-
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return error.message;
-  }
-
   return null;
 }
 
-function normalizeParameters(
-  parameters: readonly DatabaseValue[]
-): DatabaseValue[] {
-  return parameters.map((value) =>
-    typeof value === "boolean" ? Number(value) : value
-  );
+function normalizeParameters(parameters: readonly DatabaseValue[]): DatabaseValue[] {
+  return parameters.map((value) => typeof value === "boolean" ? Number(value) : value);
 }
 
-class LogicalTransactionSession
-    implements DatabaseSession {
-    constructor(
-      private readonly executor:
-        DatabaseExecutor,
-    ) {}
-
-    execute(
-      sql: string,
-      parameters:
-        readonly DatabaseValue[] = [],
-    ): Promise<DatabaseExecuteResult> {
-      return this.executor.execute(
-        sql,
-        parameters,
-      );
-    }
-
-    query<T>(
-      sql: string,
-      parameters:
-        readonly DatabaseValue[] = [],
-    ): Promise<T[]> {
-      return this.executor.query<T>(
-        sql,
-        parameters,
-      );
-    }
-
-    queryOne<T>(
-      sql: string,
-      parameters:
-        readonly DatabaseValue[] = [],
-    ): Promise<T | null> {
-      return this.executor.queryOne<T>(
-        sql,
-        parameters,
-      );
-    }
+class LogicalTransactionSession implements DatabaseSession {
+  constructor(private readonly executor: DatabaseExecutor) {}
+  execute(sql: string, parameters: readonly DatabaseValue[] = []): Promise<DatabaseExecuteResult> {
+    return this.executor.execute(sql, parameters);
   }
+  query<T>(sql: string, parameters: readonly DatabaseValue[] = []): Promise<T[]> {
+    return this.executor.query<T>(sql, parameters);
+  }
+  queryOne<T>(sql: string, parameters: readonly DatabaseValue[] = []): Promise<T | null> {
+    return this.executor.queryOne<T>(sql, parameters);
+  }
+}
 
 export class TauriSqliteExecutor implements DatabaseExecutor {
-  private transactionQueue: Promise<void> =
-    Promise.resolve();
+  private transactionQueue: Promise<void> = Promise.resolve();
 
   private constructor(
-    private readonly connection: Database
+    private readonly connection: Database,
+    private readonly databaseUrl: string = DESKTOP_DATABASE_URL,
+    private readonly atomicBridge: AtomicSqliteTransactionBridge | null = null,
   ) {}
 
-  static async connect(
-    databaseUrl: string = DESKTOP_DATABASE_URL
-  ): Promise<TauriSqliteExecutor> {
+  static async connect(databaseUrl: string = DESKTOP_DATABASE_URL): Promise<TauriSqliteExecutor> {
     try {
       const connection = await Database.load(databaseUrl);
-      const executor = new TauriSqliteExecutor(connection);
-
+      const executor = new TauriSqliteExecutor(
+        connection,
+        databaseUrl,
+        new TauriAtomicSqliteTransactionBridge(),
+      );
       await executor.configureConnection();
-
       return executor;
     } catch (error) {
       throw new DatabaseError(
         "CONNECTION_FAILED",
         "Failed to connect to the local SQLite database.",
-        error
+        error,
       );
     }
   }
 
-  async execute(
-    sql: string,
-    parameters: readonly DatabaseValue[] = []
-  ): Promise<DatabaseExecuteResult> {
+  async execute(sql: string, parameters: readonly DatabaseValue[] = []): Promise<DatabaseExecuteResult> {
     try {
-      const result = await this.connection.execute(
-        sql,
-        normalizeParameters(parameters)
-      );
-
+      const result = await this.connection.execute(sql, normalizeParameters(parameters));
       return {
         rowsAffected: result.rowsAffected,
-        ...(result.lastInsertId !== undefined
-          ? { lastInsertId: result.lastInsertId }
-          : {})
+        ...(result.lastInsertId !== undefined ? { lastInsertId: result.lastInsertId } : {}),
       };
     } catch (error) {
       const causeMessage = getErrorMessage(error);
-      const errorMessage = causeMessage
-        ? `Failed to execute SQLite statement: ${causeMessage}`
-        : "Failed to execute the SQLite statement.";
-
-      console.error("SQL Error:", {
-        sql: sql.substring(0, 200),
-        parameters,
-        error
-      });
-
+      console.error("SQL Error:", { sql: sql.substring(0, 200), parameters, error });
       throw new DatabaseError(
         "QUERY_FAILED",
-        errorMessage,
-        error
+        causeMessage ? `Failed to execute SQLite statement: ${causeMessage}` : "Failed to execute the SQLite statement.",
+        error,
       );
     }
   }
 
-  async query<T>(
-    sql: string,
-    parameters: readonly DatabaseValue[] = []
-  ): Promise<T[]> {
+  async query<T>(sql: string, parameters: readonly DatabaseValue[] = []): Promise<T[]> {
     try {
-      return await this.connection.select<T[]>(
-        sql,
-        normalizeParameters(parameters)
-      );
+      return await this.connection.select<T[]>(sql, normalizeParameters(parameters));
     } catch (error) {
       const causeMessage = getErrorMessage(error);
-      const errorMessage = causeMessage
-        ? `Failed to execute SQLite query: ${causeMessage}`
-        : "Failed to execute the SQLite query.";
-
-      console.error("SQL Query Error:", {
-        sql: sql.substring(0, 200),
-        parameters,
-        error
-      });
-
+      console.error("SQL Query Error:", { sql: sql.substring(0, 200), parameters, error });
       throw new DatabaseError(
         "QUERY_FAILED",
-        errorMessage,
-        error
+        causeMessage ? `Failed to execute SQLite query: ${causeMessage}` : "Failed to execute the SQLite query.",
+        error,
       );
     }
   }
 
-  async queryOne<T>(
-    sql: string,
-    parameters: readonly DatabaseValue[] = []
-  ): Promise<T | null> {
+  async queryOne<T>(sql: string, parameters: readonly DatabaseValue[] = []): Promise<T | null> {
     const records = await this.query<T>(sql, parameters);
-
     return records[0] ?? null;
   }
 
-  async transaction<T>(
-    operation: (
-      transaction: DatabaseSession,
-    ) => Promise<T>,
-  ): Promise<T> {
-    const previousOperation =
-      this.transactionQueue;
-
+  async transaction<T>(operation: (transaction: DatabaseSession) => Promise<T>): Promise<T> {
+    const previousOperation = this.transactionQueue;
     let releaseQueue!: () => void;
-
-    this.transactionQueue =
-      new Promise<void>((resolve) => {
-        releaseQueue = resolve;
-      });
-
+    this.transactionQueue = new Promise<void>((resolve) => { releaseQueue = resolve; });
     await previousOperation;
 
     try {
-      // The Tauri SQL plugin executes every command through a connection
-      // pool and does not pin consecutive commands to one connection.
-      // Issuing BEGIN here can therefore lock the connection that receives
-      // it while the operation is sent to another connection in the pool.
-      // Keep unit-of-work operations serialized until the plugin exposes a
-      // transaction API that guarantees connection affinity.
-      return await operation(
-        new LogicalTransactionSession(this),
-      );
+      // Production connections created through connect() use a Rust-side SQLx
+      // PoolConnection pinned for the complete callback. BEGIN IMMEDIATE, all
+      // reads/writes, COMMIT/ROLLBACK therefore execute on the same SQLite connection.
+      // Direct constructor use remains a logical-session fallback for isolated unit tests.
+      if (this.atomicBridge === null) {
+        return await operation(new LogicalTransactionSession(this));
+      }
+
+      const transactionId = await this.atomicBridge.begin(this.databaseUrl);
+      try {
+        const result = await operation(new AtomicSqliteTransactionSession(this.atomicBridge, transactionId));
+        await this.atomicBridge.commit(transactionId);
+        return result;
+      } catch (error) {
+        try {
+          await this.atomicBridge.rollback(transactionId);
+        } catch (rollbackError) {
+          throw new AggregateError([error, rollbackError], "SQLite transaction failed and rollback also failed");
+        }
+        throw error;
+      }
     } finally {
       releaseQueue();
     }
@@ -220,7 +146,7 @@ export class TauriSqliteExecutor implements DatabaseExecutor {
       throw new DatabaseError(
         "UNKNOWN_DATABASE_ERROR",
         "Failed to close the SQLite database connection.",
-        error
+        error,
       );
     }
   }
