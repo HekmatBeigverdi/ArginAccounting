@@ -21,11 +21,11 @@ function fakeDatabase(state: FakeState): DatabaseExecutor {
     },
     async query<T>(sql: string, _parameters?: readonly DatabaseValue[]): Promise<T[]> {
       if (!sql.includes("inventory_all_stock_movements")) throw new Error(`Unexpected query: ${sql}`);
-      return [...state.movementRows] as T[];
+      return [...state.movementRows] as unknown as T[];
     },
     async queryOne<T>(sql: string, _parameters?: readonly DatabaseValue[]): Promise<T | null> {
       if (!sql.includes("inventory_documents")) throw new Error(`Unexpected queryOne: ${sql}`);
-      return { count: state.openDocumentCount } as T;
+      return { count: state.openDocumentCount } as unknown as T;
     },
     async transaction<T>(operation: Parameters<DatabaseExecutor["transaction"]>[0]): Promise<T> {
       return operation(this);
