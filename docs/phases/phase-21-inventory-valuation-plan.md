@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–5 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 6 — Outflow Cost Calculation Engine — is next.
+Steps 1–6 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 7 — Transfer Cost Continuity — is next.
 
 ## Governance
 
@@ -19,6 +19,7 @@ Mandatory references:
 - [Inventory Valuation Strategies](../architecture/inventory-valuation-strategies.md)
 - [Inventory Valuation Policy](../architecture/inventory-valuation-policy.md)
 - [Inventory Inbound Cost Basis](../architecture/inventory-inbound-cost-basis.md)
+- [Inventory Outflow Cost Engine](../architecture/inventory-outflow-cost-engine.md)
 
 ## Baseline and Release Target
 
@@ -103,7 +104,7 @@ Valuation policy is also part of the future synchronization contract: authoritat
 | 3 | Valuation Strategies | Completed |
 | 4 | Product and Warehouse Valuation Policy | Completed |
 | 5 | Cost Layers and Inbound Cost Basis | Completed |
-| 6 | Outflow Cost Calculation Engine | Not started |
+| 6 | Outflow Cost Calculation Engine | Completed |
 | 7 | Transfer Cost Continuity | Not started |
 | 8 | Adjustment, Reversal and Reverse Valuation | Not started |
 | 9 | Backdated Documents and Recalculation Engine | Not started |
@@ -265,6 +266,21 @@ Run all gates, reconcile canonical docs (including Inventory Valuation Policy go
 - Added `packages/inventory/tests/inventory-inbound-cost.test.ts` covering no-landed-cost basis, quantity/value/weight allocation, multiple traceable components, exact monetary conservation, strategy-input mapping, currency mismatch and missing-weight rejection.
 - Added canonical architecture record `docs/architecture/inventory-inbound-cost-basis.md` including Purchase/ERP ownership boundary and Argin Bridge deterministic replay requirements.
 - Purchase invoice/vendor/freight workflow, persistence, authorization/Audit, outflow calculation, transfer, recalculation and posting remain in their owning later phases/steps.
+- Raw executable test output is not claimed here unless local/CI validation is actually observed.
+
+## Step 6 Evidence
+
+- Added persistence-neutral ordinary-outflow cost engine `packages/inventory/src/domain/inventory-outflow-cost.ts`.
+- The engine resolves the Company valuation policy by the immutable Phase 20 movement business date rather than applying the newest policy blindly.
+- The supplied valuation state must match the effective method, preventing FIFO state from being consumed under Moving Average or vice versa.
+- FIFO outflow delegates to the versioned Step 3 strategy and returns signed cost, unit cost, updated state and exact durable layer-consumption trace for future Kardex/Audit drill-down.
+- Moving Weighted Average outflow delegates to the versioned Step 3 strategy and returns signed cost, unit cost and the updated remaining quantity/monetary pool without fabricating FIFO-style layer rows.
+- The engine rejects over-consumption through the existing deterministic strategy guard instead of inventing negative-stock cost; Step 10 retains ownership of block/defer/unresolved policy.
+- Transfer and reversal movements are explicitly rejected by Step 6 and remain deferred to Steps 7 and 8 respectively.
+- Added public package subpath `@argin/inventory/outflow-cost` and root exports.
+- Added `packages/inventory/tests/inventory-outflow-cost.test.ts` covering Moving Average calculation, FIFO layer traceability, historical policy resolution, state/method mismatch, insufficient quantity and deferred transfer/reversal boundaries.
+- Added canonical architecture record `docs/architecture/inventory-outflow-cost-engine.md` including ownership boundary and Argin Bridge deterministic replay implications.
+- No persistence, transaction orchestration, transfer continuity, reversal compensation, recalculation execution or accounting posting was introduced ahead of its owning step.
 - Raw executable test output is not claimed here unless local/CI validation is actually observed.
 
 ## Change Requests
