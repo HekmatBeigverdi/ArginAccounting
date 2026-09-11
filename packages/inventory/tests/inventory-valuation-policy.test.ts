@@ -2,229 +2,140 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   InventoryValuationPolicyError,
-  assessInventoryValuationPolicyChange,
-  createInventoryValuationPolicy,
+  assertDirectInventoryValuationPolicyMutationAllowed,
+  assertInventoryValuationPolicyHistory,
+  createInitialInventoryValuationPolicy,
+  createInventoryValuationPolicyTransition,
   resolveInventoryValuationPolicy,
 } from "../src/domain/inventory-valuation-policy.ts";
 
-const company = createInventoryValuationPolicy({
-  policyId: "company-default",
+const initial = createInitialInventoryValuationPolicy({
+  policyId: "policy-1",
   companyId: "company-1",
-  scope: "company",
   method: "moving_average",
   effectiveFrom: "2026-01-01",
 });
 
-test("company policy is the required valuation default", () => {
-  const result = resolveInventoryValuationPolicy([company], {
+test("initial policy is company-scoped and defaults currency/version deterministically", () => {
+  assert.equal(initial.companyId, "company-1");
+  assert.equal(initial.method, "moving_average");
+  assert.equal(initial.currency, "IRR");
+  assert.equal(initial.strategyVersion, 1);
+  assert.equal(initial.previousPolicyId, null);
+  assert.equal(initial.revision, 1);
+});
+
+test("product and warehouse streams consume the same company policy", () => {
+  const a = resolveInventoryValuationPolicy([initial], {
     companyId: "company-1",
-    productId: "product-1",
-    warehouseId: "warehouse-1",
+    productId: "product-a",
+    warehouseId: "warehouse-a",
+    businessDate: "2026-09-11",
+  });
+  const b = resolveInventoryValuationPolicy([initial], {
+    companyId: "company-1",
+    productId: "product-b",
+    warehouseId: "warehouse-b",
     businessDate: "2026-09-11",
   });
 
-  assert.equal(result.matchedScope, "company");
-  assert.equal(result.policy.method, "moving_average");
-  assert.equal(result.policy.currency, "IRR");
+  assert.equal(a.policy.policyId, "policy-1");
+  assert.equal(b.policy.policyId, "policy-1");
+  assert.equal(a.policy.method, b.policy.method);
 });
 
-test("product override wins over warehouse override and company default", () => {
-  const warehouse = createInventoryValuationPolicy({
-    policyId: "warehouse-policy",
-    companyId: "company-1",
-    scope: "warehouse",
-    warehouseId: "warehouse-1",
-    method: "fifo",
-    effectiveFrom: "2026-01-01",
-  });
-  const product = createInventoryValuationPolicy({
-    policyId: "product-policy",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
-    method: "fifo",
-    effectiveFrom: "2026-02-01",
-  });
-
-  const result = resolveInventoryValuationPolicy([company, warehouse, product], {
-    companyId: "company-1",
-    productId: "product-1",
-    warehouseId: "warehouse-1",
-    businessDate: "2026-09-11",
-  });
-
-  assert.equal(result.matchedScope, "product");
-  assert.equal(result.policy.policyId, "product-policy");
-});
-
-test("product+warehouse override is the most specific policy", () => {
-  const productWarehouse = createInventoryValuationPolicy({
-    policyId: "product-warehouse-policy",
-    companyId: "company-1",
-    scope: "product_warehouse",
-    productId: "product-1",
-    warehouseId: "warehouse-1",
-    method: "fifo",
-    effectiveFrom: "2026-03-01",
-  });
-  const product = createInventoryValuationPolicy({
-    policyId: "product-policy",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
-    method: "moving_average",
-    effectiveFrom: "2026-03-01",
-  });
-
-  const result = resolveInventoryValuationPolicy([company, product, productWarehouse], {
-    companyId: "company-1",
-    productId: "product-1",
-    warehouseId: "warehouse-1",
-    businessDate: "2026-09-11",
-  });
-
-  assert.equal(result.matchedScope, "product_warehouse");
-  assert.equal(result.policy.method, "fifo");
-});
-
-test("future-dated policy does not affect earlier business dates", () => {
-  const future = createInventoryValuationPolicy({
-    policyId: "future-product",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
+test("controlled transition preserves history and becomes effective by business date", () => {
+  const transition = createInventoryValuationPolicyTransition({
+    policyId: "policy-2",
+    current: initial,
     method: "fifo",
     effectiveFrom: "2027-01-01",
+    changeReason: "Adopt FIFO from the new fiscal year",
   });
 
-  const before = resolveInventoryValuationPolicy([company, future], {
+  assert.equal(transition.previousPolicyId, "policy-1");
+  assert.equal(transition.changeReason, "Adopt FIFO from the new fiscal year");
+  assert.equal(transition.revision, 2);
+
+  const before = resolveInventoryValuationPolicy([initial, transition], {
     companyId: "company-1",
     productId: "product-1",
     warehouseId: "warehouse-1",
-    businessDate: "2026-12-31",
+    businessDate: "2026-12-29",
   });
-  const after = resolveInventoryValuationPolicy([company, future], {
+  const after = resolveInventoryValuationPolicy([initial, transition], {
     companyId: "company-1",
     productId: "product-1",
     warehouseId: "warehouse-1",
     businessDate: "2027-01-01",
   });
 
-  assert.equal(before.matchedScope, "company");
-  assert.equal(after.policy.policyId, "future-product");
+  assert.equal(before.policy.method, "moving_average");
+  assert.equal(after.policy.method, "fifo");
 });
 
-test("invalid scope/reference combinations are rejected", () => {
+test("direct method mutation is locked after authoritative valuation begins", () => {
+  assert.doesNotThrow(() => assertDirectInventoryValuationPolicyMutationAllowed({ hasAuthoritativeValuation: false }));
   assert.throws(
-    () => createInventoryValuationPolicy({
-      policyId: "bad",
-      companyId: "company-1",
-      scope: "warehouse",
-      productId: "product-1",
-      method: "fifo",
-      effectiveFrom: "2026-01-01",
-    }),
-    (error: unknown) => error instanceof InventoryValuationPolicyError && error.code === "VALUATION_POLICY_SCOPE_INVALID",
+    () => assertDirectInventoryValuationPolicyMutationAllowed({ hasAuthoritativeValuation: true }),
+    (error: unknown) => error instanceof InventoryValuationPolicyError && error.code === "VALUATION_POLICY_DIRECT_MUTATION_LOCKED",
   );
 });
 
-test("overlapping same-scope policy at same effective date is rejected", () => {
-  const first = createInventoryValuationPolicy({
-    policyId: "p1",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
-    method: "fifo",
-    effectiveFrom: "2026-05-01",
-  });
-  const second = createInventoryValuationPolicy({
-    policyId: "p2",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
-    method: "moving_average",
-    effectiveFrom: "2026-05-01",
-  });
+test("transition must move forward in chronology and include a reason", () => {
+  assert.throws(
+    () => createInventoryValuationPolicyTransition({
+      policyId: "policy-2",
+      current: initial,
+      method: "fifo",
+      effectiveFrom: "2026-01-01",
+      changeReason: "invalid same-date transition",
+    }),
+    (error: unknown) => error instanceof InventoryValuationPolicyError && error.code === "VALUATION_POLICY_TRANSITION_INVALID",
+  );
 
   assert.throws(
-    () => resolveInventoryValuationPolicy([company, first, second], {
-      companyId: "company-1",
-      productId: "product-1",
-      warehouseId: "warehouse-1",
-      businessDate: "2026-09-11",
+    () => createInventoryValuationPolicyTransition({
+      policyId: "policy-2",
+      current: initial,
+      method: "fifo",
+      effectiveFrom: "2027-01-01",
+      changeReason: "   ",
     }),
+    (error: unknown) => error instanceof InventoryValuationPolicyError && error.code === "VALUATION_POLICY_TRANSITION_INVALID",
+  );
+});
+
+test("policy history rejects overlap and broken previous-policy chain", () => {
+  const transition = createInventoryValuationPolicyTransition({
+    policyId: "policy-2",
+    current: initial,
+    method: "fifo",
+    effectiveFrom: "2027-01-01",
+    changeReason: "new fiscal year",
+  });
+  assert.doesNotThrow(() => assertInventoryValuationPolicyHistory([initial, transition]));
+
+  const overlapping = createInitialInventoryValuationPolicy({
+    policyId: "policy-overlap",
+    companyId: "company-1",
+    method: "fifo",
+    effectiveFrom: "2026-01-01",
+  });
+  assert.throws(
+    () => assertInventoryValuationPolicyHistory([initial, overlapping]),
     (error: unknown) => error instanceof InventoryValuationPolicyError && error.code === "VALUATION_POLICY_OVERLAP",
   );
 });
 
-test("historical method change requires explicit recalculation approval", () => {
-  const current = createInventoryValuationPolicy({
-    policyId: "product-policy",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
-    method: "moving_average",
-    effectiveFrom: "2026-01-01",
-  });
-  const proposed = createInventoryValuationPolicy({
-    policyId: "product-policy",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
-    method: "fifo",
-    effectiveFrom: "2026-06-01",
-    revision: 2,
-  });
-
+test("resolution fails when no company policy is effective", () => {
   assert.throws(
-    () => assessInventoryValuationPolicyChange({
-      current,
-      proposed,
-      hasValuationHistory: true,
-      latestValuedBusinessDate: "2026-09-11",
+    () => resolveInventoryValuationPolicy([initial], {
+      companyId: "company-1",
+      productId: "product-1",
+      warehouseId: "warehouse-1",
+      businessDate: "2025-12-31",
     }),
-    (error: unknown) => error instanceof InventoryValuationPolicyError && error.code === "VALUATION_POLICY_HISTORICAL_CHANGE_REQUIRES_RECALCULATION",
+    (error: unknown) => error instanceof InventoryValuationPolicyError && error.code === "VALUATION_POLICY_NOT_FOUND",
   );
-
-  const approved = assessInventoryValuationPolicyChange({
-    current,
-    proposed,
-    hasValuationHistory: true,
-    latestValuedBusinessDate: "2026-09-11",
-    historicalRecalculationApproved: true,
-  });
-
-  assert.equal(approved.allowed, true);
-  assert.equal(approved.requiresRecalculation, true);
-});
-
-test("future semantic change does not require historical recalculation", () => {
-  const current = createInventoryValuationPolicy({
-    policyId: "product-policy",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
-    method: "moving_average",
-    effectiveFrom: "2026-01-01",
-  });
-  const proposed = createInventoryValuationPolicy({
-    policyId: "product-policy",
-    companyId: "company-1",
-    scope: "product",
-    productId: "product-1",
-    method: "fifo",
-    effectiveFrom: "2027-01-01",
-    revision: 2,
-  });
-
-  const assessment = assessInventoryValuationPolicyChange({
-    current,
-    proposed,
-    hasValuationHistory: true,
-    latestValuedBusinessDate: "2026-09-11",
-  });
-
-  assert.equal(assessment.allowed, true);
-  assert.equal(assessment.requiresRecalculation, false);
-  assert.equal(assessment.changedValuationSemantics, true);
 });
