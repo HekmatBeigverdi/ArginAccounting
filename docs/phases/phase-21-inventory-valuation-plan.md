@@ -2,11 +2,11 @@
 
 ## Status
 
-Step 1 is complete. The fixed 20-step implementation sequence is frozen on `phase/21-inventory-valuation`. Step 2 is next.
+Steps 1–2 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 3 — Valuation Strategies — is next.
 
 ## Governance
 
-This 20-step sequence is frozen. Titles, order, scope and exit criteria change only through an explicitly approved Change Request. Owner acceptance and raw executable validation output remain distinct evidence; this record must never fabricate command output that was not actually observed.
+The 20 step titles, order and ownership boundaries are frozen unless an explicitly approved Change Request is recorded here. Owner acceptance and executable validation output are separate evidence; this record never invents command output.
 
 Mandatory references:
 
@@ -15,139 +15,51 @@ Mandatory references:
 - [Phase Definition of Done](../development/phase-definition-of-done.md)
 - [Contributing](../../CONTRIBUTING.md)
 - [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md)
+- [Inventory Valuation Domain Foundation](../architecture/inventory-valuation-domain.md)
 
 ## Baseline and Release Target
 
-- Planning baseline: `main` at `fa5ffa0301248dd64332f19f77181e37a8da5c6e` (`merge: release phase 20 inventory documents`).
-- Phase branch: `phase/21-inventory-valuation`.
+- Baseline: `main` at `fa5ffa0301248dd64332f19f77181e37a8da5c6e`, after Phase 20 Inventory Documents.
+- Branch: `phase/21-inventory-valuation`.
 - Target version/tag: `0.21.0` / `v0.21.0`.
 - Release title: `ArginAccounting v0.21.0 — Inventory Valuation`.
-- Tag and GitHub Release publication remain explicit repository-owner actions.
+- Tag and GitHub Release publication remain manual owner actions.
 
 ## Objective
 
-Phase 21 adds the monetary valuation layer on top of the immutable exact-quantity movement ledger delivered by Phase 20. It must answer, deterministically and auditably, how much on-hand inventory is worth, how much cost leaves inventory with an issue, how transfer and reversal preserve cost semantics, and how backdated facts trigger downstream recalculation without rewriting Phase 20 quantity history.
+Phase 21 adds deterministic, auditable monetary valuation on top of the immutable exact-quantity movement ledger from Phase 20. It delivers FIFO and moving weighted average, durable valuation entries/cost layers, cost resolution, transfer/reversal continuity, backdated recalculation, monetary reports, SQLite persistence, security/audit, and Argin Bridge-compatible contracts without rewriting quantity history.
 
-The phase delivers:
+## Scope and Ownership Boundaries
 
-- FIFO valuation;
-- moving weighted-average valuation;
-- durable cost layers and valuation entries;
-- inbound cost basis and landed-cost allocation contracts;
-- issue/outflow cost resolution;
-- transfer cost continuity;
-- reversal and adjustment valuation;
-- deterministic backdated recalculation;
-- explicit unresolved/negative-stock cost policy;
-- monetary Kardex and inventory valuation reports;
-- Persian RTL valuation workspace and source drill-down;
-- SQLite persistence, atomicity, idempotency, optimistic concurrency, Audit/security and performance validation;
-- persistence-neutral Argin Bridge contracts for future synchronization.
+Phase 21 owns monetary valuation derived from confirmed Phase 20 movement facts. Phase 20 remains authoritative for document quantity, movement quantity, transfer/reversal identity and quantity chronology. Purchases/Sales own commercial documents; Posting phases own accounting journal creation; Phase 45 owns live Argin Bridge transport, retry, acknowledgement and remote conflict-resolution runtime.
 
-## Scope Boundaries
+Valuation must preserve `movementId`, source document/line identity, Product/Warehouse/Zone/Location identity, Company scope, transfer/reversal links and canonical business chronology. Recalculation may rebuild monetary derived state only; it never edits Phase 20 quantity facts.
 
-### In Scope
+## Core Invariants
 
-- Monetary valuation derived from confirmed Phase 20 movement facts.
-- FIFO and moving weighted average as operational strategies.
-- Cost-layer creation/consumption and valuation-entry history.
-- Exact monetary arithmetic using repository Money/decimal conventions; binary floating point is forbidden.
-- Inbound cost basis plus deterministic landed-cost allocation primitives that later Purchase workflows can supply.
-- Transfer, quantity adjustment, opening, reversal and backdated valuation behavior.
-- Company/Branch/fiscal scope, permissions, Audit, idempotency and optimistic concurrency.
-- Recalculation state, dependency ordering and deterministic replay.
-- Monetary inventory queries, reports and source traceability.
-- Argin Bridge-compatible durable identities, revisions, tombstone/external-reference semantics and deterministic replay contracts.
+- FIFO and moving weighted average are versioned, persistence-neutral strategies.
+- The same ordered authoritative facts + cost inputs + strategy version must produce the same result.
+- Inventory quantities remain exact decimal strings.
+- Monetary totals follow shared Platform Money semantics: safe integer in the declared currency's smallest unit.
+- Exact decimal unit cost is retained where average unit cost can be fractional.
+- Unresolved cost is explicit; unknown cost is never silently treated as zero.
+- Transfer must conserve cost and ordinary transfer must not create artificial profit/loss.
+- Reversal is linked compensation, not history rewrite.
+- Backdated changes invalidate and deterministically rebuild downstream monetary state.
+- Derived value/balance projections are rebuildable, not independent authoritative synchronization facts.
+- Multi-write operations must become atomic; idempotency and optimistic concurrency are mandatory in their owning steps.
+- Accounting posting is outside this phase.
 
-### Explicitly Out of Scope
+## Argin Bridge Requirements
 
-- Purchase commercial workflow ownership and Purchase Posting (Phases 22–23).
-- Sales commercial workflow ownership and Sales Posting (Phases 24–25).
-- Treasury behavior.
-- Automatic Journal Voucher creation and Posting Rules (later posting phases).
-- Iranian Taxpayer projection/signing/submission.
-- Manufacturing costing and advanced Cost Accounting.
-- Reservations/ATP, lot/serial/expiry tracking and full stock-count sessions unless introduced by a later approved phase.
-- Live Argin Bridge transport, outbox, acknowledgement, retry scheduling, server conflict-resolution UI and PostgreSQL/.NET synchronization runtime; those remain owned by Phase 45 Synchronization.
-
-## Phase 20 Dependency Contract
-
-Phase 21 consumes Phase 20 immutable quantity facts. It must not alter document quantity semantics, movement quantity, stock balance history or reversal identities.
-
-Authoritative chronological input remains the Phase 20 movement stream ordered by its canonical business chronology. Valuation may create its own durable derived monetary facts, but a recalculation invalidates/rebuilds valuation state only; it never rewrites the source movement ledger.
-
-The following source identities must remain traceable through valuation:
-
-- `documentId`
-- `documentLineId`
-- `movementId`
-- transfer/reversal linkage where applicable
-- Product, Warehouse, Zone and Location durable identities
-- Company/Branch/fiscal scope
-- business date/business order
-
-## Core Architecture Invariants
-
-- Quantity facts are owned by Phase 20; monetary valuation facts are owned by Phase 21.
-- Cost strategy is pluggable and persistence-neutral. FIFO and moving weighted average are the first operational strategies.
-- A valuation result is reproducible from the same ordered source facts, cost inputs, strategy and configuration.
-- Exact decimal/Money arithmetic is mandatory; binary floating point is forbidden.
-- Historical valuation is append/rebuild oriented. Confirmed source history is never silently edited to make a valuation result fit.
-- Transfer conserves inventory cost across source and destination. Ordinary inter-warehouse movement does not create profit/loss.
-- Reversal creates linked compensating valuation semantics consistent with the Phase 20 reversal rather than mutating prior quantity facts.
-- Backdated source/cost changes identify an affected valuation stream and recalculate downstream valuation in deterministic business chronology.
-- Derived balance/value projections are rebuildable and are not independent authoritative synchronization facts.
-- Multi-write valuation operations are atomic within one Unit of Work.
-- Idempotent replay returns the previous durable outcome; changed payload under the same request identity is a conflict.
-- Optimistic concurrency and transaction-scoped validation protect concurrent recalculation and cost consumption.
-- Posting/accounting journal creation is not performed in this phase.
-
-## Argin Bridge Contract — Mandatory From the Start
-
-Phase 21 is offline-first today but must remain safe for the future Argin Bridge hybrid architecture.
-
-Every synchronization-capable authoritative valuation fact must use durable IDs that are independent of SQLite row ids, display numbers or local sequence positions. Contracts must carry enough metadata for idempotent replay, conflict detection and deterministic reconstruction without synchronizing rebuildable projections as independent facts.
-
-Required Bridge properties include:
-
-- durable valuation/cost-layer identities;
-- stable source movement/document identities;
-- Company scope;
-- strategy/version identity;
-- exact quantity and monetary encodings;
-- revision/expected-version semantics;
-- idempotency request identity and fingerprint where commands are replayable;
-- external references/source-system metadata where applicable;
-- tombstone/retirement compatibility for authoritative records that may be logically removed;
-- deterministic ordering and recalculation trigger metadata;
-- no duplicate valuation side effects after retry/restart/transport replay.
-
-SQLite Desktop and a future PostgreSQL/.NET server must be capable of deriving the same result from the same authoritative facts and algorithm version. Live transport remains deferred to Phase 45.
-
-## Valuation Strategy Baseline
-
-### FIFO
-
-Inbound cost layers are consumed oldest-first according to deterministic business chronology. Partial consumption must preserve the remaining exact layer quantity and monetary basis.
-
-### Moving Weighted Average
-
-Each qualifying inbound cost fact updates the moving average cost. Outflow consumes quantity at the resolved average applicable at that chronological point. Backdated facts may therefore require recalculation of subsequent averages and outflow costs.
-
-The strategy contract must allow later strategies without coupling Domain/Application rules to SQLite or Desktop code.
-
-## Landed Cost Boundary
-
-Phase 21 owns the valuation mechanics for allocating additional inbound cost to eligible inventory cost bases. The allocation engine must support deterministic methods (for example quantity, value or explicitly supplied weight basis) and preserve allocation traceability and rounding remainder rules.
-
-Phase 21 does not own Purchase invoices, freight/vendor commercial workflows or Treasury settlement. Later modules provide authoritative cost inputs through bounded contracts; valuation consumes them without taking ownership of their business documents.
+Bridge compatibility is mandatory from the Domain model onward. Authoritative valuation facts use durable IDs independent of SQLite row identity; preserve source movement identities; carry method/strategy version, currency and revisions; support deterministic replay; and remain compatible with future idempotency, external reference and tombstone semantics. SQLite Desktop and a future PostgreSQL/.NET server must be able to derive the same valuation from the same authoritative facts and strategy version. Live synchronization transport remains Phase 45 scope.
 
 ## Step Status
 
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
-| 2 | Inventory Valuation Domain Model | Not started |
+| 2 | Inventory Valuation Domain Model | Completed |
 | 3 | Valuation Strategies | Not started |
 | 4 | Product and Warehouse Valuation Policy | Not started |
 | 5 | Cost Layers and Inbound Cost Basis | Not started |
@@ -167,135 +79,88 @@ Phase 21 does not own Purchase invoices, freight/vendor commercial workflows or 
 | 19 | Repository, Migration, Bridge and Performance Tests | Not started |
 | 20 | Monorepo Validation, Documentation, Final Review and Release | Not started |
 
-## Fixed Execution Sequence and Exit Criteria
+## Fixed Execution Sequence
 
 ### Step 1 — Baseline, Branch, Scope and Plan Freeze
-
-Record the Phase 20-complete `main` baseline, create `phase/21-inventory-valuation`, reconcile roadmap/phase documentation, freeze this numbered sequence, define ownership boundaries, and make Argin Bridge invariants mandatory before Domain implementation begins.
-
-**Exit:** branch exists from the correct Phase 20-complete baseline; this canonical plan is committed; Step Status is current; no valuation implementation has started ahead of the frozen plan.
+Freeze the Phase 20-complete baseline, branch, scope, ownership boundaries, Argin Bridge invariants and numbered plan.
 
 ### Step 2 — Inventory Valuation Domain Model
-
-Define persistence-neutral aggregate/value-object concepts for valuation streams, valuation entries, cost layers, cost basis, resolved/unresolved cost state, strategy identity/version and durable source references.
-
-**Exit:** Domain model represents monetary valuation without depending on SQLite, Desktop, Purchases, Sales or Posting.
+Define persistence-neutral valuation entries, cost layers, valuation basis, resolved/unresolved state, strategy identity/version, money/currency semantics and durable source references.
 
 ### Step 3 — Valuation Strategies
-
-Define and implement strategy abstractions and deterministic FIFO/moving-weighted-average behavior, including exact arithmetic, rounding policy and strategy versioning.
-
-**Exit:** identical ordered inputs produce identical strategy results and future strategies can be added without rewriting consumers.
+Implement versioned deterministic FIFO and moving weighted-average strategy contracts, exact arithmetic and rounding policy.
 
 ### Step 4 — Product and Warehouse Valuation Policy
-
-Define Company-scoped policy for selecting valuation strategy, defaulting, Product overrides if allowed, Warehouse implications, effective-date rules and controlled strategy changes.
-
-**Exit:** invalid mid-history strategy changes cannot silently corrupt prior valuation.
+Define Company-scoped strategy selection, defaults/overrides, effective dates and safe strategy-change rules.
 
 ### Step 5 — Cost Layers and Inbound Cost Basis
-
-Create inbound monetary basis, FIFO layers/moving-average inputs and deterministic landed-cost allocation mechanics with traceable source references, allocation basis and rounding remainder handling.
-
-**Exit:** each eligible confirmed inbound quantity fact can acquire a reproducible monetary basis without Purchase workflow ownership leaking into Inventory Valuation.
+Implement inbound monetary basis, layer/state creation and deterministic landed-cost allocation primitives.
 
 ### Step 6 — Outflow Cost Calculation Engine
-
-Resolve cost for issues and other outbound movements according to the active strategy and historical stream state.
-
-**Exit:** outflow cost is exact, reproducible, source-traceable and cannot over-consume cost layers.
+Resolve issue/outflow cost from historical stream state without over-consuming available cost basis.
 
 ### Step 7 — Transfer Cost Continuity
-
-Carry cost from transfer source to destination atomically, preserving conservation through Warehouse/Zone/Location changes and both valuation strategies.
-
-**Exit:** ordinary transfer neither duplicates nor destroys quantity/cost and does not create artificial profit/loss.
+Carry cost atomically across transfer source/destination while conserving quantity and monetary value.
 
 ### Step 8 — Adjustment, Reversal and Reverse Valuation
-
-Define valuation semantics for signed quantity adjustment, opening, complete/partial compensating behavior where supported by Phase 20, and linked reversal.
-
-**Exit:** correction/reversal never rewrites Phase 20 quantity history and monetary consequences remain traceable to original/compensating facts.
+Define monetary behavior for opening/adjustment/reversal and linked compensation without editing Phase 20 history.
 
 ### Step 9 — Backdated Documents and Recalculation Engine
-
-Detect affected valuation streams, determine earliest invalidated chronological point, rebuild downstream layers/averages/outflow costs deterministically and expose recalculation state/failure semantics.
-
-**Exit:** backdated confirmed facts cannot leave silent stale monetary valuation downstream.
+Find the earliest affected point and deterministically recalculate downstream valuation state.
 
 ### Step 10 — Negative Stock and Cost Resolution Policy
-
-Define behavior for negative-stock edge cases, temporarily unresolved cost, zero/unknown inbound cost and blocked vs deferred valuation transitions consistent with Phase 20 quantity policy.
-
-**Exit:** no guessed monetary cost is silently fabricated; unresolved states are explicit and queryable.
+Define blocked/deferred valuation and explicit unresolved states for negative/unknown-cost edge cases.
 
 ### Step 11 — Application and Repository Contracts
-
-Define commands, queries, DTOs, repositories, Unit of Work, bounded readers, error taxonomy, recalculation ports and future ERP cost-input contracts.
-
-**Exit:** Application remains persistence-neutral and usable by Desktop plus future server adapters.
+Define commands, queries, DTOs, repositories, Unit of Work, errors, recalculation ports and future ERP cost-input boundaries.
 
 ### Step 12 — Persistence, Migration and SQLite Repository
-
-Add versioned schema/migration, constraints, indexes and SQLite repositories for authoritative valuation facts, cost layers, policy/configuration, idempotency/recalculation metadata and rebuildable projections as appropriate.
-
-**Exit:** fresh install and upgrade path preserve exact values, durable IDs and Company isolation.
+Add versioned SQLite schema, constraints, indexes and repositories for authoritative valuation facts and required projections.
 
 ### Step 13 — Atomicity, Idempotency and Optimistic Concurrency
-
-Implement transaction boundaries, replay fingerprints, same-stream race protection, expected-version handling and restart-safe multi-write behavior.
-
-**Exit:** retry/concurrency cannot duplicate cost effects, partially consume layers or leave half-recalculated state.
+Implement transaction boundaries, replay protection, expected-version semantics and same-stream race protection.
 
 ### Step 14 — Argin Bridge and Valuation Synchronization Contract
-
-Freeze versioned persistence-neutral Bridge envelopes and authoritative/derived-state boundaries for valuation facts, source references, revisions, tombstones/external references and recalculation triggers.
-
-**Exit:** future SQLite ↔ PostgreSQL/.NET synchronization can replay authoritative valuation facts without duplicate side effects or using local database row identity.
+Freeze versioned persistence-neutral synchronization envelopes and authoritative/derived-state boundaries.
 
 ### Step 15 — Permissions, Audit and Traceability
-
-Define view/recalculate/policy/admin permissions, Company/Branch enforcement and Audit events for strategy/policy changes, cost inputs, allocation, recalculation and conflicts.
-
-**Exit:** every privileged monetary mutation is authorized and explainable.
+Protect privileged monetary operations and record explainable strategy/cost/recalculation history.
 
 ### Step 16 — Valuation Query Engine and Reports
-
-Deliver bounded monetary queries for on-hand value, monetary Kardex, Product/Warehouse valuation, cost-layer detail, as-of-date value, unresolved valuation and recalculation status with source drill-down.
-
-**Exit:** report totals reconcile to authoritative valuation state and respect scope/security.
+Deliver bounded on-hand value, monetary Kardex, Product/Warehouse value, layer detail, as-of, unresolved and recalculation reports.
 
 ### Step 17 — Persian RTL Inventory Valuation Workspace
-
-Deliver Persian RTL valuation workspace using the shared design system, Jalali boundary, LTR numeric/code fields, loading/empty/error/focus/responsive states and drill-down to source document/movement/cost layer.
-
-**Exit:** operational users can inspect and diagnose valuation without direct database access.
+Deliver Persian RTL inspection/diagnostic UI with shared design system and source drill-down.
 
 ### Step 18 — Domain and Application Tests
-
-Cover FIFO, moving average, landed-cost allocation, transfer conservation, adjustment/reversal, backdated recalculation, unresolved/negative scenarios, scope, idempotency and concurrency contracts.
-
-**Exit:** deterministic monetary rules are executable specifications at Domain/Application level.
+Cover strategy, allocation, transfer, reversal, backdated, unresolved, scope, idempotency and concurrency behavior.
 
 ### Step 19 — Repository, Migration, Bridge and Performance Tests
-
-Cover real SQLite migration/upgrade/restart/rollback, exact persistence, transaction failure, recalculation durability, Bridge serialization/replay invariants, query plans and representative high-volume movement/valuation datasets.
-
-**Exit:** persistence and performance evidence demonstrates no correctness regression under realistic scale.
+Cover real SQLite upgrade/restart/rollback, serialization/replay invariants, query plans and representative scale.
 
 ### Step 20 — Monorepo Validation, Documentation, Final Review and Release
-
-Run focused and monorepo gates; reconcile module/architecture/database/security/glossary/ADR/changelog/roadmap records; update Step Status; review deferred scope; merge phase -> develop -> main according to repository workflow; prepare `v0.21.0` release identity.
-
-**Exit:** Phase Definition of Done is satisfied with observed evidence. Tag and GitHub Release publication remain manual owner actions.
+Run all gates, reconcile canonical docs, review deferred scope, merge according to workflow and prepare `v0.21.0`.
 
 ## Step 1 Evidence
 
-- Verified `main` is Phase 20-complete at `fa5ffa0301248dd64332f19f77181e37a8da5c6e` with merge message `merge: release phase 20 inventory documents`.
-- Created `phase/21-inventory-valuation` from `main`.
-- Confirmed Phase 20 explicitly defers FIFO, moving average, cost layers, landed cost and monetary valuation reports to Phase 21.
-- Confirmed Phase 20 exposes immutable quantity movement/source identities for Phase 21 consumption and forbids valuation from rewriting quantity history.
-- Frozen the 20-step Phase 21 execution sequence and Argin Bridge requirements in this canonical plan.
+- Verified Phase 20-complete `main` baseline at `fa5ffa0301248dd64332f19f77181e37a8da5c6e`.
+- Created `phase/21-inventory-valuation` from that baseline.
+- Confirmed Phase 20 defers FIFO, moving average, cost layers, landed cost and monetary valuation reporting to Phase 21.
+- Frozen this 20-step sequence with Bridge requirements from the beginning.
+
+## Step 2 Evidence
+
+- Added `packages/inventory/src/domain/inventory-valuation.ts`.
+- Added durable valuation entry, cost-layer and valuation-basis snapshots independent of SQLite/Desktop/Purchase/Sales/Posting.
+- Bound valuation to immutable Phase 20 `movementId`, document/line, transfer/reversal references and source business chronology.
+- Added explicit `resolved` / `unresolved` monetary state; unresolved cost is not fabricated as zero.
+- Bound valuation streams to strategy, strategy version and currency.
+- Reused Platform money invariants for safe-integer monetary totals and kept exact decimal unit cost for fractional average-cost semantics.
+- Added optimistic revision to valuation entries/layers and deterministic stream identity for future replay/recalculation.
+- Added Step 2 domain tests in `packages/inventory/tests/inventory-valuation-domain.test.ts` for identity, resolution, sign/amount validation, currency normalization, cost-layer guard, stream identity, transfer and reversal traceability.
+- Added canonical architecture record `docs/architecture/inventory-valuation-domain.md` including Argin Bridge compatibility and deferred scope.
+- No live Bridge transport or persistence implementation was introduced.
+- Raw executable output is not claimed here: this environment could not execute repository tests, and no workflow run exists for the current commit. The tests are committed for normal local/CI validation.
 
 ## Change Requests
 
