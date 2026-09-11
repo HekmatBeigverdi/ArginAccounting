@@ -5,7 +5,7 @@ import {
   assessInventoryValuationPolicyChange,
   createInventoryValuationPolicy,
   resolveInventoryValuationPolicy,
-} from "../src/index.ts";
+} from "../src/domain/inventory-valuation-policy.ts";
 
 const company = createInventoryValuationPolicy({
   policyId: "company-default",
