@@ -58,6 +58,30 @@ export type {
   InventoryStockMovementSnapshot,
 } from "./domain/inventory-stock.ts";
 
+export {
+  INVENTORY_COST_STATES,
+  INVENTORY_VALUATION_ENTRY_KINDS,
+  INVENTORY_VALUATION_METHODS,
+  InventoryValuationDomainError,
+  createInventoryCostLayer,
+  createInventoryValuationBasis,
+  createUnresolvedInventoryValuationEntry,
+  inventoryValuationStreamKey,
+  resolveInventoryValuationEntry,
+} from "./domain/inventory-valuation.ts";
+export type {
+  InventoryCostAmount,
+  InventoryCostLayerSnapshot,
+  InventoryCostState,
+  InventoryUnitCostAmount,
+  InventoryValuationBasisSnapshot,
+  InventoryValuationDomainErrorCode,
+  InventoryValuationEntryKind,
+  InventoryValuationEntrySnapshot,
+  InventoryValuationMethod,
+  InventoryValuationSource,
+} from "./domain/inventory-valuation.ts";
+
 export { createInventoryDocumentScope } from "./domain/inventory-scope.ts";
 export type { InventoryDocumentScope, CreateInventoryDocumentScopeInput } from "./domain/inventory-scope.ts";
 export { validateInventoryDocumentScope } from "./application/inventory-scope-validation.ts";
