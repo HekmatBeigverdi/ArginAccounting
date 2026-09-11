@@ -18,7 +18,7 @@ const line = (id: string, quantity: string, baseCost: number, allocationWeight?:
     quantity,
     baseCost,
     currency: "IRR",
-    allocationWeight,
+    allocationWeight: allocationWeight ?? null,
   });
 
 const component = (id: string, amount: number, allocationMethod: "quantity" | "value" | "weight") =>
