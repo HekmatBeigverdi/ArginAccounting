@@ -253,7 +253,7 @@ function assertVersion(version: number): number {
   return version;
 }
 
-export function createInventoryValuationStrategyIdentity(method: InventoryValuationMethod, version = INVENTORY_VALUATION_STRATEGY_VERSION): InventoryValuationStrategyIdentity {
+export function createInventoryValuationStrategyIdentity(method: InventoryValuationMethod, version: number = INVENTORY_VALUATION_STRATEGY_VERSION): InventoryValuationStrategyIdentity {
   if (!INVENTORY_VALUATION_METHODS.includes(method)) return fail("VALUATION_STRATEGY_METHOD_INVALID", "method");
   return Object.freeze({
     method,
@@ -274,7 +274,7 @@ function normalizeFifoState(state: InventoryFifoState): InventoryFifoState {
   return Object.freeze({ layers: Object.freeze(layers) });
 }
 
-export const fifoInventoryValuationStrategy: InventoryValuationStrategy<InventoryFifoState, InventoryFifoOutboundResult> = Object.freeze({
+export const fifoInventoryValuationStrategy = Object.freeze<InventoryValuationStrategy<InventoryFifoState, InventoryFifoOutboundResult>>({
   identity: createInventoryValuationStrategyIdentity("fifo"),
 
   receive(state, input) {
@@ -361,7 +361,7 @@ function normalizeMovingAverageState(state: InventoryMovingAverageState): Invent
   return Object.freeze({ quantity, totalCost, currency: state.currency });
 }
 
-export const movingAverageInventoryValuationStrategy: InventoryValuationStrategy<InventoryMovingAverageState, InventoryValuationOutboundResult<InventoryMovingAverageState>> = Object.freeze({
+export const movingAverageInventoryValuationStrategy = Object.freeze<InventoryValuationStrategy<InventoryMovingAverageState, InventoryValuationOutboundResult<InventoryMovingAverageState>>>({
   identity: createInventoryValuationStrategyIdentity("moving_average"),
 
   receive(state, input) {
@@ -414,7 +414,7 @@ export const movingAverageInventoryValuationStrategy: InventoryValuationStrategy
   },
 });
 
-export function getInventoryValuationStrategy(method: InventoryValuationMethod, version = INVENTORY_VALUATION_STRATEGY_VERSION) {
+export function getInventoryValuationStrategy(method: InventoryValuationMethod, version: number = INVENTORY_VALUATION_STRATEGY_VERSION) {
   assertVersion(version);
   if (method === "fifo") return fifoInventoryValuationStrategy;
   if (method === "moving_average") return movingAverageInventoryValuationStrategy;
