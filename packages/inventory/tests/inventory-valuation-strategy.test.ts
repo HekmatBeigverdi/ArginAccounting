@@ -8,7 +8,9 @@ import {
   fifoInventoryValuationStrategy,
   getInventoryValuationStrategy,
   movingAverageInventoryValuationStrategy,
-} from "../src/index.ts";
+  type InventoryFifoState,
+  type InventoryMovingAverageState,
+} from "../src/domain/inventory-valuation-strategy.ts";
 
 test("strategy identity freezes method, version and deterministic rounding mode", () => {
   const identity = createInventoryValuationStrategyIdentity("fifo");
@@ -24,8 +26,8 @@ test("strategy identity freezes method, version and deterministic rounding mode"
 });
 
 test("FIFO consumes oldest layers first and preserves exact layer remainder", () => {
-  let state = { layers: [] as const };
-  const first = fifoInventoryValuationStrategy.receive(state, {
+  const initial: InventoryFifoState = { layers: [] };
+  const first = fifoInventoryValuationStrategy.receive(initial, {
     quantity: "10",
     unitCost: "100",
     currency: "IRR",
@@ -73,8 +75,8 @@ test("FIFO partial layer consumption uses deterministic half-away-from-zero roun
 });
 
 test("moving average updates weighted basis and values issue from current pool", () => {
-  let state = { quantity: "0", totalCost: 0, currency: "IRR" };
-  const first = movingAverageInventoryValuationStrategy.receive(state, {
+  const initial: InventoryMovingAverageState = { quantity: "0", totalCost: 0, currency: "IRR" };
+  const first = movingAverageInventoryValuationStrategy.receive(initial, {
     quantity: "10",
     unitCost: "100",
     currency: "IRR",
@@ -98,7 +100,7 @@ test("moving average updates weighted basis and values issue from current pool",
 });
 
 test("moving average full issue consumes exact remaining monetary basis", () => {
-  const state = { quantity: "3", totalCost: 10, currency: "IRR" };
+  const state: InventoryMovingAverageState = { quantity: "3", totalCost: 10, currency: "IRR" };
   const issue = movingAverageInventoryValuationStrategy.issue(state, { quantity: "3", currency: "IRR" });
   assert.equal(issue.totalCost, -10);
   assert.equal(issue.unitCost, "3.333333333333");
