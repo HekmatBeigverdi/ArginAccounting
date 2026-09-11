@@ -2,63 +2,83 @@
 
 ## Purpose
 
-Phase 21 Step 4 defines how ArginAccounting selects an inventory valuation method for a concrete Product/Warehouse movement without coupling that decision to SQLite, Desktop UI or future server infrastructure.
+Phase 21 Step 4 defines how ArginAccounting selects FIFO or Moving Weighted Average for Product/Warehouse valuation streams without making the method a document-level, Product-level or Warehouse-level switch.
 
-## Policy hierarchy
+## Company-scoped policy
 
-A Company policy is mandatory and acts as the default. More specific overrides are resolved in this order:
+Per approved CR-21-001, valuation method is a Company accounting policy in Phase 21.
 
-1. Product + Warehouse
-2. Product
-3. Warehouse
-4. Company default
+A Product/Warehouse stream does not own its own valuation method. Instead, every confirmed movement resolves the Company policy that was effective on the movement business date and carries that policy method/version into valuation.
 
-Product overrides intentionally take precedence over a plain Warehouse override. If a specific Product/Warehouse combination needs a different result, an explicit `product_warehouse` policy must be created rather than relying on ambiguous ordering.
+This avoids mixed valuation methods inside one Company unless an explicit future Change Request expands policy scope.
 
-## Effective dates
+## Initial configuration
 
-Every policy has `effectiveFrom`. Resolution uses the business date of the Phase 20 movement, not the local clock or persistence timestamp. Future policies therefore do not alter prior valuation.
-
-Two policies with the same scope, identity and effective date are an overlap and are rejected instead of being resolved by storage order.
-
-## Valuation semantics
-
-A policy carries:
+Before authoritative monetary valuation begins, a Company creates an initial policy containing:
 
 - durable `policyId`;
 - `companyId`;
-- scope (`company`, `product`, `warehouse`, `product_warehouse`);
-- Product/Warehouse references required by the selected scope;
 - valuation method (`fifo` or `moving_average`);
 - strategy version;
 - currency;
-- effective date;
-- optimistic revision.
+- `effectiveFrom` business date;
+- revision.
 
-Strategy behavior itself remains owned by Step 3.
+The initial policy has no previous-policy reference.
 
-## Historical change safety
+## Lock after first valuation
 
-A change to method, strategy version, currency or scope identity is a valuation-semantic change. If valuation history already exists and the proposed effective date intersects that history, the change is rejected unless historical recalculation is explicitly approved.
+Once authoritative monetary valuation exists, ordinary direct mutation of the active method is locked. The active policy record is not edited in place merely because Company settings changed.
 
-Approval does not perform recalculation in Step 4. It only returns `requiresRecalculation = true`; Step 9 owns deterministic recalculation execution.
+This makes policy history auditable and keeps historical valuation reproducible.
 
-A future-dated semantic change after the latest valued business date is allowed without historical recalculation.
+## Controlled policy transition
+
+A later method change creates a new policy record with:
+
+- a new durable `policyId`;
+- the same `companyId`;
+- the new method/version/currency;
+- a later `effectiveFrom` business date;
+- `previousPolicyId` pointing to the preceding policy;
+- mandatory `changeReason`;
+- incremented revision.
+
+The preferred operational path is a new-fiscal-year effective date. Fiscal-boundary validation and authorization belong to later Application/Security steps; Step 4 provides the persistence-neutral historical model and chronology guards.
+
+## Historical resolution
+
+Policy resolution uses Company + movement business date. Product and Warehouse IDs are carried as valuation context, but they do not select a different method.
+
+For an as-of business date, the effective Company policy is the latest non-overlapping policy whose `effectiveFrom` is not later than that date.
+
+No applicable policy is an error. Two policies effective on the same date for one Company are an overlap and are rejected.
+
+## History integrity
+
+`assertInventoryValuationPolicyHistory` validates a deterministic transition chain:
+
+- the first policy has no predecessor;
+- each later policy has a strictly later effective date;
+- no effective-date overlap exists;
+- each transition references the immediately preceding policy.
+
+This allows Desktop SQLite and a future server implementation to resolve identical policy chronology.
 
 ## Argin Bridge implications
 
-Policy resolution is deterministic from authoritative inputs and does not depend on SQLite row ids or insertion order. Bridge-safe requirements are:
+Authoritative policy history is synchronization-worthy state. Bridge-safe requirements are:
 
-- durable policy identity;
-- stable Company/Product/Warehouse identity;
-- explicit strategy version and currency;
-- effective-date semantics based on business date;
-- revision for future optimistic concurrency;
-- overlap rejection instead of last-write-wins ambiguity;
-- historical semantic changes surfaced as recalculation requirements.
+- durable policy identity independent of SQLite row id;
+- stable Company identity;
+- method and strategy version explicitly carried;
+- explicit currency and `effectiveFrom`;
+- revision and previous-policy linkage;
+- deterministic chronology and overlap rejection;
+- no mutable local-only setting capable of overriding synchronized policy history.
 
-Future SQLite and PostgreSQL/.NET implementations must resolve the same policy for the same authoritative policy set and movement context.
+Product/Warehouse valuation streams synchronize or derive their valuation facts against the same Company policy chronology, so future SQLite and PostgreSQL/.NET nodes can converge deterministically.
 
 ## Out of scope
 
-Step 4 does not implement persistence, permissions, UI, recalculation execution, negative-stock policy, purchase costing or posting.
+Step 4 does not implement SQLite persistence, fiscal-year service integration, permissions, Audit sink, UI, policy-transition command handlers, recalculation execution, negative-stock policy, Purchase costing or accounting posting. Product/Category/Warehouse valuation-method overrides remain outside Phase 21 unless approved by a later Change Request.
