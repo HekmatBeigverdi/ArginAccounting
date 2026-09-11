@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./valuation-strategy": "./src/domain/inventory-valuation-strategy.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
