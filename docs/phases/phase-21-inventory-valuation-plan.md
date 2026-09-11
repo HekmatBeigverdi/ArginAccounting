@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–3 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 4 — Product and Warehouse Valuation Policy — is next.
+Steps 1–4 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 5 — Cost Layers and Inbound Cost Basis — is next.
 
 ## Governance
 
@@ -17,6 +17,7 @@ Mandatory references:
 - [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md)
 - [Inventory Valuation Domain Foundation](../architecture/inventory-valuation-domain.md)
 - [Inventory Valuation Strategies](../architecture/inventory-valuation-strategies.md)
+- [Inventory Valuation Policy](../architecture/inventory-valuation-policy.md)
 
 ## Baseline and Release Target
 
@@ -61,30 +62,30 @@ Valuation must preserve `movementId`, source document/line identity, Product/War
 
 ## Inventory Valuation Policy Requirements
 
-Phase 21 must implement a first-class `InventoryValuationPolicy` (or equivalent persistence-neutral domain concept) with Company ownership and deterministic historical resolution.
+Phase 21 implements a first-class `InventoryValuationPolicy` persistence-neutral domain concept with Company ownership and deterministic historical resolution.
 
 Minimum policy semantics:
 
 - `companyId` / company scope.
 - Active valuation `method`: `FIFO` or `MovingWeightedAverage`.
 - Strategy/version identity used by the calculation engine.
-- `effectiveFrom` business date/time according to the project's canonical chronology rules.
+- `effectiveFrom` business date according to the project's canonical chronology rules.
 - Durable policy identity and revision/version semantics suitable for optimistic concurrency.
-- Immutable or append-only policy history sufficient to resolve which policy applied at any historical valuation point.
-- Controlled transition metadata such as previous policy reference, change reason and actor/audit correlation where appropriate.
+- Immutable/append-only policy history sufficient to resolve which policy applied at any historical valuation point.
+- Controlled transition metadata including previous policy reference and mandatory change reason; actor/audit correlation belongs to later Application/Audit steps.
 
 Required behavior:
 
 1. A company may choose its initial valuation method before monetary valuation begins.
 2. The method is not selected on inventory receipt, issue, transfer, adjustment or reversal documents.
 3. Once authoritative monetary valuation has begun, settings UI and ordinary application commands must reject direct in-place method mutation.
-4. A later method change must create a controlled policy transition with `effectiveFrom`; it must not silently edit the historical policy record.
-5. The application must validate transition chronology and prevent ambiguous overlapping active policies.
-6. The preferred operational path is a transition effective from the beginning of a new fiscal year. If a non-boundary transition is ever allowed, the impact/recalculation boundary must be explicit and deterministic.
-7. Recalculation and as-of reporting must resolve the policy that was effective for the relevant chronology, rather than blindly applying the company's current method to all history.
-8. Policy change is privileged and must be represented in Audit with enough before/after context to explain financial-result differences.
+4. A later method change creates a controlled policy transition with `effectiveFrom`; it does not silently edit the historical policy record.
+5. Transition chronology is deterministic and ambiguous overlapping effective policies are rejected.
+6. The preferred operational path is a transition effective from the beginning of a new fiscal year. Fiscal-boundary service validation belongs to later Application integration; the Domain requires monotonic effective chronology now.
+7. Recalculation and as-of reporting resolve the policy effective for the relevant chronology rather than blindly applying the company's current method to all history.
+8. Policy change is privileged and must later be represented in Audit with enough before/after context to explain financial-result differences.
 9. UI must show the active method, effective date and policy history, and clearly distinguish initial configuration from a controlled method-change workflow.
-10. Future Bridge/server implementations must synchronize authoritative policy identity/version/effective-date facts, not a mutable local-only setting.
+10. Future Bridge/server implementations synchronize authoritative policy identity/version/effective-date facts, not a mutable local-only setting.
 
 ## Argin Bridge Requirements
 
@@ -99,7 +100,7 @@ Valuation policy is also part of the future synchronization contract: authoritat
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Inventory Valuation Domain Model | Completed |
 | 3 | Valuation Strategies | Completed |
-| 4 | Product and Warehouse Valuation Policy | Not started |
+| 4 | Product and Warehouse Valuation Policy | Completed |
 | 5 | Cost Layers and Inbound Cost Basis | Not started |
 | 6 | Outflow Cost Calculation Engine | Not started |
 | 7 | Transfer Cost Continuity | Not started |
@@ -234,6 +235,21 @@ Run all gates, reconcile canonical docs (including Inventory Valuation Policy go
 - Added canonical architecture record `docs/architecture/inventory-valuation-strategies.md`, including Argin Bridge deterministic replay implications and boundaries for Steps 4–14.
 - No Product/Warehouse policy, persisted layer repository, negative-stock policy, SQLite or live synchronization transport was introduced ahead of its owning step.
 - Raw executable output is not claimed here: this environment does not provide a repository runtime and no CI workflow run is available for these commits. The committed tests must be run locally/CI as normal validation evidence.
+
+## Step 4 Evidence
+
+- Added `packages/inventory/src/domain/inventory-valuation-policy.ts` as a persistence-neutral Company-scoped accounting-policy model.
+- Implemented initial Company policy creation with durable identity, FIFO/Moving Average method, strategy version, currency, `effectiveFrom` and revision.
+- Implemented direct-mutation lock contract once authoritative monetary valuation exists.
+- Implemented append-only controlled policy transitions with new durable identity, strictly later effective date, `previousPolicyId`, mandatory change reason and revision progression.
+- Implemented deterministic policy resolution by Company + movement business date; Product/Warehouse IDs remain valuation context and do not override the Company method.
+- Implemented policy-history integrity validation for first-record semantics, monotonic chronology, overlap rejection and predecessor-chain validation.
+- Added public package subpath `@argin/inventory/valuation-policy` without coupling the policy model to SQLite or Desktop.
+- Added `packages/inventory/tests/inventory-valuation-policy.test.ts` covering initial setup, shared Company policy across Product/Warehouse streams, historical resolution, direct-mutation lock, transition chronology/reason validation, overlap detection and missing-policy behavior.
+- Added canonical architecture record `docs/architecture/inventory-valuation-policy.md` with CR-21-001 governance and Argin Bridge implications.
+- An initial Product/Warehouse override draft was detected during Step 4 review and corrected before completion because it contradicted approved CR-21-001; final Step 4 implementation is Company-scoped only.
+- Fiscal-year-boundary service validation, authorization/Audit correlation, persistence and UI remain in their owning later steps.
+- Raw executable test output is not claimed here unless local/CI validation is actually observed.
 
 ## Change Requests
 
