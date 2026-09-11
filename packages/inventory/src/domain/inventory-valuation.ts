@@ -119,12 +119,9 @@ function id(value: string, field: string): string {
 function positiveInteger(
   value: number,
   field: string,
-  code: "VALUATION_REVISION_INVALID" | "VALUATION_STRATEGY_VERSION_INVALID" = "VALUATION_INPUT_INVALID" as never,
+  code?: "VALUATION_REVISION_INVALID" | "VALUATION_STRATEGY_VERSION_INVALID",
 ): number {
-  if (!Number.isSafeInteger(value) || value < 1) {
-    if (code === "VALUATION_REVISION_INVALID" || code === "VALUATION_STRATEGY_VERSION_INVALID") return fail(code, field);
-    return fail("VALUATION_INPUT_INVALID", field);
-  }
+  if (!Number.isSafeInteger(value) || value < 1) return fail(code ?? "VALUATION_INPUT_INVALID", field);
   return value;
 }
 
