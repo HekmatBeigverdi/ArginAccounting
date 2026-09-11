@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–2 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 3 — Valuation Strategies — is next.
+Steps 1–3 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 4 — Product and Warehouse Valuation Policy — is next.
 
 ## Governance
 
@@ -16,6 +16,7 @@ Mandatory references:
 - [Contributing](../../CONTRIBUTING.md)
 - [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md)
 - [Inventory Valuation Domain Foundation](../architecture/inventory-valuation-domain.md)
+- [Inventory Valuation Strategies](../architecture/inventory-valuation-strategies.md)
 
 ## Baseline and Release Target
 
@@ -60,7 +61,7 @@ Bridge compatibility is mandatory from the Domain model onward. Authoritative va
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Inventory Valuation Domain Model | Completed |
-| 3 | Valuation Strategies | Not started |
+| 3 | Valuation Strategies | Completed |
 | 4 | Product and Warehouse Valuation Policy | Not started |
 | 5 | Cost Layers and Inbound Cost Basis | Not started |
 | 6 | Outflow Cost Calculation Engine | Not started |
@@ -181,6 +182,21 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 - Added canonical architecture record `docs/architecture/inventory-valuation-domain.md` including Argin Bridge compatibility and deferred scope.
 - No live Bridge transport or persistence implementation was introduced.
 - Raw executable output is not claimed here: this environment could not execute repository tests, and no workflow run exists for the current commit. The tests are committed for normal local/CI validation.
+
+## Step 3 Evidence
+
+- Added pure persistence-neutral strategy engine `packages/inventory/src/domain/inventory-valuation-strategy.ts`.
+- Added stable version-1 strategy identity for FIFO and moving weighted average plus fixed `half-away-from-zero` monetary rounding.
+- Implemented exact decimal parsing with `BigInt`; valuation arithmetic does not use binary floating-point multiplication/division for quantity or unit-cost calculations.
+- Implemented deterministic FIFO receive/issue behavior with oldest-layer-first consumption, partial-layer proportional allocation and exact monetary remainder preservation.
+- Implemented deterministic moving weighted-average receive/issue behavior using exact quantity plus integer monetary pool, including exact full-pool exhaustion.
+- Strategy unit-cost output uses deterministic 12-decimal calculation scale with canonical trailing-zero removal; changes that alter results require a strategy-version change.
+- Strategy engine rejects insufficient quantity rather than fabricating negative-stock cost; business deferred/negative-stock policy remains owned by Step 10.
+- Added versioned strategy lookup and public package subpath `@argin/inventory/valuation-strategy`, so consumers do not embed strategy implementation details.
+- Added `packages/inventory/tests/inventory-valuation-strategy.test.ts` covering strategy identity/version, FIFO ordering, rounding/remainder conservation, moving-average weighted basis, full exhaustion, deterministic replay and insufficient-quantity rejection.
+- Added canonical architecture record `docs/architecture/inventory-valuation-strategies.md`, including Argin Bridge deterministic replay implications and boundaries for Steps 4–14.
+- No Product/Warehouse policy, persisted layer repository, negative-stock policy, SQLite or live synchronization transport was introduced ahead of its owning step.
+- Raw executable output is not claimed here: this environment does not provide a repository runtime and no CI workflow run is available for these commits. The committed tests must be run locally/CI as normal validation evidence.
 
 ## Change Requests
 
