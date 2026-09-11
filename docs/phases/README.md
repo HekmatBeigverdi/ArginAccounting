@@ -33,7 +33,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 
 ## Current Phase
 
-21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–3 complete; fixed 20-step sequence preserved; Step 4 — Product and Warehouse Valuation Policy — is next
+21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–4 complete; fixed 20-step sequence preserved; Step 5 — Cost Layers and Inbound Cost Basis — is next
 
 ## Renumbering Rule
 
