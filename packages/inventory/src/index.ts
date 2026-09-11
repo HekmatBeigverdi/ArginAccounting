@@ -82,6 +82,10 @@ export type {
   InventoryValuationSource,
 } from "./domain/inventory-valuation.ts";
 
+export * from "./domain/inventory-valuation-strategy.ts";
+export * from "./domain/inventory-valuation-policy.ts";
+export * from "./domain/inventory-inbound-cost.ts";
+
 export { createInventoryDocumentScope } from "./domain/inventory-scope.ts";
 export type { InventoryDocumentScope, CreateInventoryDocumentScopeInput } from "./domain/inventory-scope.ts";
 export { validateInventoryDocumentScope } from "./application/inventory-scope-validation.ts";
