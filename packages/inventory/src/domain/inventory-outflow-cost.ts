@@ -164,6 +164,6 @@ export function calculateInventoryOutflowCost(input: {
     unitCost: strategyResult.unitCost,
     totalCost: strategyResult.totalCost,
     nextState: strategyResult.state,
-    consumptions: Object.freeze([]),
+    consumptions: Object.freeze([] as const),
   });
 }
