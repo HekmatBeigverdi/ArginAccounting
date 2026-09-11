@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–4 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 5 — Cost Layers and Inbound Cost Basis — is next.
+Steps 1–5 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 6 — Outflow Cost Calculation Engine — is next.
 
 ## Governance
 
@@ -18,6 +18,7 @@ Mandatory references:
 - [Inventory Valuation Domain Foundation](../architecture/inventory-valuation-domain.md)
 - [Inventory Valuation Strategies](../architecture/inventory-valuation-strategies.md)
 - [Inventory Valuation Policy](../architecture/inventory-valuation-policy.md)
+- [Inventory Inbound Cost Basis](../architecture/inventory-inbound-cost-basis.md)
 
 ## Baseline and Release Target
 
@@ -101,7 +102,7 @@ Valuation policy is also part of the future synchronization contract: authoritat
 | 2 | Inventory Valuation Domain Model | Completed |
 | 3 | Valuation Strategies | Completed |
 | 4 | Product and Warehouse Valuation Policy | Completed |
-| 5 | Cost Layers and Inbound Cost Basis | Not started |
+| 5 | Cost Layers and Inbound Cost Basis | Completed |
 | 6 | Outflow Cost Calculation Engine | Not started |
 | 7 | Transfer Cost Continuity | Not started |
 | 8 | Adjustment, Reversal and Reverse Valuation | Not started |
@@ -249,6 +250,21 @@ Run all gates, reconcile canonical docs (including Inventory Valuation Policy go
 - Added canonical architecture record `docs/architecture/inventory-valuation-policy.md` with CR-21-001 governance and Argin Bridge implications.
 - An initial Product/Warehouse override draft was detected during Step 4 review and corrected before completion because it contradicted approved CR-21-001; final Step 4 implementation is Company-scoped only.
 - Fiscal-year-boundary service validation, authorization/Audit correlation, persistence and UI remain in their owning later steps.
+- Raw executable test output is not claimed here unless local/CI validation is actually observed.
+
+## Step 5 Evidence
+
+- Added persistence-neutral inbound-cost model `packages/inventory/src/domain/inventory-inbound-cost.ts`.
+- Added durable basis-line identity bound to Phase 20 `movementId`, Product, Warehouse, exact base quantity, base monetary cost, currency and optional explicit allocation weight.
+- Added traceable landed-cost components with durable component/source identity and explicit `quantity`, `value` or `weight` allocation method.
+- Implemented deterministic proportional allocation using decimal/`BigInt` arithmetic; currency mismatch, missing weight, zero aggregate allocation basis and invalid amounts are rejected rather than guessed.
+- Implemented exact smallest-unit conservation: each landed-cost component's allocations sum exactly to the authoritative component amount, with deterministic remainder assigned to the final eligible line in caller-supplied canonical order.
+- Implemented resolved inbound basis with `baseCost + landedCost = totalCost` and deterministic 12-decimal unit-cost derivation.
+- Added `inventoryValuationInboundInputFromCostBasis` so the same resolved basis feeds Step 3 FIFO or moving-average strategy contracts; FIFO callers additionally supply durable layer identity.
+- Added public package subpath `@argin/inventory/inbound-cost` and corrected root package exports so Step 3/4/5 public contracts are available consistently.
+- Added `packages/inventory/tests/inventory-inbound-cost.test.ts` covering no-landed-cost basis, quantity/value/weight allocation, multiple traceable components, exact monetary conservation, strategy-input mapping, currency mismatch and missing-weight rejection.
+- Added canonical architecture record `docs/architecture/inventory-inbound-cost-basis.md` including Purchase/ERP ownership boundary and Argin Bridge deterministic replay requirements.
+- Purchase invoice/vendor/freight workflow, persistence, authorization/Audit, outflow calculation, transfer, recalculation and posting remain in their owning later phases/steps.
 - Raw executable test output is not claimed here unless local/CI validation is actually observed.
 
 ## Change Requests
