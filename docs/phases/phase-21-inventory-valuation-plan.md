@@ -82,63 +82,83 @@ Bridge compatibility is mandatory from the Domain model onward. Authoritative va
 ## Fixed Execution Sequence
 
 ### Step 1 — Baseline, Branch, Scope and Plan Freeze
+
 Freeze the Phase 20-complete baseline, branch, scope, ownership boundaries, Argin Bridge invariants and numbered plan.
 
 ### Step 2 — Inventory Valuation Domain Model
+
 Define persistence-neutral valuation entries, cost layers, valuation basis, resolved/unresolved state, strategy identity/version, money/currency semantics and durable source references.
 
 ### Step 3 — Valuation Strategies
+
 Implement versioned deterministic FIFO and moving weighted-average strategy contracts, exact arithmetic and rounding policy.
 
 ### Step 4 — Product and Warehouse Valuation Policy
+
 Define Company-scoped strategy selection, defaults/overrides, effective dates and safe strategy-change rules.
 
 ### Step 5 — Cost Layers and Inbound Cost Basis
+
 Implement inbound monetary basis, layer/state creation and deterministic landed-cost allocation primitives.
 
 ### Step 6 — Outflow Cost Calculation Engine
+
 Resolve issue/outflow cost from historical stream state without over-consuming available cost basis.
 
 ### Step 7 — Transfer Cost Continuity
+
 Carry cost atomically across transfer source/destination while conserving quantity and monetary value.
 
 ### Step 8 — Adjustment, Reversal and Reverse Valuation
+
 Define monetary behavior for opening/adjustment/reversal and linked compensation without editing Phase 20 history.
 
 ### Step 9 — Backdated Documents and Recalculation Engine
+
 Find the earliest affected point and deterministically recalculate downstream valuation state.
 
 ### Step 10 — Negative Stock and Cost Resolution Policy
+
 Define blocked/deferred valuation and explicit unresolved states for negative/unknown-cost edge cases.
 
 ### Step 11 — Application and Repository Contracts
+
 Define commands, queries, DTOs, repositories, Unit of Work, errors, recalculation ports and future ERP cost-input boundaries.
 
 ### Step 12 — Persistence, Migration and SQLite Repository
+
 Add versioned SQLite schema, constraints, indexes and repositories for authoritative valuation facts and required projections.
 
 ### Step 13 — Atomicity, Idempotency and Optimistic Concurrency
+
 Implement transaction boundaries, replay protection, expected-version semantics and same-stream race protection.
 
 ### Step 14 — Argin Bridge and Valuation Synchronization Contract
+
 Freeze versioned persistence-neutral synchronization envelopes and authoritative/derived-state boundaries.
 
 ### Step 15 — Permissions, Audit and Traceability
+
 Protect privileged monetary operations and record explainable strategy/cost/recalculation history.
 
 ### Step 16 — Valuation Query Engine and Reports
+
 Deliver bounded on-hand value, monetary Kardex, Product/Warehouse value, layer detail, as-of, unresolved and recalculation reports.
 
 ### Step 17 — Persian RTL Inventory Valuation Workspace
+
 Deliver Persian RTL inspection/diagnostic UI with shared design system and source drill-down.
 
 ### Step 18 — Domain and Application Tests
+
 Cover strategy, allocation, transfer, reversal, backdated, unresolved, scope, idempotency and concurrency behavior.
 
 ### Step 19 — Repository, Migration, Bridge and Performance Tests
+
 Cover real SQLite upgrade/restart/rollback, serialization/replay invariants, query plans and representative scale.
 
 ### Step 20 — Monorepo Validation, Documentation, Final Review and Release
+
 Run all gates, reconcile canonical docs, review deferred scope, merge according to workflow and prepare `v0.21.0`.
 
 ## Step 1 Evidence
