@@ -50,10 +50,47 @@ Valuation must preserve `movementId`, source document/line identity, Product/War
 - Derived value/balance projections are rebuildable, not independent authoritative synchronization facts.
 - Multi-write operations must become atomic; idempotency and optimistic concurrency are mandatory in their owning steps.
 - Accounting posting is outside this phase.
+- Inventory valuation method is an accounting policy, not a per-document option.
+- Phase 21 method selection is Company-scoped: a company selects FIFO or moving weighted average as its active valuation method.
+- Product/Warehouse valuation streams consume the Company policy; Phase 21 does not allow arbitrary per-document, per-product or per-warehouse method switching.
+- After the first authoritative valuation exists under a policy, direct mutation of the active method is locked.
+- A valuation-method change must use a controlled policy-transition workflow with an explicit effective date, immutable history, authorization and audit evidence.
+- Policy transitions should normally become effective at a fiscal-year boundary; exceptional effective dates must remain explicit, validated and auditable.
+- Historical valuation keeps the policy/method/version that was effective for its business chronology; changing the current policy never rewrites prior quantity facts.
+- The model may remain extensible for future Product Category/Product policy scope, but such overrides are outside Phase 21 unless introduced by a later explicit Change Request.
+
+## Inventory Valuation Policy Requirements
+
+Phase 21 must implement a first-class `InventoryValuationPolicy` (or equivalent persistence-neutral domain concept) with Company ownership and deterministic historical resolution.
+
+Minimum policy semantics:
+
+- `companyId` / company scope.
+- Active valuation `method`: `FIFO` or `MovingWeightedAverage`.
+- Strategy/version identity used by the calculation engine.
+- `effectiveFrom` business date/time according to the project's canonical chronology rules.
+- Durable policy identity and revision/version semantics suitable for optimistic concurrency.
+- Immutable or append-only policy history sufficient to resolve which policy applied at any historical valuation point.
+- Controlled transition metadata such as previous policy reference, change reason and actor/audit correlation where appropriate.
+
+Required behavior:
+
+1. A company may choose its initial valuation method before monetary valuation begins.
+2. The method is not selected on inventory receipt, issue, transfer, adjustment or reversal documents.
+3. Once authoritative monetary valuation has begun, settings UI and ordinary application commands must reject direct in-place method mutation.
+4. A later method change must create a controlled policy transition with `effectiveFrom`; it must not silently edit the historical policy record.
+5. The application must validate transition chronology and prevent ambiguous overlapping active policies.
+6. The preferred operational path is a transition effective from the beginning of a new fiscal year. If a non-boundary transition is ever allowed, the impact/recalculation boundary must be explicit and deterministic.
+7. Recalculation and as-of reporting must resolve the policy that was effective for the relevant chronology, rather than blindly applying the company's current method to all history.
+8. Policy change is privileged and must be represented in Audit with enough before/after context to explain financial-result differences.
+9. UI must show the active method, effective date and policy history, and clearly distinguish initial configuration from a controlled method-change workflow.
+10. Future Bridge/server implementations must synchronize authoritative policy identity/version/effective-date facts, not a mutable local-only setting.
 
 ## Argin Bridge Requirements
 
 Bridge compatibility is mandatory from the Domain model onward. Authoritative valuation facts use durable IDs independent of SQLite row identity; preserve source movement identities; carry method/strategy version, currency and revisions; support deterministic replay; and remain compatible with future idempotency, external reference and tombstone semantics. SQLite Desktop and a future PostgreSQL/.NET server must be able to derive the same valuation from the same authoritative facts and strategy version. Live synchronization transport remains Phase 45 scope.
+
+Valuation policy is also part of the future synchronization contract: authoritative policy identity, Company scope, method, strategy version, `effectiveFrom`, revision and policy-transition history must be representable without relying on SQLite row IDs. Bridge replay must be able to resolve the same effective policy chronology on Desktop and Server, and mutable local settings must not override synchronized authoritative policy history.
 
 ## Step Status
 
@@ -96,7 +133,7 @@ Implement versioned deterministic FIFO and moving weighted-average strategy cont
 
 ### Step 4 — Product and Warehouse Valuation Policy
 
-Define Company-scoped strategy selection, defaults/overrides, effective dates and safe strategy-change rules.
+Implement the Company-scoped Inventory Valuation Policy that selects FIFO or moving weighted average, carries durable policy identity/version and `effectiveFrom`, and resolves the method deterministically for Product/Warehouse valuation streams. Initial selection is configurable before monetary valuation begins; after the first authoritative valuation, direct method mutation is locked. Method changes use an explicit, authorized, audited policy transition with historical preservation and preferably a new-fiscal-year effective date. Phase 21 does not permit per-document, per-product or per-warehouse method switching; the architecture may preserve an extension seam for future category/product scope without implementing it now.
 
 ### Step 5 — Cost Layers and Inbound Cost Basis
 
@@ -104,7 +141,7 @@ Implement inbound monetary basis, layer/state creation and deterministic landed-
 
 ### Step 6 — Outflow Cost Calculation Engine
 
-Resolve issue/outflow cost from historical stream state without over-consuming available cost basis.
+Resolve issue/outflow cost from historical stream state using the policy effective for the relevant chronology, without over-consuming available cost basis.
 
 ### Step 7 — Transfer Cost Continuity
 
@@ -116,7 +153,7 @@ Define monetary behavior for opening/adjustment/reversal and linked compensation
 
 ### Step 9 — Backdated Documents and Recalculation Engine
 
-Find the earliest affected point and deterministically recalculate downstream valuation state.
+Find the earliest affected point and deterministically recalculate downstream valuation state, resolving valuation policy by effective chronology rather than applying only the current Company setting.
 
 ### Step 10 — Negative Stock and Cost Resolution Policy
 
@@ -124,43 +161,43 @@ Define blocked/deferred valuation and explicit unresolved states for negative/un
 
 ### Step 11 — Application and Repository Contracts
 
-Define commands, queries, DTOs, repositories, Unit of Work, errors, recalculation ports and future ERP cost-input boundaries.
+Define commands, queries, DTOs, repositories, Unit of Work, errors, recalculation ports, controlled valuation-policy transition contracts and future ERP cost-input boundaries.
 
 ### Step 12 — Persistence, Migration and SQLite Repository
 
-Add versioned SQLite schema, constraints, indexes and repositories for authoritative valuation facts and required projections.
+Add versioned SQLite schema, constraints, indexes and repositories for authoritative valuation facts, valuation-policy history and required projections.
 
 ### Step 13 — Atomicity, Idempotency and Optimistic Concurrency
 
-Implement transaction boundaries, replay protection, expected-version semantics and same-stream race protection.
+Implement transaction boundaries, replay protection, expected-version semantics and same-stream/policy race protection.
 
 ### Step 14 — Argin Bridge and Valuation Synchronization Contract
 
-Freeze versioned persistence-neutral synchronization envelopes and authoritative/derived-state boundaries.
+Freeze versioned persistence-neutral synchronization envelopes and authoritative/derived-state boundaries, including Company valuation-policy identity, method, strategy version, `effectiveFrom`, revision and transition history required for deterministic cross-node replay.
 
 ### Step 15 — Permissions, Audit and Traceability
 
-Protect privileged monetary operations and record explainable strategy/cost/recalculation history.
+Protect privileged monetary operations and valuation-policy transitions. Record explainable strategy, effective-date, before/after policy, cost and recalculation history so a method change and its financial impact can be traced.
 
 ### Step 16 — Valuation Query Engine and Reports
 
-Deliver bounded on-hand value, monetary Kardex, Product/Warehouse value, layer detail, as-of, unresolved and recalculation reports.
+Deliver bounded on-hand value, monetary Kardex, Product/Warehouse value, layer detail, as-of, unresolved and recalculation reports. As-of queries must resolve the valuation policy historically effective for the requested chronology.
 
 ### Step 17 — Persian RTL Inventory Valuation Workspace
 
-Deliver Persian RTL inspection/diagnostic UI with shared design system and source drill-down.
+Deliver Persian RTL inspection/diagnostic UI with shared design system and source drill-down. The workspace/settings surface must show the active Company valuation method, effective date and policy history; distinguish initial setup from controlled method transition; disable arbitrary direct switching after valuation has begun; and surface a clear financial-impact warning for policy changes.
 
 ### Step 18 — Domain and Application Tests
 
-Cover strategy, allocation, transfer, reversal, backdated, unresolved, scope, idempotency and concurrency behavior.
+Cover strategy, allocation, transfer, reversal, backdated, unresolved, scope, idempotency and concurrency behavior. Add explicit tests for initial Company method selection, lock-after-first-valuation, rejection of document/product/warehouse method overrides, non-overlapping effective policy chronology, controlled transitions, historical policy resolution and audit-triggering application paths.
 
 ### Step 19 — Repository, Migration, Bridge and Performance Tests
 
-Cover real SQLite upgrade/restart/rollback, serialization/replay invariants, query plans and representative scale.
+Cover real SQLite upgrade/restart/rollback, policy-history persistence, serialization/replay invariants, Bridge policy-version/effective-date round-trips, query plans and representative scale.
 
 ### Step 20 — Monorepo Validation, Documentation, Final Review and Release
 
-Run all gates, reconcile canonical docs, review deferred scope, merge according to workflow and prepare `v0.21.0`.
+Run all gates, reconcile canonical docs (including Inventory Valuation Policy governance), review deferred scope, merge according to workflow and prepare `v0.21.0`.
 
 ## Step 1 Evidence
 
@@ -200,4 +237,19 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 
 ## Change Requests
 
-None.
+### CR-21-001 — Company-scoped Inventory Valuation Policy Governance
+
+- Date: 2026-09-11
+- Status: Approved by owner
+- Reason: Phase 21 must treat FIFO / Moving Weighted Average selection as a controlled accounting policy rather than a freely mutable document setting.
+- Step sequence impact: none; the frozen 20-step titles and order remain unchanged.
+- Requirements added:
+  - Company-scoped initial method selection between FIFO and Moving Weighted Average.
+  - No per-document method selection and no Phase 21 Product/Warehouse override behavior.
+  - Direct method mutation locks after authoritative monetary valuation begins.
+  - Later changes use a controlled policy transition with `effectiveFrom`, immutable history, authorization and Audit.
+  - Prefer fiscal-year-boundary transitions while keeping any exceptional effective date explicit and deterministic.
+  - Historical/recalculated valuation resolves the policy effective for the relevant chronology.
+  - UI exposes active method/effective date/history and separates initial configuration from method transition.
+  - Argin Bridge contracts preserve policy identity, method, strategy version, effective date, revision and history for deterministic replay across Desktop and future Server.
+  - Architecture remains extensible for future Product Category/Product scope, but such overrides are deferred beyond Phase 21 unless explicitly approved later.
