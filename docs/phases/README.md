@@ -33,7 +33,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 
 ## Current Phase
 
-21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–10 complete; fixed 20-step sequence preserved; Step 11 — Application and Repository Contracts — is next
+21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–11 complete; fixed 20-step sequence preserved; Step 12 — Persistence, Migration and SQLite Repository — is next
 
 ## Renumbering Rule
 
