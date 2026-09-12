@@ -14,13 +14,13 @@ A valuation mutation must perform, on the same transaction session:
 4. valuation entry/layer/state writes,
 5. idempotency outcome insert.
 
-If any step fails, no subset is committed.
+If any step fails, no subset is committed. `executeInventoryValuationGuardedMutation()` owns this ordering for Application services so replay/CAS semantics cannot be accidentally reordered.
 
 ## Idempotency
 
 Migration `0029_inventory_valuation_concurrency.sql` adds `inventory_valuation_idempotency` keyed by `(company_id, request_id)`.
 
-A replay is valid only when the stored `operation` and `payload_fingerprint` exactly match the retry. Reusing a request ID with a different operation or fingerprint is a conflict. Successful retries return the durable recorded outcome instead of writing a second valuation result.
+A replay is valid only when the stored `operation` and `payload_fingerprint` exactly match the retry. Reusing a request ID with a different operation or fingerprint is a conflict. Successful retries return the durable recorded outcome instead of advancing a stream revision or invoking the mutation a second time.
 
 Fingerprint creation remains an application serialization concern; this step defines comparison and persistence semantics and does not introduce a second project-wide hashing standard.
 
@@ -48,6 +48,15 @@ Product valuation stream revision is Company + Product, not Warehouse. This matc
 ## Policy Race Protection
 
 Company policy changes use the Company policy stream revision in addition to the Step 11 `expectedCurrentPolicyId` / `expectedCurrentRevision` command fields. Direct policy history remains append-only.
+
+## Guarded Mutation Contract
+
+`executeInventoryValuationGuardedMutation()` executes exactly one of two paths:
+
+- replay: return the prior durable outcome and do not invoke `mutate()`;
+- new mutation: CAS the stream revision, invoke `mutate()`, then persist the idempotency outcome in the same transaction.
+
+If `mutate()` or outcome persistence fails, the transaction rolls back the stream revision as well.
 
 ## Argin Bridge
 
