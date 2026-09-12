@@ -11,7 +11,7 @@ import {
 class StubSession implements DatabaseSession {
   readonly calls: Array<{sql:string; parameters:readonly DatabaseValue[]}> = [];
   constructor(private readonly one:unknown=null, private readonly many:unknown[]=[]){ }
-  async execute(sql:string,parameters:readonly DatabaseValue[]=[]):Promise<DatabaseExecuteResult>{ this.calls.push({sql,parameters}); return {rowsAffected:1,lastInsertId:null}; }
+  async execute(sql:string,parameters:readonly DatabaseValue[]=[]):Promise<DatabaseExecuteResult>{ this.calls.push({sql,parameters}); return {rowsAffected:1}; }
   async query<T>(sql:string,parameters:readonly DatabaseValue[]=[]):Promise<T[]>{ this.calls.push({sql,parameters}); return this.many as T[]; }
   async queryOne<T>(sql:string,parameters:readonly DatabaseValue[]=[]):Promise<T|null>{ this.calls.push({sql,parameters}); return this.one as T|null; }
 }
