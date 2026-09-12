@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  InventoryTransferCostError,
-  calculateInventoryTransferCost,
-  createInitialInventoryValuationPolicy,
-  type InventoryStockMovementSnapshot,
-} from "../src/index.ts";
+import { InventoryTransferCostError, calculateInventoryTransferCost } from "../src/domain/inventory-transfer-cost.ts";
+import { createInitialInventoryValuationPolicy } from "../src/domain/inventory-valuation-policy.ts";
+import type { InventoryStockMovementSnapshot } from "../src/domain/inventory-stock.ts";
 
 const policy = createInitialInventoryValuationPolicy({
   policyId: "policy-1",
