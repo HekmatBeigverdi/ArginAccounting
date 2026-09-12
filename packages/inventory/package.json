@@ -11,7 +11,8 @@
     "./outflow-cost": "./src/domain/inventory-outflow-cost.ts",
     "./transfer-cost": "./src/domain/inventory-transfer-cost.ts",
     "./adjustment-reversal-valuation": "./src/domain/inventory-adjustment-reversal-valuation.ts",
-    "./valuation-recalculation": "./src/domain/inventory-valuation-recalculation.ts"
+    "./valuation-recalculation": "./src/domain/inventory-valuation-recalculation.ts",
+    "./cost-resolution-policy": "./src/domain/inventory-cost-resolution-policy.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
