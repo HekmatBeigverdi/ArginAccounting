@@ -57,6 +57,7 @@ fn database_migrations() -> Vec<Migration> {
         Migration { version: 25, description: "warehouse_maintenance_tombstones", sql: include_str!("../migrations/0025_warehouse_maintenance_tombstones.sql"), kind: MigrationKind::Up },
         Migration { version: 26, description: "inventory_documents", sql: include_str!("../migrations/0026_inventory_documents.sql"), kind: MigrationKind::Up },
         Migration { version: 27, description: "inventory_reversal_persistence", sql: include_str!("../migrations/0027_inventory_reversal_persistence.sql"), kind: MigrationKind::Up },
+        Migration { version: 28, description: "inventory_valuation", sql: include_str!("../migrations/0028_inventory_valuation.sql"), kind: MigrationKind::Up },
     ]
 }
 
