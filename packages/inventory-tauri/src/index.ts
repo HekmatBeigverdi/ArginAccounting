@@ -15,6 +15,12 @@ export {
   SqliteInventoryValuationStateRepository,
 } from "./sqlite-inventory-valuation-repositories.ts";
 
+export {
+  SqliteInventoryValuationIdempotencyRepository,
+  SqliteInventoryValuationStreamVersionRepository,
+  SqliteInventoryValuationUnitOfWork,
+} from "./sqlite-inventory-valuation-concurrency.ts";
+
 export { SqliteInventoryOpeningBalanceRepository } from "./sqlite-inventory-opening-repository.ts";
 export { SqliteInventoryUnitOfWork } from "./sqlite-inventory-unit-of-work.ts";
 export { ensureInventoryNumberSeries } from "./ensure-inventory-number-series.ts";
