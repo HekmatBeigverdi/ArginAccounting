@@ -6,6 +6,15 @@ export {
   SqliteInventoryMovementRepository,
 } from "./sqlite-inventory-repositories.ts";
 
+export {
+  SqliteInventoryCostLayerRepository,
+  SqliteInventoryValuationCostInputProvider,
+  SqliteInventoryValuationEntryRepository,
+  SqliteInventoryValuationMovementReader,
+  SqliteInventoryValuationPolicyRepository,
+  SqliteInventoryValuationStateRepository,
+} from "./sqlite-inventory-valuation-repositories.ts";
+
 export { SqliteInventoryOpeningBalanceRepository } from "./sqlite-inventory-opening-repository.ts";
 export { SqliteInventoryUnitOfWork } from "./sqlite-inventory-unit-of-work.ts";
 export { ensureInventoryNumberSeries } from "./ensure-inventory-number-series.ts";
