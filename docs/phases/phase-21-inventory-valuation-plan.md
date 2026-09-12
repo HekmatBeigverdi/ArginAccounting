@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–9 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 10 — Negative Stock and Cost Resolution Policy — is next.
+Steps 1–10 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 11 — Application and Repository Contracts — is next.
 
 ## Governance
 
@@ -23,6 +23,7 @@ Mandatory references:
 - [Inventory Transfer Cost Continuity](../architecture/inventory-transfer-cost-continuity.md)
 - [Inventory Adjustment, Reversal and Reverse Valuation](../architecture/inventory-adjustment-reversal-valuation.md)
 - [Inventory Valuation Recalculation](../architecture/inventory-valuation-recalculation.md)
+- [Inventory Negative Stock and Cost Resolution](../architecture/inventory-negative-stock-cost-resolution.md)
 
 ## Baseline and Release Target
 
@@ -68,7 +69,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 7 | Transfer Cost Continuity | Completed |
 | 8 | Adjustment, Reversal and Reverse Valuation | Completed |
 | 9 | Backdated Documents and Recalculation Engine | Completed |
-| 10 | Negative Stock and Cost Resolution Policy | Not started |
+| 10 | Negative Stock and Cost Resolution Policy | Completed |
 | 11 | Application and Repository Contracts | Not started |
 | 12 | Persistence, Migration and SQLite Repository | Not started |
 | 13 | Atomicity, Idempotency and Optimistic Concurrency | Not started |
@@ -221,6 +222,20 @@ Added ordinary-outflow cost engine resolving historical Company policy, validati
 - Added `packages/inventory/tests/inventory-valuation-recalculation.test.ts` covering cross-warehouse Product scope, reversal boundary, Company-wide policy invalidation, deterministic replay and exclusion of earlier unaffected facts.
 - Added `docs/architecture/inventory-valuation-recalculation.md` including historical policy and Argin Bridge replay requirements.
 - Persistence, transactional replacement of derived rows, idempotency/concurrency and live Bridge transport remain in Steps 11–14/45.
+- Raw executable test output is not claimed unless local/CI validation is actually observed.
+
+### Step 10
+
+- Added `packages/inventory/src/domain/inventory-cost-resolution-policy.ts` as a versioned persistence-neutral valuation resolution policy.
+- Default version-1 policy blocks true negative stock valuation and never fabricates cost.
+- An explicit `negativeStockAction = defer` policy is supported for future company/application configuration; this records unresolved monetary valuation rather than inventing an estimated cost.
+- Distinguished physical negative stock from insufficient resolved cost basis: when physical quantity exists but costed quantity is insufficient, the outcome is `deferred` with reason `insufficient_cost_basis`, not `negative_stock`.
+- Missing inbound cost basis and upstream unresolved cost are explicit deferred states requiring later deterministic recalculation.
+- Deferred outcomes map to the existing `InventoryValuationEntrySnapshot` unresolved state with `unitCost = null`, `totalCost = null` and a stable reason; zero is never used as a placeholder for unknown cost.
+- Added public package subpath `@argin/inventory/cost-resolution-policy`.
+- Added `packages/inventory/tests/inventory-cost-resolution-policy.test.ts` covering default negative-stock blocking, deferred negative stock, insufficient cost basis, upstream unresolved cost, invalid costed-vs-physical quantity, missing inbound basis and unresolved entry creation.
+- Added `docs/architecture/inventory-negative-stock-cost-resolution.md` including Step 9 recalculation and Argin Bridge deterministic behavior.
+- Persistence, company-level configuration command, authorization/audit, transaction orchestration and UI remain in their owning Steps 11–17.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
