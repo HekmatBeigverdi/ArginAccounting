@@ -21,6 +21,7 @@ export interface InventoryCostResolutionPolicy {
   readonly version: 1;
   readonly negativeStockAction: InventoryNegativeStockAction;
   readonly missingInboundCostAction: "defer";
+  readonly insufficientCostBasisAction: "defer";
   readonly upstreamUnresolvedCostAction: "defer";
 }
 
@@ -28,6 +29,7 @@ export const DEFAULT_INVENTORY_COST_RESOLUTION_POLICY: InventoryCostResolutionPo
   version: 1,
   negativeStockAction: "block",
   missingInboundCostAction: "defer",
+  insufficientCostBasisAction: "defer",
   upstreamUnresolvedCostAction: "defer",
 });
 
@@ -77,7 +79,8 @@ function compareDecimal(left: Decimal, right: Decimal): number {
 function policy(input: InventoryCostResolutionPolicy | undefined): InventoryCostResolutionPolicy {
   const value = input ?? DEFAULT_INVENTORY_COST_RESOLUTION_POLICY;
   if (!value || value.version !== 1 || !INVENTORY_NEGATIVE_STOCK_ACTIONS.includes(value.negativeStockAction) ||
-      value.missingInboundCostAction !== "defer" || value.upstreamUnresolvedCostAction !== "defer") {
+      value.missingInboundCostAction !== "defer" || value.insufficientCostBasisAction !== "defer" ||
+      value.upstreamUnresolvedCostAction !== "defer") {
     return fail("COST_RESOLUTION_POLICY_INVALID", "policy");
   }
   return value;
@@ -92,30 +95,41 @@ export function createInventoryCostResolutionPolicy(input: {
     version: 1 as const,
     negativeStockAction: action,
     missingInboundCostAction: "defer" as const,
+    insufficientCostBasisAction: "defer" as const,
     upstreamUnresolvedCostAction: "defer" as const,
   });
 }
 
 export function evaluateInventoryOutboundCostResolution(input: {
   readonly requestedQuantity: string;
+  readonly availablePhysicalQuantity: string;
   readonly availableCostedQuantity: string;
   readonly hasUpstreamUnresolvedCost?: boolean;
   readonly policy?: InventoryCostResolutionPolicy;
 }): InventoryCostResolutionDecision {
   if (!input || typeof input !== "object") return fail("COST_RESOLUTION_INPUT_INVALID", "input");
   const activePolicy = policy(input.policy);
+  const requested = decimal(input.requestedQuantity, "requestedQuantity", false);
+  const physical = decimal(input.availablePhysicalQuantity, "availablePhysicalQuantity");
+  const costed = decimal(input.availableCostedQuantity, "availableCostedQuantity");
+  if (compareDecimal(costed, physical) > 0) return fail("COST_RESOLUTION_INPUT_INVALID", "availableCostedQuantity");
+
+  if (compareDecimal(requested, physical) > 0) {
+    if (activePolicy.negativeStockAction === "block") {
+      return Object.freeze({ outcome: "blocked", reason: "negative_stock", requiresRecalculation: false, blocksConfirmation: true });
+    }
+    return Object.freeze({ outcome: "deferred", reason: "negative_stock", requiresRecalculation: true, blocksConfirmation: false });
+  }
+
   if (input.hasUpstreamUnresolvedCost === true) {
     return Object.freeze({ outcome: "deferred", reason: "upstream_cost_unresolved", requiresRecalculation: true, blocksConfirmation: false });
   }
-  const requested = decimal(input.requestedQuantity, "requestedQuantity", false);
-  const available = decimal(input.availableCostedQuantity, "availableCostedQuantity");
-  if (compareDecimal(requested, available) <= 0) {
-    return Object.freeze({ outcome: "resolved", reason: null, requiresRecalculation: false, blocksConfirmation: false });
+
+  if (compareDecimal(requested, costed) > 0) {
+    return Object.freeze({ outcome: "deferred", reason: "insufficient_cost_basis", requiresRecalculation: true, blocksConfirmation: false });
   }
-  if (activePolicy.negativeStockAction === "block") {
-    return Object.freeze({ outcome: "blocked", reason: "negative_stock", requiresRecalculation: false, blocksConfirmation: true });
-  }
-  return Object.freeze({ outcome: "deferred", reason: "negative_stock", requiresRecalculation: true, blocksConfirmation: false });
+
+  return Object.freeze({ outcome: "resolved", reason: null, requiresRecalculation: false, blocksConfirmation: false });
 }
 
 export function evaluateInventoryInboundCostResolution(input: {
