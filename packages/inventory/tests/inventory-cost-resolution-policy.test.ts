@@ -33,10 +33,11 @@ function movement(quantityDelta: string): InventoryStockMovementSnapshot {
   });
 }
 
-test("default policy blocks negative stock valuation", () => {
+test("default policy blocks true negative stock valuation", () => {
   assert.equal(DEFAULT_INVENTORY_COST_RESOLUTION_POLICY.negativeStockAction, "block");
   const decision = evaluateInventoryOutboundCostResolution({
     requestedQuantity: "8",
+    availablePhysicalQuantity: "5",
     availableCostedQuantity: "5",
   });
   assert.deepEqual(decision, {
@@ -54,6 +55,7 @@ test("default policy blocks negative stock valuation", () => {
 test("configured defer policy never fabricates cost for negative stock", () => {
   const decision = evaluateInventoryOutboundCostResolution({
     requestedQuantity: "8",
+    availablePhysicalQuantity: "5",
     availableCostedQuantity: "5",
     policy: createInventoryCostResolutionPolicy({ negativeStockAction: "defer" }),
   });
@@ -65,9 +67,24 @@ test("configured defer policy never fabricates cost for negative stock", () => {
   });
 });
 
-test("outbound cost is resolved only when sufficient costed quantity exists", () => {
+test("physical stock without enough resolved cost basis is deferred, not negative stock", () => {
+  const decision = evaluateInventoryOutboundCostResolution({
+    requestedQuantity: "8",
+    availablePhysicalQuantity: "10",
+    availableCostedQuantity: "5",
+  });
+  assert.deepEqual(decision, {
+    outcome: "deferred",
+    reason: "insufficient_cost_basis",
+    requiresRecalculation: true,
+    blocksConfirmation: false,
+  });
+});
+
+test("outbound cost is resolved only when sufficient physical and costed quantity exists", () => {
   assert.deepEqual(evaluateInventoryOutboundCostResolution({
     requestedQuantity: "2.5",
+    availablePhysicalQuantity: "4",
     availableCostedQuantity: "2.500",
   }), {
     outcome: "resolved",
@@ -80,12 +97,24 @@ test("outbound cost is resolved only when sufficient costed quantity exists", ()
 test("upstream unresolved cost defers downstream outbound valuation", () => {
   const decision = evaluateInventoryOutboundCostResolution({
     requestedQuantity: "1",
+    availablePhysicalQuantity: "10",
     availableCostedQuantity: "10",
     hasUpstreamUnresolvedCost: true,
   });
   assert.equal(decision.outcome, "deferred");
   assert.equal(decision.reason, "upstream_cost_unresolved");
   assert.equal(decision.requiresRecalculation, true);
+});
+
+test("invalid costed quantity cannot exceed physical quantity", () => {
+  assert.throws(
+    () => evaluateInventoryOutboundCostResolution({
+      requestedQuantity: "1",
+      availablePhysicalQuantity: "5",
+      availableCostedQuantity: "6",
+    }),
+    (error: unknown) => error instanceof InventoryCostResolutionError && error.code === "COST_RESOLUTION_INPUT_INVALID",
+  );
 });
 
 test("missing inbound basis is explicit deferred cost rather than zero", () => {
