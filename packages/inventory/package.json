@@ -8,7 +8,8 @@
     "./valuation-strategy": "./src/domain/inventory-valuation-strategy.ts",
     "./valuation-policy": "./src/domain/inventory-valuation-policy.ts",
     "./inbound-cost": "./src/domain/inventory-inbound-cost.ts",
-    "./outflow-cost": "./src/domain/inventory-outflow-cost.ts"
+    "./outflow-cost": "./src/domain/inventory-outflow-cost.ts",
+    "./transfer-cost": "./src/domain/inventory-transfer-cost.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
