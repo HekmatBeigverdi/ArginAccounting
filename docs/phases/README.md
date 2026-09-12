@@ -33,7 +33,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 
 ## Current Phase
 
-21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–13 complete; fixed 20-step sequence preserved; Step 14 — Argin Bridge and Valuation Synchronization Contract — is next
+21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–14 complete; fixed 20-step sequence preserved; Step 15 — Permissions, Audit and Traceability — is next
 
 ## Renumbering Rule
 
