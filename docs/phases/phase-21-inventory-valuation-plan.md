@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–7 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 8 — Adjustment, Reversal and Reverse Valuation — is next.
+Steps 1–9 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 10 — Negative Stock and Cost Resolution Policy — is next.
 
 ## Governance
 
@@ -21,6 +21,8 @@ Mandatory references:
 - [Inventory Inbound Cost Basis](../architecture/inventory-inbound-cost-basis.md)
 - [Inventory Outflow Cost Engine](../architecture/inventory-outflow-cost-engine.md)
 - [Inventory Transfer Cost Continuity](../architecture/inventory-transfer-cost-continuity.md)
+- [Inventory Adjustment, Reversal and Reverse Valuation](../architecture/inventory-adjustment-reversal-valuation.md)
+- [Inventory Valuation Recalculation](../architecture/inventory-valuation-recalculation.md)
 
 ## Baseline and Release Target
 
@@ -64,8 +66,8 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 5 | Cost Layers and Inbound Cost Basis | Completed |
 | 6 | Outflow Cost Calculation Engine | Completed |
 | 7 | Transfer Cost Continuity | Completed |
-| 8 | Adjustment, Reversal and Reverse Valuation | Not started |
-| 9 | Backdated Documents and Recalculation Engine | Not started |
+| 8 | Adjustment, Reversal and Reverse Valuation | Completed |
+| 9 | Backdated Documents and Recalculation Engine | Completed |
 | 10 | Negative Stock and Cost Resolution Policy | Not started |
 | 11 | Application and Repository Contracts | Not started |
 | 12 | Persistence, Migration and SQLite Repository | Not started |
@@ -190,15 +192,35 @@ Added ordinary-outflow cost engine resolving historical Company policy, validati
 
 - Added `packages/inventory/src/domain/inventory-transfer-cost.ts` as a persistence-neutral transfer valuation engine.
 - Validates Phase 20 source/destination movement pairs: same transfer/document/line/Product/chronology, opposite equal quantity, different stock keys and no reversal identity.
-- Resolves the same Company policy for both transfer sides and rejects policy/method/version/currency divergence.
-- FIFO transfer consumes exact source-layer portions and creates caller-identified durable destination layers with exactly the same quantity and monetary cost; existing destination FIFO layers retain their earlier order.
-- Moving Weighted Average transfer removes the exact integer monetary amount from the source pool and adds that exact amount to the destination pool without recomputing from rounded unit cost.
-- Enforces monetary conservation: `sourceTotalCost + destinationTotalCost = 0` and exposes `netTotalCost = 0`, preventing artificial transfer P&L.
-- Preserves transfer ID, both movement IDs, policy identity/version, source FIFO consumptions and destination layer creation for future Kardex/Audit/Bridge traceability.
-- Added public package subpath `@argin/inventory/transfer-cost`.
-- Added `packages/inventory/tests/inventory-transfer-cost.test.ts` covering FIFO continuity, destination ordering, Moving Average exact carry, non-conserving pair rejection, destination layer identity validation and historical-policy use.
-- Added `docs/architecture/inventory-transfer-cost-continuity.md` with deterministic replay and Argin Bridge requirements.
-- Transfer reversal, backdated recalculation, negative-stock resolution and persistence/transaction orchestration remain in Steps 8–13.
+- FIFO carries exact source-layer quantity/cost into durable destination layers; Moving Weighted Average carries the exact integer monetary amount without unit-cost re-rounding.
+- Enforces `sourceTotalCost + destinationTotalCost = 0`, preserving transfer value and preventing artificial P&L.
+- Added public package subpath `@argin/inventory/transfer-cost`, focused tests and `docs/architecture/inventory-transfer-cost-continuity.md`.
+- Raw executable test output is not claimed unless local/CI validation is actually observed.
+
+### Step 8
+
+- Restored the owner-accepted Step 8 implementation after a later branch commit was found to have been based on the Step 7 head; the later commit itself was preserved and no force-push was used.
+- Added `packages/inventory/src/domain/inventory-adjustment-reversal-valuation.ts`.
+- Positive adjustment/opening consumes resolved inbound cost basis and preserves authoritative exact `totalCost`; FIFO creates a durable layer and Moving Average adds exact quantity/cost to its pool.
+- Negative adjustment consumes current historical valuation state through FIFO or Moving Average strategy semantics.
+- Reversal creates a linked exact opposite monetary fact and never rewrites Phase 20 quantity history.
+- Reversal preserves the original valuation policy/method/version/currency even when current Company policy has changed, and requests recalculation from the original chronology point.
+- Added public package subpath `@argin/inventory/adjustment-reversal-valuation`, focused tests and `docs/architecture/inventory-adjustment-reversal-valuation.md`.
+- Raw executable test output is not claimed unless local/CI validation is actually observed.
+
+### Step 9
+
+- Added `packages/inventory/src/domain/inventory-valuation-recalculation.ts` as a persistence-neutral recalculation planner and deterministic replay loop.
+- Supports triggers for backdated movement insertion, changed movement, changed cost basis, linked reversal and Company valuation-policy changes.
+- Movement/cost/reversal invalidation scopes Company + Product across every Warehouse/Location so transfer-propagated cost dependencies are not missed.
+- Company policy changes invalidate all Company Products from the transition `effectiveFrom` date because CR-21-001 defines policy at Company scope.
+- Exact movement changes start from the canonical movement point; reversal starts conservatively from the original `businessDate/businessOrder` so every same-point tie breaker is rebuilt.
+- Recalculation ordering reuses Phase 20 canonical chronology: `businessDate -> businessOrder -> documentId -> lineId -> movementId`; database/API input ordering cannot change results.
+- `replayInventoryValuationPlan` accepts a seed state and pure applier, allowing later Application/Persistence steps to invoke Step 5–8 primitives without coupling Step 9 to SQLite.
+- Added public package subpath `@argin/inventory/valuation-recalculation`.
+- Added `packages/inventory/tests/inventory-valuation-recalculation.test.ts` covering cross-warehouse Product scope, reversal boundary, Company-wide policy invalidation, deterministic replay and exclusion of earlier unaffected facts.
+- Added `docs/architecture/inventory-valuation-recalculation.md` including historical policy and Argin Bridge replay requirements.
+- Persistence, transactional replacement of derived rows, idempotency/concurrency and live Bridge transport remain in Steps 11–14/45.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
