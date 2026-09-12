@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–13 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 14 — Argin Bridge and Valuation Synchronization Contract — is next.
+Steps 1–14 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 15 — Permissions, Audit and Traceability — is next.
 
 ## Governance
 
@@ -27,6 +27,7 @@ Mandatory references:
 - [Inventory Valuation Application and Repository Contracts](../architecture/inventory-valuation-application-contracts.md)
 - [Inventory Valuation SQLite Persistence](../architecture/inventory-valuation-sqlite-persistence.md)
 - [Inventory Valuation Atomicity, Idempotency and Optimistic Concurrency](../architecture/inventory-valuation-atomicity-idempotency-concurrency.md)
+- [Inventory Valuation Argin Bridge Synchronization Contract](../architecture/inventory-valuation-argin-bridge-sync.md)
 
 ## Baseline and Release Target
 
@@ -54,12 +55,12 @@ Phase 21 adds deterministic, auditable monetary valuation on top of the immutabl
 - Backdated changes invalidate downstream monetary state and are deterministically recalculated from the earliest affected point.
 - Product monetary concurrency scope is Company + Product across warehouses because transfer can propagate cost between locations.
 - Retry safety uses durable request identity and exact operation/fingerprint matching; request-id reuse with different payload is a conflict.
-- Derived value/balance projections are rebuildable and are not independently authoritative synchronization facts.
+- Phase 20 movement facts, Company valuation policy history and resolved valuation cost inputs are authoritative Bridge inputs; valuation Entry/Layer/State projections are rebuildable and never synchronized as independent truth.
 - Accounting journal posting is outside Phase 21.
 
 ## Argin Bridge Requirements
 
-Authoritative valuation facts and policy history use durable IDs independent of SQLite row identity. Source movement IDs, transfer/reversal references, strategy version, currency, revisions, request identities and effective chronology must survive future synchronization. SQLite Desktop and future PostgreSQL/.NET Server implementations must derive identical valuation from identical authoritative facts and algorithm versions. Live transport, acknowledgements, retries and distributed conflict handling remain Phase 45 scope.
+Authoritative valuation facts and policy history use durable IDs independent of SQLite row identity. Phase 20 movement IDs, policy IDs, cost-basis IDs, strategy version, currency, stream revisions, request identities and effective chronology must survive future synchronization. Phase 21 valuation sync uses versioned envelopes for policy history and resolved cost inputs; derived entries, cost layers and state projections are rebuilt at the destination. SQLite Desktop and future PostgreSQL/.NET Server implementations must derive identical valuation from identical authoritative facts and algorithm versions. Live transport, acknowledgements, dependency queues, retries and distributed conflict resolution remain Phase 45 scope.
 
 ## Step Status
 
@@ -78,7 +79,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 11 | Application and Repository Contracts | Completed |
 | 12 | Persistence, Migration and SQLite Repository | Completed |
 | 13 | Atomicity, Idempotency and Optimistic Concurrency | Completed |
-| 14 | Argin Bridge and Valuation Synchronization Contract | Not started |
+| 14 | Argin Bridge and Valuation Synchronization Contract | Completed |
 | 15 | Permissions, Audit and Traceability | Not started |
 | 16 | Valuation Query Engine and Reports | Not started |
 | 17 | Persian RTL Inventory Valuation Workspace | Not started |
@@ -206,6 +207,22 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 - Added focused Domain/Application tests for replay/conflict/revision behavior and Tauri adapter tests for migration contracts, CAS and same-session UoW composition.
 - Added `docs/architecture/inventory-valuation-atomicity-idempotency-concurrency.md`.
 - Real SQLite crash/restart/rollback, multi-connection race and representative-scale validation remain Step 19.
+- Raw executable test output is not claimed unless local/CI validation is actually observed.
+
+### Step 14
+
+- Added `packages/inventory/src/application/contracts/inventory-valuation-sync.ts` with `INVENTORY_VALUATION_SYNC_CONTRACT_VERSION = 1` and versioned persistence-neutral Argin Bridge envelopes.
+- Added public subpath `@argin/inventory/valuation-sync`.
+- Reused Phase 20 Inventory sync metadata conventions: operation/request identity, idempotency key, payload fingerprint, canonical UTC `changedAt`, origin, optional server revision and external references.
+- Defined only `valuation-policy` and `valuation-cost-input` as Phase 21 authoritative valuation sync entities. Phase 20 movement envelopes remain the authoritative quantity channel.
+- Policy envelopes are append-only, carry Company policy snapshot + stream revision, and declare predecessor policy dependency when applicable.
+- Cost-input envelopes carry durable resolved basis identity/entity revision + Product valuation stream revision and declare dependency on the immutable Phase 20 movement.
+- Explicitly excluded `valuation-entry`, `valuation-cost-layer` and `valuation-state` from authoritative Bridge payloads; receiving nodes must rebuild them through deterministic recalculation.
+- Preserved Step 13 stream identities: `policy:{companyId}` and `valuation:{companyId}:{productId}`. `serverRevision` remains transport/server metadata and does not replace domain stream revision.
+- Defined receiving semantics: accepted Cost Input changes invalidate valuation from the referenced movement chronology; accepted historical Policy changes invalidate valuation from `effectiveFrom`; destination nodes run the Step 9 engine rather than importing derived monetary projections.
+- Added focused tests for contract versioning, policy predecessor dependency, movement dependency, stream identity/revision checks, UTC normalization, external-reference uniqueness and derived-entity exclusion.
+- Added `docs/architecture/inventory-valuation-argin-bridge-sync.md` documenting SQLite/PostgreSQL deterministic parity and Phase 45 boundaries.
+- Live transport, remote acknowledgements, dependency queues and distributed conflict winner selection remain Phase 45 Synchronization; Step 14 only freezes the Phase 21 contract.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
