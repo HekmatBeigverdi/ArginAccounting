@@ -9,7 +9,8 @@
     "./valuation-policy": "./src/domain/inventory-valuation-policy.ts",
     "./inbound-cost": "./src/domain/inventory-inbound-cost.ts",
     "./outflow-cost": "./src/domain/inventory-outflow-cost.ts",
-    "./transfer-cost": "./src/domain/inventory-transfer-cost.ts"
+    "./transfer-cost": "./src/domain/inventory-transfer-cost.ts",
+    "./adjustment-reversal-valuation": "./src/domain/inventory-adjustment-reversal-valuation.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
