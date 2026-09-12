@@ -12,7 +12,8 @@
     "./transfer-cost": "./src/domain/inventory-transfer-cost.ts",
     "./adjustment-reversal-valuation": "./src/domain/inventory-adjustment-reversal-valuation.ts",
     "./valuation-recalculation": "./src/domain/inventory-valuation-recalculation.ts",
-    "./cost-resolution-policy": "./src/domain/inventory-cost-resolution-policy.ts"
+    "./cost-resolution-policy": "./src/domain/inventory-cost-resolution-policy.ts",
+    "./valuation-contracts": "./src/application/contracts/inventory-valuation-contracts.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
