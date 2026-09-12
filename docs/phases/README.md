@@ -33,7 +33,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 
 ## Current Phase
 
-21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–7 complete; fixed 20-step sequence preserved; Step 8 — Adjustment, Reversal and Reverse Valuation — is next
+21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–9 complete; fixed 20-step sequence preserved; Step 10 — Negative Stock and Cost Resolution Policy — is next
 
 ## Renumbering Rule
 
