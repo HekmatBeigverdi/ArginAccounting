@@ -1,5 +1,9 @@
 import type { CurrencyCode } from "@argin/platform";
-import { createUnresolvedInventoryValuationEntry, type InventoryValuationEntrySnapshot, type InventoryValuationMethod } from "./inventory-valuation.ts";
+import {
+  createUnresolvedInventoryValuationEntry,
+  type InventoryValuationEntrySnapshot,
+  type InventoryValuationMethod,
+} from "./inventory-valuation.ts";
 import { normalizeInventoryQuantity } from "./inventory-quantity.ts";
 import type { InventoryStockMovementSnapshot } from "./inventory-stock.ts";
 
@@ -40,7 +44,10 @@ export type InventoryCostResolutionErrorCode =
   | "COST_RESOLUTION_BLOCKED";
 
 export class InventoryCostResolutionError extends Error {
-  constructor(public readonly code: InventoryCostResolutionErrorCode, public readonly field: string) {
+  constructor(
+    public readonly code: InventoryCostResolutionErrorCode,
+    public readonly field: string,
+  ) {
     super(`${code}:${field}`);
     this.name = "InventoryCostResolutionError";
   }
@@ -59,28 +66,39 @@ const fail = (code: InventoryCostResolutionErrorCode, field: string): never => {
   throw new InventoryCostResolutionError(code, field);
 };
 
-function decimal(value: string, field: string, allowZero = true): Decimal {
+function parseQuantity(value: string, field: string, allowZero = true): Decimal {
   let normalized: string;
-  try { normalized = normalizeInventoryQuantity(value); }
-  catch { return fail("COST_RESOLUTION_QUANTITY_INVALID", field); }
-  if (normalized.startsWith("-")) return fail("COST_RESOLUTION_QUANTITY_INVALID", field);
-  if (!allowZero && normalized === "0") return fail("COST_RESOLUTION_QUANTITY_INVALID", field);
+  try {
+    normalized = normalizeInventoryQuantity(value);
+  } catch {
+    return fail("COST_RESOLUTION_QUANTITY_INVALID", field);
+  }
+  if (normalized.startsWith("-") || (!allowZero && normalized === "0")) {
+    return fail("COST_RESOLUTION_QUANTITY_INVALID", field);
+  }
   const [whole = "0", fraction = ""] = normalized.split(".");
   return { coefficient: BigInt(`${whole}${fraction}`), scale: fraction.length };
 }
 
 function compareDecimal(left: Decimal, right: Decimal): number {
   const scale = Math.max(left.scale, right.scale);
-  const l = left.coefficient * 10n ** BigInt(scale - left.scale);
-  const r = right.coefficient * 10n ** BigInt(scale - right.scale);
-  return l < r ? -1 : l > r ? 1 : 0;
+  const scaledLeft = left.coefficient * 10n ** BigInt(scale - left.scale);
+  const scaledRight = right.coefficient * 10n ** BigInt(scale - right.scale);
+  if (scaledLeft < scaledRight) return -1;
+  if (scaledLeft > scaledRight) return 1;
+  return 0;
 }
 
-function policy(input: InventoryCostResolutionPolicy | undefined): InventoryCostResolutionPolicy {
+function resolvePolicy(input: InventoryCostResolutionPolicy | undefined): InventoryCostResolutionPolicy {
   const value = input ?? DEFAULT_INVENTORY_COST_RESOLUTION_POLICY;
-  if (!value || value.version !== 1 || !INVENTORY_NEGATIVE_STOCK_ACTIONS.includes(value.negativeStockAction) ||
-      value.missingInboundCostAction !== "defer" || value.insufficientCostBasisAction !== "defer" ||
-      value.upstreamUnresolvedCostAction !== "defer") {
+  if (
+    !value ||
+    value.version !== 1 ||
+    !INVENTORY_NEGATIVE_STOCK_ACTIONS.includes(value.negativeStockAction) ||
+    value.missingInboundCostAction !== "defer" ||
+    value.insufficientCostBasisAction !== "defer" ||
+    value.upstreamUnresolvedCostAction !== "defer"
+  ) {
     return fail("COST_RESOLUTION_POLICY_INVALID", "policy");
   }
   return value;
@@ -90,13 +108,24 @@ export function createInventoryCostResolutionPolicy(input: {
   readonly negativeStockAction?: InventoryNegativeStockAction;
 } = {}): InventoryCostResolutionPolicy {
   const action = input.negativeStockAction ?? "block";
-  if (!INVENTORY_NEGATIVE_STOCK_ACTIONS.includes(action)) return fail("COST_RESOLUTION_POLICY_INVALID", "negativeStockAction");
+  if (!INVENTORY_NEGATIVE_STOCK_ACTIONS.includes(action)) {
+    return fail("COST_RESOLUTION_POLICY_INVALID", "negativeStockAction");
+  }
   return Object.freeze({
     version: 1 as const,
     negativeStockAction: action,
     missingInboundCostAction: "defer" as const,
     insufficientCostBasisAction: "defer" as const,
     upstreamUnresolvedCostAction: "defer" as const,
+  });
+}
+
+function deferredDecision(reason: InventoryCostUnresolvedReason): InventoryCostResolutionDecision {
+  return Object.freeze({
+    outcome: "deferred",
+    reason,
+    requiresRecalculation: true,
+    blocksConfirmation: false,
   });
 }
 
@@ -108,28 +137,40 @@ export function evaluateInventoryOutboundCostResolution(input: {
   readonly policy?: InventoryCostResolutionPolicy;
 }): InventoryCostResolutionDecision {
   if (!input || typeof input !== "object") return fail("COST_RESOLUTION_INPUT_INVALID", "input");
-  const activePolicy = policy(input.policy);
-  const requested = decimal(input.requestedQuantity, "requestedQuantity", false);
-  const physical = decimal(input.availablePhysicalQuantity, "availablePhysicalQuantity");
-  const costed = decimal(input.availableCostedQuantity, "availableCostedQuantity");
-  if (compareDecimal(costed, physical) > 0) return fail("COST_RESOLUTION_INPUT_INVALID", "availableCostedQuantity");
+  const activePolicy = resolvePolicy(input.policy);
+  const requested = parseQuantity(input.requestedQuantity, "requestedQuantity", false);
+  const physical = parseQuantity(input.availablePhysicalQuantity, "availablePhysicalQuantity");
+  const costed = parseQuantity(input.availableCostedQuantity, "availableCostedQuantity");
+  if (compareDecimal(costed, physical) > 0) {
+    return fail("COST_RESOLUTION_INPUT_INVALID", "availableCostedQuantity");
+  }
 
   if (compareDecimal(requested, physical) > 0) {
     if (activePolicy.negativeStockAction === "block") {
-      return Object.freeze({ outcome: "blocked", reason: "negative_stock", requiresRecalculation: false, blocksConfirmation: true });
+      return Object.freeze({
+        outcome: "blocked",
+        reason: "negative_stock",
+        requiresRecalculation: false,
+        blocksConfirmation: true,
+      });
     }
-    return Object.freeze({ outcome: "deferred", reason: "negative_stock", requiresRecalculation: true, blocksConfirmation: false });
+    return deferredDecision("negative_stock");
   }
 
   if (input.hasUpstreamUnresolvedCost === true) {
-    return Object.freeze({ outcome: "deferred", reason: "upstream_cost_unresolved", requiresRecalculation: true, blocksConfirmation: false });
+    return deferredDecision("upstream_cost_unresolved");
   }
 
   if (compareDecimal(requested, costed) > 0) {
-    return Object.freeze({ outcome: "deferred", reason: "insufficient_cost_basis", requiresRecalculation: true, blocksConfirmation: false });
+    return deferredDecision("insufficient_cost_basis");
   }
 
-  return Object.freeze({ outcome: "resolved", reason: null, requiresRecalculation: false, blocksConfirmation: false });
+  return Object.freeze({
+    outcome: "resolved",
+    reason: null,
+    requiresRecalculation: false,
+    blocksConfirmation: false,
+  });
 }
 
 export function evaluateInventoryInboundCostResolution(input: {
@@ -138,14 +179,19 @@ export function evaluateInventoryInboundCostResolution(input: {
   readonly policy?: InventoryCostResolutionPolicy;
 }): InventoryCostResolutionDecision {
   if (!input || typeof input !== "object") return fail("COST_RESOLUTION_INPUT_INVALID", "input");
-  policy(input.policy);
+  resolvePolicy(input.policy);
   if (input.hasUpstreamUnresolvedCost === true) {
-    return Object.freeze({ outcome: "deferred", reason: "upstream_cost_unresolved", requiresRecalculation: true, blocksConfirmation: false });
+    return deferredDecision("upstream_cost_unresolved");
   }
   if (!input.hasResolvedCostBasis) {
-    return Object.freeze({ outcome: "deferred", reason: "missing_inbound_cost", requiresRecalculation: true, blocksConfirmation: false });
+    return deferredDecision("missing_inbound_cost");
   }
-  return Object.freeze({ outcome: "resolved", reason: null, requiresRecalculation: false, blocksConfirmation: false });
+  return Object.freeze({
+    outcome: "resolved",
+    reason: null,
+    requiresRecalculation: false,
+    blocksConfirmation: false,
+  });
 }
 
 export function assertInventoryCostResolutionAllowed(decision: InventoryCostResolutionDecision): void {
@@ -162,7 +208,13 @@ export function createDeferredInventoryValuationEntry(input: {
   readonly decision: InventoryCostResolutionDecision;
   readonly revision?: number;
 }): InventoryValuationEntrySnapshot {
-  if (!input || typeof input !== "object" || !input.decision || input.decision.outcome !== "deferred" || !input.decision.reason) {
+  if (
+    !input ||
+    typeof input !== "object" ||
+    !input.decision ||
+    input.decision.outcome !== "deferred" ||
+    !input.decision.reason
+  ) {
     return fail("COST_RESOLUTION_INPUT_INVALID", "decision");
   }
   return createUnresolvedInventoryValuationEntry({
@@ -170,8 +222,8 @@ export function createDeferredInventoryValuationEntry(input: {
     movement: input.movement,
     method: input.method,
     strategyVersion: input.strategyVersion,
-    currency: input.currency,
+    ...(input.currency !== undefined ? { currency: input.currency } : {}),
     reason: input.decision.reason,
-    revision: input.revision,
+    ...(input.revision !== undefined ? { revision: input.revision } : {}),
   });
 }
