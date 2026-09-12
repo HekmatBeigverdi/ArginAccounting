@@ -97,7 +97,7 @@ CREATE TABLE inventory_valuation_cost_layers (
     original_cost INTEGER NOT NULL CHECK (original_cost >= 0),
     remaining_cost INTEGER NOT NULL CHECK (remaining_cost >= 0),
     revision INTEGER NOT NULL CHECK (revision > 0),
-    FOREIGN KEY (source_valuation_entry_id) REFERENCES inventory_valuation_entries(valuation_entry_id)
+    FOREIGN KEY (source_valuation_entry_id) REFERENCES inventory_valuation_entries(valuation_entry_id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_inventory_valuation_layers_product_chronology
