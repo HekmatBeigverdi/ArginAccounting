@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–10 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 11 — Application and Repository Contracts — is next.
+Steps 1–11 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 12 — Persistence, Migration and SQLite Repository — is next.
 
 ## Governance
 
@@ -24,6 +24,7 @@ Mandatory references:
 - [Inventory Adjustment, Reversal and Reverse Valuation](../architecture/inventory-adjustment-reversal-valuation.md)
 - [Inventory Valuation Recalculation](../architecture/inventory-valuation-recalculation.md)
 - [Inventory Negative Stock and Cost Resolution](../architecture/inventory-negative-stock-cost-resolution.md)
+- [Inventory Valuation Application and Repository Contracts](../architecture/inventory-valuation-application-contracts.md)
 
 ## Baseline and Release Target
 
@@ -70,7 +71,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 8 | Adjustment, Reversal and Reverse Valuation | Completed |
 | 9 | Backdated Documents and Recalculation Engine | Completed |
 | 10 | Negative Stock and Cost Resolution Policy | Completed |
-| 11 | Application and Repository Contracts | Not started |
+| 11 | Application and Repository Contracts | Completed |
 | 12 | Persistence, Migration and SQLite Repository | Not started |
 | 13 | Atomicity, Idempotency and Optimistic Concurrency | Not started |
 | 14 | Argin Bridge and Valuation Synchronization Contract | Not started |
@@ -236,6 +237,22 @@ Added ordinary-outflow cost engine resolving historical Company policy, validati
 - Added `packages/inventory/tests/inventory-cost-resolution-policy.test.ts` covering default negative-stock blocking, deferred negative stock, insufficient cost basis, upstream unresolved cost, invalid costed-vs-physical quantity, missing inbound basis and unresolved entry creation.
 - Added `docs/architecture/inventory-negative-stock-cost-resolution.md` including Step 9 recalculation and Argin Bridge deterministic behavior.
 - Persistence, company-level configuration command, authorization/audit, transaction orchestration and UI remain in their owning Steps 11–17.
+- Raw executable test output is not claimed unless local/CI validation is actually observed.
+
+### Step 11
+
+- Added `packages/inventory/src/application/contracts/inventory-valuation-contracts.ts` as the persistence-neutral Application boundary for Phase 21 valuation.
+- Added normalized operation context with durable `companyId`, `requestId`, `actorId` and canonical UTC `occurredAt`; concrete idempotency and authorization behavior remains in Steps 13 and 15.
+- Added command contracts for initial Company policy setup, controlled policy transition with expected current policy/revision, movement valuation resolution and deterministic recalculation.
+- Added query contracts for valuation entry lookup, unresolved valuation listing, Company policy history and valuation state lookup.
+- Added `InventoryValuationPolicyRepository`, `InventoryValuationEntryRepository`, `InventoryCostLayerRepository` and `InventoryValuationStateRepository` contracts with explicit authoritative-vs-derived ownership boundaries.
+- Added `InventoryValuationMovementReader` so valuation consumes immutable Phase 20 quantity facts without taking ownership of the movement ledger.
+- Added `InventoryValuationCostInputProvider` as the ERP/Purchase/Sales-facing monetary-input seam; commercial invoice/vendor/freight workflow remains outside valuation ownership.
+- Added `InventoryValuationRecalculationPort` over the Step 9 planner/replay engine and `InventoryValuationUnitOfWork` as the persistence-neutral transaction seam for future SQLite/.NET implementations.
+- Added command/query service contracts without introducing SQLite implementation or transaction runtime ahead of Steps 12–13.
+- Added public package subpath `@argin/inventory/valuation-contracts`.
+- Added `packages/inventory/tests/inventory-valuation-application-contracts.test.ts`, including compile-time `satisfies` coverage for the complete UoW context plus runtime operation-context and UoW seam checks.
+- Added `docs/architecture/inventory-valuation-application-contracts.md` documenting authority boundaries, future ERP integration and Argin Bridge compatibility.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
