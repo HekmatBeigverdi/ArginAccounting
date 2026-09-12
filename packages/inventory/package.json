@@ -13,7 +13,8 @@
     "./adjustment-reversal-valuation": "./src/domain/inventory-adjustment-reversal-valuation.ts",
     "./valuation-recalculation": "./src/domain/inventory-valuation-recalculation.ts",
     "./cost-resolution-policy": "./src/domain/inventory-cost-resolution-policy.ts",
-    "./valuation-contracts": "./src/application/contracts/inventory-valuation-contracts.ts"
+    "./valuation-contracts": "./src/application/contracts/inventory-valuation-contracts.ts",
+    "./valuation-concurrency": "./src/application/contracts/inventory-valuation-concurrency.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
