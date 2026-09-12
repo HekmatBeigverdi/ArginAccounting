@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–11 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 12 — Persistence, Migration and SQLite Repository — is next.
+Steps 1–12 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 13 — Atomicity, Idempotency and Optimistic Concurrency — is next.
 
 ## Governance
 
@@ -25,6 +25,7 @@ Mandatory references:
 - [Inventory Valuation Recalculation](../architecture/inventory-valuation-recalculation.md)
 - [Inventory Negative Stock and Cost Resolution](../architecture/inventory-negative-stock-cost-resolution.md)
 - [Inventory Valuation Application and Repository Contracts](../architecture/inventory-valuation-application-contracts.md)
+- [Inventory Valuation SQLite Persistence](../architecture/inventory-valuation-sqlite-persistence.md)
 
 ## Baseline and Release Target
 
@@ -72,7 +73,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 9 | Backdated Documents and Recalculation Engine | Completed |
 | 10 | Negative Stock and Cost Resolution Policy | Completed |
 | 11 | Application and Repository Contracts | Completed |
-| 12 | Persistence, Migration and SQLite Repository | Not started |
+| 12 | Persistence, Migration and SQLite Repository | Completed |
 | 13 | Atomicity, Idempotency and Optimistic Concurrency | Not started |
 | 14 | Argin Bridge and Valuation Synchronization Contract | Not started |
 | 15 | Permissions, Audit and Traceability | Not started |
@@ -253,6 +254,22 @@ Added ordinary-outflow cost engine resolving historical Company policy, validati
 - Added public package subpath `@argin/inventory/valuation-contracts`.
 - Added `packages/inventory/tests/inventory-valuation-application-contracts.test.ts`, including compile-time `satisfies` coverage for the complete UoW context plus runtime operation-context and UoW seam checks.
 - Added `docs/architecture/inventory-valuation-application-contracts.md` documenting authority boundaries, future ERP integration and Argin Bridge compatibility.
+- Raw executable test output is not claimed unless local/CI validation is actually observed.
+
+### Step 12
+
+- Added Desktop migration `apps/desktop/src-tauri/migrations/0028_inventory_valuation.sql` and registered migration version 28 in the Tauri database migration list.
+- Added append-only `inventory_valuation_policies` with Company/effective-date and Company/revision uniqueness plus predecessor references and no-update/no-delete triggers.
+- Added `inventory_valuation_cost_inputs` for resolved monetary input snapshots while keeping Purchase/Vendor/freight/Treasury workflow outside valuation ownership.
+- Added `inventory_valuation_entries` with structural resolved/unresolved CHECK constraints, canonical chronology indexes, unresolved diagnostics index and transfer/reversal traceability indexes.
+- Added FIFO-only `inventory_valuation_cost_layers` with durable source references and `ON DELETE CASCADE` from derived valuation entries so deterministic recalculation can rebuild downstream derived state safely.
+- Added `inventory_valuation_states` as a dated rebuildable Product/Warehouse/Zone/Location projection with stable composite key and policy reference.
+- Added `packages/inventory-tauri/src/sqlite-inventory-valuation-repositories.ts` implementing the Step 11 policy, entry, cost-layer, state, cost-input-provider and movement-reader contracts over shared `DatabaseSession`.
+- Phase 20 `inventory_all_stock_movements` remains the authoritative quantity source; valuation persistence reads it rather than duplicating quantity history.
+- Added public exports from `@argin/inventory-tauri` for the valuation SQLite adapters.
+- Added `packages/inventory-tauri/tests/inventory-valuation-persistence.test.ts` covering migration structure, append-only/cascade/index contracts, repository policy hydration, unresolved-null preservation and canonical null location-key persistence.
+- Added `docs/architecture/inventory-valuation-sqlite-persistence.md` documenting authoritative/derived persistence boundaries and Argin Bridge implications.
+- Multi-repository atomic transaction semantics, request replay/idempotency and optimistic concurrency remain explicitly owned by Step 13; real SQLite upgrade/restart/rollback and performance validation remain Step 19.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
