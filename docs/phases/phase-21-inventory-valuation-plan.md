@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–12 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 13 — Atomicity, Idempotency and Optimistic Concurrency — is next.
+Steps 1–13 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 14 — Argin Bridge and Valuation Synchronization Contract — is next.
 
 ## Governance
 
@@ -26,6 +26,7 @@ Mandatory references:
 - [Inventory Negative Stock and Cost Resolution](../architecture/inventory-negative-stock-cost-resolution.md)
 - [Inventory Valuation Application and Repository Contracts](../architecture/inventory-valuation-application-contracts.md)
 - [Inventory Valuation SQLite Persistence](../architecture/inventory-valuation-sqlite-persistence.md)
+- [Inventory Valuation Atomicity, Idempotency and Optimistic Concurrency](../architecture/inventory-valuation-atomicity-idempotency-concurrency.md)
 
 ## Baseline and Release Target
 
@@ -50,13 +51,15 @@ Phase 21 adds deterministic, auditable monetary valuation on top of the immutabl
 - Policy history is append-only by effective chronology; direct method mutation locks after authoritative valuation begins.
 - Transfer conserves both quantity and monetary value and does not create artificial P&L.
 - Reversal is linked compensation, not history rewrite.
-- Backdated changes invalidate downstream monetary state and are deterministically recalculated in Step 9.
+- Backdated changes invalidate downstream monetary state and are deterministically recalculated from the earliest affected point.
+- Product monetary concurrency scope is Company + Product across warehouses because transfer can propagate cost between locations.
+- Retry safety uses durable request identity and exact operation/fingerprint matching; request-id reuse with different payload is a conflict.
 - Derived value/balance projections are rebuildable and are not independently authoritative synchronization facts.
 - Accounting journal posting is outside Phase 21.
 
 ## Argin Bridge Requirements
 
-Authoritative valuation facts and policy history use durable IDs independent of SQLite row identity. Source movement IDs, transfer/reversal references, strategy version, currency, revisions and effective chronology must survive future synchronization. SQLite Desktop and future PostgreSQL/.NET Server implementations must derive identical valuation from identical authoritative facts and algorithm versions. Live transport, acknowledgements, retries and distributed conflict handling remain Phase 45 scope.
+Authoritative valuation facts and policy history use durable IDs independent of SQLite row identity. Source movement IDs, transfer/reversal references, strategy version, currency, revisions, request identities and effective chronology must survive future synchronization. SQLite Desktop and future PostgreSQL/.NET Server implementations must derive identical valuation from identical authoritative facts and algorithm versions. Live transport, acknowledgements, retries and distributed conflict handling remain Phase 45 scope.
 
 ## Step Status
 
@@ -74,7 +77,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 10 | Negative Stock and Cost Resolution Policy | Completed |
 | 11 | Application and Repository Contracts | Completed |
 | 12 | Persistence, Migration and SQLite Repository | Completed |
-| 13 | Atomicity, Idempotency and Optimistic Concurrency | Not started |
+| 13 | Atomicity, Idempotency and Optimistic Concurrency | Completed |
 | 14 | Argin Bridge and Valuation Synchronization Contract | Not started |
 | 15 | Permissions, Audit and Traceability | Not started |
 | 16 | Valuation Query Engine and Reports | Not started |
@@ -86,190 +89,123 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 ## Fixed Execution Sequence
 
 ### Step 1 — Baseline, Branch, Scope and Plan Freeze
-
 Freeze the Phase 20-complete baseline, branch, scope, ownership boundaries, Argin Bridge invariants and numbered plan.
 
 ### Step 2 — Inventory Valuation Domain Model
-
 Define persistence-neutral valuation entries, cost layers, valuation basis, resolved/unresolved state, strategy identity/version, money/currency semantics and durable source references.
 
 ### Step 3 — Valuation Strategies
-
 Implement versioned deterministic FIFO and moving weighted-average strategy contracts, exact arithmetic and rounding policy.
 
 ### Step 4 — Product and Warehouse Valuation Policy
-
 Implement the Company-scoped Inventory Valuation Policy, effective chronology, direct-mutation lock and controlled transitions. Product/Warehouse streams consume the Company policy and do not choose methods independently in Phase 21.
 
 ### Step 5 — Cost Layers and Inbound Cost Basis
-
 Implement inbound monetary basis, layer/state creation and deterministic landed-cost allocation primitives.
 
 ### Step 6 — Outflow Cost Calculation Engine
-
 Resolve ordinary issue/outflow cost from historical stream state using the policy effective for the relevant chronology, without over-consuming available cost basis.
 
 ### Step 7 — Transfer Cost Continuity
-
 Carry cost atomically across transfer source/destination while conserving quantity and monetary value.
 
 ### Step 8 — Adjustment, Reversal and Reverse Valuation
-
 Define monetary behavior for opening/adjustment/reversal and linked compensation without editing Phase 20 history.
 
 ### Step 9 — Backdated Documents and Recalculation Engine
-
 Find the earliest affected point and deterministically recalculate downstream valuation state.
 
 ### Step 10 — Negative Stock and Cost Resolution Policy
-
 Define blocked/deferred valuation and explicit unresolved states for negative/unknown-cost edge cases.
 
 ### Step 11 — Application and Repository Contracts
-
 Define commands, queries, DTOs, repositories, Unit of Work, errors, recalculation ports, policy-transition contracts and future ERP cost-input boundaries.
 
 ### Step 12 — Persistence, Migration and SQLite Repository
-
 Add versioned SQLite schema, constraints, indexes and repositories for authoritative valuation facts, policy history and required projections.
 
 ### Step 13 — Atomicity, Idempotency and Optimistic Concurrency
-
 Implement transaction boundaries, replay protection, expected-version semantics and same-stream/policy race protection.
 
 ### Step 14 — Argin Bridge and Valuation Synchronization Contract
-
 Freeze versioned persistence-neutral synchronization envelopes and authoritative/derived-state boundaries.
 
 ### Step 15 — Permissions, Audit and Traceability
-
 Protect privileged monetary operations and policy transitions and record explainable before/after valuation history.
 
 ### Step 16 — Valuation Query Engine and Reports
-
 Deliver bounded on-hand value, monetary Kardex, Product/Warehouse value, layer detail, as-of, unresolved and recalculation reports.
 
 ### Step 17 — Persian RTL Inventory Valuation Workspace
-
 Deliver Persian RTL valuation inspection/diagnostic UI, source drill-down and Company policy/history surfaces.
 
 ### Step 18 — Domain and Application Tests
-
 Cover strategy, allocation, transfer, reversal, backdated, unresolved, scope, idempotency and concurrency behavior.
 
 ### Step 19 — Repository, Migration, Bridge and Performance Tests
-
 Cover real SQLite upgrade/restart/rollback, policy/history persistence, serialization/replay invariants, Bridge round-trips, query plans and representative scale.
 
 ### Step 20 — Monorepo Validation, Documentation, Final Review and Release
-
 Run all gates, reconcile canonical docs, review deferred scope, merge according to workflow and prepare `v0.21.0`.
 
 ## Step Evidence
 
-### Step 1
+### Steps 1–6
 
-Verified Phase 20-complete `main`, created `phase/21-inventory-valuation`, confirmed Phase 20 deferrals and froze the 20-step plan with Bridge requirements.
-
-### Step 2
-
-Added persistence-neutral valuation entries, cost layers/basis, explicit resolved/unresolved state, strategy identity/version, durable Phase 20 source references, monetary invariants and focused domain tests.
-
-### Step 3
-
-Added deterministic FIFO and Moving Weighted Average strategies, exact `BigInt` decimal arithmetic, fixed rounding/version rules, FIFO remainder conservation, moving-average pool semantics and strategy tests.
-
-### Step 4
-
-Added Company-scoped valuation policy with `effectiveFrom`, append-only transitions, direct-mutation lock, deterministic historical resolution and policy-history integrity. CR-21-001 prohibits Phase 21 Product/Warehouse method overrides.
-
-### Step 5
-
-Added inbound cost basis, durable landed-cost components, deterministic quantity/value/weight allocation, exact monetary conservation, traceable sources and strategy-input mapping.
-
-### Step 6
-
-Added ordinary-outflow cost engine resolving historical Company policy, validating method/state compatibility, calculating FIFO or Moving Average cost, returning FIFO layer traceability, and deferring Transfer/Reversal semantics to Steps 7/8.
+- Froze the Phase 21 scope and baseline after Phase 20.
+- Added valuation domain snapshots, FIFO/MWA strategies, Company-scoped policy history, inbound/landed-cost basis, and ordinary outflow cost calculation.
+- Exact arithmetic, strategy versioning, policy-effective chronology and explicit unresolved cost semantics are preserved.
 
 ### Step 7
 
-- Added `packages/inventory/src/domain/inventory-transfer-cost.ts` as a persistence-neutral transfer valuation engine.
-- Validates Phase 20 source/destination movement pairs: same transfer/document/line/Product/chronology, opposite equal quantity, different stock keys and no reversal identity.
-- FIFO carries exact source-layer quantity/cost into durable destination layers; Moving Weighted Average carries the exact integer monetary amount without unit-cost re-rounding.
-- Enforces `sourceTotalCost + destinationTotalCost = 0`, preserving transfer value and preventing artificial P&L.
-- Added public package subpath `@argin/inventory/transfer-cost`, focused tests and `docs/architecture/inventory-transfer-cost-continuity.md`.
-- Raw executable test output is not claimed unless local/CI validation is actually observed.
+- Added transfer cost continuity for FIFO and Moving Weighted Average.
+- FIFO transfers exact source-layer quantity/cost into durable destination layers; MWA transfers exact integer monetary value without re-rounding.
+- Transfer quantity and monetary value conserve to zero net effect.
 
 ### Step 8
 
-- Restored the owner-accepted Step 8 implementation after a later branch commit was found to have been based on the Step 7 head; the later commit itself was preserved and no force-push was used.
-- Added `packages/inventory/src/domain/inventory-adjustment-reversal-valuation.ts`.
-- Positive adjustment/opening consumes resolved inbound cost basis and preserves authoritative exact `totalCost`; FIFO creates a durable layer and Moving Average adds exact quantity/cost to its pool.
-- Negative adjustment consumes current historical valuation state through FIFO or Moving Average strategy semantics.
-- Reversal creates a linked exact opposite monetary fact and never rewrites Phase 20 quantity history.
-- Reversal preserves the original valuation policy/method/version/currency even when current Company policy has changed, and requests recalculation from the original chronology point.
-- Added public package subpath `@argin/inventory/adjustment-reversal-valuation`, focused tests and `docs/architecture/inventory-adjustment-reversal-valuation.md`.
-- Raw executable test output is not claimed unless local/CI validation is actually observed.
+- Added monetary opening/adjustment behavior and linked reverse valuation.
+- Reversal preserves exact original monetary effect and original policy/method/version/currency rather than repricing at the reversal date.
+- Reversal requests deterministic downstream recalculation rather than rewriting Phase 20 history.
 
 ### Step 9
 
-- Added `packages/inventory/src/domain/inventory-valuation-recalculation.ts` as a persistence-neutral recalculation planner and deterministic replay loop.
-- Supports triggers for backdated movement insertion, changed movement, changed cost basis, linked reversal and Company valuation-policy changes.
-- Movement/cost/reversal invalidation scopes Company + Product across every Warehouse/Location so transfer-propagated cost dependencies are not missed.
-- Company policy changes invalidate all Company Products from the transition `effectiveFrom` date because CR-21-001 defines policy at Company scope.
-- Exact movement changes start from the canonical movement point; reversal starts conservatively from the original `businessDate/businessOrder` so every same-point tie breaker is rebuilt.
-- Recalculation ordering reuses Phase 20 canonical chronology: `businessDate -> businessOrder -> documentId -> lineId -> movementId`; database/API input ordering cannot change results.
-- `replayInventoryValuationPlan` accepts a seed state and pure applier, allowing later Application/Persistence steps to invoke Step 5–8 primitives without coupling Step 9 to SQLite.
-- Added public package subpath `@argin/inventory/valuation-recalculation`.
-- Added `packages/inventory/tests/inventory-valuation-recalculation.test.ts` covering cross-warehouse Product scope, reversal boundary, Company-wide policy invalidation, deterministic replay and exclusion of earlier unaffected facts.
-- Added `docs/architecture/inventory-valuation-recalculation.md` including historical policy and Argin Bridge replay requirements.
-- Persistence, transactional replacement of derived rows, idempotency/concurrency and live Bridge transport remain in Steps 11–14/45.
-- Raw executable test output is not claimed unless local/CI validation is actually observed.
+- Added persistence-neutral recalculation planning and replay from the earliest affected chronology point.
+- Movement/cost/reversal invalidation scopes Company + Product across every warehouse; Company policy changes invalidate Company-wide from `effectiveFrom`.
+- Canonical ordering remains `businessDate -> businessOrder -> documentId -> lineId -> movementId`.
 
 ### Step 10
 
-- Added `packages/inventory/src/domain/inventory-cost-resolution-policy.ts` as a versioned persistence-neutral valuation resolution policy.
-- Default version-1 policy blocks true negative stock valuation and never fabricates cost.
-- An explicit `negativeStockAction = defer` policy is supported for future company/application configuration; this records unresolved monetary valuation rather than inventing an estimated cost.
-- Distinguished physical negative stock from insufficient resolved cost basis: when physical quantity exists but costed quantity is insufficient, the outcome is `deferred` with reason `insufficient_cost_basis`, not `negative_stock`.
-- Missing inbound cost basis and upstream unresolved cost are explicit deferred states requiring later deterministic recalculation.
-- Deferred outcomes map to the existing `InventoryValuationEntrySnapshot` unresolved state with `unitCost = null`, `totalCost = null` and a stable reason; zero is never used as a placeholder for unknown cost.
-- Added public package subpath `@argin/inventory/cost-resolution-policy`.
-- Added `packages/inventory/tests/inventory-cost-resolution-policy.test.ts` covering default negative-stock blocking, deferred negative stock, insufficient cost basis, upstream unresolved cost, invalid costed-vs-physical quantity, missing inbound basis and unresolved entry creation.
-- Added `docs/architecture/inventory-negative-stock-cost-resolution.md` including Step 9 recalculation and Argin Bridge deterministic behavior.
-- Persistence, company-level configuration command, authorization/audit, transaction orchestration and UI remain in their owning Steps 11–17.
-- Raw executable test output is not claimed unless local/CI validation is actually observed.
+- Added versioned negative-stock and cost-resolution policy.
+- Default true negative stock behavior is `block`; optional `defer` never fabricates monetary cost.
+- Missing/insufficient/upstream cost remains explicit `unresolved` with `unitCost = null` and `totalCost = null`.
 
 ### Step 11
 
-- Added `packages/inventory/src/application/contracts/inventory-valuation-contracts.ts` as the persistence-neutral Application boundary for Phase 21 valuation.
-- Added normalized operation context with durable `companyId`, `requestId`, `actorId` and canonical UTC `occurredAt`; concrete idempotency and authorization behavior remains in Steps 13 and 15.
-- Added command contracts for initial Company policy setup, controlled policy transition with expected current policy/revision, movement valuation resolution and deterministic recalculation.
-- Added query contracts for valuation entry lookup, unresolved valuation listing, Company policy history and valuation state lookup.
-- Added `InventoryValuationPolicyRepository`, `InventoryValuationEntryRepository`, `InventoryCostLayerRepository` and `InventoryValuationStateRepository` contracts with explicit authoritative-vs-derived ownership boundaries.
-- Added `InventoryValuationMovementReader` so valuation consumes immutable Phase 20 quantity facts without taking ownership of the movement ledger.
-- Added `InventoryValuationCostInputProvider` as the ERP/Purchase/Sales-facing monetary-input seam; commercial invoice/vendor/freight workflow remains outside valuation ownership.
-- Added `InventoryValuationRecalculationPort` over the Step 9 planner/replay engine and `InventoryValuationUnitOfWork` as the persistence-neutral transaction seam for future SQLite/.NET implementations.
-- Added command/query service contracts without introducing SQLite implementation or transaction runtime ahead of Steps 12–13.
-- Added public package subpath `@argin/inventory/valuation-contracts`.
-- Added `packages/inventory/tests/inventory-valuation-application-contracts.test.ts`, including compile-time `satisfies` coverage for the complete UoW context plus runtime operation-context and UoW seam checks.
-- Added `docs/architecture/inventory-valuation-application-contracts.md` documenting authority boundaries, future ERP integration and Argin Bridge compatibility.
-- Raw executable test output is not claimed unless local/CI validation is actually observed.
+- Added valuation Commands, Queries, Repository ports, Unit of Work, recalculation port and ERP/Purchase/Sales cost-input boundary.
+- Added durable operation context with `companyId`, `requestId`, `actorId`, and canonical UTC time.
+- Kept quantity movements authoritative in Phase 20 and commercial workflow outside valuation ownership.
 
 ### Step 12
 
-- Added Desktop migration `apps/desktop/src-tauri/migrations/0028_inventory_valuation.sql` and registered migration version 28 in the Tauri database migration list.
-- Added append-only `inventory_valuation_policies` with Company/effective-date and Company/revision uniqueness plus predecessor references and no-update/no-delete triggers.
-- Added `inventory_valuation_cost_inputs` for resolved monetary input snapshots while keeping Purchase/Vendor/freight/Treasury workflow outside valuation ownership.
-- Added `inventory_valuation_entries` with structural resolved/unresolved CHECK constraints, canonical chronology indexes, unresolved diagnostics index and transfer/reversal traceability indexes.
-- Added FIFO-only `inventory_valuation_cost_layers` with durable source references and `ON DELETE CASCADE` from derived valuation entries so deterministic recalculation can rebuild downstream derived state safely.
-- Added `inventory_valuation_states` as a dated rebuildable Product/Warehouse/Zone/Location projection with stable composite key and policy reference.
-- Added `packages/inventory-tauri/src/sqlite-inventory-valuation-repositories.ts` implementing the Step 11 policy, entry, cost-layer, state, cost-input-provider and movement-reader contracts over shared `DatabaseSession`.
-- Phase 20 `inventory_all_stock_movements` remains the authoritative quantity source; valuation persistence reads it rather than duplicating quantity history.
-- Added public exports from `@argin/inventory-tauri` for the valuation SQLite adapters.
-- Added `packages/inventory-tauri/tests/inventory-valuation-persistence.test.ts` covering migration structure, append-only/cascade/index contracts, repository policy hydration, unresolved-null preservation and canonical null location-key persistence.
-- Added `docs/architecture/inventory-valuation-sqlite-persistence.md` documenting authoritative/derived persistence boundaries and Argin Bridge implications.
-- Multi-repository atomic transaction semantics, request replay/idempotency and optimistic concurrency remain explicitly owned by Step 13; real SQLite upgrade/restart/rollback and performance validation remain Step 19.
+- Added migrations and SQLite repositories for policy history, resolved cost inputs, valuation entries, FIFO cost layers and dated valuation state projection.
+- Policy history is append-only; derived Entry/Layer/State data is rebuildable.
+- Added canonical indexes, structural resolved/unresolved checks, FIFO layer cascade behavior and Desktop migration version 28.
+
+### Step 13
+
+- Added `packages/inventory/src/application/contracts/inventory-valuation-concurrency.ts` with durable idempotency records, stream-version contracts, replay decision rules and guarded mutation orchestration.
+- Added public subpath `@argin/inventory/valuation-concurrency`.
+- Added migration `0029_inventory_valuation_concurrency.sql` and registered Desktop migration version 29.
+- Added `inventory_valuation_idempotency` keyed by `(company_id, request_id)` with exact operation/fingerprint replay semantics.
+- Added `inventory_valuation_stream_versions` for optimistic compare-and-swap revisions.
+- Defined policy streams as `policy:{companyId}` and monetary Product streams as `valuation:{companyId}:{productId}`; Product scope intentionally spans warehouses because transfer propagates monetary dependencies.
+- Added `SqliteInventoryValuationIdempotencyRepository`, `SqliteInventoryValuationStreamVersionRepository` and `SqliteInventoryValuationUnitOfWork`.
+- SQLite valuation UoW reuses the production pinned `DatabaseExecutor.transaction()` implementation with `BEGIN IMMEDIATE / COMMIT / ROLLBACK` rather than creating a second transaction engine.
+- `executeInventoryValuationGuardedMutation()` enforces one transaction order: replay lookup -> stream CAS -> mutation -> durable idempotency outcome. Retry replay does not invoke the mutation or advance revision again.
+- Added focused Domain/Application tests for replay/conflict/revision behavior and Tauri adapter tests for migration contracts, CAS and same-session UoW composition.
+- Added `docs/architecture/inventory-valuation-atomicity-idempotency-concurrency.md`.
+- Real SQLite crash/restart/rollback, multi-connection race and representative-scale validation remain Step 19.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
