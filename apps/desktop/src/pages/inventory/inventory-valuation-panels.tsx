@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type {
   InventoryValuationAsOfReport,
   InventoryValuationLayerReport,
@@ -6,6 +7,7 @@ import type {
 } from "@argin/inventory/valuation-reports";
 import type { InventoryValuationPolicySnapshot } from "@argin/inventory/valuation-policy";
 import type { InventoryValuationTraceSnapshot } from "@argin/inventory/valuation-security";
+import type { InventoryInboundCostCandidate } from "@argin/inventory-tauri";
 import { gregorianToJalali } from "./inventory-persian-date";
 import { valuationMethodLabel } from "./inventory-valuation-workspace-format";
 
@@ -188,6 +190,123 @@ export function ValuationLayersPanel({
   );
 }
 
+export function ValuationInboundCostPanel({
+  rows,
+  canResolve,
+  saving,
+  onSetCost,
+}: {
+  rows: readonly InventoryInboundCostCandidate[];
+  canResolve: boolean;
+  saving: boolean;
+  onSetCost: (row: InventoryInboundCostCandidate, unitCost: string) => Promise<void>;
+}) {
+  const [editingMovementId, setEditingMovementId] = useState<string | null>(null);
+  const [unitCost, setUnitCost] = useState("");
+
+  if (rows.length === 0) {
+    return (
+      <p className="valuation-note">
+        ورودی قطعی‌شده‌ای با بهای تعیین‌نشده در محدوده انتخاب‌شده وجود ندارد.
+      </p>
+    );
+  }
+
+  return (
+    <section className="valuation-cost-inputs">
+      <h3>ورودی‌های قطعی‌شده با بهای تعیین‌نشده</h3>
+      <p className="valuation-note">
+        این فهرست مستقیماً از گردش قطعی انبار خوانده می‌شود؛ بنابراین رسیدهای قدیمی و جدید هر دو قابل قیمت‌گذاری هستند.
+      </p>
+      <div className="valuation-table">
+        <table>
+          <thead>
+            <tr>
+              {[
+                "تاریخ",
+                "سند",
+                "کالا",
+                "انبار",
+                "تعداد",
+                "روش",
+                "ارز",
+                "بهای واحد",
+                "عملیات",
+              ].map((header) => <th key={header}>{header}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const editing = editingMovementId === row.movementId;
+              return (
+                <tr key={row.movementId}>
+                  <td>{gregorianToJalali(row.businessDate)}</td>
+                  <td><bdi>{row.documentId}</bdi></td>
+                  <td><bdi>{row.productId}</bdi></td>
+                  <td><bdi>{row.warehouseId}</bdi></td>
+                  <td>{row.quantity}</td>
+                  <td>{valuationMethodLabel(row.method)}</td>
+                  <td>{row.currency}</td>
+                  <td>
+                    {editing ? (
+                      <input
+                        className="valuation-cost-input"
+                        dir="ltr"
+                        inputMode="decimal"
+                        placeholder="مثلاً 12000000"
+                        value={unitCost}
+                        onChange={(event) => setUnitCost(event.target.value.replace(/,/gu, ""))}
+                        disabled={saving}
+                      />
+                    ) : (
+                      "بهای تعیین‌نشده"
+                    )}
+                  </td>
+                  <td>
+                    {!canResolve ? (
+                      "بدون مجوز"
+                    ) : editing ? (
+                      <div className="valuation-cost-actions">
+                        <button
+                          disabled={saving || !unitCost.trim()}
+                          onClick={() => void onSetCost(row, unitCost).then(() => {
+                            setEditingMovementId(null);
+                            setUnitCost("");
+                          })}
+                        >
+                          {saving ? "در حال ثبت…" : "ثبت بها"}
+                        </button>
+                        <button
+                          disabled={saving}
+                          onClick={() => {
+                            setEditingMovementId(null);
+                            setUnitCost("");
+                          }}
+                        >
+                          انصراف
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingMovementId(row.movementId);
+                          setUnitCost("");
+                        }}
+                      >
+                        تعیین بهای ورودی
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function ValuationUnresolvedPanel({
   report,
 }: {
@@ -203,10 +322,13 @@ export function ValuationUnresolvedPanel({
   ]);
 
   return (
-    <ValuationTable
-      headers={["تاریخ", "کالا", "انبار", "تعداد", "روش", "علت"]}
-      rows={tableRows}
-    />
+    <>
+      <h3>موارد حل‌نشده موتور ارزش‌گذاری</h3>
+      <ValuationTable
+        headers={["تاریخ", "کالا", "انبار", "تعداد", "روش", "علت"]}
+        rows={tableRows}
+      />
+    </>
   );
 }
 
