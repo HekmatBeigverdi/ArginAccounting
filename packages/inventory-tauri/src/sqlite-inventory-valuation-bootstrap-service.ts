@@ -79,14 +79,23 @@ type DatedState = {
   quantity: string;
   totalCost: number;
 };
-
 type ValuationEntryBuild = {
   m: MovementRow;
-  kind: "inbound" | "outbound";
+  kind: "inbound" | "outbound" | "transfer";
   quantity: string;
   unitCost: string;
   totalCost: number;
   currency: string;
+};
+type FifoConsumption = {
+  sourceLayer: FifoLayer;
+  quantity: string;
+  cost: number;
+};
+
+type TransferPair = {
+  source: MovementRow;
+  destination: MovementRow;
 };
 
 const required = (value: string, field: string): string => {
@@ -214,11 +223,66 @@ const unitCostFrom = (total: number, quantity: string): string => {
 };
 
 const stockKey = (m: MovementRow) =>
-  [m.product_id, m.warehouse_id, m.zone_id ?? "", m.location_id ?? ""].join(
-    "|",
-  );
+  [m.product_id, m.warehouse_id, m.zone_id ?? "", m.location_id ?? ""].join("|");
 
 const datedStateKey = (m: MovementRow) => `${stockKey(m)}|${m.business_date}`;
+
+const emptyState = (): StockState => ({ quantity: "0", totalCost: 0, fifoLayers: [] });
+
+function consumeFifo(state: StockState, quantity: string, movementId: string): FifoConsumption[] {
+  let remaining = quantity;
+  const consumptions: FifoConsumption[] = [];
+  for (const layer of state.fifoLayers) {
+    if (remaining === "0") break;
+    if (layer.remainingQuantity === "0") continue;
+    const beforeQuantity = layer.remainingQuantity;
+    const beforeCost = layer.remainingCost;
+    const take = compareQty(remaining, beforeQuantity) >= 0 ? beforeQuantity : remaining;
+    const cost = take === beforeQuantity
+      ? beforeCost
+      : roundedRatioMoney(beforeCost, take, beforeQuantity);
+    layer.remainingQuantity = subtractPositiveQty(beforeQuantity, take);
+    layer.remainingCost = beforeCost - cost;
+    consumptions.push({ sourceLayer: layer, quantity: take, cost });
+    remaining = subtractPositiveQty(remaining, take);
+  }
+  if (remaining !== "0")
+    throw new Error(`VALUATION_BOOTSTRAP_FIFO_INSUFFICIENT:${movementId}`);
+  return consumptions;
+}
+
+function buildTransferPairs(active: readonly MovementRow[]): Map<string, TransferPair> {
+  const grouped = new Map<string, MovementRow[]>();
+  for (const movement of active) {
+    if (!movement.transfer_id) continue;
+    const rows = grouped.get(movement.transfer_id) ?? [];
+    rows.push(movement);
+    grouped.set(movement.transfer_id, rows);
+  }
+
+  const pairs = new Map<string, TransferPair>();
+  for (const [transferId, rows] of grouped) {
+    if (rows.length !== 2)
+      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${transferId}`);
+    const source = rows.find((row) => row.quantity_delta.startsWith("-"));
+    const destination = rows.find((row) => !row.quantity_delta.startsWith("-") && row.quantity_delta !== "0");
+    if (!source || !destination)
+      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${transferId}`);
+    if (
+      source.company_id !== destination.company_id ||
+      source.document_id !== destination.document_id ||
+      source.line_id !== destination.line_id ||
+      source.product_id !== destination.product_id ||
+      source.business_date !== destination.business_date ||
+      source.business_order !== destination.business_order ||
+      stockKey(source) === stockKey(destination) ||
+      compareQty(absQty(source.quantity_delta), absQty(destination.quantity_delta)) !== 0
+    )
+      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${transferId}`);
+    pairs.set(transferId, { source, destination });
+  }
+  return pairs;
+}
 
 export class SqliteInventoryValuationBootstrapService {
   constructor(private readonly db: DatabaseExecutor) {}
@@ -249,9 +313,7 @@ export class SqliteInventoryValuationBootstrapService {
       [companyId],
     );
     if (earliest?.d && effectiveFrom > earliest.d)
-      throw new Error(
-        `VALUATION_BOOTSTRAP_EFFECTIVE_DATE_AFTER_FIRST_MOVEMENT:${earliest.d}`,
-      );
+      throw new Error(`VALUATION_BOOTSTRAP_EFFECTIVE_DATE_AFTER_FIRST_MOVEMENT:${earliest.d}`);
 
     const movements = await this.db.query<MovementRow>(
       `SELECT * FROM inventory_all_stock_movements
@@ -260,11 +322,6 @@ export class SqliteInventoryValuationBootstrapService {
       [companyId, effectiveFrom],
     );
 
-    if (movements.some((m) => m.transfer_id))
-      throw new Error(
-        "VALUATION_BOOTSTRAP_TRANSFER_REQUIRES_FULL_RECALCULATION_ENGINE",
-      );
-
     const reversedOriginals = new Set(
       movements
         .filter((m) => m.reversal_of_movement_id)
@@ -272,18 +329,20 @@ export class SqliteInventoryValuationBootstrapService {
     );
 
     if (input.method === "moving_average" && reversedOriginals.size > 0)
-      throw new Error(
-        "VALUATION_BOOTSTRAP_MWA_REVERSAL_REQUIRES_FULL_RECALCULATION_ENGINE",
-      );
+      throw new Error("VALUATION_BOOTSTRAP_MWA_REVERSAL_REQUIRES_FULL_RECALCULATION_ENGINE");
 
     const active = movements.filter(
       (m) => !m.reversal_of_movement_id && !reversedOriginals.has(m.movement_id),
     );
     const skippedReversalPairCount = reversedOriginals.size;
+    const transferPairs = buildTransferPairs(active);
 
     const inboundIds = active
       .filter(
-        (m) => !m.quantity_delta.startsWith("-") && m.quantity_delta !== "0",
+        (m) =>
+          m.transfer_id === null &&
+          !m.quantity_delta.startsWith("-") &&
+          m.quantity_delta !== "0",
       )
       .map((m) => m.movement_id);
 
@@ -317,20 +376,110 @@ export class SqliteInventoryValuationBootstrapService {
     const states = new Map<string, StockState>();
     const datedStates = new Map<string, DatedState>();
     const entries: ValuationEntryBuild[] = [];
+    const processedTransfers = new Set<string>();
+
+    const rememberState = (movement: MovementRow, state: StockState) => {
+      datedStates.set(datedStateKey(movement), {
+        productId: movement.product_id,
+        warehouseId: movement.warehouse_id,
+        zoneKey: movement.zone_id ?? "",
+        locationKey: movement.location_id ?? "",
+        businessDate: movement.business_date,
+        quantity: state.quantity,
+        totalCost: state.totalCost,
+      });
+    };
 
     for (const movement of active) {
+      if (movement.transfer_id) {
+        if (processedTransfers.has(movement.transfer_id)) continue;
+        const pair = transferPairs.get(movement.transfer_id);
+        if (!pair)
+          throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${movement.transfer_id}`);
+        processedTransfers.add(movement.transfer_id);
+
+        const source = pair.source;
+        const destination = pair.destination;
+        const sourceKey = stockKey(source);
+        const destinationKey = stockKey(destination);
+        const sourceState = states.get(sourceKey) ?? emptyState();
+        const destinationState = states.get(destinationKey) ?? emptyState();
+        const quantity = absQty(source.quantity_delta);
+
+        if (compareQty(sourceState.quantity, quantity) < 0)
+          throw new Error(`VALUATION_BOOTSTRAP_NEGATIVE_STOCK:${source.movement_id}`);
+
+        let carriedCost = 0;
+        let unitCost = "0";
+
+        if (input.method === "fifo") {
+          const consumptions = consumeFifo(sourceState, quantity, source.movement_id);
+          carriedCost = consumptions.reduce((sum, item) => sum + item.cost, 0);
+          unitCost = unitCostFrom(carriedCost, quantity);
+          consumptions.forEach((item, index) => {
+            destinationState.fifoLayers.push({
+              id: `fifo-transfer:${movement.transfer_id}:${index + 1}:${destination.movement_id}`,
+              sourceMovementId: destination.movement_id,
+              sourceEntryId: `valuation:${destination.movement_id}`,
+              productId: destination.product_id,
+              warehouseId: destination.warehouse_id,
+              zoneId: destination.zone_id,
+              locationId: destination.location_id,
+              businessDate: destination.business_date,
+              businessOrder: destination.business_order,
+              originalQuantity: item.quantity,
+              remainingQuantity: item.quantity,
+              unitCost: unitCostFrom(item.cost, item.quantity),
+              originalCost: item.cost,
+              remainingCost: item.cost,
+              currency: "IRR",
+            });
+          });
+        } else {
+          carriedCost = roundedRatioMoney(sourceState.totalCost, quantity, sourceState.quantity);
+          unitCost = unitCostFrom(carriedCost, quantity);
+        }
+
+        sourceState.quantity = subtractPositiveQty(sourceState.quantity, quantity);
+        sourceState.totalCost -= carriedCost;
+        destinationState.quantity = addQty(destinationState.quantity, quantity);
+        destinationState.totalCost += carriedCost;
+        states.set(sourceKey, sourceState);
+        states.set(destinationKey, destinationState);
+
+        entries.push(
+          {
+            m: source,
+            kind: "transfer",
+            quantity,
+            unitCost,
+            totalCost: -carriedCost,
+            currency: "IRR",
+          },
+          {
+            m: destination,
+            kind: "transfer",
+            quantity,
+            unitCost,
+            totalCost: carriedCost,
+            currency: "IRR",
+          },
+        );
+        rememberState(source, sourceState);
+        rememberState(destination, destinationState);
+        continue;
+      }
+
       const key = stockKey(movement);
-      const current = states.get(key) ?? {
-        quantity: "0",
-        totalCost: 0,
-        fifoLayers: [],
-      };
+      const current = states.get(key) ?? emptyState();
       const isInbound = !movement.quantity_delta.startsWith("-");
       const quantity = absQty(movement.quantity_delta);
       if (quantity === "0") continue;
 
       if (isInbound) {
-        const cost = costs.get(movement.movement_id)!;
+        const cost = costs.get(movement.movement_id);
+        if (!cost)
+          throw new Error(`VALUATION_BOOTSTRAP_UNRESOLVED_COST_MOVEMENT:${movement.movement_id}`);
         if (input.method === "fifo") {
           current.fifoLayers.push({
             id: `fifo-layer:${movement.movement_id}`,
@@ -362,49 +511,16 @@ export class SqliteInventoryValuationBootstrapService {
         });
       } else {
         if (compareQty(current.quantity, quantity) < 0)
-          throw new Error(
-            `VALUATION_BOOTSTRAP_NEGATIVE_STOCK:${movement.movement_id}`,
-          );
+          throw new Error(`VALUATION_BOOTSTRAP_NEGATIVE_STOCK:${movement.movement_id}`);
 
         let outboundCost = 0;
         let unitCost = "0";
-
         if (input.method === "fifo") {
-          let remaining = quantity;
-          for (const layer of current.fifoLayers) {
-            if (remaining === "0") break;
-            if (layer.remainingQuantity === "0") continue;
-            const take =
-              compareQty(remaining, layer.remainingQuantity) >= 0
-                ? layer.remainingQuantity
-                : remaining;
-            const cost =
-              take === layer.remainingQuantity
-                ? layer.remainingCost
-                : roundedRatioMoney(
-                    layer.remainingCost,
-                    take,
-                    layer.remainingQuantity,
-                  );
-            layer.remainingQuantity = subtractPositiveQty(
-              layer.remainingQuantity,
-              take,
-            );
-            layer.remainingCost -= cost;
-            outboundCost += cost;
-            remaining = subtractPositiveQty(remaining, take);
-          }
-          if (remaining !== "0")
-            throw new Error(
-              `VALUATION_BOOTSTRAP_FIFO_INSUFFICIENT:${movement.movement_id}`,
-            );
+          const consumptions = consumeFifo(current, quantity, movement.movement_id);
+          outboundCost = consumptions.reduce((sum, item) => sum + item.cost, 0);
           unitCost = unitCostFrom(outboundCost, quantity);
         } else {
-          outboundCost = roundedRatioMoney(
-            current.totalCost,
-            quantity,
-            current.quantity,
-          );
+          outboundCost = roundedRatioMoney(current.totalCost, quantity, current.quantity);
           unitCost = unitCostFrom(outboundCost, quantity);
         }
 
@@ -421,15 +537,7 @@ export class SqliteInventoryValuationBootstrapService {
       }
 
       states.set(key, current);
-      datedStates.set(datedStateKey(movement), {
-        productId: movement.product_id,
-        warehouseId: movement.warehouse_id,
-        zoneKey: movement.zone_id ?? "",
-        locationKey: movement.location_id ?? "",
-        businessDate: movement.business_date,
-        quantity: current.quantity,
-        totalCost: current.totalCost,
-      });
+      rememberState(movement, current);
     }
 
     await this.db.transaction(async (session: DatabaseSession) => {
@@ -467,18 +575,9 @@ export class SqliteInventoryValuationBootstrapService {
         ],
       );
 
-      await session.execute(
-        "DELETE FROM inventory_valuation_entries WHERE company_id=?",
-        [companyId],
-      );
-      await session.execute(
-        "DELETE FROM inventory_valuation_cost_layers WHERE company_id=?",
-        [companyId],
-      );
-      await session.execute(
-        "DELETE FROM inventory_valuation_states WHERE company_id=?",
-        [companyId],
-      );
+      await session.execute("DELETE FROM inventory_valuation_entries WHERE company_id=?", [companyId]);
+      await session.execute("DELETE FROM inventory_valuation_cost_layers WHERE company_id=?", [companyId]);
+      await session.execute("DELETE FROM inventory_valuation_states WHERE company_id=?", [companyId]);
 
       for (const entry of entries) {
         const m = entry.m;
@@ -497,7 +596,7 @@ export class SqliteInventoryValuationBootstrapService {
             m.document_id,
             m.line_id,
             null,
-            null,
+            m.transfer_id,
             entry.kind,
             input.method,
             policy.strategyVersion,
@@ -610,9 +709,6 @@ export class SqliteInventoryValuationBootstrapService {
         ],
       );
 
-      // actorId is retained at the command boundary for the Step 15 Audit adapter.
-      // The shared audit write is composed by the Desktop/Application boundary rather
-      // than by this SQLite persistence service.
       void actorId;
     });
 
