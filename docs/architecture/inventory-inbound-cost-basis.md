@@ -8,6 +8,20 @@ The model is persistence-neutral and does not own Purchase invoices, freight/ven
 
 CR-21-002 clarifies that Phase 21 must also expose a bounded manual/fallback Application path for resolving a confirmed inbound movement when no upstream Purchase/ERP source has supplied monetary cost yet. This path creates the same authoritative Cost Input described here; it is not a separate UI-only price field.
 
+## Purchase cost, sales price and inventory cost are different concepts
+
+ArginAccounting must keep these concerns separate:
+
+- **Purchase price** belongs to the Purchase transaction/line and is the commercial amount agreed with the supplier.
+- **Sales price** belongs to Sales pricing/price lists and/or the Sales invoice line. It is not an Inventory Valuation input.
+- **Inventory cost** is derived from authoritative inbound Cost Inputs and the Company valuation policy (FIFO or Moving Weighted Average).
+
+For a normal purchase flow, the Purchase invoice/receipt integration should automatically provide the inbound Cost Input used by Inventory Valuation. Manual entry in the valuation workspace is therefore a fallback and operational repair path for cases such as legacy receipts, opening/manual receipts, migration/import, or an inbound movement whose upstream commercial source has not yet supplied cost.
+
+Changing a market sales price never changes the historical inventory Cost Input. Likewise, a higher purchase price for a future procurement does not rewrite the cost of an old receipt. If an old receipt's purchase cost was entered incorrectly, or a provisional supplier amount becomes final, use the controlled **cost correction** workflow with a reason and downstream recalculation where derived valuation already exists.
+
+This separation also matches the Tadbir/Mirza reference workflow reviewed for ArginAccounting: Purchase entry captures item quantity and unit value plus purchase expenses/discounts; purchase and sales price lists are separate master/commercial concepts; inventory valuation remains a distinct costing concern.
+
 ## Authoritative input
 
 Each inbound basis line carries durable source identity:
@@ -80,6 +94,13 @@ A manual resolution request must:
 
 Correction of an existing resolved basis is explicit. It must never silently overwrite cost. A correction requires reason, before/after evidence, authorization, concurrency validation and recalculation.
 
+The Step 17 workspace therefore exposes two separate surfaces:
+
+- **Unresolved inbound costs** — register a missing purchase/inbound cost.
+- **Registered inbound costs** — review the currently stored unit/total cost and invoke controlled correction.
+
+If a correction is requested after derived valuation already exists, the system must not patch FIFO/MWA projections directly. It must route through the deterministic recalculation path. Until that recalculation mutation is fully wired end-to-end, such a correction is blocked rather than producing inconsistent historical valuation.
+
 ## FIFO and Moving Average boundary
 
 Step 5 creates monetary input. It does not perform outbound consumption.
@@ -113,6 +134,7 @@ Step 5 does not implement:
 
 - Purchase invoice ownership;
 - vendor/freight commercial workflow;
+- sales price lists or Sales invoice pricing;
 - persistence or migrations;
 - authorization/audit application services;
 - outflow cost consumption;
