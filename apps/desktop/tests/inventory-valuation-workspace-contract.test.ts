@@ -14,11 +14,14 @@ test("valuation workspace is routed and permission-gated",async()=>{
   assert.match(page,/inventory-valuation-workspace-page-v2/);
 });
 
-test("valuation workspace exposes Persian RTL report surfaces",async()=>{
+test("valuation workspace exposes Persian RTL report surfaces and shared date picker",async()=>{
   const page=await readWorkspace();
   for(const text of ["ارزش موجودی","کاردکس ریالی","لایه‌های FIFO","نیازمند بررسی","سیاست ارزش‌گذاری"]){assert.match(page,new RegExp(text));}
   assert.match(page,/dir="rtl"/);
-  assert.match(page,/jalaliToGregorian/);
+  assert.match(page,/PersianDatePicker/);
+  assert.match(page,/ariaLabel="از تاریخ ارزش‌گذاری"/);
+  assert.match(page,/ariaLabel="تا تاریخ ارزش‌گذاری"/);
+  assert.doesNotMatch(page,/jalaliToGregorian/);
 });
 
 test("valuation workspace explains Bridge authority and FIFO current-layer semantics",async()=>{
@@ -35,7 +38,7 @@ test("valuation workspace provides provenance drill-down",async()=>{
   assert.match(trace,/costInput/);
 });
 
-test("confirmed old and new inbound movements can receive manual cost",async()=>{
+test("confirmed old and new inbound movements can receive manual cost even before policy setup",async()=>{
   const [page,panels,composition]=await Promise.all([
     readWorkspace(),
     read("src/pages/inventory/inventory-valuation-panels.tsx"),
@@ -45,6 +48,7 @@ test("confirmed old and new inbound movements can receive manual cost",async()=>
   assert.match(page,/setManualInboundCost/);
   assert.match(panels,/ورودی‌های قطعی‌شده با بهای تعیین‌نشده/);
   assert.match(panels,/رسیدهای قدیمی و جدید هر دو قابل قیمت‌گذاری هستند/);
+  assert.match(panels,/سیاست تعیین نشده/);
   assert.match(panels,/تعیین بهای ورودی/);
   assert.match(composition,/inventoryValuationPermissions\.resolve/);
 });
