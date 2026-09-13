@@ -26,7 +26,9 @@ export {
   SqliteInventoryInboundCostInputService,
 } from "./sqlite-inventory-inbound-cost-input-service.ts";
 export type {
+  CorrectManualInventoryInboundCostInput,
   InventoryInboundCostCandidate,
+  InventoryResolvedInboundCost,
   SetManualInventoryInboundCostInput,
   SetManualInventoryInboundCostResult,
 } from "./sqlite-inventory-inbound-cost-input-service.ts";
