@@ -14,9 +14,12 @@ import type {
 } from "@argin/inventory/valuation-reports";
 import {
   SqliteInventoryInboundCostInputService,
+  SqliteInventoryValuationBootstrapService,
   SqliteInventoryValuationPolicyRepository,
   SqliteInventoryValuationReportReader,
   SqliteInventoryValuationStatusReader,
+  type InitializeInventoryValuationResult,
+  type InventoryBootstrapValuationMethod,
   type InventoryInboundCostCandidate,
   type InventoryResolvedInboundCost,
   type SetManualInventoryInboundCostResult,
@@ -130,6 +133,15 @@ export interface InventoryValuationWorkspaceServices {
     occurredAt: string;
   }): Promise<SetManualInventoryInboundCostResult>;
 
+  initializePolicy(input: {
+    companyId: string;
+    method: InventoryBootstrapValuationMethod;
+    effectiveFrom: string;
+    actorId: string;
+    requestId: string;
+    occurredAt: string;
+  }): Promise<InitializeInventoryValuationResult>;
+
   readStatus(
     companyId: string,
     productId: string | null,
@@ -155,6 +167,7 @@ export function createInventoryValuationWorkspaceServices(
   const statusReader = new SqliteInventoryValuationStatusReader(database);
   const policies = new SqliteInventoryValuationPolicyRepository(database);
   const inboundCosts = new SqliteInventoryInboundCostInputService(database);
+  const bootstrap = new SqliteInventoryValuationBootstrapService(database);
   const products = new SqliteProductSelectorReader(database);
   const warehouses = new SqliteWarehouseReader(database);
   const hasFullAccess = permissions.includes("system.full-access");
@@ -166,6 +179,11 @@ export function createInventoryValuationWorkspaceServices(
   function requireViewPermission(): void {
     if (!hasPermission(inventoryValuationPermissions.view))
       throw new Error("برای مشاهده ارزش‌گذاری موجودی مجوز کافی ندارید.");
+  }
+
+  function requirePolicyPermission(): void {
+    if (!hasPermission(inventoryValuationPermissions.policyManage))
+      throw new Error("برای تعیین سیاست ارزش‌گذاری مجوز کافی ندارید.");
   }
 
   function requireCostResolutionPermission(): void {
@@ -309,6 +327,10 @@ export function createInventoryValuationWorkspaceServices(
     async correctManualInboundCost(input) {
       requireCostCorrectionPermission();
       return inboundCosts.correctManualCost(input);
+    },
+    async initializePolicy(input) {
+      requirePolicyPermission();
+      return bootstrap.initialize(input);
     },
     async readStatus(companyId, productId) {
       requireViewPermission();
