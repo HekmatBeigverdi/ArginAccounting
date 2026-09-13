@@ -13,13 +13,17 @@ import type {
   InventoryValuationUnresolvedReport,
 } from "@argin/inventory/valuation-reports";
 import {
+  SqliteInventoryInboundCostInputService,
   SqliteInventoryValuationPolicyRepository,
   SqliteInventoryValuationReportReader,
+  type InventoryInboundCostCandidate,
+  type SetManualInventoryInboundCostResult,
 } from "@argin/inventory-tauri";
 
 export interface InventoryValuationWorkspaceServices {
   canView: boolean;
   canManagePolicy: boolean;
+  canResolveCostInput: boolean;
 
   readAsOf(query: {
     companyId: string;
@@ -59,6 +63,24 @@ export interface InventoryValuationWorkspaceServices {
     limit: number;
   }): Promise<InventoryValuationUnresolvedReport>;
 
+  readInboundCostCandidates(query: {
+    companyId: string;
+    branchId: string | null;
+    productId: string | null;
+    warehouseId: string | null;
+    fromBusinessDate: string | null;
+    limit: number;
+  }): Promise<readonly InventoryInboundCostCandidate[]>;
+
+  setManualInboundCost(input: {
+    companyId: string;
+    movementId: string;
+    unitCost: string;
+    actorId: string;
+    requestId: string;
+    occurredAt: string;
+  }): Promise<SetManualInventoryInboundCostResult>;
+
   readStatus(
     companyId: string,
     productId: string | null,
@@ -83,6 +105,7 @@ export function createInventoryValuationWorkspaceServices(
 ): InventoryValuationWorkspaceServices {
   const reports = new SqliteInventoryValuationReportReader(database);
   const policies = new SqliteInventoryValuationPolicyRepository(database);
+  const inboundCosts = new SqliteInventoryInboundCostInputService(database);
   const products = new SqliteProductSelectorReader(database);
   const warehouses = new SqliteWarehouseReader(database);
 
@@ -98,6 +121,12 @@ export function createInventoryValuationWorkspaceServices(
     }
   }
 
+  function requireCostResolutionPermission(): void {
+    if (!hasPermission(inventoryValuationPermissions.resolve)) {
+      throw new Error("برای ثبت بهای ورودی مجوز کافی ندارید.");
+    }
+  }
+
   function requireBranchAccess(branchId: string | null): void {
     if (
       !hasFullAccess &&
@@ -110,6 +139,7 @@ export function createInventoryValuationWorkspaceServices(
   return {
     canView: hasPermission(inventoryValuationPermissions.view),
     canManagePolicy: hasPermission(inventoryValuationPermissions.policyManage),
+    canResolveCostInput: hasPermission(inventoryValuationPermissions.resolve),
 
     async readAsOf(query) {
       requireViewPermission();
@@ -133,6 +163,17 @@ export function createInventoryValuationWorkspaceServices(
       requireViewPermission();
       requireBranchAccess(query.branchId);
       return reports.readUnresolved(query);
+    },
+
+    async readInboundCostCandidates(query) {
+      requireViewPermission();
+      requireBranchAccess(query.branchId);
+      return inboundCosts.listCandidates(query);
+    },
+
+    async setManualInboundCost(input) {
+      requireCostResolutionPermission();
+      return inboundCosts.setManualCost(input);
     },
 
     async readStatus(companyId, productId) {
