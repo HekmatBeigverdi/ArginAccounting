@@ -23,12 +23,17 @@ export async function openTestSqlite(filename = ":memory:"): Promise<TestSqliteD
 
 const migrationsDirectory = new URL("../../../apps/desktop/src-tauri/migrations/", import.meta.url);
 
-export async function applyMigrations(db: TestSqliteDatabase, throughVersion = 29): Promise<void> {
+export async function applyMigrations(
+  db: TestSqliteDatabase,
+  throughVersion = 29,
+  afterVersion = 0,
+): Promise<void> {
   const names = (await readdir(migrationsDirectory))
     .filter((name) => /^\d{4}_.+\.sql$/u.test(name))
     .sort();
   for (const name of names) {
     const version = Number(name.slice(0, 4));
+    if (version <= afterVersion) continue;
     if (version > throughVersion) break;
     db.exec(await readFile(new URL(name, migrationsDirectory), "utf8"));
   }
