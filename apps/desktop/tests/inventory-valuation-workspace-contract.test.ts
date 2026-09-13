@@ -27,6 +27,22 @@ test("valuation workspace explains Bridge authority and FIFO current-layer seman
   assert.match(panels,/گزارش تاریخی As-of نیست/);
 });
 
+test("valuation overview explains why an empty filtered result is not a zero inventory value",async()=>{
+  const panels=await read("src/pages/inventory/inventory-valuation-panels.tsx");
+  assert.match(panels,/برای فیلتر انتخاب‌شده هنوز خروجی ارزش‌گذاری تولید نشده است/u);
+  assert.match(panels,/Revision/u);
+  assert.match(panels,/سیاست ارزش‌گذاری شرکت/u);
+  assert.match(panels,/صفر بودن واقعی ارزش موجودی نیست/u);
+});
+
+test("valuation calendar can escape the filter card and overlay following report content",async()=>{
+  const css=await read("src/pages/inventory/inventory-valuation-workspace-page.css");
+  assert.match(css,/\.valuation-page[\s\S]*overflow: visible/u);
+  assert.match(css,/\.valuation-filters[\s\S]*position: relative/u);
+  assert.match(css,/\.valuation-filters[\s\S]*overflow: visible/u);
+  assert.match(css,/\.valuation-page \.ui-persian-date__popover \{ z-index: 1500; \}/u);
+});
+
 test("valuation workspace provides provenance drill-down",async()=>{
   const [page,trace]=await Promise.all([readWorkspace(),read("src/composition/inventory/create-inventory-valuation-trace-service.ts")]);
   assert.match(page,/ValuationTracePanel/);
