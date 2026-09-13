@@ -17,6 +17,7 @@ import {
   SqliteInventoryValuationPolicyRepository,
   SqliteInventoryValuationReportReader,
   type InventoryInboundCostCandidate,
+  type InventoryResolvedInboundCost,
   type SetManualInventoryInboundCostResult,
 } from "@argin/inventory-tauri";
 
@@ -26,9 +27,16 @@ export type InventoryInboundCostDisplayCandidate = InventoryInboundCostCandidate
   readonly warehouseLabel: string;
 };
 
+export type InventoryResolvedInboundCostDisplay = InventoryResolvedInboundCost & {
+  readonly documentLabel: string;
+  readonly productLabel: string;
+  readonly warehouseLabel: string;
+};
+
 type DocumentLabelRow = { id: string; document_number: string | null };
 type ProductLabelRow = { id: string; code: string; title: string };
 type WarehouseLabelRow = { id: string; code: string; title: string };
+type BusinessRow = { readonly documentId: string; readonly productId: string; readonly warehouseId: string };
 
 const shortId = (value: string) => value.length > 12 ? `${value.slice(0, 8)}…` : value;
 
@@ -36,6 +44,7 @@ export interface InventoryValuationWorkspaceServices {
   canView: boolean;
   canManagePolicy: boolean;
   canResolveCostInput: boolean;
+  canCorrectCostInput: boolean;
 
   readAsOf(query: {
     companyId: string;
@@ -84,10 +93,30 @@ export interface InventoryValuationWorkspaceServices {
     limit: number;
   }): Promise<readonly InventoryInboundCostDisplayCandidate[]>;
 
+  readResolvedInboundCosts(query: {
+    companyId: string;
+    branchId: string | null;
+    productId: string | null;
+    warehouseId: string | null;
+    fromBusinessDate: string | null;
+    limit: number;
+  }): Promise<readonly InventoryResolvedInboundCostDisplay[]>;
+
   setManualInboundCost(input: {
     companyId: string;
     movementId: string;
     unitCost: string;
+    actorId: string;
+    requestId: string;
+    occurredAt: string;
+  }): Promise<SetManualInventoryInboundCostResult>;
+
+  correctManualInboundCost(input: {
+    companyId: string;
+    movementId: string;
+    unitCost: string;
+    reason: string;
+    expectedRevision: number;
     actorId: string;
     requestId: string;
     occurredAt: string;
@@ -120,14 +149,48 @@ export function createInventoryValuationWorkspaceServices(
   function requireCostResolutionPermission(): void {
     if (!hasPermission(inventoryValuationPermissions.resolve)) throw new Error("برای ثبت بهای ورودی مجوز کافی ندارید.");
   }
+  function requireCostCorrectionPermission(): void {
+    if (!hasPermission(inventoryValuationPermissions.costInputCorrect)) throw new Error("برای اصلاح بهای ورودی مجوز کافی ندارید.");
+  }
   function requireBranchAccess(branchId: string | null): void {
     if (!hasFullAccess && (branchId === null || !branchIds.includes(branchId))) throw new Error("محدوده شعبه مجاز نیست.");
+  }
+
+  async function addBusinessLabels<T extends BusinessRow>(companyId: string, rows: readonly T[]) {
+    if (rows.length === 0) return Object.freeze([]);
+    const documentIds = [...new Set(rows.map((row) => row.documentId))];
+    const productIds = [...new Set(rows.map((row) => row.productId))];
+    const warehouseIds = [...new Set(rows.map((row) => row.warehouseId))];
+    const [documentRows, productRows, warehouseRows] = await Promise.all([
+      database.query<DocumentLabelRow>(
+        `SELECT id,document_number FROM inventory_documents WHERE company_id=? AND id IN (${documentIds.map(() => "?").join(",")})`,
+        [companyId, ...documentIds],
+      ),
+      database.query<ProductLabelRow>(
+        `SELECT id,code,title FROM products WHERE company_id=? AND id IN (${productIds.map(() => "?").join(",")})`,
+        [companyId, ...productIds],
+      ),
+      database.query<WarehouseLabelRow>(
+        `SELECT id,code,title FROM warehouses WHERE company_id=? AND id IN (${warehouseIds.map(() => "?").join(",")})`,
+        [companyId, ...warehouseIds],
+      ),
+    ]);
+    const documentMap = new Map(documentRows.map((row) => [row.id, row.document_number]));
+    const productMap = new Map(productRows.map((row) => [row.id, `${row.code} — ${row.title}`]));
+    const warehouseMap = new Map(warehouseRows.map((row) => [row.id, `${row.code} — ${row.title}`]));
+    return Object.freeze(rows.map((row) => Object.freeze({
+      ...row,
+      documentLabel: documentMap.get(row.documentId) ?? `سند ${shortId(row.documentId)}`,
+      productLabel: productMap.get(row.productId) ?? shortId(row.productId),
+      warehouseLabel: warehouseMap.get(row.warehouseId) ?? shortId(row.warehouseId),
+    })));
   }
 
   return {
     canView: hasPermission(inventoryValuationPermissions.view),
     canManagePolicy: hasPermission(inventoryValuationPermissions.policyManage),
     canResolveCostInput: hasPermission(inventoryValuationPermissions.resolve),
+    canCorrectCostInput: hasPermission(inventoryValuationPermissions.costInputCorrect),
 
     async readAsOf(query) {
       requireViewPermission();
@@ -152,42 +215,20 @@ export function createInventoryValuationWorkspaceServices(
     async readInboundCostCandidates(query) {
       requireViewPermission();
       requireBranchAccess(query.branchId);
-      const candidates = await inboundCosts.listCandidates(query);
-      if (candidates.length === 0) return Object.freeze([]);
-
-      const documentIds = [...new Set(candidates.map((row) => row.documentId))];
-      const productIds = [...new Set(candidates.map((row) => row.productId))];
-      const warehouseIds = [...new Set(candidates.map((row) => row.warehouseId))];
-
-      const [documentRows, productRows, warehouseRows] = await Promise.all([
-        database.query<DocumentLabelRow>(
-          `SELECT id,document_number FROM inventory_documents WHERE company_id=? AND id IN (${documentIds.map(() => "?").join(",")})`,
-          [query.companyId, ...documentIds],
-        ),
-        database.query<ProductLabelRow>(
-          `SELECT id,code,title FROM products WHERE company_id=? AND id IN (${productIds.map(() => "?").join(",")})`,
-          [query.companyId, ...productIds],
-        ),
-        database.query<WarehouseLabelRow>(
-          `SELECT id,code,title FROM warehouses WHERE company_id=? AND id IN (${warehouseIds.map(() => "?").join(",")})`,
-          [query.companyId, ...warehouseIds],
-        ),
-      ]);
-
-      const documentMap = new Map(documentRows.map((row) => [row.id, row.document_number]));
-      const productMap = new Map(productRows.map((row) => [row.id, `${row.code} — ${row.title}`]));
-      const warehouseMap = new Map(warehouseRows.map((row) => [row.id, `${row.code} — ${row.title}`]));
-
-      return Object.freeze(candidates.map((row) => Object.freeze({
-        ...row,
-        documentLabel: documentMap.get(row.documentId) ?? `سند ${shortId(row.documentId)}`,
-        productLabel: productMap.get(row.productId) ?? shortId(row.productId),
-        warehouseLabel: warehouseMap.get(row.warehouseId) ?? shortId(row.warehouseId),
-      })));
+      return addBusinessLabels(query.companyId, await inboundCosts.listCandidates(query));
+    },
+    async readResolvedInboundCosts(query) {
+      requireViewPermission();
+      requireBranchAccess(query.branchId);
+      return addBusinessLabels(query.companyId, await inboundCosts.listResolved(query));
     },
     async setManualInboundCost(input) {
       requireCostResolutionPermission();
       return inboundCosts.setManualCost(input);
+    },
+    async correctManualInboundCost(input) {
+      requireCostCorrectionPermission();
+      return inboundCosts.correctManualCost(input);
     },
     async readStatus(companyId, productId) {
       requireViewPermission();
