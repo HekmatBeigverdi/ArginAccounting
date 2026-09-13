@@ -11,7 +11,7 @@ test("SQLite upgrades a version-27 database through valuation migrations without
     await applyMigrations(db, 27);
     db.exec("CREATE TABLE phase21_upgrade_probe(id TEXT PRIMARY KEY,value TEXT NOT NULL)");
     db.prepare("INSERT INTO phase21_upgrade_probe(id,value) VALUES(?,?)").run("probe","preserved");
-    await applyMigrations(db, 29);
+    await applyMigrations(db, 29, 27);
     const probe = db.prepare("SELECT value FROM phase21_upgrade_probe WHERE id=?").get("probe") as { value: string };
     assert.equal(probe.value,"preserved");
     for (const table of [
