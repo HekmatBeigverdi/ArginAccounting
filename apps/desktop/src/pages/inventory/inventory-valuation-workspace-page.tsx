@@ -126,6 +126,47 @@ export function InventoryValuationWorkspacePage() {
     [session],
   );
 
+  const productNames = useMemo(
+    () => new Map(products.map((product) => [product.productId, product.title])),
+    [products],
+  );
+  const warehouseNames = useMemo(
+    () => new Map(warehouses.map((warehouse) => [warehouse.warehouseId, warehouse.title])),
+    [warehouses],
+  );
+
+  const overviewDisplay = useMemo<InventoryValuationAsOfReport | null>(() => {
+    if (!overview) return null;
+    return Object.freeze({
+      ...overview,
+      rows: Object.freeze(
+        overview.rows.map((row) =>
+          Object.freeze({
+            ...row,
+            productId: productNames.get(row.productId) ?? row.productId,
+            warehouseId: warehouseNames.get(row.warehouseId) ?? row.warehouseId,
+          }),
+        ),
+      ),
+    });
+  }, [overview, productNames, warehouseNames]);
+
+  const layersDisplay = useMemo<InventoryValuationLayerReport | null>(() => {
+    if (!layers) return null;
+    return Object.freeze({
+      ...layers,
+      rows: Object.freeze(
+        layers.rows.map((row) =>
+          Object.freeze({
+            ...row,
+            productId: productNames.get(row.productId) ?? row.productId,
+            warehouseId: warehouseNames.get(row.warehouseId) ?? row.warehouseId,
+          }),
+        ),
+      ),
+    });
+  }, [layers, productNames, warehouseNames]);
+
   useEffect(() => {
     void getDesktopDatabase()
       .then((db) => {
@@ -462,8 +503,8 @@ export function InventoryValuationWorkspacePage() {
         </button>
       </div>
 
-      {activeTab === "overview" && overview && (
-        <ValuationOverviewPanel report={overview} />
+      {activeTab === "overview" && overviewDisplay && (
+        <ValuationOverviewPanel report={overviewDisplay} />
       )}
       {activeTab === "kardex" && kardex && (
         <ValuationKardexPanel
@@ -472,8 +513,8 @@ export function InventoryValuationWorkspacePage() {
           onNext={(cursor) => void loadReport("kardex", cursor)}
         />
       )}
-      {activeTab === "layers" && layers && (
-        <ValuationLayersPanel report={layers} />
+      {activeTab === "layers" && layersDisplay && (
+        <ValuationLayersPanel report={layersDisplay} />
       )}
       {activeTab === "unresolved" && (
         <>
