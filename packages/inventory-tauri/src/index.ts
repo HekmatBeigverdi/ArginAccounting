@@ -27,6 +27,7 @@ export { ensureInventoryNumberSeries } from "./ensure-inventory-number-series.ts
 export type { InventoryLineLocationTitles } from "./sqlite-inventory-workspace-reader.ts";
 export { SharedInventoryApprovalGateway } from "./shared-inventory-approval-gateway.ts";
 export { SharedInventoryAuditSink } from "./shared-inventory-audit-sink.ts";
+export { SharedInventoryValuationAuditSink } from "./shared-inventory-valuation-audit-sink.ts";
 export { InventoryWarehouseDependencyGuard } from "./inventory-warehouse-dependency-guard.ts";
 export type {
   InventoryWarehouseDependencyBlocker,
