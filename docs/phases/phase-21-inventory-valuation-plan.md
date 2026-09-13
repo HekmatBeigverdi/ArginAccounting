@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–15 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 16 — Valuation Query Engine and Reports — is next.
+Steps 1–16 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 17 — Persian RTL Inventory Valuation Workspace — is next.
 
 ## Governance
 
@@ -29,6 +29,7 @@ Mandatory references:
 - [Inventory Valuation Atomicity, Idempotency and Optimistic Concurrency](../architecture/inventory-valuation-atomicity-idempotency-concurrency.md)
 - [Inventory Valuation Argin Bridge Synchronization Contract](../architecture/inventory-valuation-argin-bridge-sync.md)
 - [Inventory Valuation Permissions, Audit and Traceability](../architecture/inventory-valuation-permissions-audit-traceability.md)
+- [Inventory Valuation Query Engine and Reports](../architecture/inventory-valuation-query-reports.md)
 
 ## Baseline and Release Target
 
@@ -57,12 +58,13 @@ Phase 21 adds deterministic, auditable monetary valuation on top of the immutabl
 - Product monetary concurrency scope is Company + Product across warehouses because transfer can propagate cost between locations.
 - Retry safety uses durable request identity and exact operation/fingerprint matching; request-id reuse with different payload is a conflict.
 - Phase 20 movement facts, Company valuation policy history and resolved valuation cost inputs are authoritative Bridge inputs; valuation Entry/Layer/State projections are rebuildable and never synchronized as independent truth.
-- Privileged valuation mutations require operation-specific permission and append-only audit evidence; traceability must preserve Movement/Cost Input/Policy provenance without fabricating missing monetary values.
+- Privileged valuation mutations require operation-specific permission and append-only audit evidence; traceability preserves Movement/Cost Input/Policy provenance without fabricating missing monetary values.
+- Monetary reports are bounded, Company/Branch scoped, preserve unresolved cost explicitly, and never become synchronization truth.
 - Accounting journal posting is outside Phase 21.
 
 ## Argin Bridge Requirements
 
-Authoritative valuation facts and policy history use durable IDs independent of SQLite row identity. Phase 20 movement IDs, policy IDs, cost-basis IDs, strategy version, currency, stream revisions, request identities and effective chronology must survive future synchronization. Phase 21 valuation sync uses versioned envelopes for policy history and resolved cost inputs; derived entries, cost layers and state projections are rebuilt at the destination. SQLite Desktop and future PostgreSQL/.NET Server implementations must derive identical valuation from identical authoritative facts and algorithm versions. Live transport, acknowledgements, dependency queues, retries and distributed conflict resolution remain Phase 45 scope.
+Authoritative valuation facts and policy history use durable IDs independent of SQLite row identity. Phase 20 movement IDs, policy IDs, cost-basis IDs, strategy version, currency, stream revisions, request identities and effective chronology must survive future synchronization. Phase 21 valuation sync uses versioned envelopes for policy history and resolved cost inputs; derived entries, cost layers, state projections and report rows are rebuilt at the destination. SQLite Desktop and future PostgreSQL/.NET Server implementations must derive identical valuation from identical authoritative facts and algorithm versions. Live transport, acknowledgements, dependency queues, retries and distributed conflict resolution remain Phase 45 scope.
 
 ## Step Status
 
@@ -83,7 +85,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 13 | Atomicity, Idempotency and Optimistic Concurrency | Completed |
 | 14 | Argin Bridge and Valuation Synchronization Contract | Completed |
 | 15 | Permissions, Audit and Traceability | Completed |
-| 16 | Valuation Query Engine and Reports | Not started |
+| 16 | Valuation Query Engine and Reports | Completed |
 | 17 | Persian RTL Inventory Valuation Workspace | Not started |
 | 18 | Domain and Application Tests | Not started |
 | 19 | Repository, Migration, Bridge and Performance Tests | Not started |
@@ -211,16 +213,25 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 
 ### Step 15
 
-- Added `packages/inventory/src/application/contracts/inventory-valuation-security.ts` and public subpath `@argin/inventory/valuation-security`.
-- Added independent permissions for view, Company policy management, authoritative cost-input correction, recalculation, valuation resolution and export so read access does not imply privileged monetary mutation rights.
-- Added `InventoryValuationAuthorizationPolicy` with actor/Company/request/correlation context; authorization is additive to Step 13 idempotency/concurrency rather than a replacement for it.
-- Added append-only valuation audit action/event/sink contracts with explicit target, reason, bounded metadata and before/after snapshots.
-- Added `SharedInventoryValuationAuditSink` over the shared Phase 8 Audit engine using deterministic `action + requestId + target` identity to prevent duplicate audit facts during successful retry replay.
-- Added persistence-neutral trace nodes/links and `createInventoryValuationTraceSnapshot()` for explainable Movement -> Cost Input -> Valuation Entry plus Policy -> Valuation Entry provenance.
-- Trace construction rejects Company/Product/Movement mismatches and preserves unresolved cost semantics instead of substituting zero.
-- Added focused tests for permission separation, provenance construction, mismatch rejection and unresolved trace behavior.
-- Added `docs/architecture/inventory-valuation-permissions-audit-traceability.md`.
-- Step 16 owns bounded monetary report/query implementations and Step 17 owns Persian RTL drill-down surfaces.
+- Added operation-specific valuation permissions, shared Audit integration and persistence-neutral traceability contracts.
+- Policy transition, Cost Input correction, valuation resolution, recalculation, view and export have separate authorization rights.
+- Audit uses deterministic action/request/target identity and records before/after evidence without duplicating successful replay.
+- Traceability connects Movement/Cost Input/Policy to Valuation Entry and rejects cross-Company/Product/Movement mismatches.
+
+### Step 16
+
+- Added `packages/inventory/src/application/contracts/inventory-valuation-reports.ts` and public subpath `@argin/inventory/valuation-reports`.
+- Added `InventoryValuationReportReader` with bounded As-of value, monetary Kardex, current FIFO layer detail, unresolved diagnostics and recalculation/currentness status contracts.
+- All row-producing queries require an explicit limit with Phase 21 maximum 500; Kardex paging uses canonical chronology cursor `businessDate -> businessOrder -> documentId -> lineId -> movementId`.
+- Added `SqliteInventoryValuationReportReader` over existing valuation projections and Phase 20 movement facts, with Company/Branch Warehouse visibility on Warehouse-bearing reports.
+- As-of value selects the latest dated `inventory_valuation_states` row per stock key up to the requested business date and preserves `totalCost = null`/unresolved count rather than substituting zero.
+- Monetary Kardex reports opening resolved cost, per-entry monetary delta, running resolved cost, explicit unresolved entries, closing resolved cost and a next cursor.
+- Current FIFO layer detail exposes source Movement/Valuation Entry, opening chronology, original/remaining quantity and value; it is explicitly not mislabeled as historical layer state.
+- Unresolved diagnostics expose reason, chronology, quantity, method and currency.
+- Recalculation status compares authoritative movements with valuation entries so missing valuation rows and unresolved rows produce `attention-required`; it also exposes Product stream revision when scoped to a Product.
+- Added focused `inventory-valuation-report-reader.test.ts` coverage for maximum bounds, As-of semantics, Kardex running value/cursor, open-layer default and recalculation attention status.
+- Added `docs/architecture/inventory-valuation-query-reports.md` documenting read semantics, boundedness, security boundary and Argin Bridge projection rules.
+- Step 17 owns Persian RTL visualization/drill-down; Step 19 owns real SQLite query-plan and representative-scale performance validation.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
