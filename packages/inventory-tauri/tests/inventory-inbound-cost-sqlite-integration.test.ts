@@ -14,7 +14,7 @@ test("manual inbound cost persists atomically, creates FIFO valuation and replay
   const db = await openTestSqlite();
   const executor = new NodeSqliteExecutor(db);
   try {
-    await applyMigrations(db,29);
+    await applyMigrations(db,29,27);
     installValuationFixtureSchema(db);
     seedInbound(db,"company-b","movement-b","3");
     seedFifoPolicy(db,"company-b");
@@ -42,7 +42,7 @@ test("manual cost correction uses revision CAS and rejects a stale writer", asyn
   const db = await openTestSqlite();
   const executor = new NodeSqliteExecutor(db);
   try {
-    await applyMigrations(db,29);
+    await applyMigrations(db,29,27);
     installValuationFixtureSchema(db);
     seedInbound(db,"company-c","movement-c","2");
     const service = new SqliteInventoryInboundCostInputService(executor);
@@ -71,7 +71,7 @@ test("transaction rollback removes monetary writes when idempotency persistence 
   const db = await openTestSqlite();
   const executor = new NodeSqliteExecutor(db);
   try {
-    await applyMigrations(db,29);
+    await applyMigrations(db,29,27);
     installValuationFixtureSchema(db);
     seedInbound(db,"company-d","movement-d");
     seedFifoPolicy(db,"company-d");
