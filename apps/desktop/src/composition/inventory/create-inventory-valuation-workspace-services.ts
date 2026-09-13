@@ -15,6 +15,7 @@ import type {
 import {
   SqliteInventoryInboundCostInputService,
   SqliteInventoryValuationBootstrapService,
+  SqliteInventoryValuationLiveService,
   SqliteInventoryValuationPolicyRepository,
   SqliteInventoryValuationReportReader,
   SqliteInventoryValuationStatusReader,
@@ -168,6 +169,7 @@ export function createInventoryValuationWorkspaceServices(
   const policies = new SqliteInventoryValuationPolicyRepository(database);
   const inboundCosts = new SqliteInventoryInboundCostInputService(database);
   const bootstrap = new SqliteInventoryValuationBootstrapService(database);
+  const liveValuation = new SqliteInventoryValuationLiveService(database);
   const products = new SqliteProductSelectorReader(database);
   const warehouses = new SqliteWarehouseReader(database);
   const hasFullAccess = permissions.includes("system.full-access");
@@ -202,6 +204,10 @@ export function createInventoryValuationWorkspaceServices(
       (branchId === null || !branchIds.includes(branchId))
     )
       throw new Error("محدوده شعبه مجاز نیست.");
+  }
+
+  async function catchUp(companyId: string): Promise<void> {
+    await liveValuation.catchUpCompany(companyId, new Date().toISOString());
   }
 
   async function excludeReversedInboundCandidates<T extends MovementRow>(
@@ -285,16 +291,19 @@ export function createInventoryValuationWorkspaceServices(
     async readAsOf(query) {
       requireViewPermission();
       requireBranchAccess(query.branchId);
+      await catchUp(query.companyId);
       return reports.readAsOf(query);
     },
     async readKardex(query) {
       requireViewPermission();
       requireBranchAccess(query.branchId);
+      await catchUp(query.companyId);
       return reports.readMonetaryKardex(query);
     },
     async readLayers(query) {
       requireViewPermission();
       requireBranchAccess(query.branchId);
+      await catchUp(query.companyId);
       return reports.readLayers(query);
     },
     async readUnresolved(query) {
@@ -334,6 +343,7 @@ export function createInventoryValuationWorkspaceServices(
     },
     async readStatus(companyId, productId) {
       requireViewPermission();
+      await catchUp(companyId);
       return statusReader.read({ companyId, productId });
     },
     async getPolicyHistory(companyId) {
