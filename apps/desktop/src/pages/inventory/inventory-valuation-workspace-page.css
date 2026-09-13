@@ -5,7 +5,7 @@
   min-width: 0;
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .valuation-head {
@@ -65,12 +65,15 @@
 .valuation-tabs button.active { font-weight: 700; border-color: currentColor; }
 
 .valuation-filters {
+  position: relative;
+  z-index: 20;
   display: grid;
   grid-template-columns: minmax(220px, 1.25fr) minmax(200px, 1fr) minmax(190px, .9fr) minmax(120px, .45fr);
   gap: 12px;
   align-items: end;
   min-width: 0;
   padding: 14px;
+  overflow: visible;
   border: 1px solid var(--border-color, #e4e7ec);
   border-radius: 14px;
   background: var(--surface, #fff);
@@ -144,6 +147,7 @@
   text-align: center;
   color: var(--text-muted, #667085);
   background: var(--surface-subtle, #f8fafc);
+  line-height: 1.9;
 }
 
 .valuation-table {
@@ -370,6 +374,8 @@
 .valuation-table bdi { direction: ltr; unicode-bidi: isolate; }
 .valuation-page .ui-persian-date,
 .valuation-page .ui-persian-date__control { width: 100%; min-width: 0; }
+.valuation-page .ui-persian-date { position: relative; z-index: 30; }
+.valuation-page .ui-persian-date__popover { z-index: 1500; }
 
 @media (max-width: 1100px) {
   .valuation-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -378,7 +384,6 @@
 }
 
 @media (max-width: 720px) {
-  .valuation-page { overflow: visible; }
   .valuation-head { display: grid; }
   .valuation-status { width: auto; }
   .valuation-filters { grid-template-columns: 1fr; }
