@@ -35,11 +35,34 @@ Full reversal relationships are read from `inventory_all_stock_movements.reversa
 
 Derived `Valuation Entry`, `Cost Layer`, `Valuation State` and monetary reports remain rebuildable projections. Movement, Cost Input and Policy remain authoritative facts for Argin Bridge.
 
+## Transfer replay
+
+A confirmed Warehouse transfer is not an independent inbound purchase and therefore its destination movement must never require a new Cost Input.
+
+Initial policy activation groups active transfer movements by durable `transfer_id` and requires exactly one source movement and one destination movement with the same Company, document, line, Product, business date/order and absolute quantity. Malformed/non-conserving pairs block activation.
+
+For FIFO:
+
+- the source consumes its existing FIFO layers in chronology order;
+- the exact consumed quantity and exact consumed monetary amount are carried to the destination;
+- deterministic destination FIFO layers are created from each source-layer consumption;
+- the source transfer valuation entry is negative and the destination transfer valuation entry is positive for the same amount;
+- transfer net monetary effect is zero.
+
+For Moving Weighted Average:
+
+- the source issue uses its current moving-average pool;
+- the exact resulting monetary amount is removed from the source and added unchanged to the destination pool;
+- the destination does not recalculate transfer cost from any purchase price;
+- transfer net monetary effect is zero.
+
+This preserves the Step 7 transfer-cost-continuity invariant during the Step 17 historical bootstrap.
+
 ## Safety boundary
 
 The Step 17 bootstrap path is intentionally conservative. It rejects unsupported chronology rather than guessing monetary results.
 
-- Transfer chronology requiring cross-Warehouse cost continuity is delegated to the full deterministic recalculation engine from Steps 7 and 9.
+- Valid ordinary Warehouse transfer pairs are replayed with monetary continuity; invalid/incomplete/non-conserving transfer pairs block activation.
 - For FIFO, a fully compensated receipt/reversal pair may be excluded from the bootstrap replay when it has no remaining monetary effect on the accepted chronology.
 - Moving Weighted Average bootstrap is blocked when reversal pairs exist, because an inbound that is later reversed can still change the historical moving-average pool and the cost of intervening outflows. That scenario must use the full Reverse Valuation/Recalculation path rather than pair deletion.
 - Negative stock during replay blocks activation.
@@ -55,14 +78,13 @@ For the current FIFO acceptance scenario:
 2. Receipt `000006`: 5 units with unit cost 14,000,000 IRR.
 3. Receipt `000004`: 10 units, later fully reversed; it must not remain in the unresolved-cost exception queue.
 4. Issue `000003`: 7 units.
-5. Activate Company FIFO from the first inventory movement date.
-6. Rebuild valuation.
-7. Current expected active inventory from the two priced receipts after the 7-unit issue is 8 units with 100,000,000 IRR remaining value.
-8. Current FIFO layers must reconcile to:
-   - 3 units from the 10,000,000 IRR layer = 30,000,000 IRR;
-   - 5 units from the 14,000,000 IRR layer = 70,000,000 IRR.
-9. Monetary Kardex must reconcile to +100,000,000, +70,000,000, -70,000,000 and a 100,000,000 IRR closing balance for the accepted active replay.
-10. As-of after the first receipt must show 10 units / 100,000,000 IRR; after the second receipt it must show 15 units / 170,000,000 IRR; after the 7-unit issue it must show 8 units / 100,000,000 IRR.
-11. Currentness must no longer remain `attention-required` only because immutable compensated reversal rows have no independent valuation entry.
+5. Any valid transfer already present in Company history must replay without asking for a separate destination purchase cost and without creating net monetary value.
+6. Activate Company FIFO from the first inventory movement date.
+7. Rebuild valuation.
+8. Current expected active inventory from the two priced receipts after the 7-unit issue is 8 units with 100,000,000 IRR remaining value, redistributed by Warehouse only if a valid transfer moved part of that stock.
+9. Across all Warehouses, current FIFO layers must reconcile to the same Company/Product total monetary value after transfers.
+10. Monetary Kardex transfer source/destination effects must net to zero.
+11. As-of reports must reflect the Warehouse/location state after each chronologically relevant movement date.
+12. Currentness must no longer remain `attention-required` only because immutable compensated reversal rows have no independent valuation entry.
 
 Moving Weighted Average must be tested on a clean chronology without reversal first. Reversal-aware MWA acceptance is deferred until the full reverse-valuation replay path is wired end-to-end.
