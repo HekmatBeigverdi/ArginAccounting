@@ -34,7 +34,7 @@ test("valuation workspace provides provenance drill-down",async()=>{
   assert.match(trace,/costInput/);
 });
 
-test("confirmed old and new inbound movements can receive manual purchase cost",async()=>{
+test("confirmed inbound movements without upstream cost can use the manual exception path",async()=>{
   const [page,panels,composition]=await Promise.all([
     readWorkspace(),
     read("src/pages/inventory/inventory-valuation-panels.tsx"),
@@ -42,9 +42,9 @@ test("confirmed old and new inbound movements can receive manual purchase cost",
   ]);
   assert.match(page,/readInboundCostCandidates/);
   assert.match(page,/setManualInboundCost/);
-  assert.match(panels,/ورودی‌های قطعی‌شده با بهای تعیین‌نشده/);
-  assert.match(panels,/بهای خرید\/ورودی موجودی/);
-  assert.match(panels,/تعیین بهای خرید\/ورودی/);
+  assert.match(panels,/رفع استثناهای بهای ورودی/);
+  assert.match(panels,/فاکتور خرید/);
+  assert.match(panels,/رفع بهای ورودی نامشخص/);
   assert.match(composition,/inventoryValuationPermissions\.resolve/);
 });
 
@@ -54,7 +54,7 @@ test("manual inbound cost modal is viewport safe and uses document date as valua
     read("src/pages/inventory/inventory-valuation-workspace-page.css"),
   ]);
   assert.match(panels,/import \{ Dialog \} from "\.\.\/\.\.\/components\/feedback"/u);
-  assert.match(panels,/title="تعیین بهای خرید\/ورودی"/u);
+  assert.match(panels,/title="رفع بهای ورودی نامشخص"/u);
   assert.match(panels,/تاریخ مبنا همان تاریخ قطعی سند انبار است/u);
   assert.match(panels,/تاریخ سند/u);
   assert.doesNotMatch(panels,/تاریخ بهای ورودی/u);
@@ -74,7 +74,7 @@ test("truncated business labels expose the full readable label on hover",async()
   assert.match(css,/cursor: help/u);
 });
 
-test("registered inbound costs are visible and correction requires a reason",async()=>{
+test("registered inbound costs are reviewable and historical correction requires a reason",async()=>{
   const [page,panels,composition]=await Promise.all([
     readWorkspace(),
     read("src/pages/inventory/inventory-valuation-panels.tsx"),
@@ -82,8 +82,8 @@ test("registered inbound costs are visible and correction requires a reason",asy
   ]);
   assert.match(page,/readResolvedInboundCosts/u);
   assert.match(page,/correctManualInboundCost/u);
-  assert.match(panels,/بهای خرید\/ورودی ثبت‌شده/u);
-  assert.match(panels,/اصلاح بها/u);
+  assert.match(panels,/بهای ورودی ثبت‌شده — کنترل و ردیابی/u);
+  assert.match(panels,/اصلاح تاریخی/u);
   assert.match(panels,/دلیل اصلاح/u);
   assert.match(composition,/inventoryValuationPermissions\.costInputCorrect/u);
 });
