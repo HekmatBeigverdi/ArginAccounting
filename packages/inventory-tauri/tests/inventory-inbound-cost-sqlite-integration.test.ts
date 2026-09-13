@@ -58,7 +58,8 @@ test("manual cost correction uses revision CAS and rejects a stale writer", asyn
     assert.equal(corrected.totalCost,250);
     const row = db.prepare("SELECT unit_cost,total_cost,revision FROM inventory_valuation_cost_inputs WHERE company_id=? AND movement_id=?")
       .get("company-c","movement-c") as { unit_cost:string; total_cost:number; revision:number };
-    assert.deepEqual(row,{unit_cost:"125",total_cost:250,revision:2});
+    // SQLite rows have a null prototype; compare their persisted fields.
+    assert.deepEqual({...row},{unit_cost:"125",total_cost:250,revision:2});
     await assert.rejects(() => service.correctManualCost({
       companyId:"company-c",movementId:"movement-c",unitCost:"130",actorId:"user-2",
       requestId:"request-c-stale",occurredAt:"2026-09-13T18:05:00Z",
