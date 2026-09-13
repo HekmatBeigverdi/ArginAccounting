@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–17 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 18 — Domain and Application Tests — is next.
+Steps 1–16 are complete on `phase/21-inventory-valuation`. Step 17 — Persian RTL Inventory Valuation Workspace — is reopened for the approved inbound-cost-entry completion defined by CR-21-002 below. The fixed 20-step sequence remains frozen. Step 18 starts only after Step 17 is re-completed and owner-accepted.
 
 ## Governance
 
@@ -62,11 +62,15 @@ Phase 21 adds deterministic, auditable monetary valuation on top of the immutabl
 - Privileged valuation mutations require operation-specific permission and append-only audit evidence; traceability preserves Movement/Cost Input/Policy provenance without fabricating missing monetary values.
 - Monetary reports are bounded, Company/Branch scoped, preserve unresolved cost explicitly, and never become synchronization truth.
 - The Persian RTL workspace consumes report/trace contracts and does not reimplement valuation arithmetic in the UI.
+- Every confirmed inbound quantity movement that requires monetary valuation must have an explicit resolvable cost-input path. Missing cost is `unresolved`, never zero.
+- Manual inbound-cost entry is a valuation mutation linked to the immutable Phase 20 movement; it never edits confirmed quantity facts.
 - Accounting journal posting is outside Phase 21.
 
 ## Argin Bridge Requirements
 
 Authoritative valuation facts and policy history use durable IDs independent of SQLite row identity. Phase 20 movement IDs, policy IDs, cost-basis IDs, strategy version, currency, stream revisions, request identities and effective chronology must survive future synchronization. Phase 21 valuation sync uses versioned envelopes for policy history and resolved cost inputs; derived entries, cost layers, state projections and report rows are rebuilt at the destination. SQLite Desktop and future PostgreSQL/.NET Server implementations must derive identical valuation from identical authoritative facts and algorithm versions. Live transport, acknowledgements, dependency queues, retries and distributed conflict resolution remain Phase 45 scope.
+
+Manual or future ERP/Purchase-sourced inbound Cost Inputs use durable source identity and remain authoritative Bridge facts. A manually entered cost must therefore synchronize as the same authoritative resolved Cost Input as a future server-created cost input, rather than as a UI-only or SQLite-only field.
 
 ## Step Status
 
@@ -88,7 +92,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 14 | Argin Bridge and Valuation Synchronization Contract | Completed |
 | 15 | Permissions, Audit and Traceability | Completed |
 | 16 | Valuation Query Engine and Reports | Completed |
-| 17 | Persian RTL Inventory Valuation Workspace | Completed |
+| 17 | Persian RTL Inventory Valuation Workspace | Reopened — inbound cost entry completion required |
 | 18 | Domain and Application Tests | Not started |
 | 19 | Repository, Migration, Bridge and Performance Tests | Not started |
 | 20 | Monorepo Validation, Documentation, Final Review and Release | Not started |
@@ -144,13 +148,35 @@ Protect privileged monetary operations and policy transitions and record explain
 Deliver bounded on-hand value, monetary Kardex, Product/Warehouse value, layer detail, as-of, unresolved and recalculation reports.
 
 ### Step 17 — Persian RTL Inventory Valuation Workspace
-Deliver Persian RTL valuation inspection/diagnostic UI, source drill-down and Company policy/history surfaces.
+Deliver Persian RTL valuation inspection/diagnostic UI, source drill-down and Company policy/history surfaces, plus the bounded mutation path required to resolve inbound movements that have no monetary basis.
+
+#### Step 17 completion addendum — Inbound Cost Entry
+
+The following work is mandatory before Step 17 can return to `Completed`:
+
+1. **Cost-input eligibility query** — expose confirmed inbound Phase 20 movements that require monetary basis and indicate `resolved` / `unresolved` state without treating missing cost as zero.
+2. **Entry points** — add `ثبت بهای ورودی` / `تعیین بهای ورودی` from the inventory valuation workspace and, where the confirmed inventory-document detail can safely deep-link, from the confirmed receipt row/detail. The receipt itself remains quantity-only and immutable.
+3. **Persian RTL form** — show read-only movement/document/product/warehouse/quantity context and editable monetary fields: base cost (unit and/or total with deterministic conversion), currency, cost effective/source date where contractually required, source type, source reference/description, and optional landed-cost components only where already supported by Step 5 contracts.
+4. **Deterministic money rules** — safe-integer smallest-unit storage, explicit currency, no binary floating-point monetary persistence, and deterministic unit/total derivation consistent with Step 5 valuation scale.
+5. **Application mutation** — submit through valuation Application contracts, not direct React/SQLite writes. Create or correct a durable resolved Cost Input linked to the authoritative `movementId`.
+6. **Permissions** — require the operation-specific cost-input permission defined by Step 15; view permission alone is insufficient.
+7. **Idempotency/concurrency** — mutation must carry durable `requestId`, Product stream expected revision/version where applicable, reject conflicting replay, and preserve Step 13 transaction/CAS rules.
+8. **Audit/traceability** — record actor, request, before/after monetary evidence, movement/source references and correction reason when replacing/correcting an existing Cost Input. Successful replay must not duplicate audit evidence.
+9. **Revaluation trigger** — a new or corrected cost input must invalidate/recalculate from the earliest affected chronology point using Step 9 rather than patching derived layers/entries directly.
+10. **FIFO behavior** — after resolution/recalculation, the confirmed inbound quantity must produce/rebuild the appropriate FIFO cost layer with correct original/remaining quantity and monetary basis.
+11. **Moving Weighted Average behavior** — after resolution/recalculation, the same cost input must update/rebuild the moving-average monetary pool deterministically under the Company policy effective for chronology.
+12. **Unresolved UX** — unresolved rows remain visible with a clear Persian status such as `بهای تعیین‌نشده`; they must never display a fabricated zero value. The workspace must provide a direct action to resolve eligible rows.
+13. **Correction UX** — an existing resolved cost must not be silently overwritten. Corrections require an explicit action, reason, permission, audit evidence and deterministic downstream recalculation.
+14. **Bridge compatibility** — manual cost inputs use durable IDs/source identity and the same authoritative sync envelope semantics as future ERP/Purchase-sourced cost inputs. UI-only state is forbidden.
+15. **Source ownership boundary** — Phase 21 may manually resolve cost for testing/standalone inventory flows, while future Purchase/ERP integration may supply cost automatically through the same bounded contract. Phase 21 does not take ownership of Purchase invoices, vendor settlement or accounting journal posting.
+16. **Focused Step 17 tests** — add UI/application contract tests for eligibility, validation, permission denial, successful resolution, unresolved display, correction confirmation, duplicate request replay and recalculation wiring.
+17. **Owner acceptance scenario** — only after implementation, execute the agreed receipt → cost input → valuation scenario for both FIFO and Moving Weighted Average and verify reports/layers/currentness. Step 17 is not re-completed before this acceptance.
 
 ### Step 18 — Domain and Application Tests
-Cover strategy, allocation, transfer, reversal, backdated, unresolved, scope, idempotency and concurrency behavior.
+Cover strategy, allocation, transfer, reversal, backdated, unresolved, scope, idempotency and concurrency behavior, including the inbound-cost-entry Application mutation and correction/recalculation path introduced by CR-21-002.
 
 ### Step 19 — Repository, Migration, Bridge and Performance Tests
-Cover real SQLite upgrade/restart/rollback, policy/history persistence, serialization/replay invariants, Bridge round-trips, query plans and representative scale.
+Cover real SQLite upgrade/restart/rollback, policy/history persistence, Cost Input persistence/correction, serialization/replay invariants, Bridge round-trips, query plans and representative scale.
 
 ### Step 20 — Monorepo Validation, Documentation, Final Review and Release
 Run all gates, reconcile canonical docs, review deferred scope, merge according to workflow and prepare `v0.21.0`.
@@ -242,6 +268,7 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 - Added `inventory-valuation-workspace-page.css` with RTL layout, responsive behavior, stable LTR identifier isolation and shared density variables.
 - Added focused Desktop contract tests for route/navigation permission, Persian RTL surfaces, Bridge-authority copy, current-layer semantics and trace drill-down wiring.
 - Added `docs/architecture/inventory-valuation-persian-rtl-workspace.md`.
+- **CR-21-002 reopens Step 17 because the current workspace can diagnose unresolved inbound cost but does not yet provide the required end-to-end Cost Input mutation/correction path.**
 - Step 18 owns broader Domain/Application test expansion; Step 19 owns real SQLite/Bridge/performance validation.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
@@ -257,3 +284,18 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 - Changes use controlled policy transitions with `effectiveFrom`, immutable history, authorization/Audit in their owning later steps.
 - Prefer fiscal-year-boundary transitions; historical/recalculated valuation resolves the policy effective for relevant chronology.
 - Bridge contracts preserve policy identity, method, strategy version, effective date, revision and history.
+
+### CR-21-002 — End-to-End Inbound Cost Entry for Confirmed Receipts
+
+- Date: 2026-09-13
+- Status: Approved by owner
+- Trigger: owner acceptance testing showed that confirmed inventory receipts accept quantity but expose no end-to-end UI/application path for entering the monetary basis required by valuation.
+- Step sequence impact: none; all 20 step titles/order remain unchanged.
+- Ownership impact: Step 17 is reopened only to complete the missing bounded Cost Input mutation/correction UX and its Application wiring. Existing Step 5/9/13/14/15 contracts and invariants remain authoritative and must be reused rather than bypassed.
+- Receipt/document quantity remains owned by Phase 20 and immutable after confirmation; price is not added as an editable quantity-document field.
+- The user must be able to resolve an eligible confirmed inbound movement from the Persian RTL valuation workspace, with an optional safe deep-link from the confirmed receipt detail.
+- Missing cost remains explicit `unresolved`; zero is never substituted.
+- Cost entry/correction must use durable `movementId`, Cost Input identity, permission, idempotency, optimistic concurrency, Audit, traceability and deterministic recalculation.
+- The same resolved Cost Input must feed FIFO or Moving Weighted Average according to the Company policy effective for chronology.
+- Manual cost entry is a standalone/fallback source; future Purchase/ERP automation must use the same bounded authoritative Cost Input contract.
+- Step 17 completion requires focused tests plus owner acceptance of the receipt → cost input → valuation scenario before Step 18 begins.
