@@ -1,0 +1,40 @@
+.valuation-policy-setup__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.valuation-policy-setup__grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 700;
+}
+.valuation-policy-setup__grid select {
+  width: 100%;
+  min-height: var(--ui-density-control-height, 36px);
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  padding: 0 10px;
+}
+.valuation-policy-setup__grid small {
+  color: var(--text-muted, #667085);
+  font-weight: 400;
+  line-height: 1.7;
+}
+.valuation-policy-setup__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.valuation-policy-setup__actions button {
+  min-height: var(--ui-density-control-height, 36px);
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 8px;
+  padding: 0 14px;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .valuation-policy-setup__grid { grid-template-columns: 1fr; }
+}
