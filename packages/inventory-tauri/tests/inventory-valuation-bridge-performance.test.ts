@@ -6,7 +6,7 @@ import { applyMigrations, openTestSqlite } from "./sqlite-test-support.ts";
 test("persisted authoritative Cost Input round-trips through the Bridge envelope without monetary drift", async () => {
   const db = await openTestSqlite();
   try {
-    await applyMigrations(db,29);
+    await applyMigrations(db,29,27);
     db.prepare(`INSERT INTO inventory_valuation_cost_inputs(
       basis_line_id,company_id,movement_id,product_id,warehouse_id,quantity,currency,
       base_cost,landed_cost,total_cost,unit_cost,allocations_json,revision)
@@ -46,7 +46,7 @@ test("persisted authoritative Cost Input round-trips through the Bridge envelope
 test("representative-scale valuation lookup stays indexed with ten thousand entries", async () => {
   const db = await openTestSqlite();
   try {
-    await applyMigrations(db,29);
+    await applyMigrations(db,29,27);
     db.exec("BEGIN IMMEDIATE");
     const insert = db.prepare(`INSERT INTO inventory_valuation_entries(
       valuation_entry_id,company_id,product_id,movement_id,document_id,line_id,kind,method,
