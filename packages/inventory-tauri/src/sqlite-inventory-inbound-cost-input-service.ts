@@ -21,6 +21,24 @@ export interface InventoryInboundCostCandidate {
   readonly policyReady: boolean;
 }
 
+export interface InventoryResolvedInboundCost {
+  readonly basisLineId: string;
+  readonly movementId: string;
+  readonly documentId: string;
+  readonly lineId: string;
+  readonly productId: string;
+  readonly warehouseId: string;
+  readonly businessDate: string;
+  readonly businessOrder: number;
+  readonly quantity: string;
+  readonly unitCost: string;
+  readonly totalCost: number;
+  readonly currency: string;
+  readonly method: InventoryInboundCostMethod | null;
+  readonly revision: number;
+  readonly valuationCreated: boolean;
+}
+
 export interface SetManualInventoryInboundCostInput {
   readonly companyId: string;
   readonly movementId: string;
@@ -28,6 +46,12 @@ export interface SetManualInventoryInboundCostInput {
   readonly actorId: string;
   readonly requestId: string;
   readonly occurredAt: string;
+}
+
+export interface CorrectManualInventoryInboundCostInput
+  extends SetManualInventoryInboundCostInput {
+  readonly reason: string;
+  readonly expectedRevision: number;
 }
 
 export interface SetManualInventoryInboundCostResult {
@@ -61,6 +85,19 @@ type ExistingCostRow = {
   unit_cost: string;
   total_cost: number;
   currency: string;
+};
+
+type ResolvedCostRow = ExistingCostRow & {
+  movement_id: string;
+  document_id: string;
+  line_id: string;
+  product_id: string;
+  warehouse_id: string;
+  business_date: string;
+  business_order: number;
+  method: InventoryInboundCostMethod | null;
+  revision: number;
+  valuation_created: number;
 };
 
 type ExistingEntryRow = {
@@ -161,6 +198,26 @@ function candidateFromRow(row: CandidateRow): InventoryInboundCostCandidate {
   });
 }
 
+function resolvedCostFromRow(row: ResolvedCostRow): InventoryResolvedInboundCost {
+  return Object.freeze({
+    basisLineId: row.basis_line_id,
+    movementId: row.movement_id,
+    documentId: row.document_id,
+    lineId: row.line_id,
+    productId: row.product_id,
+    warehouseId: row.warehouse_id,
+    businessDate: row.business_date,
+    businessOrder: row.business_order,
+    quantity: row.quantity,
+    unitCost: row.unit_cost,
+    totalCost: row.total_cost,
+    currency: row.currency,
+    method: row.method,
+    revision: row.revision,
+    valuationCreated: Boolean(row.valuation_created),
+  });
+}
+
 const candidateSql = `
   SELECT
     m.movement_id,
@@ -195,6 +252,29 @@ const candidateSql = `
     AND m.quantity_delta NOT LIKE '-%'
     AND m.quantity_delta NOT IN ('0','0.0','0.00')
     AND c.basis_line_id IS NULL`;
+
+const resolvedSql = `
+  SELECT
+    c.basis_line_id,c.movement_id,c.quantity,c.unit_cost,c.total_cost,c.currency,c.revision,
+    m.document_id,m.line_id,m.product_id,m.warehouse_id,m.business_date,m.business_order,
+    p.method,
+    CASE WHEN e.valuation_entry_id IS NULL THEN 0 ELSE 1 END AS valuation_created
+  FROM inventory_valuation_cost_inputs c
+  JOIN inventory_all_stock_movements m
+    ON m.company_id=c.company_id AND m.movement_id=c.movement_id
+  JOIN warehouses w
+    ON w.company_id=m.company_id AND w.id=m.warehouse_id AND w.deleted_at IS NULL
+  LEFT JOIN inventory_valuation_policies p
+    ON p.policy_id=(
+      SELECT p2.policy_id
+      FROM inventory_valuation_policies p2
+      WHERE p2.company_id=m.company_id AND p2.effective_from<=m.business_date
+      ORDER BY p2.effective_from DESC,p2.revision DESC
+      LIMIT 1
+    )
+  LEFT JOIN inventory_valuation_entries e
+    ON e.company_id=c.company_id AND e.movement_id=c.movement_id
+  WHERE c.company_id=?`;
 
 export class SqliteInventoryInboundCostInputService {
   constructor(private readonly db: DatabaseExecutor) {}
@@ -241,6 +321,44 @@ export class SqliteInventoryInboundCostInputService {
     return Object.freeze(rows.map(candidateFromRow));
   }
 
+  async listResolved(input: {
+    companyId: string;
+    branchId: string | null;
+    productId?: string | null;
+    warehouseId?: string | null;
+    fromBusinessDate?: string | null;
+    limit?: number;
+  }): Promise<readonly InventoryResolvedInboundCost[]> {
+    const params: DatabaseValue[] = [requiredText(input.companyId, "companyId")];
+    const clauses: string[] = [];
+    if (input.branchId) {
+      clauses.push("(w.organizational_scope='company' OR w.branch_id=?)");
+      params.push(input.branchId);
+    }
+    if (input.productId) {
+      clauses.push("m.product_id=?");
+      params.push(input.productId);
+    }
+    if (input.warehouseId) {
+      clauses.push("m.warehouse_id=?");
+      params.push(input.warehouseId);
+    }
+    if (input.fromBusinessDate) {
+      clauses.push("m.business_date>=?");
+      params.push(input.fromBusinessDate);
+    }
+    const limit = Math.max(1, Math.min(input.limit ?? 100, 500));
+    params.push(limit);
+    const filterSql = clauses.length ? ` AND ${clauses.join(" AND ")}` : "";
+    const rows = await this.db.query<ResolvedCostRow>(
+      `${resolvedSql}${filterSql}
+       ORDER BY m.business_date DESC,m.business_order DESC,m.document_id,m.line_id,m.movement_id
+       LIMIT ?`,
+      params,
+    );
+    return Object.freeze(rows.map(resolvedCostFromRow));
+  }
+
   async setManualCost(
     input: SetManualInventoryInboundCostInput,
   ): Promise<SetManualInventoryInboundCostResult> {
@@ -264,10 +382,7 @@ export class SqliteInventoryInboundCostInputService {
     );
 
     if (replay) {
-      if (
-        replay.operation !== operation ||
-        replay.payload_fingerprint !== payloadFingerprint
-      ) {
+      if (replay.operation !== operation || replay.payload_fingerprint !== payloadFingerprint) {
         throw new Error("VALUATION_COST_INPUT_IDEMPOTENCY_CONFLICT");
       }
       const existing = await this.db.queryOne<ExistingCostRow>(
@@ -276,20 +391,15 @@ export class SqliteInventoryInboundCostInputService {
          WHERE company_id=? AND basis_line_id=?`,
         [companyId, replay.outcome_id],
       );
-      if (!existing) {
-        throw new Error("VALUATION_COST_INPUT_REPLAY_OUTCOME_MISSING");
-      }
+      if (!existing) throw new Error("VALUATION_COST_INPUT_REPLAY_OUTCOME_MISSING");
       const policy = await this.db.queryOne<{ method: InventoryInboundCostMethod }>(
         `SELECT p.method
          FROM inventory_all_stock_movements m
          LEFT JOIN inventory_valuation_policies p ON p.policy_id=(
-           SELECT p2.policy_id
-           FROM inventory_valuation_policies p2
+           SELECT p2.policy_id FROM inventory_valuation_policies p2
            WHERE p2.company_id=m.company_id AND p2.effective_from<=m.business_date
-           ORDER BY p2.effective_from DESC,p2.revision DESC
-           LIMIT 1
-         )
-         WHERE m.company_id=? AND m.movement_id=?`,
+           ORDER BY p2.effective_from DESC,p2.revision DESC LIMIT 1
+         ) WHERE m.company_id=? AND m.movement_id=?`,
         [companyId, movementId],
       );
       const valuation = await this.db.queryOne<{ found: number }>(
@@ -312,17 +422,12 @@ export class SqliteInventoryInboundCostInputService {
       `${candidateSql} AND m.movement_id=? LIMIT 1`,
       [companyId, movementId],
     );
-
     if (!row) {
       const existing = await this.db.queryOne<{ basis_line_id: string }>(
-        `SELECT basis_line_id
-         FROM inventory_valuation_cost_inputs
-         WHERE company_id=? AND movement_id=?`,
+        `SELECT basis_line_id FROM inventory_valuation_cost_inputs WHERE company_id=? AND movement_id=?`,
         [companyId, movementId],
       );
-      if (existing) {
-        throw new Error("VALUATION_COST_INPUT_ALREADY_RESOLVED");
-      }
+      if (existing) throw new Error("VALUATION_COST_INPUT_ALREADY_RESOLVED");
       throw new Error("VALUATION_COST_INPUT_MOVEMENT_NOT_ELIGIBLE");
     }
 
@@ -336,44 +441,25 @@ export class SqliteInventoryInboundCostInputService {
 
     await this.db.transaction(async (session: DatabaseSession) => {
       const existingCost = await session.queryOne<{ basis_line_id: string }>(
-        `SELECT basis_line_id
-         FROM inventory_valuation_cost_inputs
-         WHERE company_id=? AND movement_id=?`,
+        `SELECT basis_line_id FROM inventory_valuation_cost_inputs WHERE company_id=? AND movement_id=?`,
         [companyId, movementId],
       );
-      if (existingCost) {
-        throw new Error("VALUATION_COST_INPUT_ALREADY_RESOLVED");
-      }
+      if (existingCost) throw new Error("VALUATION_COST_INPUT_ALREADY_RESOLVED");
 
       await session.execute(
         `INSERT INTO inventory_valuation_cost_inputs(
           basis_line_id,company_id,movement_id,product_id,warehouse_id,quantity,
           currency,base_cost,landed_cost,total_cost,unit_cost,allocations_json,revision
         ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1)`,
-        [
-          basisLineId,
-          companyId,
-          movementId,
-          candidate.productId,
-          candidate.warehouseId,
-          candidate.quantity,
-          candidate.currency,
-          totalCost,
-          0,
-          totalCost,
-          unitCost,
-          "[]",
-        ],
+        [basisLineId,companyId,movementId,candidate.productId,candidate.warehouseId,
+          candidate.quantity,candidate.currency,totalCost,0,totalCost,unitCost,"[]"],
       );
 
       if (candidate.policyReady && candidate.method && candidate.strategyVersion) {
         const existingEntry = await session.queryOne<ExistingEntryRow>(
-          `SELECT cost_state
-           FROM inventory_valuation_entries
-           WHERE company_id=? AND movement_id=?`,
+          `SELECT cost_state FROM inventory_valuation_entries WHERE company_id=? AND movement_id=?`,
           [companyId, movementId],
         );
-
         if (!existingEntry) {
           await session.execute(
             `INSERT INTO inventory_valuation_entries(
@@ -388,18 +474,8 @@ export class SqliteInventoryInboundCostInputService {
               'resolved',NULL,?,1
             FROM inventory_all_stock_movements m
             WHERE m.company_id=? AND m.movement_id=?`,
-            [
-              valuationEntryId,
-              candidate.method,
-              candidate.strategyVersion,
-              candidate.currency,
-              candidate.quantity,
-              unitCost,
-              totalCost,
-              valuedAt,
-              companyId,
-              movementId,
-            ],
+            [valuationEntryId,candidate.method,candidate.strategyVersion,candidate.currency,
+              candidate.quantity,unitCost,totalCost,valuedAt,companyId,movementId],
           );
         } else if (existingEntry.cost_state === "unresolved") {
           await session.execute(
@@ -407,11 +483,10 @@ export class SqliteInventoryInboundCostInputService {
              SET unit_cost=?,total_cost=?,cost_state='resolved',unresolved_reason=NULL,
                  valued_at=?,revision=revision+1
              WHERE company_id=? AND movement_id=? AND cost_state='unresolved'`,
-            [unitCost, totalCost, valuedAt, companyId, movementId],
+            [unitCost,totalCost,valuedAt,companyId,movementId],
           );
         }
         valuationCreated = true;
-
         if (candidate.method === "fifo") {
           await session.execute(
             `INSERT INTO inventory_valuation_cost_layers(
@@ -424,23 +499,10 @@ export class SqliteInventoryInboundCostInputService {
               m.zone_id,m.location_id,m.business_date,m.business_order,?,?,?,?,?,1
             FROM inventory_all_stock_movements m
             WHERE m.company_id=? AND m.movement_id=?
-              AND NOT EXISTS(
-                SELECT 1 FROM inventory_valuation_cost_layers l
-                WHERE l.company_id=m.company_id AND l.source_movement_id=m.movement_id
-              )`,
-            [
-              costLayerId,
-              valuationEntryId,
-              candidate.strategyVersion,
-              candidate.currency,
-              candidate.quantity,
-              candidate.quantity,
-              unitCost,
-              totalCost,
-              totalCost,
-              companyId,
-              movementId,
-            ],
+              AND NOT EXISTS(SELECT 1 FROM inventory_valuation_cost_layers l
+                WHERE l.company_id=m.company_id AND l.source_movement_id=m.movement_id)`,
+            [costLayerId,valuationEntryId,candidate.strategyVersion,candidate.currency,
+              candidate.quantity,candidate.quantity,unitCost,totalCost,totalCost,companyId,movementId],
           );
         }
       }
@@ -450,28 +512,80 @@ export class SqliteInventoryInboundCostInputService {
           company_id,request_id,operation,payload_fingerprint,outcome_kind,
           outcome_id,outcome_revision,recorded_at
         ) VALUES(?,?,?,?,?,?,?,?)`,
-        [
-          companyId,
-          requestId,
-          operation,
-          payloadFingerprint,
-          "valuation",
-          basisLineId,
-          1,
-          valuedAt,
-        ],
+        [companyId,requestId,operation,payloadFingerprint,"valuation",basisLineId,1,valuedAt],
       );
     });
 
-    return Object.freeze({
-      basisLineId,
-      movementId,
-      quantity: candidate.quantity,
-      unitCost,
-      totalCost,
-      currency: candidate.currency,
-      method: candidate.method,
-      valuationCreated,
+    return Object.freeze({basisLineId,movementId,quantity:candidate.quantity,unitCost,totalCost,
+      currency:candidate.currency,method:candidate.method,valuationCreated});
+  }
+
+  async correctManualCost(
+    input: CorrectManualInventoryInboundCostInput,
+  ): Promise<SetManualInventoryInboundCostResult> {
+    const companyId = requiredText(input.companyId, "companyId");
+    const movementId = requiredText(input.movementId, "movementId");
+    requiredText(input.actorId, "actorId");
+    const reason = requiredText(input.reason, "reason");
+    const requestId = requiredText(input.requestId, "requestId");
+    if (!Number.isSafeInteger(input.expectedRevision) || input.expectedRevision < 1) {
+      throw new Error("VALUATION_COST_INPUT_INVALID:expectedRevision");
+    }
+    const occurredAt = new Date(input.occurredAt);
+    if (!Number.isFinite(occurredAt.getTime())) throw new Error("VALUATION_COST_INPUT_INVALID:occurredAt");
+    const unitCost = canonicalDecimal(input.unitCost, "unitCost");
+    const operation = "inventory.valuation.cost-input.correct";
+    const payloadFingerprint = JSON.stringify({movementId,unitCost,reason,expectedRevision:input.expectedRevision});
+
+    const replay = await this.db.queryOne<IdempotencyRow>(
+      `SELECT operation,payload_fingerprint,outcome_id FROM inventory_valuation_idempotency
+       WHERE company_id=? AND request_id=?`, [companyId,requestId],
+    );
+    if (replay) {
+      if (replay.operation !== operation || replay.payload_fingerprint !== payloadFingerprint) {
+        throw new Error("VALUATION_COST_INPUT_IDEMPOTENCY_CONFLICT");
+      }
+      const current = await this.db.queryOne<ResolvedCostRow>(
+        `${resolvedSql} AND c.basis_line_id=? LIMIT 1`, [companyId,replay.outcome_id],
+      );
+      if (!current) throw new Error("VALUATION_COST_INPUT_REPLAY_OUTCOME_MISSING");
+      const resolved = resolvedCostFromRow(current);
+      return Object.freeze({basisLineId:resolved.basisLineId,movementId:resolved.movementId,
+        quantity:resolved.quantity,unitCost:resolved.unitCost,totalCost:resolved.totalCost,
+        currency:resolved.currency,method:resolved.method,valuationCreated:resolved.valuationCreated});
+    }
+
+    const currentRow = await this.db.queryOne<ResolvedCostRow>(
+      `${resolvedSql} AND c.movement_id=? LIMIT 1`, [companyId,movementId],
+    );
+    if (!currentRow) throw new Error("VALUATION_COST_INPUT_NOT_FOUND");
+    const current = resolvedCostFromRow(currentRow);
+    if (current.revision !== input.expectedRevision) throw new Error("VALUATION_COST_INPUT_CONCURRENCY_CONFLICT");
+    if (current.valuationCreated) {
+      throw new Error("VALUATION_COST_INPUT_CORRECTION_RECALCULATION_REQUIRED");
+    }
+    const totalCost = calculateRoundedTotalCost(current.quantity,unitCost);
+    const recordedAt = occurredAt.toISOString();
+
+    await this.db.transaction(async (session: DatabaseSession) => {
+      const result = await session.execute(
+        `UPDATE inventory_valuation_cost_inputs
+         SET base_cost=?,total_cost=?,unit_cost=?,revision=revision+1
+         WHERE company_id=? AND movement_id=? AND revision=?`,
+        [totalCost,totalCost,unitCost,companyId,movementId,input.expectedRevision],
+      );
+      if (result.rowsAffected !== 1) throw new Error("VALUATION_COST_INPUT_CONCURRENCY_CONFLICT");
+      await session.execute(
+        `INSERT INTO inventory_valuation_idempotency(
+          company_id,request_id,operation,payload_fingerprint,outcome_kind,
+          outcome_id,outcome_revision,recorded_at
+        ) VALUES(?,?,?,?,?,?,?,?)`,
+        [companyId,requestId,operation,payloadFingerprint,"valuation",current.basisLineId,
+          input.expectedRevision+1,recordedAt],
+      );
     });
+
+    return Object.freeze({basisLineId:current.basisLineId,movementId,quantity:current.quantity,
+      unitCost,totalCost,currency:current.currency,method:current.method,valuationCreated:false});
   }
 }
