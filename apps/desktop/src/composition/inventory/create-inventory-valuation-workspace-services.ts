@@ -20,6 +20,18 @@ import {
   type SetManualInventoryInboundCostResult,
 } from "@argin/inventory-tauri";
 
+export type InventoryInboundCostDisplayCandidate = InventoryInboundCostCandidate & {
+  readonly documentLabel: string;
+  readonly productLabel: string;
+  readonly warehouseLabel: string;
+};
+
+type DocumentLabelRow = { id: string; document_number: string | null };
+type ProductLabelRow = { id: string; code: string; title: string };
+type WarehouseLabelRow = { id: string; code: string; title: string };
+
+const shortId = (value: string) => value.length > 12 ? `${value.slice(0, 8)}…` : value;
+
 export interface InventoryValuationWorkspaceServices {
   canView: boolean;
   canManagePolicy: boolean;
@@ -70,7 +82,7 @@ export interface InventoryValuationWorkspaceServices {
     warehouseId: string | null;
     fromBusinessDate: string | null;
     limit: number;
-  }): Promise<readonly InventoryInboundCostCandidate[]>;
+  }): Promise<readonly InventoryInboundCostDisplayCandidate[]>;
 
   setManualInboundCost(input: {
     companyId: string;
@@ -81,21 +93,10 @@ export interface InventoryValuationWorkspaceServices {
     occurredAt: string;
   }): Promise<SetManualInventoryInboundCostResult>;
 
-  readStatus(
-    companyId: string,
-    productId: string | null,
-  ): Promise<InventoryValuationRecalculationStatusReport>;
-
-  getPolicyHistory(
-    companyId: string,
-  ): Promise<readonly InventoryValuationPolicySnapshot[]>;
-
+  readStatus(companyId: string, productId: string | null): Promise<InventoryValuationRecalculationStatusReport>;
+  getPolicyHistory(companyId: string): Promise<readonly InventoryValuationPolicySnapshot[]>;
   selectProducts(companyId: string): Promise<readonly ProductSelectorItemDto[]>;
-
-  selectWarehouses(
-    companyId: string,
-    branchId: string | null,
-  ): Promise<readonly WarehouseListItemDto[]>;
+  selectWarehouses(companyId: string, branchId: string | null): Promise<readonly WarehouseListItemDto[]>;
 }
 
 export function createInventoryValuationWorkspaceServices(
@@ -108,32 +109,19 @@ export function createInventoryValuationWorkspaceServices(
   const inboundCosts = new SqliteInventoryInboundCostInputService(database);
   const products = new SqliteProductSelectorReader(database);
   const warehouses = new SqliteWarehouseReader(database);
-
   const hasFullAccess = permissions.includes("system.full-access");
 
   function hasPermission(permission: string): boolean {
     return hasFullAccess || permissions.includes(permission);
   }
-
   function requireViewPermission(): void {
-    if (!hasPermission(inventoryValuationPermissions.view)) {
-      throw new Error("برای مشاهده ارزش‌گذاری موجودی مجوز کافی ندارید.");
-    }
+    if (!hasPermission(inventoryValuationPermissions.view)) throw new Error("برای مشاهده ارزش‌گذاری موجودی مجوز کافی ندارید.");
   }
-
   function requireCostResolutionPermission(): void {
-    if (!hasPermission(inventoryValuationPermissions.resolve)) {
-      throw new Error("برای ثبت بهای ورودی مجوز کافی ندارید.");
-    }
+    if (!hasPermission(inventoryValuationPermissions.resolve)) throw new Error("برای ثبت بهای ورودی مجوز کافی ندارید.");
   }
-
   function requireBranchAccess(branchId: string | null): void {
-    if (
-      !hasFullAccess &&
-      (branchId === null || !branchIds.includes(branchId))
-    ) {
-      throw new Error("محدوده شعبه مجاز نیست.");
-    }
+    if (!hasFullAccess && (branchId === null || !branchIds.includes(branchId))) throw new Error("محدوده شعبه مجاز نیست.");
   }
 
   return {
@@ -146,68 +134,77 @@ export function createInventoryValuationWorkspaceServices(
       requireBranchAccess(query.branchId);
       return reports.readAsOf(query);
     },
-
     async readKardex(query) {
       requireViewPermission();
       requireBranchAccess(query.branchId);
       return reports.readMonetaryKardex(query);
     },
-
     async readLayers(query) {
       requireViewPermission();
       requireBranchAccess(query.branchId);
       return reports.readLayers(query);
     },
-
     async readUnresolved(query) {
       requireViewPermission();
       requireBranchAccess(query.branchId);
       return reports.readUnresolved(query);
     },
-
     async readInboundCostCandidates(query) {
       requireViewPermission();
       requireBranchAccess(query.branchId);
-      return inboundCosts.listCandidates(query);
-    },
+      const candidates = await inboundCosts.listCandidates(query);
+      if (candidates.length === 0) return Object.freeze([]);
 
+      const documentIds = [...new Set(candidates.map((row) => row.documentId))];
+      const productIds = [...new Set(candidates.map((row) => row.productId))];
+      const warehouseIds = [...new Set(candidates.map((row) => row.warehouseId))];
+
+      const [documentRows, productRows, warehouseRows] = await Promise.all([
+        database.query<DocumentLabelRow>(
+          `SELECT id,document_number FROM inventory_documents WHERE company_id=? AND id IN (${documentIds.map(() => "?").join(",")})`,
+          [query.companyId, ...documentIds],
+        ),
+        database.query<ProductLabelRow>(
+          `SELECT id,code,title FROM products WHERE company_id=? AND id IN (${productIds.map(() => "?").join(",")})`,
+          [query.companyId, ...productIds],
+        ),
+        database.query<WarehouseLabelRow>(
+          `SELECT id,code,title FROM warehouses WHERE company_id=? AND id IN (${warehouseIds.map(() => "?").join(",")})`,
+          [query.companyId, ...warehouseIds],
+        ),
+      ]);
+
+      const documentMap = new Map(documentRows.map((row) => [row.id, row.document_number]));
+      const productMap = new Map(productRows.map((row) => [row.id, `${row.code} — ${row.title}`]));
+      const warehouseMap = new Map(warehouseRows.map((row) => [row.id, `${row.code} — ${row.title}`]));
+
+      return Object.freeze(candidates.map((row) => Object.freeze({
+        ...row,
+        documentLabel: documentMap.get(row.documentId) ?? `سند ${shortId(row.documentId)}`,
+        productLabel: productMap.get(row.productId) ?? shortId(row.productId),
+        warehouseLabel: warehouseMap.get(row.warehouseId) ?? shortId(row.warehouseId),
+      })));
+    },
     async setManualInboundCost(input) {
       requireCostResolutionPermission();
       return inboundCosts.setManualCost(input);
     },
-
     async readStatus(companyId, productId) {
       requireViewPermission();
       return reports.readRecalculationStatus({ companyId, productId });
     },
-
     async getPolicyHistory(companyId) {
       requireViewPermission();
       return policies.listByCompany(companyId);
     },
-
     async selectProducts(companyId) {
       requireViewPermission();
-      return products.select({
-        companyId,
-        search: null,
-        kinds: ["product"],
-        statuses: ["active"],
-        stockTracking: true,
-        limit: 100,
-      });
+      return products.select({ companyId, search: null, kinds: ["product"], statuses: ["active"], stockTracking: true, limit: 100 });
     },
-
     async selectWarehouses(companyId, branchId) {
       requireViewPermission();
       requireBranchAccess(branchId);
-      return warehouses.select({
-        companyId,
-        branchId: branchId ?? undefined,
-        includeCompanyWide: true,
-        statuses: ["active"],
-        limit: 100,
-      });
+      return warehouses.select({ companyId, branchId: branchId ?? undefined, includeCompanyWide: true, statuses: ["active"], limit: 100 });
     },
   };
 }

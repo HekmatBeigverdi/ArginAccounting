@@ -43,9 +43,26 @@ test("confirmed old and new inbound movements can receive manual cost",async()=>
   assert.match(page,/readInboundCostCandidates/);
   assert.match(page,/setManualInboundCost/);
   assert.match(panels,/ورودی‌های قطعی‌شده با بهای تعیین‌نشده/);
-  assert.match(panels,/رسیدهای قدیمی و جدید هر دو قابل قیمت‌گذاری هستند/);
+  assert.match(panels,/رسیدهای قدیمی و جدید/);
   assert.match(panels,/تعیین بهای ورودی/);
   assert.match(composition,/inventoryValuationPermissions\.resolve/);
+});
+
+test("valuation unresolved rows use readable business labels instead of raw UUIDs",async()=>{
+  const [panels,composition,css]=await Promise.all([
+    read("src/pages/inventory/inventory-valuation-panels.tsx"),
+    read("src/composition/inventory/create-inventory-valuation-workspace-services.ts"),
+    read("src/pages/inventory/inventory-valuation-workspace-page.css"),
+  ]);
+  assert.match(composition,/documentLabel/);
+  assert.match(composition,/productLabel/);
+  assert.match(composition,/warehouseLabel/);
+  assert.match(composition,/document_number/);
+  assert.match(composition,/SELECT id,code,title FROM products/);
+  assert.match(composition,/SELECT id,code,title FROM warehouses/);
+  assert.match(panels,/valuation-readable/);
+  assert.match(css,/min-width:0/);
+  assert.match(css,/overflow-x:auto/);
 });
 
 test("inventory valuation source references use canonical filenames",async()=>{
