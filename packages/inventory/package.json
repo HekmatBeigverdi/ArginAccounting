@@ -15,7 +15,8 @@
     "./cost-resolution-policy": "./src/domain/inventory-cost-resolution-policy.ts",
     "./valuation-contracts": "./src/application/contracts/inventory-valuation-contracts.ts",
     "./valuation-concurrency": "./src/application/contracts/inventory-valuation-concurrency.ts",
-    "./valuation-sync": "./src/application/contracts/inventory-valuation-sync.ts"
+    "./valuation-sync": "./src/application/contracts/inventory-valuation-sync.ts",
+    "./valuation-security": "./src/application/contracts/inventory-valuation-security.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
