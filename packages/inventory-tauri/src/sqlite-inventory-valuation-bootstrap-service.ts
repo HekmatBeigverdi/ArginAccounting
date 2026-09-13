@@ -227,6 +227,11 @@ const stockKey = (m: MovementRow) =>
 
 const datedStateKey = (m: MovementRow) => `${stockKey(m)}|${m.business_date}`;
 
+const transferPairKey = (m: MovementRow): string => {
+  if (!m.transfer_id) throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${m.movement_id}`);
+  return `${m.transfer_id}|${m.line_id}`;
+};
+
 const emptyState = (): StockState => ({ quantity: "0", totalCost: 0, fifoLayers: [] });
 
 function consumeFifo(state: StockState, quantity: string, movementId: string): FifoConsumption[] {
@@ -255,21 +260,23 @@ function buildTransferPairs(active: readonly MovementRow[]): Map<string, Transfe
   const grouped = new Map<string, MovementRow[]>();
   for (const movement of active) {
     if (!movement.transfer_id) continue;
-    const rows = grouped.get(movement.transfer_id) ?? [];
+    const key = transferPairKey(movement);
+    const rows = grouped.get(key) ?? [];
     rows.push(movement);
-    grouped.set(movement.transfer_id, rows);
+    grouped.set(key, rows);
   }
 
   const pairs = new Map<string, TransferPair>();
-  for (const [transferId, rows] of grouped) {
+  for (const [key, rows] of grouped) {
     if (rows.length !== 2)
-      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${transferId}`);
+      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${key}`);
     const source = rows.find((row) => row.quantity_delta.startsWith("-"));
     const destination = rows.find((row) => !row.quantity_delta.startsWith("-") && row.quantity_delta !== "0");
     if (!source || !destination)
-      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${transferId}`);
+      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${key}`);
     if (
       source.company_id !== destination.company_id ||
+      source.transfer_id !== destination.transfer_id ||
       source.document_id !== destination.document_id ||
       source.line_id !== destination.line_id ||
       source.product_id !== destination.product_id ||
@@ -278,8 +285,8 @@ function buildTransferPairs(active: readonly MovementRow[]): Map<string, Transfe
       stockKey(source) === stockKey(destination) ||
       compareQty(absQty(source.quantity_delta), absQty(destination.quantity_delta)) !== 0
     )
-      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${transferId}`);
-    pairs.set(transferId, { source, destination });
+      throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${key}`);
+    pairs.set(key, { source, destination });
   }
   return pairs;
 }
@@ -376,7 +383,7 @@ export class SqliteInventoryValuationBootstrapService {
     const states = new Map<string, StockState>();
     const datedStates = new Map<string, DatedState>();
     const entries: ValuationEntryBuild[] = [];
-    const processedTransfers = new Set<string>();
+    const processedTransferLines = new Set<string>();
 
     const rememberState = (movement: MovementRow, state: StockState) => {
       datedStates.set(datedStateKey(movement), {
@@ -392,11 +399,12 @@ export class SqliteInventoryValuationBootstrapService {
 
     for (const movement of active) {
       if (movement.transfer_id) {
-        if (processedTransfers.has(movement.transfer_id)) continue;
-        const pair = transferPairs.get(movement.transfer_id);
+        const pairKey = transferPairKey(movement);
+        if (processedTransferLines.has(pairKey)) continue;
+        const pair = transferPairs.get(pairKey);
         if (!pair)
-          throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${movement.transfer_id}`);
-        processedTransfers.add(movement.transfer_id);
+          throw new Error(`VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:${pairKey}`);
+        processedTransferLines.add(pairKey);
 
         const source = pair.source;
         const destination = pair.destination;
@@ -418,7 +426,7 @@ export class SqliteInventoryValuationBootstrapService {
           unitCost = unitCostFrom(carriedCost, quantity);
           consumptions.forEach((item, index) => {
             destinationState.fifoLayers.push({
-              id: `fifo-transfer:${movement.transfer_id}:${index + 1}:${destination.movement_id}`,
+              id: `fifo-transfer:${movement.transfer_id}:${movement.line_id}:${index + 1}:${destination.movement_id}`,
               sourceMovementId: destination.movement_id,
               sourceEntryId: `valuation:${destination.movement_id}`,
               productId: destination.product_id,
