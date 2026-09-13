@@ -65,6 +65,7 @@
 .valuation-tabs button.active { font-weight: 700; border-color: currentColor; }
 
 .valuation-filters {
+  --valuation-filter-control-height: var(--ui-density-control-height, 36px);
   position: relative;
   z-index: 20;
   display: grid;
@@ -78,19 +79,58 @@
   border-radius: 14px;
   background: var(--surface, #fff);
 }
-.valuation-filters label { display: grid; gap: 6px; min-width: 0; font-weight: 600; }
+.valuation-filters label {
+  display: grid;
+  grid-template-rows: auto var(--valuation-filter-control-height);
+  gap: 6px;
+  min-width: 0;
+  align-content: end;
+  font-weight: 600;
+}
 .valuation-filters select,
 .valuation-filters input,
 .valuation-filters > button {
   width: 100%;
   min-width: 0;
-  min-height: var(--ui-density-control-height, 36px);
+  height: var(--valuation-filter-control-height);
+  min-height: var(--valuation-filter-control-height);
+  box-sizing: border-box;
   border: 1px solid var(--border-color, #d0d5dd);
   border-radius: 8px;
   background: var(--surface, #fff);
   padding: 0 10px;
 }
-.valuation-filters > button { font-weight: 700; }
+.valuation-filters select,
+.valuation-filters input {
+  line-height: normal;
+}
+.valuation-filters > button {
+  align-self: end;
+  font-weight: 700;
+}
+
+/* Keep the shared Persian date picker visually identical to the adjacent selects. */
+.valuation-filters .ui-persian-date,
+.valuation-filters .ui-persian-date__control {
+  width: 100%;
+  min-width: 0;
+  height: var(--valuation-filter-control-height);
+}
+.valuation-filters .ui-persian-date__input {
+  height: var(--valuation-filter-control-height);
+  min-height: var(--valuation-filter-control-height);
+  padding-inline: 12px 42px;
+  text-align: right;
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+}
+.valuation-filters .ui-persian-date__trigger {
+  inset-inline-end: 4px;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translateY(-50%);
+}
 
 .valuation-cards {
   display: grid;
