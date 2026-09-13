@@ -22,6 +22,14 @@ export {
 } from "./sqlite-inventory-valuation-concurrency.ts";
 
 export { SqliteInventoryValuationReportReader } from "./sqlite-inventory-valuation-report-reader.ts";
+export {
+  SqliteInventoryInboundCostInputService,
+} from "./sqlite-inventory-inbound-cost-input-service.ts";
+export type {
+  InventoryInboundCostCandidate,
+  SetManualInventoryInboundCostInput,
+  SetManualInventoryInboundCostResult,
+} from "./sqlite-inventory-inbound-cost-input-service.ts";
 export { SqliteInventoryOpeningBalanceRepository } from "./sqlite-inventory-opening-repository.ts";
 export { SqliteInventoryUnitOfWork } from "./sqlite-inventory-unit-of-work.ts";
 export { ensureInventoryNumberSeries } from "./ensure-inventory-number-series.ts";
