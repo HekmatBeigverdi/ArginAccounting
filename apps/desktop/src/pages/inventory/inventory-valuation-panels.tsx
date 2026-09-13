@@ -78,10 +78,20 @@ export function ValuationOverviewPanel({
           <strong>{report.unresolvedRowCount}</strong>
         </article>
       </div>
-      <ValuationTable
-        headers={["کالا", "انبار", "تاریخ", "روش", "تعداد", "ارزش", "وضعیت"]}
-        rows={tableRows}
-      />
+      {tableRows.length === 0 ? (
+        <p className="valuation-empty valuation-empty--diagnostic">
+          برای فیلتر انتخاب‌شده هنوز خروجی ارزش‌گذاری تولید نشده است. اگر Revision
+          بالای صفحه برابر 0 است، ابتدا سیاست ارزش‌گذاری شرکت را تعیین کنید؛ سپس
+          برای ورودی‌های فاقد بها از تب «نیازمند بررسی» بهای ورودی را تکمیل کنید.
+          تا قبل از وجود Policy مؤثر، نمایش ارزش صفر به معنی صفر بودن واقعی ارزش
+          موجودی نیست.
+        </p>
+      ) : (
+        <ValuationTable
+          headers={["کالا", "انبار", "تاریخ", "روش", "تعداد", "ارزش", "وضعیت"]}
+          rows={tableRows}
+        />
+      )}
     </>
   );
 }
