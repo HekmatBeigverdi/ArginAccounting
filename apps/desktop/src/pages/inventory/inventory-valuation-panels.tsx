@@ -115,7 +115,7 @@ function CostFacts({ row }: { row: InboundCostDisplayCandidate | ResolvedCostDis
     <div><dt>تعداد</dt><dd>{row.quantity}</dd></div>
     <div><dt>روش</dt><dd>{row.method ? valuationMethodLabel(row.method) : "سیاست تعیین نشده"}</dd></div>
     <div><dt>ارز</dt><dd>{row.currency}</dd></div>
-    <div><dt>منبع بها</dt><dd>ثبت دستی</dd></div>
+    <div><dt>منبع بها</dt><dd>ثبت دستی استثنایی</dd></div>
   </dl>;
 }
 
@@ -137,7 +137,7 @@ export function ValuationInboundCostPanel({ rows, canResolve, saving, onSetCost 
 
   return <section className="valuation-section valuation-cost-inputs">
     <div className="valuation-section__head">
-      <div><h3>ورودی‌های قطعی‌شده با بهای تعیین‌نشده</h3><p>این مبلغ «بهای خرید/ورودی موجودی» است، نه قیمت فروش. رسیدهای قدیمی و جدید هر دو از همین مسیر قابل تکمیل هستند.</p></div>
+      <div><h3>رفع استثناهای بهای ورودی</h3><p>این بخش فقط برای ورودی‌هایی است که بهای معتبر از فاکتور خرید، افتتاحیه یا منبع بالادستی دیگری دریافت نکرده‌اند. در مسیر عادی خرید، قیمت یک‌بار در فاکتور خرید ثبت و Cost Input خودکار ایجاد می‌شود.</p></div>
       <span className="valuation-count">{rows.length} ردیف</span>
     </div>
     {rows.length === 0 ? <p className="valuation-empty">ورودی قطعی‌شده‌ای با بهای تعیین‌نشده در محدوده انتخاب‌شده وجود ندارد.</p> :
@@ -151,19 +151,19 @@ export function ValuationInboundCostPanel({ rows, canResolve, saving, onSetCost 
           <td className="valuation-number-cell">{row.quantity}</td>
           <td><span className="valuation-unresolved-badge">بهای تعیین‌نشده</span></td>
           <td className="valuation-action-cell">{canResolve
-            ? <button className="valuation-primary-action" onClick={() => {setSelectedRow(row);setUnitCost("");}}>تعیین بها</button>
+            ? <button className="valuation-primary-action" onClick={() => {setSelectedRow(row);setUnitCost("");}}>رفع بهای نامشخص</button>
             : <span className="valuation-muted">بدون مجوز</span>}</td>
         </tr>)}</tbody>
       </table></div>}
 
-    <Dialog open={Boolean(selectedRow)} title="تعیین بهای خرید/ورودی" labelledBy="valuation-inbound-cost-title" onClose={close}
+    <Dialog open={Boolean(selectedRow)} title="رفع بهای ورودی نامشخص" labelledBy="valuation-inbound-cost-title" onClose={close}
       footer={<><button type="button" onClick={close} disabled={saving}>انصراف</button><button type="button" className="valuation-dialog-submit" disabled={saving || !unitCost.trim()} onClick={() => void submitCost()}>{saving ? "در حال ثبت…" : "ثبت بهای ورودی"}</button></>}>
       {selectedRow && <div className="valuation-cost-dialog">
-        <p className="valuation-cost-dialog__hint">تاریخ مبنا همان تاریخ قطعی سند انبار است. این عدد مبنای بهای تمام‌شده موجودی است و برای قیمت فروش استفاده نمی‌شود.</p>
+        <p className="valuation-cost-dialog__hint">این ورود دستی مسیر استثنایی است. تاریخ مبنا همان تاریخ قطعی سند انبار است. در خرید عادی، فاکتور خرید باید این Cost Input را به‌صورت خودکار تأمین کند.</p>
         <CostFacts row={selectedRow} />
-        <label className="valuation-cost-dialog__field">بهای خرید/ورودی هر واحد
+        <label className="valuation-cost-dialog__field">بهای ورودی هر واحد
           <input autoFocus dir="ltr" inputMode="decimal" placeholder="مثلاً 12000000" value={unitCost} onChange={(event) => setUnitCost(event.target.value.replace(/,/gu,""))} disabled={saving} />
-          <small>بهای کل با مقدار سند محاسبه می‌شود. در آینده فاکتور خرید می‌تواند همین Cost Input را به‌صورت خودکار تأمین کند.</small>
+          <small>این عدد مبنای بهای تمام‌شده موجودی است و قیمت فروش نیست. قیمت فروش در ماژول فروش/لیست قیمت مدیریت خواهد شد.</small>
         </label>
       </div>}
     </Dialog>
@@ -189,7 +189,7 @@ export function ValuationRegisteredCostPanel({ rows, canCorrect, saving, onCorre
 
   return <section className="valuation-section valuation-registered-costs">
     <div className="valuation-section__head">
-      <div><h3>بهای خرید/ورودی ثبت‌شده</h3><p>مبالغ فعلی هر رسید را اینجا بررسی کنید. تغییر قیمت بازار یا قیمت فروش از این بخش انجام نمی‌شود.</p></div>
+      <div><h3>بهای ورودی ثبت‌شده — کنترل و ردیابی</h3><p>این جدول برای مشاهده منشأ و بهای تاریخی Cost Inputهاست؛ لیست قیمت خرید آینده یا قیمت فروش نیست. اصلاح فقط برای تصحیح خطای تاریخی انجام می‌شود.</p></div>
       <span className="valuation-count">{rows.length} ردیف</span>
     </div>
     {rows.length === 0 ? <p className="valuation-empty">هنوز بهای ورودی ثبت‌شده‌ای در محدوده انتخاب‌شده وجود ندارد.</p> :
@@ -204,15 +204,15 @@ export function ValuationRegisteredCostPanel({ rows, canCorrect, saving, onCorre
           <td className="valuation-money-cell">{formatMoney(Number(row.unitCost),row.currency)}</td>
           <td className="valuation-money-cell">{formatMoney(row.totalCost,row.currency)}</td>
           <td className="valuation-action-cell">{canCorrect
-            ? <button className="valuation-secondary-action" onClick={() => {setSelectedRow(row);setUnitCost(row.unitCost);setReason("");}}>اصلاح بها</button>
+            ? <button className="valuation-secondary-action" onClick={() => {setSelectedRow(row);setUnitCost(row.unitCost);setReason("");}}>اصلاح تاریخی</button>
             : <span className="valuation-muted">فقط مشاهده</span>}</td>
         </tr>)}</tbody>
       </table></div>}
 
-    <Dialog open={Boolean(selectedRow)} title="اصلاح بهای خرید/ورودی" labelledBy="valuation-inbound-cost-correction-title" onClose={close}
+    <Dialog open={Boolean(selectedRow)} title="اصلاح تاریخی بهای ورودی" labelledBy="valuation-inbound-cost-correction-title" onClose={close}
       footer={<><button type="button" onClick={close} disabled={saving}>انصراف</button><button type="button" className="valuation-dialog-submit" disabled={saving || !unitCost.trim() || !reason.trim()} onClick={() => void submitCorrection()}>{saving ? "در حال اصلاح…" : "ثبت اصلاح بها"}</button></>}>
       {selectedRow && <div className="valuation-cost-dialog">
-        <p className="valuation-cost-dialog__hint valuation-cost-dialog__hint--warning">اصلاح بها فقط برای تصحیح بهای خرید/ورودی همان رسید است؛ مثلاً ثبت اشتباه یا قطعی‌شدن مبلغ فاکتور تأمین‌کننده. افزایش قیمت فروش یا قیمت خریدهای آینده نباید بهای این رسید تاریخی را تغییر دهد.</p>
+        <p className="valuation-cost-dialog__hint valuation-cost-dialog__hint--warning">این عملیات فقط برای تصحیح بهای تاریخی همان ورودی است؛ مثلاً ثبت اشتباه یا قطعی‌شدن مبلغ نهایی تأمین‌کننده. افزایش قیمت خریدهای بعدی باید در فاکتور خرید جدید و تغییر قیمت فروش باید در ماژول فروش ثبت شود.</p>
         <CostFacts row={selectedRow} />
         <div className="valuation-current-cost"><span>بهای فعلی</span><strong>{formatMoney(Number(selectedRow.unitCost),selectedRow.currency)}</strong><small>Revision {selectedRow.revision}</small></div>
         <label className="valuation-cost-dialog__field">بهای صحیح هر واحد
