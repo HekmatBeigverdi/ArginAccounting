@@ -80,11 +80,6 @@ function normalizeVersion(value: number): number {
   return value;
 }
 
-function normalizeRevision(value: number): number {
-  if (!Number.isSafeInteger(value) || value < 1) return fail("VALUATION_POLICY_INPUT_INVALID", "revision");
-  return value;
-}
-
 function normalizeCurrency(value: CurrencyCode | undefined): CurrencyCode {
   try {
     return normalizeCurrencyCode(value ?? IRR.code);

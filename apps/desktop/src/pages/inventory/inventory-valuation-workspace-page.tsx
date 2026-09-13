@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { getDesktopDatabase } from "@argin/database-tauri";
-import type { InventoryValuationAsOfReport, InventoryValuationLayerReport, InventoryValuationMonetaryKardexReport, InventoryValuationRecalculationStatusReport, InventoryValuationUnresolvedReport } from "@argin/inventory/valuation-reports";
+import type {
+  InventoryValuationAsOfReport,
+  InventoryValuationLayerReport,
+  InventoryValuationMonetaryKardexReport,
+  InventoryValuationRecalculationStatusReport,
+  InventoryValuationUnresolvedReport,
+} from "@argin/inventory/valuation-reports";
 import type { InventoryValuationPolicySnapshot } from "@argin/inventory/valuation-policy";
 import type { InventoryValuationTraceSnapshot } from "@argin/inventory/valuation-security";
 import type { ProductSelectorItemDto } from "@argin/product";
@@ -9,30 +15,359 @@ import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
-import { createInventoryValuationWorkspaceServices, type InventoryValuationWorkspaceServices } from "../../composition/inventory/create-inventory-valuation-workspace-services";
+import {
+  createInventoryValuationWorkspaceServices,
+  type InventoryValuationWorkspaceServices,
+} from "../../composition/inventory/create-inventory-valuation-workspace-services";
 import { createInventoryValuationTraceService } from "../../composition/inventory/create-inventory-valuation-trace-service";
 import { gregorianToJalali, jalaliToGregorian } from "./inventory-persian-date";
-import { ValuationKardexPanel, ValuationLayersPanel, ValuationOverviewPanel, ValuationPolicyPanel, ValuationTracePanel, ValuationUnresolvedPanel } from "./inventory-valuation-panels";
+import {
+  ValuationKardexPanel,
+  ValuationLayersPanel,
+  ValuationOverviewPanel,
+  ValuationPolicyPanel,
+  ValuationTracePanel,
+  ValuationUnresolvedPanel,
+} from "./inventory-valuation-panels";
 import "./inventory-valuation-workspace-page.css";
 
-type Tab="overview"|"kardex"|"layers"|"unresolved"|"policy";
-const today=()=>gregorianToJalali(new Date().toISOString().slice(0,10));
+type ValuationTab = "overview" | "kardex" | "layers" | "unresolved" | "policy";
 
-export function InventoryValuationWorkspacePage(){
-  const active=useActiveContext(); const {session}=useAuthSession();
-  const [services,setServices]=useState<InventoryValuationWorkspaceServices|null>(null); const [traceReader,setTraceReader]=useState<((companyId:string,movementId:string)=>Promise<InventoryValuationTraceSnapshot|null>)|null>(null);
-  const [tab,setTab]=useState<Tab>("overview"); const [error,setError]=useState(""); const [loading,setLoading]=useState(false);
-  const [products,setProducts]=useState<readonly ProductSelectorItemDto[]>([]); const [warehouses,setWarehouses]=useState<readonly WarehouseListItemDto[]>([]); const [productId,setProductId]=useState(""); const [warehouseId,setWarehouseId]=useState(""); const [asOf,setAsOf]=useState(today()); const [from,setFrom]=useState(""); const [to,setTo]=useState(today());
-  const [overview,setOverview]=useState<InventoryValuationAsOfReport|null>(null); const [kardex,setKardex]=useState<InventoryValuationMonetaryKardexReport|null>(null); const [layers,setLayers]=useState<InventoryValuationLayerReport|null>(null); const [unresolved,setUnresolved]=useState<InventoryValuationUnresolvedReport|null>(null); const [status,setStatus]=useState<InventoryValuationRecalculationStatusReport|null>(null); const [policies,setPolicies]=useState<readonly InventoryValuationPolicySnapshot[]>([]); const [trace,setTrace]=useState<InventoryValuationTraceSnapshot|null>(null);
-  const actor=useMemo(()=>({permissions:session?.user.permissions??[],branchIds:session?.user.branchIds??[]}),[session]);
+type ValuationTraceReader = (
+  companyId: string,
+  movementId: string,
+) => Promise<InventoryValuationTraceSnapshot | null>;
 
-  useEffect(()=>{void getDesktopDatabase().then(db=>{setServices(createInventoryValuationWorkspaceServices(db,actor.permissions,actor.branchIds));setTraceReader(()=>createInventoryValuationTraceService(db));}).catch(e=>setError(e instanceof Error?e.message:"راه‌اندازی ارزش‌گذاری ناموفق بود."));},[actor]);
-  useEffect(()=>{if(!services?.canView||!active.companyId)return;void Promise.all([services.selectProducts(active.companyId),services.selectWarehouses(active.companyId,active.branchId||null)]).then(([p,w])=>{setProducts(p);setWarehouses(w);}).catch(e=>setError(e instanceof Error?e.message:"بارگذاری انتخابگرها ناموفق بود."));},[services,active.companyId,active.branchId]);
+const VALUATION_TABS = [
+  ["overview", "ارزش موجودی"],
+  ["kardex", "کاردکس ریالی"],
+  ["layers", "لایه‌های FIFO"],
+  ["unresolved", "نیازمند بررسی"],
+  ["policy", "سیاست ارزش‌گذاری"],
+] as const satisfies readonly (readonly [ValuationTab, string])[];
 
-  async function load(next:Tab=tab,cursor:string|null=null){if(!services||!active.companyId)return;setLoading(true);setError("");setTrace(null);try{const companyId=active.companyId,branchId=active.branchId||null;if(next==="overview"){setOverview(await services.readAsOf({companyId,branchId,asOfBusinessDate:jalaliToGregorian(asOf),productId:productId||null,warehouseId:warehouseId||null,limit:100}));setStatus(await services.readStatus(companyId,productId||null));}else if(next==="kardex"){if(!productId||!warehouseId)throw new Error("برای کاردکس ریالی، کالا و انبار را انتخاب کنید.");setKardex(await services.readKardex({companyId,branchId,productId,warehouseId,businessDateFrom:from?jalaliToGregorian(from):null,businessDateTo:to?jalaliToGregorian(to):null,cursor,limit:100}));}else if(next==="layers")setLayers(await services.readLayers({companyId,branchId,productId:productId||null,warehouseId:warehouseId||null,onlyOpen:true,limit:100}));else if(next==="unresolved")setUnresolved(await services.readUnresolved({companyId,branchId,productId:productId||null,warehouseId:warehouseId||null,fromBusinessDate:from?jalaliToGregorian(from):null,limit:100}));else setPolicies(await services.getPolicyHistory(companyId));setTab(next);}catch(e){setError(e instanceof Error?e.message:"خواندن ارزش‌گذاری ناموفق بود.");}finally{setLoading(false);}}
-  useEffect(()=>{if(services?.canView&&active.companyId)void load("overview");},[services,active.companyId]);
-  async function openTrace(id:string){if(traceReader&&active.companyId)setTrace(await traceReader(active.companyId,id));}
-  if(services&&!services.canView)return <Page><Feedback tone="error">برای مشاهده ارزش‌گذاری موجودی مجوز کافی ندارید.</Feedback></Page>;
+const VALUATION_STATUS_LABELS = {
+  current: "به‌روز",
+  "attention-required": "نیازمند بررسی",
+  empty: "بدون گردش",
+} satisfies Record<
+  InventoryValuationRecalculationStatusReport["status"],
+  string
+>;
 
-  return <Page className="valuation-page" dir="rtl"><header className="valuation-head"><div><h2>ارزش‌گذاری موجودی</h2><p>ارزش ریالی، کاردکس مالی، FIFO، موارد حل‌نشده و تاریخچه سیاست.</p></div><div className={`valuation-status valuation-status--${status?.status??"empty"}`}>{status?.status==="current"?"به‌روز":status?.status==="attention-required"?"نیازمند بررسی":"بدون گردش"}<small>Revision: <bdi>{status?.streamRevision??0}</bdi></small></div></header>{error&&<Feedback tone="error">{error}</Feedback>}<p className="valuation-note"><strong>پل آرگین:</strong> Movement، Cost Input و Policy داده اصلی‌اند؛ جمع گزارش و مانده ریالی خروجی بازسازی‌پذیر هستند.</p><div className="valuation-tabs">{([['overview','ارزش موجودی'],['kardex','کاردکس ریالی'],['layers','لایه‌های FIFO'],['unresolved','نیازمند بررسی'],['policy','سیاست ارزش‌گذاری']] as const).map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>void load(k)}>{l}</button>)}</div><div className="valuation-filters"><label>کالا<select value={productId} onChange={e=>setProductId(e.target.value)}><option value="">همه کالاها</option>{products.map(p=><option key={p.productId} value={p.productId}>{p.code} — {p.title}</option>)}</select></label><label>انبار<select value={warehouseId} onChange={e=>setWarehouseId(e.target.value)}><option value="">همه انبارها</option>{warehouses.map(w=><option key={w.warehouseId} value={w.warehouseId}>{w.code} — {w.title}</option>)}</select></label>{tab==="overview"&&<label>تا تاریخ<input dir="ltr" value={asOf} onChange={e=>setAsOf(e.target.value)}/></label>}{(tab==="kardex"||tab==="unresolved")&&<label>از تاریخ<input dir="ltr" value={from} onChange={e=>setFrom(e.target.value)}/></label>}{tab==="kardex"&&<label>تا تاریخ<input dir="ltr" value={to} onChange={e=>setTo(e.target.value)}/></label>}<button disabled={loading} onClick={()=>void load()}>{loading?"در حال خواندن…":"اعمال فیلتر"}</button></div>{tab==="overview"&&overview&&<ValuationOverviewPanel report={overview}/>} {tab==="kardex"&&kardex&&<ValuationKardexPanel report={kardex} onTrace={id=>void openTrace(id)} onNext={cursor=>void load("kardex",cursor)}/>} {tab==="layers"&&layers&&<ValuationLayersPanel report={layers}/>} {tab==="unresolved"&&unresolved&&<ValuationUnresolvedPanel report={unresolved}/>} {tab==="policy"&&<ValuationPolicyPanel rows={policies} readOnly={!services?.canManagePolicy}/>} {trace&&<ValuationTracePanel trace={trace} onClose={()=>setTrace(null)}/>}</Page>;
+const todayInJalali = () =>
+  gregorianToJalali(new Date().toISOString().slice(0, 10));
+
+export function InventoryValuationWorkspacePage() {
+  const activeContext = useActiveContext();
+  const { session } = useAuthSession();
+
+  const [services, setServices] =
+    useState<InventoryValuationWorkspaceServices | null>(null);
+  const [traceReader, setTraceReader] = useState<ValuationTraceReader | null>(
+    null,
+  );
+
+  const [activeTab, setActiveTab] = useState<ValuationTab>("overview");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [products, setProducts] = useState<readonly ProductSelectorItemDto[]>(
+    [],
+  );
+  const [warehouses, setWarehouses] = useState<readonly WarehouseListItemDto[]>(
+    [],
+  );
+  const [productId, setProductId] = useState("");
+  const [warehouseId, setWarehouseId] = useState("");
+  const [asOfDate, setAsOfDate] = useState(todayInJalali());
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState(todayInJalali());
+
+  const [overview, setOverview] = useState<InventoryValuationAsOfReport | null>(
+    null,
+  );
+  const [kardex, setKardex] =
+    useState<InventoryValuationMonetaryKardexReport | null>(null);
+  const [layers, setLayers] = useState<InventoryValuationLayerReport | null>(
+    null,
+  );
+  const [unresolved, setUnresolved] =
+    useState<InventoryValuationUnresolvedReport | null>(null);
+  const [status, setStatus] =
+    useState<InventoryValuationRecalculationStatusReport | null>(null);
+  const [policies, setPolicies] = useState<
+    readonly InventoryValuationPolicySnapshot[]
+  >([]);
+  const [trace, setTrace] = useState<InventoryValuationTraceSnapshot | null>(
+    null,
+  );
+
+  const actor = useMemo(
+    () => ({
+      permissions: session?.user.permissions ?? [],
+      branchIds: session?.user.branchIds ?? [],
+    }),
+    [session],
+  );
+
+  useEffect(() => {
+    void getDesktopDatabase()
+      .then((db) => {
+        setServices(
+          createInventoryValuationWorkspaceServices(
+            db,
+            actor.permissions,
+            actor.branchIds,
+          ),
+        );
+        setTraceReader(() => createInventoryValuationTraceService(db));
+      })
+      .catch((e) =>
+        setError(
+          e instanceof Error ? e.message : "راه‌اندازی ارزش‌گذاری ناموفق بود.",
+        ),
+      );
+  }, [actor]);
+
+  useEffect(() => {
+    if (!services?.canView || !activeContext.companyId) return;
+    void Promise.all([
+      services.selectProducts(activeContext.companyId),
+      services.selectWarehouses(
+        activeContext.companyId,
+        activeContext.branchId || null,
+      ),
+    ])
+      .then(([availableProducts, availableWarehouses]) => {
+        setProducts(availableProducts);
+        setWarehouses(availableWarehouses);
+      })
+      .catch((e) =>
+        setError(
+          e instanceof Error ? e.message : "بارگذاری انتخابگرها ناموفق بود.",
+        ),
+      );
+  }, [services, activeContext.companyId, activeContext.branchId]);
+
+  async function loadReport(
+    nextTab: ValuationTab = activeTab,
+    cursor: string | null = null,
+  ) {
+    if (!services || !activeContext.companyId) return;
+    setLoading(true);
+    setError("");
+    setTrace(null);
+    try {
+      const companyId = activeContext.companyId;
+      const branchId = activeContext.branchId || null;
+
+      if (nextTab === "overview") {
+        setOverview(
+          await services.readAsOf({
+            companyId,
+            branchId,
+            asOfBusinessDate: jalaliToGregorian(asOfDate),
+            productId: productId || null,
+            warehouseId: warehouseId || null,
+            limit: 100,
+          }),
+        );
+        setStatus(await services.readStatus(companyId, productId || null));
+      } else if (nextTab === "kardex") {
+        if (!productId || !warehouseId)
+          throw new Error("برای کاردکس ریالی، کالا و انبار را انتخاب کنید.");
+        setKardex(
+          await services.readKardex({
+            companyId,
+            branchId,
+            productId,
+            warehouseId,
+            businessDateFrom: dateFrom ? jalaliToGregorian(dateFrom) : null,
+            businessDateTo: dateTo ? jalaliToGregorian(dateTo) : null,
+            cursor,
+            limit: 100,
+          }),
+        );
+      } else if (nextTab === "layers") {
+        setLayers(
+          await services.readLayers({
+            companyId,
+            branchId,
+            productId: productId || null,
+            warehouseId: warehouseId || null,
+            onlyOpen: true,
+            limit: 100,
+          }),
+        );
+      } else if (nextTab === "unresolved") {
+        setUnresolved(
+          await services.readUnresolved({
+            companyId,
+            branchId,
+            productId: productId || null,
+            warehouseId: warehouseId || null,
+            fromBusinessDate: dateFrom ? jalaliToGregorian(dateFrom) : null,
+            limit: 100,
+          }),
+        );
+      } else {
+        setPolicies(await services.getPolicyHistory(companyId));
+      }
+
+      setActiveTab(nextTab);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "خواندن ارزش‌گذاری ناموفق بود.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (services?.canView && activeContext.companyId)
+      void loadReport("overview");
+  }, [services, activeContext.companyId]);
+
+  async function openTrace(movementId: string) {
+    if (traceReader && activeContext.companyId)
+      setTrace(await traceReader(activeContext.companyId, movementId));
+  }
+
+  if (services && !services.canView)
+    return (
+      <Page>
+        <Feedback tone="error">
+          برای مشاهده ارزش‌گذاری موجودی مجوز کافی ندارید.
+        </Feedback>
+      </Page>
+    );
+
+  const valuationStatus = status?.status ?? "empty";
+
+  return (
+    <Page className="valuation-page" dir="rtl">
+      <header className="valuation-head">
+        <div>
+          <h2>ارزش‌گذاری موجودی</h2>
+          <p>
+            ارزش ریالی، کاردکس مالی، FIFO، موارد حل‌نشده و تاریخچه سیاست.
+          </p>
+        </div>
+        <div
+          className={`valuation-status valuation-status--${valuationStatus}`}
+        >
+          {VALUATION_STATUS_LABELS[valuationStatus]}
+          <small>
+            Revision: <bdi>{status?.streamRevision ?? 0}</bdi>
+          </small>
+        </div>
+      </header>
+      {error && <Feedback tone="error">{error}</Feedback>}
+      <p className="valuation-note">
+        <strong>پل آرگین:</strong> Movement، Cost Input و Policy داده اصلی‌اند؛
+        جمع گزارش و مانده ریالی خروجی بازسازی‌پذیر هستند.
+      </p>
+      <div className="valuation-tabs">
+        {VALUATION_TABS.map(([tabId, label]) => (
+          <button
+            key={tabId}
+            className={activeTab === tabId ? "active" : ""}
+            onClick={() => void loadReport(tabId)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="valuation-filters">
+        <label>
+          کالا
+          <select
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+          >
+            <option value="">همه کالاها</option>
+            {products.map((product) => (
+              <option key={product.productId} value={product.productId}>
+                {product.code} — {product.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          انبار
+          <select
+            value={warehouseId}
+            onChange={(e) => setWarehouseId(e.target.value)}
+          >
+            <option value="">همه انبارها</option>
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.warehouseId} value={warehouse.warehouseId}>
+                {warehouse.code} — {warehouse.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        {activeTab === "overview" && (
+          <label>
+            تا تاریخ
+            <input
+              dir="ltr"
+              value={asOfDate}
+              onChange={(e) => setAsOfDate(e.target.value)}
+            />
+          </label>
+        )}
+        {(activeTab === "kardex" || activeTab === "unresolved") && (
+          <label>
+            از تاریخ
+            <input
+              dir="ltr"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </label>
+        )}
+        {activeTab === "kardex" && (
+          <label>
+            تا تاریخ
+            <input
+              dir="ltr"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </label>
+        )}
+        <button disabled={loading} onClick={() => void loadReport()}>
+          {loading ? "در حال خواندن…" : "اعمال فیلتر"}
+        </button>
+      </div>
+      {activeTab === "overview" && overview && (
+        <ValuationOverviewPanel report={overview} />
+      )}{" "}
+      {activeTab === "kardex" && kardex && (
+        <ValuationKardexPanel
+          report={kardex}
+          onTrace={(movementId) => void openTrace(movementId)}
+          onNext={(cursor) => void loadReport("kardex", cursor)}
+        />
+      )}{" "}
+      {activeTab === "layers" && layers && (
+        <ValuationLayersPanel report={layers} />
+      )}{" "}
+      {activeTab === "unresolved" && unresolved && (
+        <ValuationUnresolvedPanel report={unresolved} />
+      )}{" "}
+      {activeTab === "policy" && (
+        <ValuationPolicyPanel
+          rows={policies}
+          readOnly={!services?.canManagePolicy}
+        />
+      )}{" "}
+      {trace && (
+        <ValuationTracePanel trace={trace} onClose={() => setTrace(null)} />
+      )}
+    </Page>
+  );
 }
