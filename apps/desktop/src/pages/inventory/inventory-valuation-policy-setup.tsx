@@ -7,6 +7,7 @@ import {
 } from "@argin/inventory-tauri";
 import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
+import { useAuditServices } from "../../composition/audit";
 import { Feedback } from "../../components/feedback";
 import { PersianDatePicker } from "../../components/forms";
 import "./inventory-valuation-policy-setup.css";
@@ -18,6 +19,7 @@ export function InventoryValuationPolicySetup({
 }) {
   const activeContext = useActiveContext();
   const { session } = useAuthSession();
+  const audit = useAuditServices();
   const [method, setMethod] =
     useState<InventoryBootstrapValuationMethod>("fifo");
   const [effectiveFrom, setEffectiveFrom] = useState("");
@@ -57,17 +59,68 @@ export function InventoryValuationPolicySetup({
     if (!activeContext.companyId || !effectiveFrom || !canManage) return;
     setSaving(true);
     setError("");
+    const requestId = crypto.randomUUID();
+    const occurredAt = new Date().toISOString();
+    const actorId = session?.user.id ?? "desktop-local-user";
+
     try {
       const db = await getDesktopDatabase();
       const service = new SqliteInventoryValuationBootstrapService(db);
-      await service.initialize({
+      const result = await service.initialize({
         companyId: activeContext.companyId,
         method,
         effectiveFrom,
-        actorId: session?.user.id ?? "desktop-local-user",
-        requestId: crypto.randomUUID(),
-        occurredAt: new Date().toISOString(),
+        actorId,
+        requestId,
+        occurredAt,
       });
+
+      try {
+        await audit.recordAuditEntry({
+          id: `inventory-valuation:inventory.valuation.policy.initial-set:${requestId}:inventory-valuation-policy:${result.policyId}`,
+          occurredAt,
+          action: "create",
+          outcome: "success",
+          source: "desktop",
+          actor: {
+            type: "user",
+            id: actorId,
+            displayName: actorId,
+          },
+          scope: {
+            companyId: activeContext.companyId,
+            branchId: null,
+            fiscalYearId: null,
+          },
+          target: {
+            entityType: "inventory-valuation-policy",
+            entityId: result.policyId,
+            entityDisplayName: `${result.method}@${result.effectiveFrom}`,
+          },
+          message: "inventory.valuation.policy.initial-set",
+          reason: "Initial company inventory valuation policy activation",
+          before: null,
+          after: {
+            method: result.method,
+            effectiveFrom: result.effectiveFrom,
+            revision: result.revision,
+            valuedMovementCount: result.valuedMovementCount,
+            skippedReversalPairCount: result.skippedReversalPairCount,
+            productCount: result.productCount,
+          },
+          correlationId: requestId,
+          metadata: {
+            requestId,
+            valuationAction: "inventory.valuation.policy.initial-set",
+          },
+        });
+      } catch (auditError) {
+        console.error("Inventory valuation policy Audit write failed", auditError);
+        setError(
+          "سیاست و بازسازی ارزش‌گذاری ثبت شد، اما ثبت رویداد ممیزی با خطا مواجه شد. قبل از عملیات مالی بعدی لاگ ممیزی را بررسی کنید.",
+        );
+      }
+
       await onCompleted();
     } catch (caughtError) {
       const message =
