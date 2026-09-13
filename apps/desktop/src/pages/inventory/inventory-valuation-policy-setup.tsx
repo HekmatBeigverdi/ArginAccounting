@@ -23,14 +23,11 @@ export function InventoryValuationPolicySetup({
   const activeContext = useActiveContext();
   const { session } = useAuthSession();
   const audit = useAuditServices();
-  const [method, setMethod] =
-    useState<InventoryBootstrapValuationMethod>("fifo");
+  const [method, setMethod] = useState<InventoryBootstrapValuationMethod>("fifo");
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [earliestMovementDate, setEarliestMovementDate] = useState<
-    string | null
-  >(null);
+  const [earliestMovementDate, setEarliestMovementDate] = useState<string | null>(null);
 
   const permissions = session?.user.permissions ?? [];
   const branchIds = session?.user.branchIds ?? [];
@@ -91,11 +88,7 @@ export function InventoryValuationPolicySetup({
           action: "create",
           outcome: "success",
           source: "desktop",
-          actor: {
-            type: "user",
-            id: actorId,
-            displayName: actorId,
-          },
+          actor: { type: "user", id: actorId, displayName: actorId },
           scope: {
             companyId: activeContext.companyId,
             branchId: null,
@@ -142,9 +135,7 @@ export function InventoryValuationPolicySetup({
           "پیش از فعال‌کردن سیاست، بهای همه ورودی‌های فعال را در تب «نیازمند بررسی» تعیین کنید. رسیدهای برگشت‌خورده در این کنترل محاسبه نمی‌شوند.",
         );
       } else if (
-        message.startsWith(
-          "VALUATION_BOOTSTRAP_EFFECTIVE_DATE_AFTER_FIRST_MOVEMENT:",
-        )
+        message.startsWith("VALUATION_BOOTSTRAP_EFFECTIVE_DATE_AFTER_FIRST_MOVEMENT:")
       ) {
         setError(
           "تاریخ شروع سیاست اولیه باید برابر یا قبل از اولین گردش موجودی شرکت باشد.",
@@ -153,16 +144,12 @@ export function InventoryValuationPolicySetup({
         setError(
           "در بازسازی ارزش‌گذاری، خروج بیشتر از موجودی قابل ارزش‌گذاری مشاهده شد. ابتدا گردش مقداری را بررسی کنید.",
         );
-      } else if (
-        message ===
-        "VALUATION_BOOTSTRAP_TRANSFER_REQUIRES_FULL_RECALCULATION_ENGINE"
-      ) {
+      } else if (message.startsWith("VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID:")) {
         setError(
-          "در گردش شرکت انتقال بین انبار وجود دارد؛ فعال‌سازی سیاست باید از موتور کامل انتقال ارزش استفاده کند و محاسبه تقریبی انجام نشد.",
+          "یکی از انتقال‌های بین انبار ناقص یا نامتوازن است. انتقال باید دقیقاً یک Movement خروجی و یک Movement ورودی هم‌مقدار برای همان کالا و همان سند داشته باشد. ابتدا سند انتقال را بررسی کنید.",
         );
       } else if (
-        message ===
-        "VALUATION_BOOTSTRAP_MWA_REVERSAL_REQUIRES_FULL_RECALCULATION_ENGINE"
+        message === "VALUATION_BOOTSTRAP_MWA_REVERSAL_REQUIRES_FULL_RECALCULATION_ENGINE"
       ) {
         setError(
           "در گردش قبلی سند برگشتی وجود دارد. برای میانگین موزون متحرک، ورود و برگشت می‌توانند میانگین تاریخی را تغییر دهند؛ بنابراین سیستم به‌جای محاسبه حدسی، این بازسازی اولیه را متوقف کرده است. برای تست فعلی از FIFO استفاده کنید؛ پشتیبانی کامل این سناریو باید از موتور Reverse Valuation/Recalculation انجام شود.",
@@ -223,9 +210,10 @@ export function InventoryValuationPolicySetup({
 
       <p className="valuation-note">
         با ثبت سیاست اولیه، Cost Inputهای قبلی و Movementهای معتبر از تاریخ
-        شروع بازسازی می‌شوند. در FIFO جفت‌های برگشت کامل که اثر نهایی ندارند از
-        کاندید بهای دستی حذف می‌شوند؛ در سناریوهای پیچیده‌تر سیستم به‌جای
-        محاسبه حدسی، عملیات را متوقف می‌کند.
+        شروع بازسازی می‌شوند. انتقال‌های معتبر بین انبار نیز با حفظ دقیق بهای
+        حمل‌شده بازپخش می‌شوند؛ در FIFO لایه‌های مصرف‌شده به مقصد منتقل می‌شوند
+        و انتقال به‌تنهایی سود یا زیان ایجاد نمی‌کند. جفت‌های برگشت کامل که اثر
+        نهایی ندارند از کاندید بهای دستی حذف می‌شوند.
       </p>
 
       <div className="valuation-policy-setup__actions">
