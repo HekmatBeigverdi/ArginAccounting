@@ -21,6 +21,7 @@ export {
   SqliteInventoryValuationUnitOfWork,
 } from "./sqlite-inventory-valuation-concurrency.ts";
 
+export { SqliteInventoryValuationReportReader } from "./sqlite-inventory-valuation-report-reader.ts";
 export { SqliteInventoryOpeningBalanceRepository } from "./sqlite-inventory-opening-repository.ts";
 export { SqliteInventoryUnitOfWork } from "./sqlite-inventory-unit-of-work.ts";
 export { ensureInventoryNumberSeries } from "./ensure-inventory-number-series.ts";
