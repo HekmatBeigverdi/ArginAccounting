@@ -16,6 +16,7 @@ import {
   SqliteInventoryInboundCostInputService,
   SqliteInventoryValuationPolicyRepository,
   SqliteInventoryValuationReportReader,
+  SqliteInventoryValuationStatusReader,
   type InventoryInboundCostCandidate,
   type InventoryResolvedInboundCost,
   type SetManualInventoryInboundCostResult,
@@ -151,6 +152,7 @@ export function createInventoryValuationWorkspaceServices(
   branchIds: readonly string[],
 ): InventoryValuationWorkspaceServices {
   const reports = new SqliteInventoryValuationReportReader(database);
+  const statusReader = new SqliteInventoryValuationStatusReader(database);
   const policies = new SqliteInventoryValuationPolicyRepository(database);
   const inboundCosts = new SqliteInventoryInboundCostInputService(database);
   const products = new SqliteProductSelectorReader(database);
@@ -310,7 +312,7 @@ export function createInventoryValuationWorkspaceServices(
     },
     async readStatus(companyId, productId) {
       requireViewPermission();
-      return reports.readRecalculationStatus({ companyId, productId });
+      return statusReader.read({ companyId, productId });
     },
     async getPolicyHistory(companyId) {
       requireViewPermission();
