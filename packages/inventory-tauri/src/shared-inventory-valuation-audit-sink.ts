@@ -2,6 +2,8 @@ import {
   recordAuditEntry,
   type AuditAction,
   type AuditCommandContext,
+  type AuditSnapshot,
+  type AuditValue,
 } from "@argin/audit";
 import type {
   InventoryValuationAuditAction,
@@ -23,8 +25,21 @@ const auditAction = (action: InventoryValuationAuditAction): AuditAction => {
 const deterministicId = (event: InventoryValuationAuditEvent): string =>
   `inventory-valuation:${event.action}:${event.requestId}:${event.target.entityType}:${event.target.entityId}`;
 
-const auditSnapshot = (value: Readonly<Record<string, unknown>> | null): Record<string, unknown> | null =>
-  value === null ? null : { ...value };
+const auditValue = (value: unknown): AuditValue => {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (Array.isArray(value)) return value.map(auditValue);
+  if (typeof value === "object" && value !== null &&
+      (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, auditValue(item)]));
+  }
+  throw new TypeError("Inventory valuation audit snapshots must contain only JSON-compatible values");
+};
+
+const auditSnapshot = (value: Readonly<Record<string, unknown>> | null): AuditSnapshot | null =>
+  value === null ? null : Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, auditValue(item)]),
+  );
 
 /** Adapter over the shared Phase 8 append-only Audit engine. */
 export class SharedInventoryValuationAuditSink implements InventoryValuationAuditSink {
