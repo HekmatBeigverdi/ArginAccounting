@@ -22,6 +22,12 @@ export {
 } from "./sqlite-inventory-valuation-concurrency.ts";
 
 export { SqliteInventoryValuationReportReader } from "./sqlite-inventory-valuation-report-reader.ts";
+export { SqliteInventoryValuationBootstrapService } from "./sqlite-inventory-valuation-bootstrap-service.ts";
+export type {
+  InitializeInventoryValuationInput,
+  InitializeInventoryValuationResult,
+  InventoryBootstrapValuationMethod,
+} from "./sqlite-inventory-valuation-bootstrap-service.ts";
 export {
   SqliteInventoryInboundCostInputService,
 } from "./sqlite-inventory-inbound-cost-input-service.ts";
