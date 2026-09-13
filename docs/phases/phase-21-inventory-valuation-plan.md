@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–14 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 15 — Permissions, Audit and Traceability — is next.
+Steps 1–15 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 16 — Valuation Query Engine and Reports — is next.
 
 ## Governance
 
@@ -28,6 +28,7 @@ Mandatory references:
 - [Inventory Valuation SQLite Persistence](../architecture/inventory-valuation-sqlite-persistence.md)
 - [Inventory Valuation Atomicity, Idempotency and Optimistic Concurrency](../architecture/inventory-valuation-atomicity-idempotency-concurrency.md)
 - [Inventory Valuation Argin Bridge Synchronization Contract](../architecture/inventory-valuation-argin-bridge-sync.md)
+- [Inventory Valuation Permissions, Audit and Traceability](../architecture/inventory-valuation-permissions-audit-traceability.md)
 
 ## Baseline and Release Target
 
@@ -56,6 +57,7 @@ Phase 21 adds deterministic, auditable monetary valuation on top of the immutabl
 - Product monetary concurrency scope is Company + Product across warehouses because transfer can propagate cost between locations.
 - Retry safety uses durable request identity and exact operation/fingerprint matching; request-id reuse with different payload is a conflict.
 - Phase 20 movement facts, Company valuation policy history and resolved valuation cost inputs are authoritative Bridge inputs; valuation Entry/Layer/State projections are rebuildable and never synchronized as independent truth.
+- Privileged valuation mutations require operation-specific permission and append-only audit evidence; traceability must preserve Movement/Cost Input/Policy provenance without fabricating missing monetary values.
 - Accounting journal posting is outside Phase 21.
 
 ## Argin Bridge Requirements
@@ -80,7 +82,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 12 | Persistence, Migration and SQLite Repository | Completed |
 | 13 | Atomicity, Idempotency and Optimistic Concurrency | Completed |
 | 14 | Argin Bridge and Valuation Synchronization Contract | Completed |
-| 15 | Permissions, Audit and Traceability | Not started |
+| 15 | Permissions, Audit and Traceability | Completed |
 | 16 | Valuation Query Engine and Reports | Not started |
 | 17 | Persian RTL Inventory Valuation Workspace | Not started |
 | 18 | Domain and Application Tests | Not started |
@@ -195,34 +197,30 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 
 ### Step 13
 
-- Added `packages/inventory/src/application/contracts/inventory-valuation-concurrency.ts` with durable idempotency records, stream-version contracts, replay decision rules and guarded mutation orchestration.
-- Added public subpath `@argin/inventory/valuation-concurrency`.
-- Added migration `0029_inventory_valuation_concurrency.sql` and registered Desktop migration version 29.
-- Added `inventory_valuation_idempotency` keyed by `(company_id, request_id)` with exact operation/fingerprint replay semantics.
-- Added `inventory_valuation_stream_versions` for optimistic compare-and-swap revisions.
-- Defined policy streams as `policy:{companyId}` and monetary Product streams as `valuation:{companyId}:{productId}`; Product scope intentionally spans warehouses because transfer propagates monetary dependencies.
-- Added `SqliteInventoryValuationIdempotencyRepository`, `SqliteInventoryValuationStreamVersionRepository` and `SqliteInventoryValuationUnitOfWork`.
-- SQLite valuation UoW reuses the production pinned `DatabaseExecutor.transaction()` implementation with `BEGIN IMMEDIATE / COMMIT / ROLLBACK` rather than creating a second transaction engine.
-- `executeInventoryValuationGuardedMutation()` enforces one transaction order: replay lookup -> stream CAS -> mutation -> durable idempotency outcome. Retry replay does not invoke the mutation or advance revision again.
-- Added focused Domain/Application tests for replay/conflict/revision behavior and Tauri adapter tests for migration contracts, CAS and same-session UoW composition.
-- Added `docs/architecture/inventory-valuation-atomicity-idempotency-concurrency.md`.
-- Real SQLite crash/restart/rollback, multi-connection race and representative-scale validation remain Step 19.
-- Raw executable test output is not claimed unless local/CI validation is actually observed.
+- Added durable idempotency records, Product/Policy stream revisions, compare-and-swap semantics and guarded mutation orchestration.
+- Added Desktop migration version 29 and SQLite idempotency/stream-version repositories.
+- Valuation UoW reuses pinned `BEGIN IMMEDIATE / COMMIT / ROLLBACK`; replay lookup -> stream CAS -> mutation -> durable outcome execute in one transaction.
+- Retry replay does not mutate or advance revision again.
 
 ### Step 14
 
-- Added `packages/inventory/src/application/contracts/inventory-valuation-sync.ts` with `INVENTORY_VALUATION_SYNC_CONTRACT_VERSION = 1` and versioned persistence-neutral Argin Bridge envelopes.
-- Added public subpath `@argin/inventory/valuation-sync`.
-- Reused Phase 20 Inventory sync metadata conventions: operation/request identity, idempotency key, payload fingerprint, canonical UTC `changedAt`, origin, optional server revision and external references.
-- Defined only `valuation-policy` and `valuation-cost-input` as Phase 21 authoritative valuation sync entities. Phase 20 movement envelopes remain the authoritative quantity channel.
-- Policy envelopes are append-only, carry Company policy snapshot + stream revision, and declare predecessor policy dependency when applicable.
-- Cost-input envelopes carry durable resolved basis identity/entity revision + Product valuation stream revision and declare dependency on the immutable Phase 20 movement.
-- Explicitly excluded `valuation-entry`, `valuation-cost-layer` and `valuation-state` from authoritative Bridge payloads; receiving nodes must rebuild them through deterministic recalculation.
-- Preserved Step 13 stream identities: `policy:{companyId}` and `valuation:{companyId}:{productId}`. `serverRevision` remains transport/server metadata and does not replace domain stream revision.
-- Defined receiving semantics: accepted Cost Input changes invalidate valuation from the referenced movement chronology; accepted historical Policy changes invalidate valuation from `effectiveFrom`; destination nodes run the Step 9 engine rather than importing derived monetary projections.
-- Added focused tests for contract versioning, policy predecessor dependency, movement dependency, stream identity/revision checks, UTC normalization, external-reference uniqueness and derived-entity exclusion.
-- Added `docs/architecture/inventory-valuation-argin-bridge-sync.md` documenting SQLite/PostgreSQL deterministic parity and Phase 45 boundaries.
-- Live transport, remote acknowledgements, dependency queues and distributed conflict winner selection remain Phase 45 Synchronization; Step 14 only freezes the Phase 21 contract.
+- Added `@argin/inventory/valuation-sync` with versioned Argin Bridge envelopes for authoritative Policy history and resolved Cost Inputs.
+- Phase 20 movement sync remains the sole quantity channel; derived Entry/Layer/State are explicitly excluded from authoritative synchronization.
+- Policy predecessor and movement dependencies are explicit; accepted authoritative changes trigger destination-side deterministic recalculation.
+- Stream revisions remain domain concurrency identity while optional server revision is transport metadata.
+
+### Step 15
+
+- Added `packages/inventory/src/application/contracts/inventory-valuation-security.ts` and public subpath `@argin/inventory/valuation-security`.
+- Added independent permissions for view, Company policy management, authoritative cost-input correction, recalculation, valuation resolution and export so read access does not imply privileged monetary mutation rights.
+- Added `InventoryValuationAuthorizationPolicy` with actor/Company/request/correlation context; authorization is additive to Step 13 idempotency/concurrency rather than a replacement for it.
+- Added append-only valuation audit action/event/sink contracts with explicit target, reason, bounded metadata and before/after snapshots.
+- Added `SharedInventoryValuationAuditSink` over the shared Phase 8 Audit engine using deterministic `action + requestId + target` identity to prevent duplicate audit facts during successful retry replay.
+- Added persistence-neutral trace nodes/links and `createInventoryValuationTraceSnapshot()` for explainable Movement -> Cost Input -> Valuation Entry plus Policy -> Valuation Entry provenance.
+- Trace construction rejects Company/Product/Movement mismatches and preserves unresolved cost semantics instead of substituting zero.
+- Added focused tests for permission separation, provenance construction, mismatch rejection and unresolved trace behavior.
+- Added `docs/architecture/inventory-valuation-permissions-audit-traceability.md`.
+- Step 16 owns bounded monetary report/query implementations and Step 17 owns Persian RTL drill-down surfaces.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
