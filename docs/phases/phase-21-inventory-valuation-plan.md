@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–18 are complete on `phase/21-inventory-valuation`. Step 17 — Persian RTL Inventory Valuation Workspace — was reopened by CR-21-002, completed with the inbound-cost-entry path, and explicitly owner-accepted on 2026-09-13. The fixed 20-step sequence remains frozen. Step 19 — Repository, Migration, Bridge and Performance Tests — is next.
+Steps 1–19 are complete on `phase/21-inventory-valuation`. Step 17 — Persian RTL Inventory Valuation Workspace — was reopened by CR-21-002, completed with the inbound-cost-entry path, and explicitly owner-accepted on 2026-09-13. The fixed 20-step sequence remains frozen. Step 20 — Monorepo Validation, Documentation, Final Review and Release — is next.
 
 ## Governance
 
@@ -32,6 +32,7 @@ Mandatory references:
 - [Inventory Valuation Query Engine and Reports](../architecture/inventory-valuation-query-reports.md)
 - [Inventory Valuation Persian RTL Workspace](../architecture/inventory-valuation-persian-rtl-workspace.md)
 - [Phase 21 Domain and Application Test Matrix](../testing/phase-21-domain-application-tests.md)
+- [Phase 21 Repository, Migration, Bridge and Performance Test Matrix](../testing/phase-21-repository-migration-bridge-performance-tests.md)
 
 ## Baseline and Release Target
 
@@ -95,7 +96,7 @@ Manual or future ERP/Purchase-sourced inbound Cost Inputs use durable source ide
 | 16 | Valuation Query Engine and Reports | Completed |
 | 17 | Persian RTL Inventory Valuation Workspace | Completed — re-completed and owner-accepted after CR-21-002 |
 | 18 | Domain and Application Tests | Completed |
-| 19 | Repository, Migration, Bridge and Performance Tests | Not started |
+| 19 | Repository, Migration, Bridge and Performance Tests | Completed |
 | 20 | Monorepo Validation, Documentation, Final Review and Release | Not started |
 
 ## Fixed Execution Sequence
@@ -227,9 +228,21 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 - Added `packages/inventory/tests/inventory-valuation-guarded-mutation.test.ts` with direct coverage of `executeInventoryValuationGuardedMutation()`.
 - Guarded-mutation tests verify transaction ordering, exact replay short-circuit without CAS/mutation, request/fingerprint conflict before CAS, UTC normalization and failure rollback without a successful idempotency outcome record.
 - Added `docs/testing/phase-21-domain-application-tests.md` as the canonical coverage matrix for FIFO, MWA, inbound/landed cost, policy, outflow, transfer, reversal, backdated recalculation, unresolved cost, Application contracts, idempotency/concurrency, authorization/trace and Bridge contracts.
-- CR-21-002 is explicitly mapped to persistence-neutral inbound-cost arithmetic, guarded mutation/idempotency and deterministic recalculation tests. Concrete `ManualInventoryValuationInboundCostService` SQLite persistence/correction belongs to Step 19.
-- Step 18 intentionally does not claim real SQLite migration/rollback, multi-connection races, Bridge persistence round-trips, query plans, representative-scale performance or crash/restart durability; those are Step 19.
+- CR-21-002 is explicitly mapped to persistence-neutral inbound-cost arithmetic, guarded mutation/idempotency and deterministic recalculation tests. Concrete SQLite persistence/correction belongs to Step 19.
 - Test definitions are committed, but executable local/CI success is not claimed unless output is actually observed.
+
+### Step 19
+- Added a Node 22 `node:sqlite` integration harness that executes the repository migration SQL against real SQLite rather than validating SQL text only.
+- Added upgrade coverage from the Phase 20 database boundary (migration 27) through migrations 28/29 and verifies pre-existing data remains intact.
+- Added database-boundary validation for append-only valuation policy history, FIFO-layer cascade behavior and the Product chronology index through `EXPLAIN QUERY PLAN`.
+- Added a real multi-connection SQLite lock test proving `BEGIN IMMEDIATE` excludes a second concurrent writer and rollback leaves no committed probe row.
+- Added real SQLite Cost Input persistence tests for manual resolution, deterministic monetary rounding, FIFO Entry/Layer creation, exact idempotent replay and revision-based correction/CAS rejection.
+- Added forced durable-idempotency failure inside the transaction and verifies Cost Input, Entry, Layer and idempotency writes all roll back atomically.
+- Added Bridge round-trip coverage built from a persisted authoritative Cost Input, verifying quantity, monetary totals, entity revision, Product stream revision and movement dependency survive JSON serialization without drift.
+- Added representative-scale coverage with 10,000 valuation entries and verifies bounded Product chronology reads continue to use `idx_inventory_valuation_entries_company_product_chronology`.
+- Added `docs/testing/phase-21-repository-migration-bridge-performance-tests.md` as the canonical Step 19 test matrix and scope boundary.
+- Live distributed Bridge transport/acknowledgements/conflict resolution remain Phase 45; Step 19 validates the Phase 21 persistence and envelope boundary only.
+- Test definitions are committed and wired into the package test glob; executable local/CI success is not claimed unless output is actually observed.
 
 ## Change Requests
 
@@ -254,4 +267,4 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 - Cost entry/correction uses durable `movementId`, Cost Input identity, permission, idempotency, optimistic concurrency, Audit, traceability and deterministic recalculation.
 - The same resolved Cost Input feeds FIFO or Moving Weighted Average according to Company policy effective for chronology.
 - Manual cost entry is a standalone/fallback source; future Purchase/ERP automation must use the same bounded authoritative Cost Input contract.
-- Step 18 covers persistence-neutral semantics; Step 19 owns real SQLite persistence/correction, migration and Bridge adapter validation.
+- Step 18 covers persistence-neutral semantics; Step 19 validates the concrete SQLite persistence/correction, migration and Bridge serialization boundary.
