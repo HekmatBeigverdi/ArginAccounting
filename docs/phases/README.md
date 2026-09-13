@@ -33,7 +33,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 
 ## Current Phase
 
-21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–18 complete; fixed 20-step sequence preserved; Step 19 — Repository, Migration, Bridge and Performance Tests — is next
+21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–19 complete; fixed 20-step sequence preserved; Step 20 — Monorepo Validation, Documentation, Final Review and Release — is next
 
 ## Renumbering Rule
 
