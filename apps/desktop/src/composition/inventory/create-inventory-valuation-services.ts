@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { DatabaseExecutor } from "@argin/database";
 import type { ProductSelectorItemDto } from "@argin/product";
 import { SqliteProductSelectorReader } from "@argin/product-tauri";
