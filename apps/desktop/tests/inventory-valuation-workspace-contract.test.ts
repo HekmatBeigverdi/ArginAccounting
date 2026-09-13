@@ -29,10 +29,12 @@ test("valuation workspace explains Bridge authority and FIFO current-layer seman
 
 test("valuation overview explains why an empty filtered result is not a zero inventory value",async()=>{
   const panels=await read("src/pages/inventory/inventory-valuation-panels.tsx");
-  assert.match(panels,/برای فیلتر انتخاب‌شده هنوز خروجی ارزش‌گذاری تولید نشده است/u);
-  assert.match(panels,/Revision/u);
-  assert.match(panels,/سیاست ارزش‌گذاری شرکت/u);
-  assert.match(panels,/صفر بودن واقعی ارزش موجودی نیست/u);
+  // JSX line wrapping must not change the expected diagnostic wording.
+  const normalizedPanels = panels.replace(/\s+/gu, " ");
+  assert.match(normalizedPanels,/برای فیلتر انتخاب‌شده هنوز خروجی ارزش‌گذاری تولید نشده است/u);
+  assert.match(normalizedPanels,/Revision/u);
+  assert.match(normalizedPanels,/سیاست ارزش‌گذاری شرکت/u);
+  assert.match(normalizedPanels,/صفر بودن واقعی ارزش موجودی نیست/u);
 });
 
 test("valuation calendar can escape the filter card and overlay following report content",async()=>{
