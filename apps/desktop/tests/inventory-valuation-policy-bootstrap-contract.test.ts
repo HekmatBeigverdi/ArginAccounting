@@ -27,6 +27,14 @@ test("bootstrap excludes full reversal pairs and requires cost for active inboun
   assert.match(source,/inventory_valuation_cost_inputs/u);
 });
 
+test("bootstrap persists dated as-of states and guards unsafe MWA reversal replay",async()=>{
+  const source=await readFile(new URL("../../../packages/inventory-tauri/src/sqlite-inventory-valuation-bootstrap-service.ts",import.meta.url),"utf8");
+  assert.match(source,/datedStates/u);
+  assert.match(source,/datedStateKey/u);
+  assert.match(source,/state\.businessDate/u);
+  assert.match(source,/VALUATION_BOOTSTRAP_MWA_REVERSAL_REQUIRES_FULL_RECALCULATION_ENGINE/u);
+});
+
 test("bootstrap produces policy entries layers states and stream revisions",async()=>{
   const source=await readFile(new URL("../../../packages/inventory-tauri/src/sqlite-inventory-valuation-bootstrap-service.ts",import.meta.url),"utf8");
   assert.match(source,/inventory_valuation_policies/u);
@@ -35,4 +43,15 @@ test("bootstrap produces policy entries layers states and stream revisions",asyn
   assert.match(source,/inventory_valuation_states/u);
   assert.match(source,/inventory_valuation_stream_versions/u);
   assert.match(source,/inventory_valuation_idempotency/u);
+});
+
+test("workspace currentness ignores compensated reversal pairs",async()=>{
+  const [statusReader,composition]=await Promise.all([
+    readFile(new URL("../../../packages/inventory-tauri/src/sqlite-inventory-valuation-status-reader.ts",import.meta.url),"utf8"),
+    read("src/composition/inventory/create-inventory-valuation-workspace-services.ts"),
+  ]);
+  assert.match(statusReader,/m\.reversal_of_movement_id IS NULL/u);
+  assert.match(statusReader,/rv\.reversal_of_movement_id=m\.movement_id/u);
+  assert.match(composition,/SqliteInventoryValuationStatusReader/u);
+  assert.match(composition,/statusReader\.read/u);
 });
