@@ -36,6 +36,7 @@ import {
   ValuationTracePanel,
   ValuationUnresolvedPanel,
 } from "./inventory-valuation-panels";
+import { InventoryValuationPolicySetup } from "./inventory-valuation-policy-setup";
 import "./inventory-valuation-workspace-page.css";
 
 type ValuationTab = "overview" | "kardex" | "layers" | "unresolved" | "policy";
@@ -492,10 +493,22 @@ export function InventoryValuationWorkspacePage() {
         </>
       )}
       {activeTab === "policy" && (
-        <ValuationPolicyPanel
-          rows={policies}
-          readOnly={!services?.canManagePolicy}
-        />
+        <>
+          {policies.length === 0 && (
+            <InventoryValuationPolicySetup
+              onCompleted={async () => {
+                if (!services || !activeContext.companyId) return;
+                setPolicies(await services.getPolicyHistory(activeContext.companyId));
+                setStatus(await services.readStatus(activeContext.companyId, productId || null));
+                setSuccess("سیاست اولیه ثبت شد و ارزش‌گذاری گردش‌های قبلی بازسازی شد.");
+              }}
+            />
+          )}
+          <ValuationPolicyPanel
+            rows={policies}
+            readOnly={!services?.canManagePolicy}
+          />
+        </>
       )}
       {trace && (
         <ValuationTracePanel trace={trace} onClose={() => setTrace(null)} />
