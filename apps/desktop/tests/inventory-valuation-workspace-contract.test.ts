@@ -121,6 +121,28 @@ test("valuation unresolved rows use readable business labels instead of raw UUID
   assert.match(css,/overflow-x: auto/);
 });
 
+test("confirmed inventory documents trigger monetary valuation immediately",async()=>{
+  const composition=await read("src/composition/inventory/create-inventory-workspace-services.ts");
+  assert.match(composition,/SqliteInventoryValuationLiveService/u);
+  assert.match(composition,/const valuationLive = new SqliteInventoryValuationLiveService\(database\)/u);
+  assert.match(
+    composition,
+    /await secured\.confirm[\s\S]*await valuationLive\.catchUpCompany\(document\.companyId, occurredAt\)/u,
+  );
+});
+
+test("valuation overview and FIFO layers render product and warehouse names instead of UUIDs",async()=>{
+  const page=await readWorkspace();
+  assert.match(page,/const productNames = useMemo/u);
+  assert.match(page,/product\.productId, product\.title/u);
+  assert.match(page,/const warehouseNames = useMemo/u);
+  assert.match(page,/warehouse\.warehouseId, warehouse\.title/u);
+  assert.match(page,/productId: productNames\.get\(row\.productId\) \?\? row\.productId/u);
+  assert.match(page,/warehouseId: warehouseNames\.get\(row\.warehouseId\) \?\? row\.warehouseId/u);
+  assert.match(page,/ValuationOverviewPanel report=\{overviewDisplay\}/u);
+  assert.match(page,/ValuationLayersPanel report=\{layersDisplay\}/u);
+});
+
 test("inventory valuation source references use canonical filenames",async()=>{
   const inventoryTauriIndex=await readFile(new URL("../../../packages/inventory-tauri/src/index.ts",import.meta.url),"utf8");
   assert.doesNotMatch(inventoryTauriIndex,/inbound-cost-input-service-v\d+/u);
