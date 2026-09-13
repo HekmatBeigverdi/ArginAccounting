@@ -1,20 +1,20 @@
 import { useEffect, useState } from "react";
 import { getDesktopDatabase } from "@argin/database-tauri";
 import { inventoryValuationPermissions } from "@argin/inventory/valuation-security";
-import {
-  SqliteInventoryValuationBootstrapService,
-  type InventoryBootstrapValuationMethod,
-} from "@argin/inventory-tauri";
+import type { InventoryBootstrapValuationMethod } from "@argin/inventory-tauri";
 import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { useAuditServices } from "../../composition/audit";
+import type { InventoryValuationWorkspaceServices } from "../../composition/inventory/create-inventory-valuation-workspace-services";
 import { Feedback } from "../../components/feedback";
 import { PersianDatePicker } from "../../components/forms";
 import "./inventory-valuation-policy-setup.css";
 
 export function InventoryValuationPolicySetup({
+  services,
   onCompleted,
 }: {
+  services: InventoryValuationWorkspaceServices;
   onCompleted: () => Promise<void> | void;
 }) {
   const activeContext = useActiveContext();
@@ -64,9 +64,7 @@ export function InventoryValuationPolicySetup({
     const actorId = session?.user.id ?? "desktop-local-user";
 
     try {
-      const db = await getDesktopDatabase();
-      const service = new SqliteInventoryValuationBootstrapService(db);
-      const result = await service.initialize({
+      const result = await services.initializePolicy({
         companyId: activeContext.companyId,
         method,
         effectiveFrom,
