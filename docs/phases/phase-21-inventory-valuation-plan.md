@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–16 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 17 — Persian RTL Inventory Valuation Workspace — is next.
+Steps 1–17 are complete on `phase/21-inventory-valuation`. The fixed 20-step sequence is frozen. Step 18 — Domain and Application Tests — is next.
 
 ## Governance
 
@@ -30,6 +30,7 @@ Mandatory references:
 - [Inventory Valuation Argin Bridge Synchronization Contract](../architecture/inventory-valuation-argin-bridge-sync.md)
 - [Inventory Valuation Permissions, Audit and Traceability](../architecture/inventory-valuation-permissions-audit-traceability.md)
 - [Inventory Valuation Query Engine and Reports](../architecture/inventory-valuation-query-reports.md)
+- [Inventory Valuation Persian RTL Workspace](../architecture/inventory-valuation-persian-rtl-workspace.md)
 
 ## Baseline and Release Target
 
@@ -60,6 +61,7 @@ Phase 21 adds deterministic, auditable monetary valuation on top of the immutabl
 - Phase 20 movement facts, Company valuation policy history and resolved valuation cost inputs are authoritative Bridge inputs; valuation Entry/Layer/State projections are rebuildable and never synchronized as independent truth.
 - Privileged valuation mutations require operation-specific permission and append-only audit evidence; traceability preserves Movement/Cost Input/Policy provenance without fabricating missing monetary values.
 - Monetary reports are bounded, Company/Branch scoped, preserve unresolved cost explicitly, and never become synchronization truth.
+- The Persian RTL workspace consumes report/trace contracts and does not reimplement valuation arithmetic in the UI.
 - Accounting journal posting is outside Phase 21.
 
 ## Argin Bridge Requirements
@@ -86,7 +88,7 @@ Authoritative valuation facts and policy history use durable IDs independent of 
 | 14 | Argin Bridge and Valuation Synchronization Contract | Completed |
 | 15 | Permissions, Audit and Traceability | Completed |
 | 16 | Valuation Query Engine and Reports | Completed |
-| 17 | Persian RTL Inventory Valuation Workspace | Not started |
+| 17 | Persian RTL Inventory Valuation Workspace | Completed |
 | 18 | Domain and Application Tests | Not started |
 | 19 | Repository, Migration, Bridge and Performance Tests | Not started |
 | 20 | Monorepo Validation, Documentation, Final Review and Release | Not started |
@@ -221,17 +223,26 @@ Run all gates, reconcile canonical docs, review deferred scope, merge according 
 ### Step 16
 
 - Added `packages/inventory/src/application/contracts/inventory-valuation-reports.ts` and public subpath `@argin/inventory/valuation-reports`.
-- Added `InventoryValuationReportReader` with bounded As-of value, monetary Kardex, current FIFO layer detail, unresolved diagnostics and recalculation/currentness status contracts.
-- All row-producing queries require an explicit limit with Phase 21 maximum 500; Kardex paging uses canonical chronology cursor `businessDate -> businessOrder -> documentId -> lineId -> movementId`.
-- Added `SqliteInventoryValuationReportReader` over existing valuation projections and Phase 20 movement facts, with Company/Branch Warehouse visibility on Warehouse-bearing reports.
-- As-of value selects the latest dated `inventory_valuation_states` row per stock key up to the requested business date and preserves `totalCost = null`/unresolved count rather than substituting zero.
-- Monetary Kardex reports opening resolved cost, per-entry monetary delta, running resolved cost, explicit unresolved entries, closing resolved cost and a next cursor.
-- Current FIFO layer detail exposes source Movement/Valuation Entry, opening chronology, original/remaining quantity and value; it is explicitly not mislabeled as historical layer state.
-- Unresolved diagnostics expose reason, chronology, quantity, method and currency.
-- Recalculation status compares authoritative movements with valuation entries so missing valuation rows and unresolved rows produce `attention-required`; it also exposes Product stream revision when scoped to a Product.
-- Added focused `inventory-valuation-report-reader.test.ts` coverage for maximum bounds, As-of semantics, Kardex running value/cursor, open-layer default and recalculation attention status.
-- Added `docs/architecture/inventory-valuation-query-reports.md` documenting read semantics, boundedness, security boundary and Argin Bridge projection rules.
-- Step 17 owns Persian RTL visualization/drill-down; Step 19 owns real SQLite query-plan and representative-scale performance validation.
+- Added bounded As-of value, monetary Kardex, current FIFO layer detail, unresolved diagnostics and recalculation/currentness status contracts and SQLite reader.
+- As-of preserves unresolved monetary state, Kardex uses canonical cursor ordering, and Product stream status compares authoritative movements against valuation entries.
+- Current FIFO layers are explicitly not presented as historical As-of layer state.
+- Added focused report-reader tests and `docs/architecture/inventory-valuation-query-reports.md`.
+- Raw executable test output is not claimed unless local/CI validation is actually observed.
+
+### Step 17
+
+- Added Desktop route `/inventory/valuation` and navigation item `ارزش‌گذاری موجودی`, permission-gated by `inventory.valuation.view`.
+- Added `inventory-valuation-workspace-page.tsx` as a Persian RTL workspace using shared active Company/Branch context, Solar Hijri date conversion and shared display-density variables.
+- Added separate panels for As-of inventory value, monetary Kardex, current open FIFO layers, unresolved diagnostics and Company valuation-policy history.
+- Added currentness/status surface with Product stream revision and `current / attention-required / empty` semantics from Step 16.
+- Added Product/Warehouse filters and bounded report loading; monetary Kardex retains server-independent canonical pagination through the Step 16 cursor.
+- Added provenance drill-down composition using Movement + effective Policy + resolved Cost Input + Valuation Entry and the Step 15 `createInventoryValuationTraceSnapshot()` contract.
+- Added explicit UI copy that report totals/running balances are rebuildable outputs rather than Argin Bridge authoritative facts.
+- Added explicit guard text that current FIFO remaining layers are not historical As-of layer state.
+- Added `inventory-valuation-workspace-page.css` with RTL layout, responsive behavior, stable LTR identifier isolation and shared density variables.
+- Added focused Desktop contract tests for route/navigation permission, Persian RTL surfaces, Bridge-authority copy, current-layer semantics and trace drill-down wiring.
+- Added `docs/architecture/inventory-valuation-persian-rtl-workspace.md`.
+- Step 18 owns broader Domain/Application test expansion; Step 19 owns real SQLite/Bridge/performance validation.
 - Raw executable test output is not claimed unless local/CI validation is actually observed.
 
 ## Change Requests
