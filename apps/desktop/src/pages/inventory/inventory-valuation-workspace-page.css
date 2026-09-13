@@ -69,7 +69,7 @@
   position: relative;
   z-index: 20;
   display: grid;
-  grid-template-columns: minmax(220px, 1.25fr) minmax(200px, 1fr) minmax(190px, .9fr) minmax(120px, .45fr);
+  grid-template-columns: minmax(240px, 1.25fr) minmax(220px, 1fr) repeat(2, minmax(180px, .8fr));
   gap: 12px;
   align-items: end;
   min-width: 0;
@@ -119,10 +119,11 @@
 .valuation-filters .ui-persian-date__input {
   height: var(--valuation-filter-control-height);
   min-height: var(--valuation-filter-control-height);
-  padding-inline: 12px 42px;
-  text-align: right;
+  padding: 0 12px 0 42px;
+  text-align: center;
   direction: ltr;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .valuation-filters .ui-persian-date__trigger {
   inset-inline-end: 4px;
@@ -418,7 +419,7 @@
 .valuation-page .ui-persian-date__popover { z-index: 1500; }
 
 @media (max-width: 1100px) {
-  .valuation-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .valuation-filters { grid-template-columns: repeat(2, minmax(190px, 1fr)); }
   .valuation-readable { max-width: 145px; }
   .valuation-readable--wide { max-width: 210px; }
 }
