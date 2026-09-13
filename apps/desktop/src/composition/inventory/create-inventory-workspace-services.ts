@@ -21,6 +21,7 @@ import {
 } from "@argin/inventory";
 import {
   SqliteInventoryUnitOfWork,
+  SqliteInventoryValuationLiveService,
   SqliteInventoryWorkspaceReader,
   ensureInventoryNumberSeries,
   type InventoryLineLocationTitles,
@@ -101,6 +102,7 @@ export function createInventoryWorkspaceServices(input: {
   const uow = new SqliteInventoryUnitOfWork(database);
   const drafts = new InventoryDraftService(uow);
   const reader = new SqliteInventoryWorkspaceReader(database);
+  const valuationLive = new SqliteInventoryValuationLiveService(database);
   const companies = new SqliteCompanyRepository(database);
   const branches = new SqliteBranchRepository(database);
   const fiscalYears = new SqliteFiscalYearRepository(database);
@@ -328,7 +330,14 @@ export function createInventoryWorkspaceServices(input: {
       });
     },
     async approve(document, reason) { await secured.approve(security, life(document, reason)); },
-    async confirm(document, reason) { await secured.confirm(security, { ...life(document, reason), allowNegativeStock: false }); },
+    async confirm(document, reason) {
+      const occurredAt = now();
+      await secured.confirm(security, {
+        ...life(document, reason),
+        allowNegativeStock: false,
+      });
+      await valuationLive.catchUpCompany(document.companyId, occurredAt);
+    },
     async cancel(document, reason) { await secured.cancel(security, life(document, reason)); },
     async reverse(document, reason) {
       if (!document.scope) throw new InventoryApplicationError(INVENTORY_APPLICATION_ERROR_CODES.invalidRequest, "scope");
