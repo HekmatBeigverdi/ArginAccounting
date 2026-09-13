@@ -8,6 +8,7 @@ import type {
 import type { InventoryValuationPolicySnapshot } from "@argin/inventory/valuation-policy";
 import type { InventoryValuationTraceSnapshot } from "@argin/inventory/valuation-security";
 import type { InventoryInboundCostCandidate } from "@argin/inventory-tauri";
+import { Dialog } from "../../components/feedback";
 import { gregorianToJalali } from "./inventory-persian-date";
 import { valuationMethodLabel } from "./inventory-valuation-workspace-format";
 
@@ -106,37 +107,84 @@ export function ValuationInboundCostPanel({ rows, canResolve, saving, onSetCost 
   saving: boolean;
   onSetCost: (row: InventoryInboundCostCandidate, unitCost: string) => Promise<void>;
 }) {
-  const [editingMovementId, setEditingMovementId] = useState<string | null>(null);
+  const [selectedRow, setSelectedRow] = useState<InventoryInboundCostCandidate | null>(null);
   const [unitCost, setUnitCost] = useState("");
 
   if (rows.length === 0) return <p className="valuation-empty">ورودی قطعی‌شده‌ای با بهای تعیین‌نشده در محدوده انتخاب‌شده وجود ندارد.</p>;
+
+  const selectedDisplay = selectedRow as DisplayCandidate | null;
+
+  async function submitCost() {
+    if (!selectedRow || !unitCost.trim()) return;
+    await onSetCost(selectedRow, unitCost);
+    setSelectedRow(null);
+    setUnitCost("");
+  }
 
   return <section className="valuation-section valuation-cost-inputs">
     <div className="valuation-section__head">
       <div><h3>ورودی‌های قطعی‌شده با بهای تعیین‌نشده</h3><p>رسیدهای قدیمی و جدید از گردش قطعی انبار خوانده می‌شوند و از همین بخش قابل قیمت‌گذاری هستند.</p></div>
       <span className="valuation-count">{rows.length} ردیف</span>
     </div>
-    <div className="valuation-table valuation-table--cost-inputs">
+    <div className="valuation-table valuation-table--cost-inputs valuation-table--compact">
       <table>
-        <thead><tr>{["تاریخ","سند","کالا","انبار","تعداد","روش","ارز","بهای واحد","عملیات"].map((header) => <th key={header}>{header}</th>)}</tr></thead>
+        <thead><tr>{["تاریخ","سند","کالا","انبار","تعداد","وضعیت","عملیات"].map((header) => <th key={header}>{header}</th>)}</tr></thead>
         <tbody>{rows.map((row) => {
           const display = row as DisplayCandidate;
-          const editing = editingMovementId === row.movementId;
           return <tr key={row.movementId}>
-            <td>{gregorianToJalali(row.businessDate)}</td>
+            <td className="valuation-date-cell">{gregorianToJalali(row.businessDate)}</td>
             <td title={row.documentId}><span className="valuation-readable">{display.documentLabel ?? row.documentId}</span></td>
-            <td title={row.productId}><span className="valuation-readable">{display.productLabel ?? row.productId}</span></td>
+            <td title={row.productId}><span className="valuation-readable valuation-readable--wide">{display.productLabel ?? row.productId}</span></td>
             <td title={row.warehouseId}><span className="valuation-readable">{display.warehouseLabel ?? row.warehouseId}</span></td>
-            <td>{row.quantity}</td><td>{row.method ? valuationMethodLabel(row.method) : "سیاست تعیین نشده"}</td><td>{row.currency}</td>
-            <td>{editing ? <input className="valuation-cost-input" dir="ltr" inputMode="decimal" placeholder="مثلاً 12000000" value={unitCost} onChange={(event) => setUnitCost(event.target.value.replace(/,/gu, ""))} disabled={saving} /> : "بهای تعیین‌نشده"}</td>
-            <td>{!canResolve ? "بدون مجوز" : editing ? <div className="valuation-cost-actions">
-              <button disabled={saving || !unitCost.trim()} onClick={() => void onSetCost(row, unitCost).then(() => { setEditingMovementId(null); setUnitCost(""); })}>{saving ? "در حال ثبت…" : "ثبت بها"}</button>
-              <button disabled={saving} onClick={() => { setEditingMovementId(null); setUnitCost(""); }}>انصراف</button>
-            </div> : <button onClick={() => { setEditingMovementId(row.movementId); setUnitCost(""); }}>تعیین بهای ورودی</button>}</td>
+            <td className="valuation-number-cell">{row.quantity}</td>
+            <td><span className="valuation-unresolved-badge">بهای تعیین‌نشده</span></td>
+            <td className="valuation-action-cell">{canResolve
+              ? <button className="valuation-primary-action" onClick={() => { setSelectedRow(row); setUnitCost(""); }}>تعیین بها</button>
+              : <span className="valuation-muted">بدون مجوز</span>}</td>
           </tr>;
         })}</tbody>
       </table>
     </div>
+
+    <Dialog
+      open={Boolean(selectedRow)}
+      title="تعیین بهای ورودی"
+      labelledBy="valuation-inbound-cost-title"
+      onClose={() => { if (!saving) { setSelectedRow(null); setUnitCost(""); } }}
+      footer={<>
+        <button type="button" onClick={() => { setSelectedRow(null); setUnitCost(""); }} disabled={saving}>انصراف</button>
+        <button type="button" className="valuation-dialog-submit" disabled={saving || !unitCost.trim()} onClick={() => void submitCost()}>
+          {saving ? "در حال ثبت…" : "ثبت بهای ورودی"}
+        </button>
+      </>}
+    >
+      {selectedRow && <div className="valuation-cost-dialog">
+        <p className="valuation-cost-dialog__hint">تاریخ مبنای ارزش‌گذاری همان تاریخ قطعی سند انبار است و برای ثبت بهای عادی نیاز به انتخاب تاریخ یا بازه زمانی جداگانه نیست.</p>
+        <dl className="valuation-cost-dialog__facts">
+          <div><dt>سند</dt><dd>{selectedDisplay?.documentLabel ?? selectedRow.documentId}</dd></div>
+          <div><dt>تاریخ سند</dt><dd>{gregorianToJalali(selectedRow.businessDate)}</dd></div>
+          <div><dt>کالا</dt><dd>{selectedDisplay?.productLabel ?? selectedRow.productId}</dd></div>
+          <div><dt>انبار</dt><dd>{selectedDisplay?.warehouseLabel ?? selectedRow.warehouseId}</dd></div>
+          <div><dt>تعداد</dt><dd>{selectedRow.quantity}</dd></div>
+          <div><dt>روش</dt><dd>{selectedRow.method ? valuationMethodLabel(selectedRow.method) : "سیاست تعیین نشده"}</dd></div>
+          <div><dt>ارز</dt><dd>{selectedRow.currency}</dd></div>
+          <div><dt>منبع بها</dt><dd>ثبت دستی</dd></div>
+        </dl>
+        <label className="valuation-cost-dialog__field">
+          بهای واحد
+          <input
+            autoFocus
+            dir="ltr"
+            inputMode="decimal"
+            placeholder="مثلاً 12000000"
+            value={unitCost}
+            onChange={(event) => setUnitCost(event.target.value.replace(/,/gu, ""))}
+            disabled={saving}
+          />
+          <small>مبلغ را در واحد پولی نمایش‌داده‌شده وارد کنید. بهای کل با محاسبه دقیق در سرویس ارزش‌گذاری تعیین می‌شود.</small>
+        </label>
+      </div>}
+    </Dialog>
   </section>;
 }
 
