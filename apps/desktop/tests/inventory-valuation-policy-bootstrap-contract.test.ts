@@ -30,13 +30,31 @@ test("initial policy activation records shared audit evidence",async()=>{
   assert.match(setup,/valuedMovementCount/u);
 });
 
-test("bootstrap excludes full reversal pairs and requires cost for active inbound movements",async()=>{
+test("bootstrap excludes full reversal pairs and requires cost for active non-transfer inbound movements",async()=>{
   const source=await readFile(new URL("../../../packages/inventory-tauri/src/sqlite-inventory-valuation-bootstrap-service.ts",import.meta.url),"utf8");
   assert.match(source,/reversal_of_movement_id/u);
   assert.match(source,/reversedOriginals/u);
   assert.match(source,/!m\.reversal_of_movement_id && !reversedOriginals\.has/u);
+  assert.match(source,/m\.transfer_id === null/u);
   assert.match(source,/VALUATION_BOOTSTRAP_UNRESOLVED_COST/u);
   assert.match(source,/inventory_valuation_cost_inputs/u);
+});
+
+test("bootstrap replays warehouse transfers with monetary conservation",async()=>{
+  const [source,setup]=await Promise.all([
+    readFile(new URL("../../../packages/inventory-tauri/src/sqlite-inventory-valuation-bootstrap-service.ts",import.meta.url),"utf8"),
+    read("src/pages/inventory/inventory-valuation-policy-setup.tsx"),
+  ]);
+  assert.match(source,/buildTransferPairs/u);
+  assert.match(source,/processedTransfers/u);
+  assert.match(source,/kind: "transfer"/u);
+  assert.match(source,/fifo-transfer:/u);
+  assert.match(source,/sourceState\.totalCost -= carriedCost/u);
+  assert.match(source,/destinationState\.totalCost \+= carriedCost/u);
+  assert.match(source,/m\.transfer_id/u);
+  assert.doesNotMatch(source,/VALUATION_BOOTSTRAP_TRANSFER_REQUIRES_FULL_RECALCULATION_ENGINE/u);
+  assert.match(setup,/انتقال‌های معتبر بین انبار/u);
+  assert.match(setup,/VALUATION_BOOTSTRAP_TRANSFER_PAIR_INVALID/u);
 });
 
 test("bootstrap persists dated as-of states and guards unsafe MWA reversal replay",async()=>{
