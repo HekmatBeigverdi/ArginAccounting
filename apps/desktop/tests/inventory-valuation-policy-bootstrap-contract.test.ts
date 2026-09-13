@@ -40,13 +40,15 @@ test("bootstrap excludes full reversal pairs and requires cost for active non-tr
   assert.match(source,/inventory_valuation_cost_inputs/u);
 });
 
-test("bootstrap replays warehouse transfers with monetary conservation",async()=>{
+test("bootstrap replays warehouse transfers per document line with monetary conservation",async()=>{
   const [source,setup]=await Promise.all([
     readFile(new URL("../../../packages/inventory-tauri/src/sqlite-inventory-valuation-bootstrap-service.ts",import.meta.url),"utf8"),
     read("src/pages/inventory/inventory-valuation-policy-setup.tsx"),
   ]);
   assert.match(source,/buildTransferPairs/u);
-  assert.match(source,/processedTransfers/u);
+  assert.match(source,/transferPairKey/u);
+  assert.match(source,/\$\{m\.transfer_id\}\|\$\{m\.line_id\}/u);
+  assert.match(source,/processedTransferLines/u);
   assert.match(source,/kind: "transfer"/u);
   assert.match(source,/fifo-transfer:/u);
   assert.match(source,/sourceState\.totalCost -= carriedCost/u);
