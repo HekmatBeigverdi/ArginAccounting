@@ -48,6 +48,23 @@ test("confirmed old and new inbound movements can receive manual cost",async()=>
   assert.match(composition,/inventoryValuationPermissions\.resolve/);
 });
 
+test("manual inbound cost entry uses a compact modal and document date as valuation basis",async()=>{
+  const [panels,css]=await Promise.all([
+    read("src/pages/inventory/inventory-valuation-panels.tsx"),
+    read("src/pages/inventory/inventory-valuation-workspace-page.css"),
+  ]);
+  assert.match(panels,/import \{ Dialog \} from "\.\.\/\.\.\/components\/feedback"/u);
+  assert.match(panels,/title="تعیین بهای ورودی"/u);
+  assert.match(panels,/تاریخ مبنای ارزش‌گذاری همان تاریخ قطعی سند انبار است/u);
+  assert.match(panels,/تاریخ سند/u);
+  assert.match(panels,/بهای واحد/u);
+  assert.match(panels,/منبع بها/u);
+  assert.doesNotMatch(panels,/تاریخ بهای ورودی/u);
+  assert.match(css,/valuation-table--compact/u);
+  assert.match(css,/valuation-cost-dialog/u);
+  assert.match(css,/valuation-primary-action/u);
+});
+
 test("valuation unresolved rows use readable business labels instead of raw UUIDs",async()=>{
   const [panels,composition,css]=await Promise.all([
     read("src/pages/inventory/inventory-valuation-panels.tsx"),
