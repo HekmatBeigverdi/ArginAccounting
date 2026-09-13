@@ -33,7 +33,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 
 ## Current Phase
 
-21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–16 complete; fixed 20-step sequence preserved; Step 17 — Persian RTL Inventory Valuation Workspace — is next
+21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–17 complete; fixed 20-step sequence preserved; Step 18 — Domain and Application Tests — is next
 
 ## Renumbering Rule
 
