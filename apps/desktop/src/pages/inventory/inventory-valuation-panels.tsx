@@ -48,11 +48,7 @@ const ValuationTable = ({ headers, rows }: ValuationTableProps) => (
   </div>
 );
 
-export function ValuationOverviewPanel({
-  report,
-}: {
-  report: InventoryValuationAsOfReport;
-}) {
+export function ValuationOverviewPanel({ report }: { report: InventoryValuationAsOfReport }) {
   const tableRows: ValuationTableRow[] = report.rows.map((row) => [
     row.productId,
     row.warehouseId,
@@ -66,19 +62,10 @@ export function ValuationOverviewPanel({
   return (
     <>
       <div className="valuation-cards">
-        <article>
-          <span>ارزش حل‌شده</span>
-          <strong>{formatMoney(report.resolvedTotalCost)}</strong>
-        </article>
-        <article>
-          <span>ردیف نامشخص</span>
-          <strong>{report.unresolvedRowCount}</strong>
-        </article>
+        <article><span>ارزش حل‌شده</span><strong>{formatMoney(report.resolvedTotalCost)}</strong></article>
+        <article><span>ردیف نامشخص</span><strong>{report.unresolvedRowCount}</strong></article>
       </div>
-      <ValuationTable
-        headers={["کالا", "انبار", "تاریخ", "روش", "تعداد", "ارزش", "وضعیت"]}
-        rows={tableRows}
-      />
+      <ValuationTable headers={["کالا", "انبار", "تاریخ", "روش", "تعداد", "ارزش", "وضعیت"]} rows={tableRows} />
     </>
   );
 }
@@ -95,68 +82,33 @@ export function ValuationKardexPanel({
   return (
     <>
       <div className="valuation-cards">
-        <article>
-          <span>افتتاحیه</span>
-          <strong>{formatMoney(report.openingResolvedCost)}</strong>
-        </article>
-        <article>
-          <span>مانده پایان صفحه</span>
-          <strong>{formatMoney(report.closingResolvedCost)}</strong>
-        </article>
+        <article><span>افتتاحیه</span><strong>{formatMoney(report.openingResolvedCost)}</strong></article>
+        <article><span>مانده پایان صفحه</span><strong>{formatMoney(report.closingResolvedCost)}</strong></article>
       </div>
       <div className="valuation-table">
         <table>
-          <thead>
-            <tr>
-              {[
-                "تاریخ",
-                "Movement",
-                "تعداد",
-                "قیمت واحد",
-                "اثر ریالی",
-                "مانده ریالی",
-                "ردیابی",
-              ].map((header) => (
-                <th key={header}>{header}</th>
-              ))}
-            </tr>
-          </thead>
+          <thead><tr>{["تاریخ", "Movement", "تعداد", "قیمت واحد", "اثر ریالی", "مانده ریالی", "ردیابی"].map((header) => <th key={header}>{header}</th>)}</tr></thead>
           <tbody>
             {report.entries.map((row) => (
               <tr key={row.valuationEntryId}>
                 <td>{gregorianToJalali(row.businessDate)}</td>
-                <td>
-                  <bdi>{row.movementId}</bdi>
-                </td>
+                <td><bdi>{row.movementId}</bdi></td>
                 <td>{row.quantity}</td>
                 <td>{row.unitCost ?? "نامشخص"}</td>
                 <td>{formatMoney(row.monetaryDelta, row.currency)}</td>
                 <td>{formatMoney(row.runningResolvedCost, row.currency)}</td>
-                <td>
-                  <button onClick={() => onTrace(row.movementId)}>منشأ</button>
-                </td>
+                <td><button onClick={() => onTrace(row.movementId)}>منشأ</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {report.nextCursor && (
-        <button
-          className="valuation-more"
-          onClick={() => onNext(report.nextCursor!)}
-        >
-          صفحه بعد
-        </button>
-      )}
+      {report.nextCursor && <button className="valuation-more" onClick={() => onNext(report.nextCursor!)}>صفحه بعد</button>}
     </>
   );
 }
 
-export function ValuationLayersPanel({
-  report,
-}: {
-  report: InventoryValuationLayerReport;
-}) {
+export function ValuationLayersPanel({ report }: { report: InventoryValuationLayerReport }) {
   const tableRows: ValuationTableRow[] = report.rows.map((row) => [
     gregorianToJalali(row.openedBusinessDate),
     row.productId,
@@ -169,23 +121,8 @@ export function ValuationLayersPanel({
 
   return (
     <>
-      <p className="valuation-note">
-        {
-          "این جدول فقط لایه‌های باز فعلی FIFO را نشان می‌دهد و گزارش تاریخی As-of نیست."
-        }
-      </p>
-      <ValuationTable
-        headers={[
-          "تاریخ",
-          "کالا",
-          "انبار",
-          "مقدار اولیه",
-          "باقی‌مانده",
-          "قیمت واحد",
-          "ارزش باقی‌مانده",
-        ]}
-        rows={tableRows}
-      />
+      <p className="valuation-note">این جدول فقط لایه‌های باز فعلی FIFO را نشان می‌دهد و گزارش تاریخی As-of نیست.</p>
+      <ValuationTable headers={["تاریخ", "کالا", "انبار", "مقدار اولیه", "باقی‌مانده", "قیمت واحد", "ارزش باقی‌مانده"]} rows={tableRows} />
     </>
   );
 }
@@ -205,35 +142,24 @@ export function ValuationInboundCostPanel({
   const [unitCost, setUnitCost] = useState("");
 
   if (rows.length === 0) {
-    return (
-      <p className="valuation-note">
-        ورودی قطعی‌شده‌ای با بهای تعیین‌نشده در محدوده انتخاب‌شده وجود ندارد.
-      </p>
-    );
+    return <p className="valuation-note">ورودی قطعی‌شده‌ای با بهای تعیین‌نشده در محدوده انتخاب‌شده وجود ندارد.</p>;
   }
+
+  const hasRowsWithoutPolicy = rows.some((row) => !row.policyReady);
 
   return (
     <section className="valuation-cost-inputs">
       <h3>ورودی‌های قطعی‌شده با بهای تعیین‌نشده</h3>
-      <p className="valuation-note">
-        این فهرست مستقیماً از گردش قطعی انبار خوانده می‌شود؛ بنابراین رسیدهای قدیمی و جدید هر دو قابل قیمت‌گذاری هستند.
-      </p>
+      <p className="valuation-note">این فهرست مستقیماً از گردش قطعی انبار خوانده می‌شود؛ بنابراین رسیدهای قدیمی و جدید هر دو قابل قیمت‌گذاری هستند.</p>
+      {hasRowsWithoutPolicy && (
+        <p className="valuation-note">
+          بعضی ورودی‌ها هنوز سیاست ارزش‌گذاری مؤثر در تاریخ سند ندارند. بهای ورودی را می‌توان ثبت کرد، اما ایجاد Valuation Entry و FIFO/MWA پس از تعیین سیاست و بازسازی ارزش‌گذاری انجام می‌شود.
+        </p>
+      )}
       <div className="valuation-table">
         <table>
           <thead>
-            <tr>
-              {[
-                "تاریخ",
-                "سند",
-                "کالا",
-                "انبار",
-                "تعداد",
-                "روش",
-                "ارز",
-                "بهای واحد",
-                "عملیات",
-              ].map((header) => <th key={header}>{header}</th>)}
-            </tr>
+            <tr>{["تاریخ", "سند", "کالا", "انبار", "تعداد", "روش", "ارز", "بهای واحد", "عملیات"].map((header) => <th key={header}>{header}</th>)}</tr>
           </thead>
           <tbody>
             {rows.map((row) => {
@@ -245,7 +171,7 @@ export function ValuationInboundCostPanel({
                   <td><bdi>{row.productId}</bdi></td>
                   <td><bdi>{row.warehouseId}</bdi></td>
                   <td>{row.quantity}</td>
-                  <td>{valuationMethodLabel(row.method)}</td>
+                  <td>{row.method ? valuationMethodLabel(row.method) : "سیاست تعیین نشده"}</td>
                   <td>{row.currency}</td>
                   <td>
                     {editing ? (
@@ -258,14 +184,10 @@ export function ValuationInboundCostPanel({
                         onChange={(event) => setUnitCost(event.target.value.replace(/,/gu, ""))}
                         disabled={saving}
                       />
-                    ) : (
-                      "بهای تعیین‌نشده"
-                    )}
+                    ) : "بهای تعیین‌نشده"}
                   </td>
                   <td>
-                    {!canResolve ? (
-                      "بدون مجوز"
-                    ) : editing ? (
+                    {!canResolve ? "بدون مجوز" : editing ? (
                       <div className="valuation-cost-actions">
                         <button
                           disabled={saving || !unitCost.trim()}
@@ -276,25 +198,10 @@ export function ValuationInboundCostPanel({
                         >
                           {saving ? "در حال ثبت…" : "ثبت بها"}
                         </button>
-                        <button
-                          disabled={saving}
-                          onClick={() => {
-                            setEditingMovementId(null);
-                            setUnitCost("");
-                          }}
-                        >
-                          انصراف
-                        </button>
+                        <button disabled={saving} onClick={() => { setEditingMovementId(null); setUnitCost(""); }}>انصراف</button>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => {
-                          setEditingMovementId(row.movementId);
-                          setUnitCost("");
-                        }}
-                      >
-                        تعیین بهای ورودی
-                      </button>
+                      <button onClick={() => { setEditingMovementId(row.movementId); setUnitCost(""); }}>تعیین بهای ورودی</button>
                     )}
                   </td>
                 </tr>
@@ -307,11 +214,7 @@ export function ValuationInboundCostPanel({
   );
 }
 
-export function ValuationUnresolvedPanel({
-  report,
-}: {
-  report: InventoryValuationUnresolvedReport;
-}) {
+export function ValuationUnresolvedPanel({ report }: { report: InventoryValuationUnresolvedReport }) {
   const tableRows: ValuationTableRow[] = report.rows.map((row) => [
     gregorianToJalali(row.businessDate),
     row.productId,
@@ -324,10 +227,7 @@ export function ValuationUnresolvedPanel({
   return (
     <>
       <h3>موارد حل‌نشده موتور ارزش‌گذاری</h3>
-      <ValuationTable
-        headers={["تاریخ", "کالا", "انبار", "تعداد", "روش", "علت"]}
-        rows={tableRows}
-      />
+      <ValuationTable headers={["تاریخ", "کالا", "انبار", "تعداد", "روش", "علت"]} rows={tableRows} />
     </>
   );
 }
@@ -345,62 +245,26 @@ export function ValuationPolicyPanel({
     policy.currency,
     policy.strategyVersion,
     policy.revision,
-    policy.changeReason ??
-      (policy.previousPolicyId ? "تغییر سیاست" : "سیاست اولیه"),
+    policy.changeReason ?? (policy.previousPolicyId ? "تغییر سیاست" : "سیاست اولیه"),
   ]);
 
   return (
     <>
-      <ValuationTable
-        headers={[
-          "از تاریخ",
-          "روش",
-          "ارز",
-          "نسخه موتور",
-          "Revision",
-          "علت تغییر",
-        ]}
-        rows={tableRows}
-      />
-      {readOnly && (
-        <p className="valuation-note">
-          تغییر سیاست نیازمند مجوز مدیریت ارزش‌گذاری است.
-        </p>
-      )}
+      <ValuationTable headers={["از تاریخ", "روش", "ارز", "نسخه موتور", "Revision", "علت تغییر"]} rows={tableRows} />
+      {readOnly && <p className="valuation-note">تغییر سیاست نیازمند مجوز مدیریت ارزش‌گذاری است.</p>}
     </>
   );
 }
 
-export function ValuationTracePanel({
-  trace,
-  onClose,
-}: {
-  trace: InventoryValuationTraceSnapshot;
-  onClose: () => void;
-}) {
+export function ValuationTracePanel({ trace, onClose }: { trace: InventoryValuationTraceSnapshot; onClose: () => void }) {
   return (
     <aside className="valuation-trace">
       <button onClick={onClose}>بستن</button>
       <h3>ردیابی منشأ ارزش‌گذاری</h3>
-      <p>
-        Movement: <bdi>{trace.movementId}</bdi>
-      </p>
-      <p>
-        Policy: {valuationMethodLabel(trace.policy.method)} / Revision{" "}
-        {trace.policy.revision}
-      </p>
-      <p>
-        Cost Input:{" "}
-        {trace.costInput
-          ? formatMoney(trace.costInput.totalCost, trace.costInput.currency)
-          : "ندارد"}
-      </p>
-      <p>
-        Valuation Entry:{" "}
-        {trace.entry
-          ? formatMoney(trace.entry.totalCost, trace.entry.currency)
-          : "ایجاد نشده"}
-      </p>
+      <p>Movement: <bdi>{trace.movementId}</bdi></p>
+      <p>Policy: {valuationMethodLabel(trace.policy.method)} / Revision {trace.policy.revision}</p>
+      <p>Cost Input: {trace.costInput ? formatMoney(trace.costInput.totalCost, trace.costInput.currency) : "ندارد"}</p>
+      <p>Valuation Entry: {trace.entry ? formatMoney(trace.entry.totalCost, trace.entry.currency) : "ایجاد نشده"}</p>
     </aside>
   );
 }
