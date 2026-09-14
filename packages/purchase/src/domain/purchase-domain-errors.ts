@@ -17,6 +17,13 @@ export const PURCHASE_DOMAIN_ERROR_CODES = Object.freeze({
   taxSnapshotInvalid: "purchase.tax_snapshot_invalid",
   taxpayerIdentifierInvalid: "purchase.taxpayer_identifier_invalid",
   unitSnapshotInvalid: "purchase.unit_snapshot_invalid",
+  quantityInvalid: "purchase.quantity_invalid",
+  quantityPrecisionInvalid: "purchase.quantity_precision_invalid",
+  unitInvalid: "purchase.unit_invalid",
+  moneyInvalid: "purchase.money_invalid",
+  currencyMismatch: "purchase.currency_mismatch",
+  adjustmentInvalid: "purchase.adjustment_invalid",
+  taxSemanticsInvalid: "purchase.tax_semantics_invalid",
 } as const);
 
 export type PurchaseDomainErrorCode =
