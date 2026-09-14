@@ -11,6 +11,12 @@ export const PURCHASE_DOMAIN_ERROR_CODES = Object.freeze({
   duplicateLineId: "purchase.duplicate_line_id",
   duplicateLinePosition: "purchase.duplicate_line_position",
   selfReference: "purchase.self_reference",
+  snapshotInvalid: "purchase.snapshot_invalid",
+  supplierSnapshotMismatch: "purchase.supplier_snapshot_mismatch",
+  itemSnapshotMismatch: "purchase.item_snapshot_mismatch",
+  taxSnapshotInvalid: "purchase.tax_snapshot_invalid",
+  taxpayerIdentifierInvalid: "purchase.taxpayer_identifier_invalid",
+  unitSnapshotInvalid: "purchase.unit_snapshot_invalid",
 } as const);
 
 export type PurchaseDomainErrorCode =
