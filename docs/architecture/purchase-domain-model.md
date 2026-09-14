@@ -2,21 +2,22 @@
 
 ## Status
 
-Phase 22 Step 2 domain foundation. Persistence, pricing, lifecycle orchestration and downstream integration are intentionally deferred to their owning steps.
+Phase 22 Steps 2–3 domain foundation. Persistence, pricing, lifecycle orchestration and downstream integration are intentionally deferred to their owning steps.
 
 ## Ownership
 
-`@argin/purchase` owns persistence-neutral Purchase commercial aggregates. It does not own Inventory quantity movements, Inventory Valuation algorithms, accounting postings, Sales pricing or Treasury settlement.
+`@argin/purchase` owns persistence-neutral Purchase commercial aggregates and historical commercial snapshots. It does not own Inventory quantity movements, Inventory Valuation algorithms, accounting postings, Sales pricing or Treasury settlement.
 
 ## Aggregate Root
 
 `PurchaseDocumentSnapshot` is the Phase 22 aggregate root foundation. Its durable identity is `documentId`; SQLite row identity, display numbers and future server-generated database keys must never replace this durable ID.
 
-The Step 2 header contains only foundation facts needed before later semantics are introduced:
+The header contains:
 
 - `documentId`
 - `companyId`
 - `supplierId`
+- immutable `supplierSnapshot`
 - `businessDate`
 - optional description
 - optional source reference
@@ -25,66 +26,89 @@ The Step 2 header contains only foundation facts needed before later semantics a
 - optimistic version
 - created/updated timestamps
 
-Document type, lifecycle status, numbering/fiscal scope and Approval semantics belong to later fixed steps and are not guessed in Step 2.
+Document type, lifecycle status, numbering/fiscal scope and Approval semantics belong to later fixed steps.
 
-## Lines
+## Supplier Historical Snapshot
 
-Every `PurchaseDocumentLineSnapshot` has a durable `lineId`, positive unique `position`, durable `itemId`, classification, optional description and optional source reference.
+Every Purchase document carries a frozen `PurchaseSupplierSnapshot` so later Party edits do not rewrite historical supplier facts. The snapshot preserves:
 
-Step 2 freezes three line classifications:
+- Company and supplier durable IDs;
+- supplier code and display name;
+- natural-person/legal-entity classification;
+- national code / national ID where applicable;
+- economic number;
+- tax file number.
 
-- `stock-product`: Product line that may later link to Inventory receipt/movement and Valuation Cost Input.
-- `non-stock-product`: Product line that is commercially purchased but does not create stock solely from the Purchase line itself.
-- `service`: Service line and therefore never a stock line.
+The snapshot `companyId` and `supplierId` must exactly match the aggregate header. The Party master remains authoritative for current master data; the Purchase snapshot is authoritative only for the historical commercial document that captured it.
 
-The classification invariant is structural:
+## Lines and Item Historical Snapshot
+
+Every `PurchaseDocumentLineSnapshot` has a durable `lineId`, positive unique `position`, durable `itemId`, line classification, frozen `itemSnapshot`, optional description and optional source reference.
+
+Three line classifications remain fixed:
+
+- `stock-product`: Product line eligible for future Inventory receipt/movement and Valuation Cost Input linkage.
+- `non-stock-product`: Product line commercially purchased without stock ownership in Purchase.
+- `service`: Service line and therefore never stock-tracked.
+
+Each line now captures historical Product/Service metadata:
+
+- item durable ID, item type, code and display name;
+- SKU and reference code;
+- 13-digit Taxpayer goods/service ID when present;
+- purchase description, brand and model;
+- stock-tracking flag;
+- tax treatment and VAT basis-point rate;
+- default purchase-unit identity/display and Taxpayer unit code when configured.
+
+The snapshot intentionally does **not** contain unit price, quantity, discounts, charges or calculated tax amounts. Those transaction semantics belong to Step 4 and Step 7.
+
+Structural invariants include:
 
 - `stock-product` and `non-stock-product` require `itemType = product`;
-- `service` requires `itemType = service`.
+- `service` requires `itemType = service`;
+- `stock-product` requires the captured Product snapshot to be stock-tracked;
+- `non-stock-product` and `service` cannot carry a stock-tracked item snapshot;
+- snapshot `itemId` and `itemType` must match the line durable facts;
+- service snapshots can never claim stock tracking;
+- Taxpayer goods/service ID, when present, must remain the validated 13-digit identifier;
+- taxable items require a valid basis-point rate; non-taxable treatments cannot silently carry a VAT rate.
 
-Step 2 does not decide exact quantity, unit conversion, price, currency, discount, charge or tax representation. Those semantics belong to Step 4.
+## Unit Snapshot Boundary
+
+Step 3 snapshots the default purchase-unit identity, code, title and Taxpayer unit code only. Exact entered/base quantity, conversion ratio application, precision semantics and rounding belong to Step 4. This prevents Step 3 from prematurely owning quantity arithmetic while still preserving the master-data identity visible when the Purchase fact was created.
 
 ## Source and Correction References
 
 `PurchaseSourceReference` preserves external/import/upstream identity without coupling the aggregate to a persistence adapter. It consists of `sourceSystem`, `sourceDocumentId` and optional `sourceLineId`.
 
-`PurchaseCorrectionReference` records a durable link to another Purchase document plus a required reason. Step 2 only defines the safe identity relationship; the actual correction/return workflow and compensation rules belong to Step 12.
+`PurchaseCorrectionReference` records a durable link to another Purchase document plus a required reason. The foundation only defines the safe identity relationship; the actual correction/return workflow and compensation rules belong to Step 12.
 
 A document cannot reference itself as its correction target. A Purchase source reference cannot identify the same Purchase document as its own upstream source.
 
-## Invariants
+## Historical Immutability Rule
 
-The Step 2 aggregate enforces:
+Changing Party, Product or Service Master Data after a Purchase document is created must not mutate the embedded Purchase snapshots. Rehydration validates and freezes the stored historical snapshots again. Future UI/query layers must display current master data only when explicitly requested; document history uses the captured Purchase facts.
 
-1. all durable identities are non-empty trimmed strings;
-2. business date is a valid Gregorian `YYYY-MM-DD` value for internal storage;
-3. timestamps are valid UTC ISO timestamps and `updatedAt >= createdAt`;
-4. aggregate version is a positive safe integer;
-5. line IDs are unique inside the document;
-6. line positions are positive and unique inside the document;
-7. Product/Service classification cannot contradict stock/non-stock/service line kind;
-8. correction/source self-reference is rejected;
-9. normalized snapshots and line collections are immutable/frozen;
-10. rehydration executes the same invariants as creation.
-
-These rules are persistence-neutral and must behave identically in SQLite Desktop and future PostgreSQL/.NET implementations.
+This rule is required for Audit, reproducible reports, future Purchase Posting and Argin Bridge synchronization.
 
 ## Argin Bridge Foundation
 
-Step 2 establishes the durable identity subset needed by future Bridge envelopes:
+Steps 2–3 establish the durable identity and historical-fact subset needed by future Bridge envelopes:
 
 - Purchase `documentId` and `lineId` survive store changes;
 - `companyId`, `supplierId` and `itemId` are durable cross-module references rather than SQLite row IDs;
+- supplier/item snapshot facts travel with the Purchase fact instead of being re-read from mutable remote Master Data;
+- Taxpayer identifiers and unit codes remain historical commercial metadata;
 - external source and correction references are explicit durable facts;
 - version/timestamps can later participate in optimistic concurrency and synchronization metadata;
 - rehydration validates the same domain rules after serialization/transport.
 
-Step 18 owns the complete versioned Argin Bridge synchronization envelope, request identity, tombstone and dependency semantics. Step 2 deliberately does not invent those transport contracts early.
+Step 18 owns the complete versioned Argin Bridge synchronization envelope, request identity, tombstone and dependency semantics. Steps 2–3 deliberately do not invent transport contracts early.
 
 ## Deferred to Later Fixed Steps
 
-- Step 3: supplier/Product/Service historical snapshots.
-- Step 4: exact quantity, unit, currency, price, discounts, charges, taxes and rounding.
+- Step 4: exact quantity, unit conversion, currency, price, discounts, charges, taxes and rounding.
 - Step 5: document types and lifecycle states/transitions.
 - Step 6: Branch/fiscal scope and Number Series.
 - Step 7: pricing/totals engine.
@@ -93,4 +117,4 @@ Step 18 owns the complete versioned Argin Bridge synchronization envelope, reque
 
 ## Package Surface
 
-Step 2 introduces `@argin/purchase` with a persistence-neutral public surface from `packages/purchase/src/index.ts`. No SQLite, Tauri, UI or accounting dependency is introduced by the domain foundation.
+`@argin/purchase` exposes the aggregate and snapshot factories through `packages/purchase/src/index.ts`. No SQLite, Tauri, UI or accounting dependency is introduced by Steps 2–3.
