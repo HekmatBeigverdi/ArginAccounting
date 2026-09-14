@@ -3,6 +3,16 @@ import {
   PurchaseDomainError,
 } from "./purchase-domain-errors.ts";
 import type { PurchaseDomainErrorCode } from "./purchase-domain-errors.ts";
+import {
+  createPurchaseItemSnapshot,
+  createPurchaseSupplierSnapshot,
+} from "./purchase-commercial-snapshots.ts";
+import type {
+  CreatePurchaseItemSnapshotInput,
+  CreatePurchaseSupplierSnapshotInput,
+  PurchaseItemSnapshot,
+  PurchaseSupplierSnapshot,
+} from "./purchase-commercial-snapshots.ts";
 
 export const PURCHASE_LINE_KINDS = Object.freeze([
   "stock-product",
@@ -41,6 +51,7 @@ export interface PurchaseDocumentLineSnapshot {
   readonly lineKind: PurchaseLineKind;
   readonly itemType: PurchaseItemType;
   readonly itemId: string;
+  readonly itemSnapshot: PurchaseItemSnapshot;
   readonly description: string | null;
   readonly sourceReference: PurchaseSourceReference | null;
 }
@@ -51,6 +62,7 @@ export interface CreatePurchaseDocumentLineInput {
   readonly lineKind: PurchaseLineKind;
   readonly itemId: string;
   readonly itemType?: PurchaseItemType;
+  readonly itemSnapshot: CreatePurchaseItemSnapshotInput;
   readonly description?: string | null;
   readonly sourceReference?: CreatePurchaseSourceReferenceInput | null;
 }
@@ -59,6 +71,7 @@ export interface PurchaseDocumentSnapshot {
   readonly documentId: string;
   readonly companyId: string;
   readonly supplierId: string;
+  readonly supplierSnapshot: PurchaseSupplierSnapshot;
   readonly businessDate: string;
   readonly description: string | null;
   readonly sourceReference: PurchaseSourceReference | null;
@@ -73,6 +86,7 @@ export interface CreatePurchaseDocumentInput {
   readonly documentId: string;
   readonly companyId: string;
   readonly supplierId: string;
+  readonly supplierSnapshot: CreatePurchaseSupplierSnapshotInput;
   readonly businessDate: string;
   readonly description?: string | null;
   readonly sourceReference?: CreatePurchaseSourceReferenceInput | null;
@@ -184,12 +198,25 @@ export function createPurchaseDocumentLine(
     return fail(PURCHASE_DOMAIN_ERROR_CODES.lineClassificationInvalid, "lines.itemType");
   }
 
+  const itemId = identity(input.itemId, "lines.itemId");
+  const itemSnapshot = createPurchaseItemSnapshot(input.itemSnapshot);
+  if (itemSnapshot.itemId !== itemId || itemSnapshot.itemType !== itemType) {
+    return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot");
+  }
+  if (input.lineKind === "stock-product" && !itemSnapshot.stockTracking) {
+    return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot.stockTracking");
+  }
+  if (input.lineKind !== "stock-product" && itemSnapshot.stockTracking) {
+    return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot.stockTracking");
+  }
+
   return Object.freeze({
     lineId: identity(input.lineId, "lines.lineId"),
     position: input.position,
     lineKind: input.lineKind,
     itemType,
-    itemId: identity(input.itemId, "lines.itemId"),
+    itemId,
+    itemSnapshot,
     description: optionalText(input.description, "lines.description"),
     sourceReference: input.sourceReference == null
       ? null
@@ -207,6 +234,16 @@ function normalizePurchaseDocument(
   const documentId = identity(input.documentId, "documentId");
   const companyId = identity(input.companyId, "companyId");
   const supplierId = identity(input.supplierId, "supplierId");
+  const supplierSnapshot = createPurchaseSupplierSnapshot(input.supplierSnapshot);
+  if (
+    supplierSnapshot.companyId !== companyId ||
+    supplierSnapshot.supplierId !== supplierId
+  ) {
+    return fail(
+      PURCHASE_DOMAIN_ERROR_CODES.supplierSnapshotMismatch,
+      "supplierSnapshot",
+    );
+  }
   const businessDate = normalizeBusinessDate(input.businessDate, "businessDate");
   const createdAt = normalizeTimestamp(input.createdAt, "createdAt");
   const updatedAt = normalizeTimestamp(updatedAtInput, "updatedAt");
@@ -260,6 +297,7 @@ function normalizePurchaseDocument(
     documentId,
     companyId,
     supplierId,
+    supplierSnapshot,
     businessDate,
     description: optionalText(input.description, "description"),
     sourceReference,
