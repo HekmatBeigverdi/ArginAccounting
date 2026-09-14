@@ -39,6 +39,24 @@ export type {
 } from "./domain/purchase-commercial-snapshots.ts";
 
 export {
+  createPurchaseCommercialTerms,
+  normalizePurchaseQuantity,
+} from "./domain/purchase-commercial-semantics.ts";
+
+export type {
+  CreatePurchaseCommercialTermsInput,
+  PurchaseAdjustment,
+  PurchaseCommercialTerms,
+  PurchaseCommercialUnitSnapshot,
+  PurchaseCurrencyCode,
+  PurchaseMoneyRoundingMode,
+  PurchaseMoneySnapshot,
+  PurchaseQuantityRoundingMode,
+  PurchaseQuantitySnapshot,
+  PurchaseTaxSemantics,
+} from "./domain/purchase-commercial-semantics.ts";
+
+export {
   PURCHASE_DOMAIN_ERROR_CODES,
   PurchaseDomainError,
 } from "./domain/purchase-domain-errors.ts";
