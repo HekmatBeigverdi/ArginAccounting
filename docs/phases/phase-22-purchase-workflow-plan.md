@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–2 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 3 — Supplier, Product, Service and Commercial Snapshots — is next.
+Steps 1–3 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 4 — Quantity, Unit, Currency, Price, Discount, Charge and Tax Semantics — is next.
 
 ## Governance
 
@@ -23,8 +23,7 @@ Mandatory references:
 ## Baseline and Release Target
 
 - Development baseline: `phase/21-inventory-valuation` at `a3ca48df64c64ffd81b1ddf107c082b7ce371e89`.
-- Baseline note: Phase 21 is not yet promoted to `main`; Phase 22 is intentionally stacked on the current Phase 21 head so Purchase Workflow can consume the valuation contracts already delivered there.
-- Promotion rule: Phase 22 must not be released independently ahead of the required Phase 21 promotion/reconciliation.
+- Phase 22 is intentionally stacked on the current Phase 21 head and must not be released ahead of required Phase 21 promotion/reconciliation.
 - Branch: `phase/22-purchase-workflow`.
 - Target version/tag: `0.22.0` / `v0.22.0`.
 - Release title: `ArginAccounting v0.22.0 — Purchase Workflow`.
@@ -32,92 +31,31 @@ Mandatory references:
 
 ## Objective
 
-Phase 22 delivers the operational and commercial Purchase workflow without owning accounting posting. It provides supplier-scoped Purchase documents, exact commercial line pricing, discounts/charges/tax/currency semantics, lifecycle and correction rules, stock receipt linkage, authoritative inbound Cost Input delivery to Phase 21 Inventory Valuation, returns, bounded reports, Persian RTL Desktop workflows, durable persistence and Argin Bridge-compatible contracts.
-
-The phase preserves one-entry commercial ownership: normal supplier purchase price is entered in Purchase and is not re-entered manually in Inventory Valuation. For stock items, confirmed Purchase facts are linked to authoritative Inventory receipt/movement facts and supply the authoritative monetary Cost Input consumed by FIFO or Moving Weighted Average. Missing upstream commercial cost remains explicit and never silently becomes zero.
-
-## Explicit Scope
-
-Phase 22 owns:
-
-- supplier-linked Purchase commercial documents and durable source identity;
-- Purchase header/line lifecycle and correction chains;
-- Product/Service quantity, unit, commercial price, discount, charge, tax and currency facts;
-- stock/non-stock/service purchase distinctions;
-- linkage to Phase 20 Inventory receipt/movement facts;
-- authoritative inbound Cost Input handoff to Phase 21 for stock items;
-- receipt-before-invoice and invoice-before/without-stock edge policies;
-- Purchase returns and linked compensation semantics;
-- idempotency, optimistic concurrency, permissions, Audit and Argin Bridge-ready envelopes;
-- Persian RTL Purchase workspace and operational Purchase reports.
-
-## Explicit Non-Scope
-
-The following are outside Phase 22:
-
-- Phase 23 Purchase Posting: supplier payable, purchase/VAT journals, GRNI/Inventory accounting treatment and posting reconciliation;
-- Sales Workflow and Sales pricing;
-- Treasury settlement, payment/cheque workflows and bank reconciliation;
-- changing Phase 21 FIFO/MWA policy or valuation algorithms;
-- editing confirmed Phase 20 quantity history;
-- using Purchase price as Sales price;
-- full live Argin Bridge transport, acknowledgements, distributed retries or remote conflict resolution;
-- Taxpayer System invoice projection/submission phases.
+Phase 22 delivers the operational and commercial Purchase workflow without owning accounting posting. It owns supplier Purchase commercial facts and feeds eligible stock costs to Phase 21 while preserving Phase 20 quantity ownership, future Phase 23 posting ownership and Sales price independence.
 
 ## Core Invariants
 
 - Purchase owns normal supplier commercial price; Inventory Valuation does not request duplicate manual price entry for a normal Purchase-linked inbound movement.
-- Selling price and supplier purchase price remain separate commercial facts.
-- Inventory quantity facts remain owned by Phase 20; confirmed Purchase workflows link to them rather than rewriting them.
-- Inventory monetary valuation remains owned by Phase 21; Purchase supplies authoritative Cost Input facts but does not implement FIFO/MWA itself.
+- Inventory quantity facts remain owned by Phase 20; Inventory monetary valuation remains owned by Phase 21.
 - Phase 23 consumes Purchase facts and valuation outputs; Phase 22 never creates accounting journals directly.
 - Services/non-stock purchases do not create Inventory Cost Inputs solely because they are purchased.
 - Missing/unknown cost is explicit unresolved state and never implicit zero.
-- Corrections and returns are linked compensating facts; confirmed historical source facts are not silently mutated.
-- Exact quantities use decimal-string semantics from Product/Inventory contracts; monetary values use safe integer/minor-unit semantics with explicit currency and rounding rules.
-- Durable IDs are independent of SQLite row identity and must survive future PostgreSQL/.NET and Bridge synchronization.
-- Same request/operation/fingerprint replays the durable result; reuse of request identity with different payload is a conflict.
+- Corrections and returns are linked compensating facts; confirmed history is not silently rewritten.
+- Durable IDs are independent of SQLite row identity and survive future PostgreSQL/.NET and Argin Bridge synchronization.
+- Same request/operation/fingerprint must be replay-safe; request reuse with different payload is a conflict.
 - Company/Branch/fiscal scope is enforced at Application boundaries and persistence queries.
-- All multi-write Purchase + Inventory/Valuation handoffs are atomic at the local transaction boundary or use an explicit durable handoff/outbox-style boundary where cross-module transaction ownership makes direct atomicity impossible.
+- Master Data changes after document creation must not mutate historical Purchase supplier/item snapshots.
 
 ## Argin Bridge Requirements
 
-Phase 22 is Bridge-ready from the Domain/Application boundary rather than being retrofitted later.
-
-Authoritative synchronized Purchase facts must use durable IDs and versioned persistence-neutral contracts for at least:
-
-- purchase document ID and line ID;
-- supplier/Party durable ID;
-- Product/Service durable ID;
-- Company, Branch and fiscal scope;
-- inventory receipt/movement linkage identity;
-- valuation Cost Input/source identity;
-- currency and commercial monetary facts;
-- lifecycle/correction/return references;
-- entity revision / expected version;
-- request ID, operation ID and idempotency fingerprint;
-- effective/business chronology and record timestamps;
-- origin/source metadata and tombstone semantics where deletion is legally/operationally allowed.
-
-Bridge rules:
-
-- Purchase document/line commercial facts are authoritative in Purchase.
-- Inventory movement facts remain authoritative in Inventory.
-- Valuation Cost Inputs are authoritative monetary inputs linked to Purchase source identity; derived valuation Entry/Layer/State remains rebuildable Phase 21 state.
-- Sync replay must never duplicate a receipt, Cost Input, return or future accounting effect.
-- SQLite Desktop and future PostgreSQL/.NET Server implementations must interpret the same versioned Purchase contracts identically.
-- Live transport, acknowledgements, dependency queues, distributed retries and remote conflict resolution remain Phase 45 scope.
+Authoritative Purchase facts use durable IDs and persistence-neutral contracts for document/line, supplier, Product/Service, Company/Branch/fiscal scope, Inventory/Valuation linkage, lifecycle/correction references, revisions, request identity and chronology. Historical supplier/item snapshots travel with the Purchase fact and are not reconstructed from mutable remote Master Data. Derived Inventory Valuation state remains rebuildable. Live transport/retry/conflict infrastructure remains Phase 45 scope.
 
 ## Phase Boundaries
 
-### Phase 21 — Inventory Valuation
-Consumes Purchase-provided authoritative Cost Inputs for stock inbound movements. Purchase must not duplicate valuation algorithms.
-
-### Phase 23 — Purchase Posting
-Consumes Phase 22 commercial facts and Phase 21 valuation outputs. Supplier payable, VAT/purchase accounting and GRNI/Inventory posting are deferred to Phase 23.
-
-### Phase 24 — Sales Workflow
-Sales commercial pricing is independent. Purchase price is never promoted into a global Sales price.
+- **Phase 20 — Inventory Documents:** authoritative quantity movement ownership.
+- **Phase 21 — Inventory Valuation:** consumes Purchase-provided authoritative Cost Inputs and owns FIFO/MWA.
+- **Phase 23 — Purchase Posting:** owns supplier payable, VAT/purchase journal effects and GRNI/Inventory posting.
+- **Phase 24 — Sales Workflow:** owns Sales pricing independently from Purchase price.
 
 ## Step Status
 
@@ -125,7 +63,7 @@ Sales commercial pricing is independent. Purchase price is never promoted into a
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Purchase Domain Model | Completed |
-| 3 | Supplier, Product, Service and Commercial Snapshots | Not started |
+| 3 | Supplier, Product, Service and Commercial Snapshots | Completed |
 | 4 | Quantity, Unit, Currency, Price, Discount, Charge and Tax Semantics | Not started |
 | 5 | Purchase Document Types and Lifecycle | Not started |
 | 6 | Company, Branch, Fiscal Scope and Numbering | Not started |
@@ -151,117 +89,115 @@ Sales commercial pricing is independent. Purchase price is never promoted into a
 ## Fixed Execution Sequence and Exit Criteria
 
 ### Step 1 — Baseline, Branch, Scope and Plan Freeze
-Record the Phase 21-based development baseline, create the Phase 22 branch, freeze Purchase ownership/non-scope boundaries, Argin Bridge invariants and this numbered plan.
-
-Exit criteria:
-
-- `phase/22-purchase-workflow` exists from the recorded Phase 21 head;
-- canonical Phase 22 plan exists under `docs/phases/`;
-- Purchase vs Inventory vs Valuation vs Posting vs Sales ownership is explicit;
-- Bridge requirements are defined before Domain implementation;
-- Step Status identifies Step 1 as completed and every later step as not started.
+Record the Phase 21-based baseline, create the branch, freeze Purchase ownership/non-scope boundaries, Bridge invariants and this numbered plan.
 
 ### Step 2 — Purchase Domain Model
-Define persistence-neutral Purchase aggregate roots, headers, lines, durable identities, source/correction references and invariants for Product, Service and stock/non-stock lines.
-
-Exit criteria:
-
-- `@argin/purchase` exists as a persistence-neutral workspace package;
-- Purchase document and line durable IDs are independent of database row identity;
-- Product stock, Product non-stock and Service line classifications have explicit invariants;
-- source/correction references reject self-reference and preserve durable upstream identity;
-- create and rehydrate paths execute the same validation rules;
-- no pricing, lifecycle, SQLite/Tauri, posting or UI ownership leaks into Step 2.
+Define persistence-neutral Purchase aggregate roots, headers, lines, durable identities, source/correction references and Product/Service stock/non-stock invariants.
 
 ### Step 3 — Supplier, Product, Service and Commercial Snapshots
 Snapshot supplier identity/display facts and required Product/Service commercial/unit/tax metadata so later Master Data changes do not rewrite historical Purchase facts.
+
+Exit criteria:
+
+- each Purchase header carries an immutable supplier historical snapshot tied to the same `companyId` and `supplierId`;
+- each line carries an immutable Product/Service snapshot tied to the same `itemId`/`itemType`;
+- stock/non-stock/service classification is consistent with captured `stockTracking`;
+- supplier code/display/classification and relevant identity/tax numbers are captured;
+- Product/Service code/display, SKU/reference, 13-digit Taxpayer ID, purchase description, brand/model, stock-tracking and tax metadata are captured;
+- default purchase-unit identity/display/Taxpayer unit code is captured without introducing quantity arithmetic;
+- prices, quantities, discounts, charges and calculated tax amounts remain outside Step 3;
+- rehydration re-validates and freezes the same historical snapshots;
+- snapshot factories and aggregate integration are covered by executable tests.
 
 ### Step 4 — Quantity, Unit, Currency, Price, Discount, Charge and Tax Semantics
 Define exact quantity/unit conversion, monetary minor-unit representation, currency identity, line/header discounts, charges, taxable bases, tax amounts and deterministic rounding.
 
 ### Step 5 — Purchase Document Types and Lifecycle
-Define draft/submitted/approved/confirmed/cancelled/returned/corrected states and supported Purchase document types without creating accounting postings.
+Define draft/submitted/approved/confirmed/cancelled/returned/corrected states and supported Purchase document types without accounting postings.
 
 ### Step 6 — Company, Branch, Fiscal Scope and Numbering
-Enforce Company isolation, Branch visibility, fiscal dates/locks and shared Number Series rules for Purchase documents.
+Enforce Company isolation, Branch visibility, fiscal dates/locks and shared Number Series rules.
 
 ### Step 7 — Purchase Pricing and Totals Engine
-Implement deterministic line/header totals, discounts, charges, taxes and currency totals without floating-point arithmetic or hidden valuation logic.
+Implement deterministic line/header totals, discounts, charges, taxes and currency totals without floating point or valuation logic.
 
 ### Step 8 — Receipt and Invoice Matching Policy
-Define partial/multiple receipt and invoice matching, over/under receipt policy, duplicate-link prevention and durable matching identities.
+Define partial/multiple receipt/invoice matching, over/under receipt policy and durable duplicate-safe matching identities.
 
 ### Step 9 — Inventory Receipt Integration
-Integrate Purchase stock lines with Phase 20 receipt confirmation contracts while preserving Inventory ownership of quantity movements and preventing duplicate stock effects.
+Integrate Purchase stock lines with Phase 20 receipt confirmation while preserving Inventory quantity ownership and duplicate prevention.
 
 ### Step 10 — Inventory Valuation Cost Input Integration
-Map eligible confirmed Purchase stock costs to authoritative Phase 21 Cost Inputs using durable Purchase line + Inventory movement linkage, explicit currency/rounding and deterministic correction semantics.
+Map eligible confirmed Purchase stock costs to authoritative Phase 21 Cost Inputs through durable Purchase line + Inventory movement linkage.
 
 ### Step 11 — Receipt-Before-Invoice and Cost Resolution Policy
-Support unresolved or explicitly approved provisional inbound cost followed by controlled supplier-invoice resolution/correction and downstream deterministic recalculation; never default unknown cost to zero.
+Support unresolved or approved provisional inbound cost followed by controlled supplier-invoice resolution/correction and recalculation; unknown cost is never zero.
 
 ### Step 12 — Purchase Return and Correction Workflow
-Implement linked Purchase returns/corrections and coordinated Inventory/Valuation compensation without rewriting original confirmed history.
+Implement linked returns/corrections and coordinated Inventory/Valuation compensation without rewriting original confirmed history.
 
 ### Step 13 — Application, Query and Repository Contracts
-Define commands, queries, DTOs, repositories, Unit of Work, selectors, errors, matching ports and Inventory/Valuation integration ports independent of SQLite/Tauri.
+Define persistence-neutral commands, queries, DTOs, repositories, UoW, errors, matching and Inventory/Valuation ports.
 
 ### Step 14 — Application Services and Transaction Boundaries
-Orchestrate validation, numbering, lifecycle, matching, Inventory receipt and Cost Input handoff with explicit atomic/local durable transaction boundaries.
+Orchestrate validation, numbering, lifecycle, matching, Inventory receipt and Cost Input handoff with explicit transaction boundaries.
 
 ### Step 15 — Migration, Schema, Constraints and Indexing
-Add versioned SQLite schema for Purchase headers/lines, monetary facts, lifecycle, matching, corrections/returns, revisions, idempotency and required indexes.
+Add versioned SQLite schema for Purchase facts, lifecycle, matching, corrections/returns, revisions, idempotency and indexes.
 
 ### Step 16 — SQLite Repository and Unit of Work
-Implement SQLite repositories and pinned transaction UoW consistent with existing Desktop infrastructure and cross-module integration requirements.
+Implement SQLite repositories and pinned transaction UoW consistent with Desktop infrastructure.
 
 ### Step 17 — Idempotency, Optimistic Concurrency and Replay Safety
-Implement durable request identity/fingerprint, expected-version checks, same-document/matching race protection and replay-safe downstream Inventory/Valuation effects.
+Implement durable request fingerprints, expected versions, same-document/matching race protection and replay-safe downstream effects.
 
 ### Step 18 — Argin Bridge Purchase Synchronization Contract
-Freeze versioned authoritative Purchase envelopes, dependency identities, tombstone/correction rules and replay-safe Inventory/Valuation linkage semantics.
+Freeze versioned authoritative Purchase envelopes, dependency identities, tombstone/correction and replay-safe linkage semantics.
 
 ### Step 19 — Permissions, Approval, Audit and Traceability
-Add operation-specific Purchase permissions, shared Approval/Audit integration and trace chains from Purchase line to Inventory movement and Valuation Cost Input.
+Add operation-specific permissions, shared Approval/Audit and trace chains from Purchase line to Inventory movement and Cost Input.
 
 ### Step 20 — Persian RTL Purchase Workspace
-Deliver Persian RTL list/detail/editor/matching/return/correction surfaces, Solar Hijri boundaries, LTR codes/amounts where required, loading/empty/error/focus states and stale-version recovery.
+Deliver Persian RTL Purchase list/detail/editor/matching/return/correction surfaces with Jalali boundaries and shared UI standards.
 
 ### Step 21 — Purchase Queries and Operational Reports
-Deliver bounded Purchase document, supplier, Product/Service, receipt/invoice match, unresolved-cost and trace reports without becoming accounting-report ownership.
+Deliver bounded Purchase, supplier, Product/Service, matching, unresolved-cost and trace reports without accounting-report ownership.
 
 ### Step 22 — Domain and Application Tests
-Cover domain invariants, pricing/totals, lifecycle, scope, matching, stock/non-stock rules, receipt-before-invoice, returns, idempotency and concurrency behavior.
+Cover domain invariants, pricing/totals, lifecycle, scope, matching, stock/non-stock, receipt-before-invoice, returns, idempotency and concurrency.
 
 ### Step 23 — SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests
-Cover real SQLite upgrades/constraints/rollback/restart, cross-module handoff, Cost Input round-trips, duplicate replay prevention, Bridge serialization, Desktop composition and representative query-plan/performance checks.
+Cover real SQLite upgrades/rollback/restart, cross-module handoff, Cost Input round-trips, replay prevention, Bridge serialization and Desktop composition.
 
 ### Step 24 — Monorepo Validation, Documentation, Final Review and Release
-Run full validation gates, reconcile canonical architecture/security/database/glossary docs, update roadmap/changelog/status records, verify deferred scope, merge according to workflow and prepare `v0.22.0`.
+Run all validation gates, reconcile canonical docs, verify deferred scope, merge according to workflow and prepare `v0.22.0`.
 
 ## Step Evidence
 
 ### Step 1
 
-- Verified canonical `ROADMAP.md`: Phase 22 is Purchase Workflow; Phase 23 is Purchase Posting; Sales Workflow is Phase 24.
-- Verified `main` still represents the Phase 20 release baseline while `phase/21-inventory-valuation` contains the active Phase 21 implementation.
-- Recorded Phase 21 head `a3ca48df64c64ffd81b1ddf107c082b7ce371e89` as the stacked development baseline for Phase 22.
-- Created/realigned `phase/22-purchase-workflow` to that Phase 21 head.
-- Froze the 24-step Phase 22 sequence and Purchase/Inventory/Valuation/Posting/Sales ownership boundaries.
-- Froze Argin Bridge durable identity, replay-safety and authoritative-vs-derived-state requirements before Purchase Domain implementation.
-- No Product/Inventory/Valuation production behavior is changed by Step 1.
+- Verified canonical phase numbering and stacked Phase 21 baseline.
+- Created/realigned `phase/22-purchase-workflow` and froze the 24-step plan plus Purchase/Inventory/Valuation/Posting/Sales ownership boundaries.
+- Froze Argin Bridge durable identity and replay-safety requirements before implementation.
 
 ### Step 2
 
-- Added the new persistence-neutral `@argin/purchase` workspace package with TypeScript/test configuration and no SQLite/Tauri/UI dependency.
-- Added `PurchaseDocumentSnapshot` aggregate creation/rehydration with durable `documentId`, `companyId`, `supplierId`, chronology, version and immutable ordered lines.
-- Added durable line identity and the frozen `stock-product`, `non-stock-product` and `service` classifications with Product/Service consistency validation.
-- Added source and correction references, including self-reference protection and required correction reason.
-- Added domain error codes for invalid identity/date/timestamp/version/classification/duplicate-line/reference cases.
-- Added Step 2 behavior tests covering aggregate creation, immutability, duplicate identities/positions, classification rules, source/correction references and rehydration validation.
-- Added `docs/architecture/purchase-domain-model.md` documenting ownership, invariants, Argin Bridge durable-identity foundation and deferred concerns.
-- Pricing, monetary/tax semantics, document types/lifecycle, persistence, Application orchestration, Inventory/Valuation side effects and UI remain intentionally deferred to their owning fixed steps.
-- Test definitions are committed; executable local/CI success is not claimed unless corresponding command output is observed.
+- Added persistence-neutral `@argin/purchase` package and Purchase aggregate creation/rehydration.
+- Added durable document/line IDs, source/correction references and stock-product/non-stock-product/service classification invariants.
+- Added canonical Purchase domain architecture documentation and behavior tests.
+
+### Step 3
+
+- Added immutable `PurchaseSupplierSnapshot` with durable Company/Supplier identity, supplier code/display/classification and relevant Iranian identity/tax fields.
+- Added immutable `PurchaseItemSnapshot` for Product/Service code/display, SKU/reference, Taxpayer goods/service ID, purchase description, brand/model, stock-tracking and tax treatment/rate.
+- Added immutable default purchase-unit snapshot with unit ID/code/title and Taxpayer unit code while deferring conversion arithmetic to Step 4.
+- Bound supplier snapshots to Purchase headers and item snapshots to Purchase lines; durable identity/type mismatches are rejected.
+- Enforced stock-line consistency: stock Product snapshots must be stock-tracked; non-stock Product/Service lines cannot claim stock tracking.
+- Rehydration validates and freezes historical snapshots again so later Master Data edits cannot rewrite the Purchase fact.
+- Added tests for supplier snapshot normalization/immutability, Product commercial/tax/unit metadata, 13-digit Taxpayer ID validation, service stock prohibition and aggregate snapshot mismatch rules.
+- TDD RED was observed before implementation (`ERR_MODULE_NOT_FOUND` for the not-yet-created snapshot module).
+- Fresh local Node execution after implementation: 8 tests passed, 0 failed across the reconstructed Step 3 Purchase source/test set.
+- Source-only strict TypeScript validation completed with exit code 0. Full package typecheck including Node test types was not claimed in the isolated verifier because `@types/node` is not installed there; normal workspace validation remains a later gate.
 
 ## Change Requests
 
@@ -269,4 +205,4 @@ None.
 
 ## Documentation Impact
 
-Step 1 adds this canonical Phase 22 record. Step 2 adds the canonical Purchase domain architecture record and updates this file as the authoritative Step Status/evidence source. Cross-cutting database, security, glossary and broader testing records remain owned by their later fixed steps; routine per-step evidence files are not created.
+This file remains the canonical Phase 22 status/evidence record. `docs/architecture/purchase-domain-model.md` now covers Steps 2–3 including historical Master Data snapshot semantics. Database, security, glossary and broader integration documentation remain owned by later fixed steps.
