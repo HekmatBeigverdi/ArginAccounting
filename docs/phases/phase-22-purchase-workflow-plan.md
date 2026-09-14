@@ -2,7 +2,7 @@
 
 ## Status
 
-Step 1 is complete on `phase/22-purchase-workflow`. The fixed 24-step sequence is frozen. Step 2 — Purchase Domain Model — is next.
+Steps 1–2 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 3 — Supplier, Product, Service and Commercial Snapshots — is next.
 
 ## Governance
 
@@ -18,6 +18,7 @@ Mandatory references:
 - [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md)
 - [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md)
 - [Commercial Pricing and Inventory Valuation Boundary](../architecture/commercial-pricing-and-valuation-boundary.md)
+- [Purchase Domain Model](../architecture/purchase-domain-model.md)
 
 ## Baseline and Release Target
 
@@ -123,7 +124,7 @@ Sales commercial pricing is independent. Purchase price is never promoted into a
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
-| 2 | Purchase Domain Model | Not started |
+| 2 | Purchase Domain Model | Completed |
 | 3 | Supplier, Product, Service and Commercial Snapshots | Not started |
 | 4 | Quantity, Unit, Currency, Price, Discount, Charge and Tax Semantics | Not started |
 | 5 | Purchase Document Types and Lifecycle | Not started |
@@ -162,6 +163,15 @@ Exit criteria:
 
 ### Step 2 — Purchase Domain Model
 Define persistence-neutral Purchase aggregate roots, headers, lines, durable identities, source/correction references and invariants for Product, Service and stock/non-stock lines.
+
+Exit criteria:
+
+- `@argin/purchase` exists as a persistence-neutral workspace package;
+- Purchase document and line durable IDs are independent of database row identity;
+- Product stock, Product non-stock and Service line classifications have explicit invariants;
+- source/correction references reject self-reference and preserve durable upstream identity;
+- create and rehydrate paths execute the same validation rules;
+- no pricing, lifecycle, SQLite/Tauri, posting or UI ownership leaks into Step 2.
 
 ### Step 3 — Supplier, Product, Service and Commercial Snapshots
 Snapshot supplier identity/display facts and required Product/Service commercial/unit/tax metadata so later Master Data changes do not rewrite historical Purchase facts.
@@ -241,10 +251,22 @@ Run full validation gates, reconcile canonical architecture/security/database/gl
 - Froze Argin Bridge durable identity, replay-safety and authoritative-vs-derived-state requirements before Purchase Domain implementation.
 - No Product/Inventory/Valuation production behavior is changed by Step 1.
 
+### Step 2
+
+- Added the new persistence-neutral `@argin/purchase` workspace package with TypeScript/test configuration and no SQLite/Tauri/UI dependency.
+- Added `PurchaseDocumentSnapshot` aggregate creation/rehydration with durable `documentId`, `companyId`, `supplierId`, chronology, version and immutable ordered lines.
+- Added durable line identity and the frozen `stock-product`, `non-stock-product` and `service` classifications with Product/Service consistency validation.
+- Added source and correction references, including self-reference protection and required correction reason.
+- Added domain error codes for invalid identity/date/timestamp/version/classification/duplicate-line/reference cases.
+- Added Step 2 behavior tests covering aggregate creation, immutability, duplicate identities/positions, classification rules, source/correction references and rehydration validation.
+- Added `docs/architecture/purchase-domain-model.md` documenting ownership, invariants, Argin Bridge durable-identity foundation and deferred concerns.
+- Pricing, monetary/tax semantics, document types/lifecycle, persistence, Application orchestration, Inventory/Valuation side effects and UI remain intentionally deferred to their owning fixed steps.
+- Test definitions are committed; executable local/CI success is not claimed unless corresponding command output is observed.
+
 ## Change Requests
 
 None.
 
 ## Documentation Impact
 
-Step 1 adds this canonical Phase 22 record. Cross-cutting Purchase architecture, database, security, glossary and testing documents are created only by the steps that own those concerns; routine per-step evidence files are not created.
+Step 1 adds this canonical Phase 22 record. Step 2 adds the canonical Purchase domain architecture record and updates this file as the authoritative Step Status/evidence source. Cross-cutting database, security, glossary and broader testing records remain owned by their later fixed steps; routine per-step evidence files are not created.
