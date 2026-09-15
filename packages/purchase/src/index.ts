@@ -71,6 +71,20 @@ export type {
 } from "./domain/purchase-lifecycle.ts";
 
 export {
+  assertPurchaseBusinessDateAllowed,
+  createPurchaseDocumentScope,
+  createPurchaseNumberSeriesRequest,
+} from "./domain/purchase-scope.ts";
+
+export type {
+  CreatePurchaseDocumentScopeInput,
+  PurchaseDocumentScope,
+  PurchaseFiscalPeriodStatus,
+  PurchaseFiscalYearStatus,
+  PurchaseNumberSeriesRequest,
+} from "./domain/purchase-scope.ts";
+
+export {
   PURCHASE_DOMAIN_ERROR_CODES,
   PurchaseDomainError,
 } from "./domain/purchase-domain-errors.ts";
