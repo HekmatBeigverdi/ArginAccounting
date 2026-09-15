@@ -39,22 +39,29 @@ export type {
 } from "./domain/purchase-commercial-snapshots.ts";
 
 export {
-  createPurchaseCommercialTerms,
-  normalizePurchaseQuantity,
-} from "./domain/purchase-commercial-semantics.ts";
+  PURCHASE_DOCUMENT_STATUSES,
+  PURCHASE_DOCUMENT_TRANSITIONS,
+  PURCHASE_DOCUMENT_TYPES,
+  approvePurchaseLifecycle,
+  canTransitionPurchaseDocument,
+  cancelPurchaseLifecycle,
+  confirmPurchaseLifecycle,
+  correctPurchaseLifecycle,
+  createPurchaseLifecycle,
+  reopenPurchaseLifecycle,
+  returnPurchaseLifecycle,
+  submitPurchaseLifecycle,
+} from "./domain/purchase-lifecycle.ts";
 
 export type {
-  CreatePurchaseCommercialTermsInput,
-  PurchaseAdjustment,
-  PurchaseCommercialTerms,
-  PurchaseCommercialUnitSnapshot,
-  PurchaseCurrencyCode,
-  PurchaseMoneyRoundingMode,
-  PurchaseMoneySnapshot,
-  PurchaseQuantityRoundingMode,
-  PurchaseQuantitySnapshot,
-  PurchaseTaxSemantics,
-} from "./domain/purchase-commercial-semantics.ts";
+  CreatePurchaseLifecycleInput,
+  PurchaseDocumentStatus,
+  PurchaseDocumentType,
+  PurchaseLifecycleActionInput,
+  PurchaseLifecycleSnapshot,
+  PurchaseLifecycleTransitionSnapshot,
+  PurchaseLinkedLifecycleActionInput,
+} from "./domain/purchase-lifecycle.ts";
 
 export {
   PURCHASE_DOMAIN_ERROR_CODES,
