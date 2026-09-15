@@ -95,6 +95,20 @@ export type {
 } from "./domain/purchase-pricing.ts";
 
 export {
+  createPurchaseReceiptInvoiceMatch,
+  summarizePurchaseInvoiceLineMatching,
+} from "./domain/purchase-receipt-invoice-matching.ts";
+
+export type {
+  CreatePurchaseReceiptInvoiceMatchInput,
+  PurchaseInvoiceLineMatchingSummary,
+  PurchaseInvoiceMatchingLineReference,
+  PurchaseReceiptInvoiceMatchSnapshot,
+  PurchaseReceiptInvoiceMatchStatus,
+  PurchaseReceiptMatchingLineReference,
+} from "./domain/purchase-receipt-invoice-matching.ts";
+
+export {
   PURCHASE_DOMAIN_ERROR_CODES,
   PurchaseDomainError,
 } from "./domain/purchase-domain-errors.ts";
