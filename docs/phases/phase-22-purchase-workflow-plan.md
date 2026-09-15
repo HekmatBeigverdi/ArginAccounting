@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–6 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 7 — Purchase Pricing and Totals Engine — is next.
+Steps 1–7 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 8 — Receipt and Invoice Matching Policy — is next.
 
 ## Governance
 
@@ -18,6 +18,7 @@ Mandatory references:
 - [Purchase Commercial Semantics](../architecture/purchase-commercial-semantics.md)
 - [Purchase Document Types and Lifecycle](../architecture/purchase-lifecycle.md)
 - [Purchase Company, Branch, Fiscal Scope and Numbering](../architecture/purchase-scope-and-numbering.md)
+- [Purchase Pricing and Totals Engine](../architecture/purchase-pricing-and-totals.md)
 
 ## Baseline and Release Target
 
@@ -41,6 +42,7 @@ Mandatory references:
 - Confirmed Purchase history is never silently rewritten; return/correction requires linked compensating document identity.
 - Every Purchase aggregate is bound to a durable Company/Branch/Fiscal scope whose Company matches the aggregate Company.
 - Purchase captures fiscal context for history, while `@argin/fiscal` remains authoritative for current period/lock policy and Number Series reservation.
+- Pricing is deterministic: gross, ordered discounts, ordered charges, tax base, tax and grand total are derived with safe-integer money, basis points and `half-away-from-zero` rounding.
 
 ## Step Status
 
@@ -52,7 +54,7 @@ Mandatory references:
 | 4 | Quantity, Unit, Currency, Price, Discount, Charge and Tax Semantics | Completed |
 | 5 | Purchase Document Types and Lifecycle | Completed |
 | 6 | Company, Branch, Fiscal Scope and Numbering | Completed |
-| 7 | Purchase Pricing and Totals Engine | Not started |
+| 7 | Purchase Pricing and Totals Engine | Completed |
 | 8 | Receipt and Invoice Matching Policy | Not started |
 | 9 | Inventory Receipt Integration | Not started |
 | 10 | Inventory Valuation Cost Input Integration | Not started |
@@ -141,6 +143,19 @@ Mandatory references:
 - TDD RED was reproduced before implementation with Node 22 as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 6 module.
 - Fresh isolated Node 22 verification on the final Step 6 scope/numbering source: 4 tests passed, 0 failed.
 - Full package/monorepo validation is not claimed from the isolated verifier; broader validation remains owned by Steps 22–24.
+
+## Step 7 Exit Criteria and Evidence
+
+- Added deterministic line pricing sequence: gross amount, ordered discounts, net after discount, ordered charges, tax base, tax amount and grand total.
+- Quantity × unit-price multiplication uses integer/BigInt decimal arithmetic; binary floating point is not used for monetary calculation.
+- Each percentage adjustment is evaluated against the current amount in stored order and rounded with `half-away-from-zero`; fixed adjustments remain explicit money.
+- A discount that would make a line negative is rejected with `purchase.pricing_invalid`.
+- Tax is calculated from the post-discount/post-charge tax base only for `taxable` terms; exempt/not-subject/unspecified yield zero tax.
+- Document totals aggregate line totals only when all lines share the same currency; mixed-currency aggregation is rejected.
+- Added `purchase-pricing.ts`, public exports, pricing error code and `purchase-pricing-totals.test.ts`.
+- Added architecture documentation in `purchase-pricing-and-totals.md` and preserved Step 8+ scope boundaries.
+- Fresh isolated Node 22 verification of pricing behavior: 4 tests passed, 0 failed, covering deterministic line totals, sequential percentage discounts, over-discount rejection and same-currency document aggregation.
+- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
 ## Change Requests
 
