@@ -18,12 +18,16 @@ export const PURCHASE_DOMAIN_ERROR_CODES = Object.freeze({
   taxpayerIdentifierInvalid: "purchase.taxpayer_identifier_invalid",
   unitSnapshotInvalid: "purchase.unit_snapshot_invalid",
   quantityInvalid: "purchase.quantity_invalid",
-  quantityPrecisionInvalid: "purchase.quantity_precision_invalid",
-  unitInvalid: "purchase.unit_invalid",
+  currencyInvalid: "purchase.currency_invalid",
   moneyInvalid: "purchase.money_invalid",
-  currencyMismatch: "purchase.currency_mismatch",
+  rateInvalid: "purchase.rate_invalid",
   adjustmentInvalid: "purchase.adjustment_invalid",
-  taxSemanticsInvalid: "purchase.tax_semantics_invalid",
+  documentTypeInvalid: "purchase.document_type_invalid",
+  statusInvalid: "purchase.status_invalid",
+  lifecycleTransitionInvalid: "purchase.lifecycle_transition_invalid",
+  lifecycleHistoryInvalid: "purchase.lifecycle_history_invalid",
+  lifecycleMetadataInvalid: "purchase.lifecycle_metadata_invalid",
+  relatedDocumentInvalid: "purchase.related_document_invalid",
 } as const);
 
 export type PurchaseDomainErrorCode =
