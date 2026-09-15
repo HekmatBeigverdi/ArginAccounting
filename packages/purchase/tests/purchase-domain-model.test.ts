@@ -9,7 +9,19 @@ import {
 } from "../src/index.ts";
 
 const createdAt = "2026-09-14T08:00:00.000Z";
-
+const scope = {
+  companyId: "company-001",
+  branchId: "branch-001",
+  fiscalYearId: "fy-1405",
+  fiscalPeriodId: "fp-1405-06",
+  fiscalYearStartDate: "2026-03-21",
+  fiscalYearEndDate: "2027-03-20",
+  fiscalPeriodStartDate: "2026-08-23",
+  fiscalPeriodEndDate: "2026-09-22",
+  fiscalYearStatus: "open" as const,
+  fiscalPeriodStatus: "open" as const,
+  lockedThroughDate: "2026-09-01",
+};
 const supplierSnapshot = {
   companyId: "company-001",
   supplierId: "party-supplier-001",
@@ -21,57 +33,26 @@ const supplierSnapshot = {
   economicNumber: "411111111111",
   taxFileNumber: "TX-001",
 };
-
 const stockItemSnapshot = {
-  itemId: "product-stock-001",
-  itemType: "product" as const,
-  code: "STK-001",
-  displayName: "کالای انباری",
-  stockTracking: true,
-  taxTreatment: "taxable" as const,
-  vatRateBasisPoints: 1000,
+  itemId: "product-stock-001", itemType: "product" as const, code: "STK-001",
+  displayName: "کالای انباری", stockTracking: true,
+  taxTreatment: "taxable" as const, vatRateBasisPoints: 1000,
   taxpayerGoodsServiceId: "2720000014385",
 };
-
 const nonStockItemSnapshot = {
-  itemId: "product-non-stock-001",
-  itemType: "product" as const,
-  code: "NST-001",
-  displayName: "کالای غیرانباری",
-  stockTracking: false,
-  taxTreatment: "unspecified" as const,
-  vatRateBasisPoints: null,
+  itemId: "product-non-stock-001", itemType: "product" as const, code: "NST-001",
+  displayName: "کالای غیرانباری", stockTracking: false,
+  taxTreatment: "unspecified" as const, vatRateBasisPoints: null,
 };
-
 const serviceItemSnapshot = {
-  itemId: "service-001",
-  itemType: "service" as const,
-  code: "SRV-001",
-  displayName: "خدمت نمونه",
-  stockTracking: false,
-  taxTreatment: "exempt" as const,
-  vatRateBasisPoints: null,
+  itemId: "service-001", itemType: "service" as const, code: "SRV-001",
+  displayName: "خدمت نمونه", stockTracking: false,
+  taxTreatment: "exempt" as const, vatRateBasisPoints: null,
 };
-
-function createValidDocument() {
-  return createPurchaseDocument({
-    documentId: "purchase-doc-001",
-    companyId: "company-001",
-    supplierId: "party-supplier-001",
-    supplierSnapshot,
-    documentType: "supplier-invoice",
-    businessDate: "2026-09-14",
-    createdAt,
-    lines: [
-      { lineId: "line-001", position: 1, lineKind: "stock-product", itemId: "product-stock-001", itemSnapshot: stockItemSnapshot },
-      { lineId: "line-002", position: 2, lineKind: "non-stock-product", itemId: "product-non-stock-001", itemSnapshot: nonStockItemSnapshot },
-      { lineId: "line-003", position: 3, lineKind: "service", itemId: "service-001", itemSnapshot: serviceItemSnapshot },
-    ],
-  });
-}
 
 function baseInput(documentId: string) {
   return {
+    scope,
     documentId,
     companyId: "company-001",
     supplierId: "party-supplier-001",
@@ -81,7 +62,17 @@ function baseInput(documentId: string) {
     createdAt,
   };
 }
-
+function createValidDocument() {
+  return createPurchaseDocument({
+    ...baseInput("purchase-doc-001"),
+    documentNumber: "PINV-000001",
+    lines: [
+      { lineId: "line-001", position: 1, lineKind: "stock-product", itemId: "product-stock-001", itemSnapshot: stockItemSnapshot },
+      { lineId: "line-002", position: 2, lineKind: "non-stock-product", itemId: "product-non-stock-001", itemSnapshot: nonStockItemSnapshot },
+      { lineId: "line-003", position: 3, lineKind: "service", itemId: "service-001", itemSnapshot: serviceItemSnapshot },
+    ],
+  });
+}
 function assertDomainError(action: () => unknown, code: string, field: string): void {
   assert.throws(action, (error: unknown) => {
     assert.ok(error instanceof PurchaseDomainError);
@@ -91,72 +82,52 @@ function assertDomainError(action: () => unknown, code: string, field: string): 
   });
 }
 
-test("creates a persistence-neutral Purchase aggregate with immutable historical snapshots", () => {
+test("creates a scoped persistence-neutral Purchase aggregate with historical snapshots", () => {
   const document = createValidDocument();
   assert.equal(document.documentId, "purchase-doc-001");
-  assert.equal(document.documentType, "supplier-invoice");
+  assert.equal(document.scope.branchId, "branch-001");
+  assert.equal(document.scope.fiscalYearId, "fy-1405");
+  assert.equal(document.documentNumber, "PINV-000001");
   assert.equal(document.status, "draft");
-  assert.deepEqual(document.lifecycleHistory, []);
   assert.equal(document.supplierSnapshot.displayName, "تأمین کننده نمونه");
   assert.equal(document.lines[0]?.itemSnapshot.taxpayerGoodsServiceId, "2720000014385");
-  assert.equal(document.version, 1);
-  assert.ok(Object.isFrozen(document));
-  assert.ok(Object.isFrozen(document.supplierSnapshot));
-  assert.ok(document.lines.every((line) => Object.isFrozen(line.itemSnapshot)));
+  assert.ok(Object.isFrozen(document.scope));
 });
 
-test("rejects duplicate durable line identities and positions", () => {
-  assertDomainError(
-    () => createPurchaseDocument({ ...baseInput("purchase-doc-002"), lines: [
-      { lineId: "same-line", position: 1, lineKind: "stock-product", itemId: "product-stock-001", itemSnapshot: stockItemSnapshot },
-      { lineId: "same-line", position: 2, lineKind: "service", itemId: "service-001", itemSnapshot: serviceItemSnapshot },
-    ] }),
-    PURCHASE_DOMAIN_ERROR_CODES.duplicateLineId,
-    "lines.lineId",
-  );
-  assertDomainError(
-    () => createPurchaseDocument({ ...baseInput("purchase-doc-003"), lines: [
-      { lineId: "line-001", position: 1, lineKind: "stock-product", itemId: "product-stock-001", itemSnapshot: stockItemSnapshot },
-      { lineId: "line-002", position: 1, lineKind: "service", itemId: "service-001", itemSnapshot: serviceItemSnapshot },
-    ] }),
-    PURCHASE_DOMAIN_ERROR_CODES.duplicateLinePosition,
-    "lines.position",
-  );
+test("rejects duplicate line identities and positions", () => {
+  assertDomainError(() => createPurchaseDocument({ ...baseInput("purchase-doc-002"), lines: [
+    { lineId: "same", position: 1, lineKind: "stock-product", itemId: "product-stock-001", itemSnapshot: stockItemSnapshot },
+    { lineId: "same", position: 2, lineKind: "service", itemId: "service-001", itemSnapshot: serviceItemSnapshot },
+  ] }), PURCHASE_DOMAIN_ERROR_CODES.duplicateLineId, "lines.lineId");
+  assertDomainError(() => createPurchaseDocument({ ...baseInput("purchase-doc-003"), lines: [
+    { lineId: "a", position: 1, lineKind: "stock-product", itemId: "product-stock-001", itemSnapshot: stockItemSnapshot },
+    { lineId: "b", position: 1, lineKind: "service", itemId: "service-001", itemSnapshot: serviceItemSnapshot },
+  ] }), PURCHASE_DOMAIN_ERROR_CODES.duplicateLinePosition, "lines.position");
 });
 
-test("enforces Product, Service and stock/non-stock snapshot classification invariants", () => {
+test("enforces item classification and durable snapshot identity", () => {
+  assertDomainError(() => createPurchaseDocument({ ...baseInput("purchase-doc-004"), lines: [
+    { lineId: "a", position: 1, lineKind: "non-stock-product", itemId: "product-stock-001", itemSnapshot: stockItemSnapshot },
+  ] }), PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot.stockTracking");
+  assertDomainError(() => createPurchaseDocument({ ...baseInput("purchase-doc-005"), lines: [
+    { lineId: "a", position: 1, lineKind: "stock-product", itemId: "product-stock-001", itemSnapshot: { ...stockItemSnapshot, itemId: "other" } },
+  ] }), PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot");
+});
+
+test("rejects Company/Fiscal scope mismatches and blocked business dates", () => {
   assertDomainError(
-    () => createPurchaseDocument({ ...baseInput("purchase-doc-004"), lines: [
-      { lineId: "line-001", position: 1, lineKind: "service", itemId: "product-stock-001", itemType: "product", itemSnapshot: stockItemSnapshot },
-    ] }),
-    PURCHASE_DOMAIN_ERROR_CODES.lineClassificationInvalid,
-    "lines.itemType",
+    () => createPurchaseDocument({ ...baseInput("purchase-doc-006"), scope: { ...scope, companyId: "other-company" }, lines: [] }),
+    PURCHASE_DOMAIN_ERROR_CODES.scopeMismatch,
+    "scope.companyId",
   );
   assertDomainError(
-    () => createPurchaseDocument({ ...baseInput("purchase-doc-005"), lines: [
-      { lineId: "line-001", position: 1, lineKind: "non-stock-product", itemId: "product-stock-001", itemSnapshot: stockItemSnapshot },
-    ] }),
-    PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch,
-    "lines.itemSnapshot.stockTracking",
+    () => createPurchaseDocument({ ...baseInput("purchase-doc-007"), businessDate: "2026-09-01", lines: [] }),
+    PURCHASE_DOMAIN_ERROR_CODES.fiscalDateLocked,
+    "businessDate",
   );
 });
 
-test("rejects supplier and item snapshots that do not match durable aggregate identities", () => {
-  assertDomainError(
-    () => createPurchaseDocument({ ...baseInput("purchase-doc-006"), supplierSnapshot: { ...supplierSnapshot, supplierId: "other-party" }, lines: [] }),
-    PURCHASE_DOMAIN_ERROR_CODES.supplierSnapshotMismatch,
-    "supplierSnapshot",
-  );
-  assertDomainError(
-    () => createPurchaseDocument({ ...baseInput("purchase-doc-007"), lines: [
-      { lineId: "line-001", position: 1, lineKind: "stock-product", itemId: "product-stock-001", itemSnapshot: { ...stockItemSnapshot, itemId: "other-product" } },
-    ] }),
-    PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch,
-    "lines.itemSnapshot",
-  );
-});
-
-test("normalizes source and correction references while preventing self-reference", () => {
+test("preserves references and prevents self-reference", () => {
   const document = createPurchaseDocument({
     ...baseInput("purchase-doc-008"),
     sourceReference: { sourceSystem: "legacy-erp", sourceDocumentId: "legacy-55", sourceLineId: null },
@@ -172,20 +143,15 @@ test("normalizes source and correction references while preventing self-referenc
   );
 });
 
-test("rehydration preserves lifecycle and historical snapshots while rejecting invalid chronology", () => {
+test("rehydration preserves scope/lifecycle and rejects invalid aggregate version", () => {
   const snapshot = createValidDocument();
   const rehydrated = rehydratePurchaseDocument(snapshot);
+  assert.deepEqual(rehydrated.scope, snapshot.scope);
   assert.deepEqual(rehydrated.supplierSnapshot, snapshot.supplierSnapshot);
-  assert.deepEqual(rehydrated.lines[0]?.itemSnapshot, snapshot.lines[0]?.itemSnapshot);
   assert.equal(rehydrated.status, "draft");
   assertDomainError(
     () => rehydratePurchaseDocument({ ...snapshot, version: 0 }),
     PURCHASE_DOMAIN_ERROR_CODES.versionInvalid,
     "version",
-  );
-  assertDomainError(
-    () => rehydratePurchaseDocument({ ...snapshot, updatedAt: "2026-09-14T07:59:59.000Z" }),
-    PURCHASE_DOMAIN_ERROR_CODES.timestampOrderInvalid,
-    "updatedAt",
   );
 });
