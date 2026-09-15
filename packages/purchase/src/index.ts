@@ -85,6 +85,16 @@ export type {
 } from "./domain/purchase-scope.ts";
 
 export {
+  calculatePurchaseDocumentTotals,
+  calculatePurchaseLineTotals,
+} from "./domain/purchase-pricing.ts";
+
+export type {
+  PurchaseDocumentTotals,
+  PurchaseLineTotals,
+} from "./domain/purchase-pricing.ts";
+
+export {
   PURCHASE_DOMAIN_ERROR_CODES,
   PurchaseDomainError,
 } from "./domain/purchase-domain-errors.ts";
