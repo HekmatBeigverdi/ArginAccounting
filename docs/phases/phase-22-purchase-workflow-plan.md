@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–4 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 5 — Purchase Document Types and Lifecycle — is next.
+Steps 1–5 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 6 — Company, Branch, Fiscal Scope and Numbering — is next.
 
 ## Governance
 
@@ -16,6 +16,7 @@ Mandatory references:
 - [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md)
 - [Purchase Domain Model](../architecture/purchase-domain-model.md)
 - [Purchase Commercial Semantics](../architecture/purchase-commercial-semantics.md)
+- [Purchase Document Types and Lifecycle](../architecture/purchase-lifecycle.md)
 
 ## Baseline and Release Target
 
@@ -35,6 +36,8 @@ Mandatory references:
 - Purchase money uses safe integers in the currency's smallest unit plus explicit ISO currency.
 - Percentage discounts, charges and tax rates use integer basis points.
 - Monetary rounding is explicit and deterministic.
+- Approval and confirmation are distinct lifecycle gates; only confirmed Purchase facts may become operational inputs to later Inventory/Valuation integration.
+- Confirmed Purchase history is never silently rewritten; return/correction requires linked compensating document identity.
 
 ## Step Status
 
@@ -44,7 +47,7 @@ Mandatory references:
 | 2 | Purchase Domain Model | Completed |
 | 3 | Supplier, Product, Service and Commercial Snapshots | Completed |
 | 4 | Quantity, Unit, Currency, Price, Discount, Charge and Tax Semantics | Completed |
-| 5 | Purchase Document Types and Lifecycle | Not started |
+| 5 | Purchase Document Types and Lifecycle | Completed |
 | 6 | Company, Branch, Fiscal Scope and Numbering | Not started |
 | 7 | Purchase Pricing and Totals Engine | Not started |
 | 8 | Receipt and Invoice Matching Policy | Not started |
@@ -105,6 +108,21 @@ Mandatory references:
 - TDD RED was observed before implementation because the Step 4 module did not yet exist.
 - Fresh isolated Node 22 execution after implementation: 4 tests passed, 0 failed.
 - Full monorepo validation remains Step 24; no unobserved CI success is claimed.
+
+## Step 5 Exit Criteria and Evidence
+
+- Frozen document types: `purchase-order`, `supplier-invoice`, `purchase-return`, `purchase-correction`.
+- Frozen statuses: `draft`, `submitted`, `approved`, `confirmed`, `cancelled`, `returned`, `corrected`.
+- Transition matrix separates Approval from Confirmation and prevents post-confirmation cancellation/edit-style rollback.
+- `returned` and `corrected` require a reason plus a distinct linked compensating document ID; self-linking is rejected.
+- Approved-to-draft reopening requires an explicit reason.
+- Lifecycle history is chronological, immutable and records actor, timestamps, reason and related document identity.
+- Purchase aggregate now carries `documentType`, `status`, `lifecycleHistory`, shared aggregate `version`, `createdAt` and `updatedAt`.
+- Lifecycle transitions increment aggregate version without assuming `version === history.length + 1`, preserving compatibility with future draft edits and Step 17 optimistic concurrency.
+- Added `purchase-lifecycle.ts`, lifecycle domain errors, aggregate lifecycle actions, public exports and `purchase-lifecycle.test.ts`.
+- Existing Purchase aggregate tests were updated to use explicit document type and validate initial `draft` lifecycle state.
+- Fresh isolated Node 22 lifecycle smoke verification after implementation: 2 tests passed, 0 failed, covering confirmed-to-returned flow and self-linked correction rejection.
+- GitHub has no workflow run registered for the verified commit; full workspace/monorepo validation remains owned by later validation gates.
 
 ## Change Requests
 
