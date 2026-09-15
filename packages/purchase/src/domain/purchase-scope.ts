@@ -24,13 +24,12 @@ export interface PurchaseDocumentScope {
 
 export interface CreatePurchaseDocumentScopeInput extends PurchaseDocumentScope {}
 
+/** Compatible with @argin/fiscal GenerateDocumentNumberInput. */
 export interface PurchaseNumberSeriesRequest {
-  readonly seriesType: string;
-  readonly scope: {
-    readonly companyId: string;
-    readonly branchId: string;
-    readonly fiscalYearId: string;
-  };
+  readonly companyId: string;
+  readonly branchId: string;
+  readonly fiscalYearId: string;
+  readonly entityType: string;
 }
 
 const fail = (code: PurchaseDomainErrorCode, field: string): never => {
@@ -136,11 +135,9 @@ export function createPurchaseNumberSeriesRequest(
 ): PurchaseNumberSeriesRequest {
   const scope = createPurchaseDocumentScope(scopeInput);
   return Object.freeze({
-    seriesType: `purchase:${documentType}`,
-    scope: Object.freeze({
-      companyId: scope.companyId,
-      branchId: scope.branchId,
-      fiscalYearId: scope.fiscalYearId,
-    }),
+    companyId: scope.companyId,
+    branchId: scope.branchId,
+    fiscalYearId: scope.fiscalYearId,
+    entityType: `purchase:${documentType}`,
   });
 }
