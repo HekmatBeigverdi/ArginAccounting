@@ -71,14 +71,12 @@ test("rejects non-open fiscal year or period for new Purchase operations", () =>
   );
 });
 
-test("builds the shared Number Series request from Purchase type and scope", () => {
+test("builds the shared Fiscal Number Series request from Purchase type and scope", () => {
   const scope = createPurchaseDocumentScope(scopeInput);
   assert.deepEqual(createPurchaseNumberSeriesRequest("supplier-invoice", scope), {
-    seriesType: "purchase:supplier-invoice",
-    scope: {
-      companyId: "company-001",
-      branchId: "branch-001",
-      fiscalYearId: "fy-1405",
-    },
+    companyId: "company-001",
+    branchId: "branch-001",
+    fiscalYearId: "fy-1405",
+    entityType: "purchase:supplier-invoice",
   });
 });
