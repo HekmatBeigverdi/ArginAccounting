@@ -19,7 +19,7 @@ import {
 const createdAt = "2026-09-15T05:30:00.000Z";
 
 function action(occurredAt: string, reason?: string) {
-  return { occurredAt, actorUserId: "user-001", reason };
+  return { occurredAt, actorUserId: "user-001", reason: reason ?? null };
 }
 
 function assertDomainError(actionFn: () => unknown, code: string, field: string): void {
