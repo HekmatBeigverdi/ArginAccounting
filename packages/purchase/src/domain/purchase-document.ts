@@ -13,6 +13,24 @@ import type {
   PurchaseItemSnapshot,
   PurchaseSupplierSnapshot,
 } from "./purchase-commercial-snapshots.ts";
+import {
+  approvePurchaseLifecycle,
+  cancelPurchaseLifecycle,
+  confirmPurchaseLifecycle,
+  correctPurchaseLifecycle,
+  createPurchaseLifecycle,
+  reopenPurchaseLifecycle,
+  returnPurchaseLifecycle,
+  submitPurchaseLifecycle,
+} from "./purchase-lifecycle.ts";
+import type {
+  PurchaseDocumentStatus,
+  PurchaseDocumentType,
+  PurchaseLifecycleActionInput,
+  PurchaseLifecycleSnapshot,
+  PurchaseLifecycleTransitionSnapshot,
+  PurchaseLinkedLifecycleActionInput,
+} from "./purchase-lifecycle.ts";
 
 export const PURCHASE_LINE_KINDS = Object.freeze([
   "stock-product",
@@ -72,6 +90,9 @@ export interface PurchaseDocumentSnapshot {
   readonly companyId: string;
   readonly supplierId: string;
   readonly supplierSnapshot: PurchaseSupplierSnapshot;
+  readonly documentType: PurchaseDocumentType;
+  readonly status: PurchaseDocumentStatus;
+  readonly lifecycleHistory: readonly PurchaseLifecycleTransitionSnapshot[];
   readonly businessDate: string;
   readonly description: string | null;
   readonly sourceReference: PurchaseSourceReference | null;
@@ -87,6 +108,7 @@ export interface CreatePurchaseDocumentInput {
   readonly companyId: string;
   readonly supplierId: string;
   readonly supplierSnapshot: CreatePurchaseSupplierSnapshotInput;
+  readonly documentType: PurchaseDocumentType;
   readonly businessDate: string;
   readonly description?: string | null;
   readonly sourceReference?: CreatePurchaseSourceReferenceInput | null;
@@ -100,116 +122,60 @@ const fail = (code: PurchaseDomainErrorCode, field: string): never => {
 };
 
 function assertObject(value: unknown, field: string): void {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    fail(PURCHASE_DOMAIN_ERROR_CODES.inputInvalid, field);
-  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) fail(PURCHASE_DOMAIN_ERROR_CODES.inputInvalid, field);
 }
-
 function identity(value: string, field: string): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.identityRequired, field);
-  }
+  if (typeof value !== "string" || value.trim().length === 0) return fail(PURCHASE_DOMAIN_ERROR_CODES.identityRequired, field);
   return value.trim();
 }
-
 function optionalText(value: string | null | undefined, field: string): string | null {
   if (value == null) return null;
   if (typeof value !== "string") return fail(PURCHASE_DOMAIN_ERROR_CODES.inputInvalid, field);
   return value.trim() || null;
 }
-
 function requiredText(value: string, field: string): string {
   const normalized = optionalText(value, field);
   if (normalized === null) return fail(PURCHASE_DOMAIN_ERROR_CODES.identityRequired, field);
   return normalized;
 }
-
 function normalizeBusinessDate(value: string, field: string): string {
-  if (typeof value !== "string" || !/^(?!0000)\d{4}-\d{2}-\d{2}$/u.test(value)) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.businessDateInvalid, field);
-  }
+  if (typeof value !== "string" || !/^(?!0000)\d{4}-\d{2}-\d{2}$/u.test(value)) return fail(PURCHASE_DOMAIN_ERROR_CODES.businessDateInvalid, field);
   const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.businessDateInvalid, field);
-  }
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) return fail(PURCHASE_DOMAIN_ERROR_CODES.businessDateInvalid, field);
   return value;
 }
-
-function normalizeTimestamp(value: string, field: string): string {
-  if (
-    typeof value !== "string" ||
-    !/^(?!0000)\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,3})?Z$/u.test(value)
-  ) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.timestampInvalid, field);
-  }
-  const parsed = new Date(value);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value.slice(0, 10)) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.timestampInvalid, field);
-  }
-  return parsed.toISOString();
-}
-
 function expectedItemType(lineKind: PurchaseLineKind): PurchaseItemType {
   return lineKind === "service" ? "service" : "product";
 }
 
-export function createPurchaseSourceReference(
-  input: CreatePurchaseSourceReferenceInput,
-): PurchaseSourceReference {
+export function createPurchaseSourceReference(input: CreatePurchaseSourceReferenceInput): PurchaseSourceReference {
   assertObject(input, "sourceReference");
   return Object.freeze({
     sourceSystem: identity(input.sourceSystem, "sourceReference.sourceSystem"),
     sourceDocumentId: identity(input.sourceDocumentId, "sourceReference.sourceDocumentId"),
-    sourceLineId: input.sourceLineId == null
-      ? null
-      : identity(input.sourceLineId, "sourceReference.sourceLineId"),
+    sourceLineId: input.sourceLineId == null ? null : identity(input.sourceLineId, "sourceReference.sourceLineId"),
   });
 }
 
-export function createPurchaseCorrectionReference(
-  input: CreatePurchaseCorrectionReferenceInput,
-  currentDocumentId: string,
-): PurchaseCorrectionReference {
+export function createPurchaseCorrectionReference(input: CreatePurchaseCorrectionReferenceInput, currentDocumentId: string): PurchaseCorrectionReference {
   assertObject(input, "correctionReference");
   const documentId = identity(input.documentId, "correctionReference.documentId");
-  if (documentId === currentDocumentId) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.selfReference, "correctionReference.documentId");
-  }
-  return Object.freeze({
-    documentId,
-    reason: requiredText(input.reason, "correctionReference.reason"),
-  });
+  if (documentId === currentDocumentId) return fail(PURCHASE_DOMAIN_ERROR_CODES.selfReference, "correctionReference.documentId");
+  return Object.freeze({ documentId, reason: requiredText(input.reason, "correctionReference.reason") });
 }
 
-export function createPurchaseDocumentLine(
-  input: CreatePurchaseDocumentLineInput,
-): PurchaseDocumentLineSnapshot {
+export function createPurchaseDocumentLine(input: CreatePurchaseDocumentLineInput): PurchaseDocumentLineSnapshot {
   assertObject(input, "line");
-  if (!PURCHASE_LINE_KINDS.includes(input.lineKind)) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.lineKindInvalid, "lines.lineKind");
-  }
-  if (!Number.isSafeInteger(input.position) || input.position < 1) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.linePositionInvalid, "lines.position");
-  }
-
+  if (!PURCHASE_LINE_KINDS.includes(input.lineKind)) return fail(PURCHASE_DOMAIN_ERROR_CODES.lineKindInvalid, "lines.lineKind");
+  if (!Number.isSafeInteger(input.position) || input.position < 1) return fail(PURCHASE_DOMAIN_ERROR_CODES.linePositionInvalid, "lines.position");
   const inferredItemType = expectedItemType(input.lineKind);
   const itemType = input.itemType ?? inferredItemType;
-  if (itemType !== inferredItemType) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.lineClassificationInvalid, "lines.itemType");
-  }
-
+  if (itemType !== inferredItemType) return fail(PURCHASE_DOMAIN_ERROR_CODES.lineClassificationInvalid, "lines.itemType");
   const itemId = identity(input.itemId, "lines.itemId");
   const itemSnapshot = createPurchaseItemSnapshot(input.itemSnapshot);
-  if (itemSnapshot.itemId !== itemId || itemSnapshot.itemType !== itemType) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot");
-  }
-  if (input.lineKind === "stock-product" && !itemSnapshot.stockTracking) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot.stockTracking");
-  }
-  if (input.lineKind !== "stock-product" && itemSnapshot.stockTracking) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot.stockTracking");
-  }
-
+  if (itemSnapshot.itemId !== itemId || itemSnapshot.itemType !== itemType) return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot");
+  if (input.lineKind === "stock-product" && !itemSnapshot.stockTracking) return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot.stockTracking");
+  if (input.lineKind !== "stock-product" && itemSnapshot.stockTracking) return fail(PURCHASE_DOMAIN_ERROR_CODES.itemSnapshotMismatch, "lines.itemSnapshot.stockTracking");
   return Object.freeze({
     lineId: identity(input.lineId, "lines.lineId"),
     position: input.position,
@@ -218,106 +184,93 @@ export function createPurchaseDocumentLine(
     itemId,
     itemSnapshot,
     description: optionalText(input.description, "lines.description"),
-    sourceReference: input.sourceReference == null
-      ? null
-      : createPurchaseSourceReference(input.sourceReference),
+    sourceReference: input.sourceReference == null ? null : createPurchaseSourceReference(input.sourceReference),
   });
 }
 
 function normalizePurchaseDocument(
   input: CreatePurchaseDocumentInput,
-  version: number,
-  updatedAtInput: string,
+  lifecycle: PurchaseLifecycleSnapshot,
 ): PurchaseDocumentSnapshot {
   assertObject(input, "document");
-
   const documentId = identity(input.documentId, "documentId");
   const companyId = identity(input.companyId, "companyId");
   const supplierId = identity(input.supplierId, "supplierId");
+  if (lifecycle.documentId !== documentId || lifecycle.documentType !== input.documentType) return fail(PURCHASE_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "lifecycle");
   const supplierSnapshot = createPurchaseSupplierSnapshot(input.supplierSnapshot);
-  if (
-    supplierSnapshot.companyId !== companyId ||
-    supplierSnapshot.supplierId !== supplierId
-  ) {
-    return fail(
-      PURCHASE_DOMAIN_ERROR_CODES.supplierSnapshotMismatch,
-      "supplierSnapshot",
-    );
-  }
-  const businessDate = normalizeBusinessDate(input.businessDate, "businessDate");
-  const createdAt = normalizeTimestamp(input.createdAt, "createdAt");
-  const updatedAt = normalizeTimestamp(updatedAtInput, "updatedAt");
-
-  if (updatedAt < createdAt) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.timestampOrderInvalid, "updatedAt");
-  }
-  if (!Number.isSafeInteger(version) || version < 1) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.versionInvalid, "version");
-  }
-
-  const sourceReference = input.sourceReference == null
-    ? null
-    : createPurchaseSourceReference(input.sourceReference);
-  if (
-    sourceReference?.sourceSystem === "purchase" &&
-    sourceReference.sourceDocumentId === documentId
-  ) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.selfReference, "sourceReference.sourceDocumentId");
-  }
-
-  const correctionReference = input.correctionReference == null
-    ? null
-    : createPurchaseCorrectionReference(input.correctionReference, documentId);
-
+  if (supplierSnapshot.companyId !== companyId || supplierSnapshot.supplierId !== supplierId) return fail(PURCHASE_DOMAIN_ERROR_CODES.supplierSnapshotMismatch, "supplierSnapshot");
+  const sourceReference = input.sourceReference == null ? null : createPurchaseSourceReference(input.sourceReference);
+  if (sourceReference?.sourceSystem === "purchase" && sourceReference.sourceDocumentId === documentId) return fail(PURCHASE_DOMAIN_ERROR_CODES.selfReference, "sourceReference.sourceDocumentId");
+  const correctionReference = input.correctionReference == null ? null : createPurchaseCorrectionReference(input.correctionReference, documentId);
   const rawLines = input.lines ?? [];
-  if (!Array.isArray(rawLines)) {
-    return fail(PURCHASE_DOMAIN_ERROR_CODES.inputInvalid, "lines");
-  }
-
+  if (!Array.isArray(rawLines)) return fail(PURCHASE_DOMAIN_ERROR_CODES.inputInvalid, "lines");
   const lineIds = new Set<string>();
   const positions = new Set<number>();
   const lines: PurchaseDocumentLineSnapshot[] = [];
-
   for (const rawLine of rawLines) {
     const line = createPurchaseDocumentLine(rawLine);
-    if (lineIds.has(line.lineId)) {
-      return fail(PURCHASE_DOMAIN_ERROR_CODES.duplicateLineId, "lines.lineId");
-    }
-    if (positions.has(line.position)) {
-      return fail(PURCHASE_DOMAIN_ERROR_CODES.duplicateLinePosition, "lines.position");
-    }
+    if (lineIds.has(line.lineId)) return fail(PURCHASE_DOMAIN_ERROR_CODES.duplicateLineId, "lines.lineId");
+    if (positions.has(line.position)) return fail(PURCHASE_DOMAIN_ERROR_CODES.duplicateLinePosition, "lines.position");
     lineIds.add(line.lineId);
     positions.add(line.position);
     lines.push(line);
   }
-
   lines.sort((left, right) => left.position - right.position);
-
   return Object.freeze({
     documentId,
     companyId,
     supplierId,
     supplierSnapshot,
-    businessDate,
+    documentType: lifecycle.documentType,
+    status: lifecycle.status,
+    lifecycleHistory: lifecycle.history,
+    businessDate: normalizeBusinessDate(input.businessDate, "businessDate"),
     description: optionalText(input.description, "description"),
     sourceReference,
     correctionReference,
     lines: Object.freeze(lines),
-    version,
-    createdAt,
-    updatedAt,
+    version: lifecycle.version,
+    createdAt: lifecycle.createdAt,
+    updatedAt: lifecycle.updatedAt,
   });
 }
 
-export function createPurchaseDocument(
-  input: CreatePurchaseDocumentInput,
-): PurchaseDocumentSnapshot {
-  return normalizePurchaseDocument(input, 1, input.createdAt);
+function lifecycleFromDocument(snapshot: PurchaseDocumentSnapshot): PurchaseLifecycleSnapshot {
+  return createPurchaseLifecycle({
+    documentId: snapshot.documentId,
+    documentType: snapshot.documentType,
+    status: snapshot.status,
+    history: snapshot.lifecycleHistory,
+    version: snapshot.version,
+    createdAt: snapshot.createdAt,
+    updatedAt: snapshot.updatedAt,
+  });
 }
 
-export function rehydratePurchaseDocument(
-  snapshot: PurchaseDocumentSnapshot,
-): PurchaseDocumentSnapshot {
-  assertObject(snapshot, "document");
-  return normalizePurchaseDocument(snapshot, snapshot.version, snapshot.updatedAt);
+export function createPurchaseDocument(input: CreatePurchaseDocumentInput): PurchaseDocumentSnapshot {
+  const lifecycle = createPurchaseLifecycle({ documentId: input.documentId, documentType: input.documentType, createdAt: input.createdAt });
+  return normalizePurchaseDocument(input, lifecycle);
 }
+
+export function rehydratePurchaseDocument(snapshot: PurchaseDocumentSnapshot): PurchaseDocumentSnapshot {
+  assertObject(snapshot, "document");
+  return normalizePurchaseDocument(snapshot, lifecycleFromDocument(snapshot));
+}
+
+function transitionPurchaseDocument(
+  snapshot: PurchaseDocumentSnapshot,
+  transition: (lifecycle: PurchaseLifecycleSnapshot, action: any) => PurchaseLifecycleSnapshot,
+  action: PurchaseLifecycleActionInput | PurchaseLinkedLifecycleActionInput,
+): PurchaseDocumentSnapshot {
+  const document = rehydratePurchaseDocument(snapshot);
+  const lifecycle = transition(lifecycleFromDocument(document), action);
+  return normalizePurchaseDocument(document, lifecycle);
+}
+
+export const submitPurchaseDocument = (s: PurchaseDocumentSnapshot, a: PurchaseLifecycleActionInput) => transitionPurchaseDocument(s, submitPurchaseLifecycle, a);
+export const approvePurchaseDocument = (s: PurchaseDocumentSnapshot, a: PurchaseLifecycleActionInput) => transitionPurchaseDocument(s, approvePurchaseLifecycle, a);
+export const confirmPurchaseDocument = (s: PurchaseDocumentSnapshot, a: PurchaseLifecycleActionInput) => transitionPurchaseDocument(s, confirmPurchaseLifecycle, a);
+export const cancelPurchaseDocument = (s: PurchaseDocumentSnapshot, a: PurchaseLifecycleActionInput) => transitionPurchaseDocument(s, cancelPurchaseLifecycle, a);
+export const reopenPurchaseDocument = (s: PurchaseDocumentSnapshot, a: PurchaseLifecycleActionInput) => transitionPurchaseDocument(s, reopenPurchaseLifecycle, a);
+export const returnPurchaseDocument = (s: PurchaseDocumentSnapshot, a: PurchaseLinkedLifecycleActionInput) => transitionPurchaseDocument(s, returnPurchaseLifecycle, a);
+export const correctPurchaseDocument = (s: PurchaseDocumentSnapshot, a: PurchaseLinkedLifecycleActionInput) => transitionPurchaseDocument(s, correctPurchaseLifecycle, a);
