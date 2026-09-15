@@ -26,6 +26,7 @@ export const PURCHASE_DOMAIN_ERROR_CODES = Object.freeze({
   moneyInvalid: "purchase.money_invalid",
   rateInvalid: "purchase.rate_invalid",
   adjustmentInvalid: "purchase.adjustment_invalid",
+  pricingInvalid: "purchase.pricing_invalid",
   documentTypeInvalid: "purchase.document_type_invalid",
   statusInvalid: "purchase.status_invalid",
   lifecycleTransitionInvalid: "purchase.lifecycle_transition_invalid",
