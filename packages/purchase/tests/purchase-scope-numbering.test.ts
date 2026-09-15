@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  PURCHASE_DOMAIN_ERROR_CODES,
-  PurchaseDomainError,
   assertPurchaseBusinessDateAllowed,
   createPurchaseDocumentScope,
   createPurchaseNumberSeriesRequest,
-} from "../src/index.ts";
+} from "../src/domain/purchase-scope.ts";
+import {
+  PURCHASE_DOMAIN_ERROR_CODES,
+  PurchaseDomainError,
+} from "../src/domain/purchase-domain-errors.ts";
 
 function assertDomainError(action: () => unknown, code: string, field: string): void {
   assert.throws(action, (error: unknown) => {
