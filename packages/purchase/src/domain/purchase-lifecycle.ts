@@ -147,7 +147,6 @@ export function createPurchaseLifecycle(input: CreatePurchaseLifecycleInput): Pu
     previousAt = occurredAt;
   }
   if (current !== status) return fail(PURCHASE_DOMAIN_ERROR_CODES.lifecycleHistoryInvalid, "status");
-  if (version !== history.length + 1) return fail(PURCHASE_DOMAIN_ERROR_CODES.versionInvalid, "version");
   return Object.freeze({ documentId, documentType: input.documentType, status, history: Object.freeze(history), version, createdAt, updatedAt });
 }
 
