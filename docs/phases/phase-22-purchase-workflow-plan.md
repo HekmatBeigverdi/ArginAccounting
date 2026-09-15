@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–7 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 8 — Receipt and Invoice Matching Policy — is next.
+Steps 1–8 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 9 — Inventory Receipt Integration — is next.
 
 ## Governance
 
@@ -19,6 +19,7 @@ Mandatory references:
 - [Purchase Document Types and Lifecycle](../architecture/purchase-lifecycle.md)
 - [Purchase Company, Branch, Fiscal Scope and Numbering](../architecture/purchase-scope-and-numbering.md)
 - [Purchase Pricing and Totals Engine](../architecture/purchase-pricing-and-totals.md)
+- [Purchase Receipt and Invoice Matching Policy](../architecture/purchase-receipt-invoice-matching.md)
 
 ## Baseline and Release Target
 
@@ -43,6 +44,7 @@ Mandatory references:
 - Every Purchase aggregate is bound to a durable Company/Branch/Fiscal scope whose Company matches the aggregate Company.
 - Purchase captures fiscal context for history, while `@argin/fiscal` remains authoritative for current period/lock policy and Number Series reservation.
 - Pricing is deterministic: gross, ordered discounts, ordered charges, tax base, tax and grand total are derived with safe-integer money, basis points and `half-away-from-zero` rounding.
+- Receipt/invoice matching is line-level, uses durable match IDs and base quantities, and cannot over-allocate either an invoice line or a confirmed Inventory receipt line.
 
 ## Step Status
 
@@ -55,7 +57,7 @@ Mandatory references:
 | 5 | Purchase Document Types and Lifecycle | Completed |
 | 6 | Company, Branch, Fiscal Scope and Numbering | Completed |
 | 7 | Purchase Pricing and Totals Engine | Completed |
-| 8 | Receipt and Invoice Matching Policy | Not started |
+| 8 | Receipt and Invoice Matching Policy | Completed |
 | 9 | Inventory Receipt Integration | Not started |
 | 10 | Inventory Valuation Cost Input Integration | Not started |
 | 11 | Receipt-Before-Invoice and Cost Resolution Policy | Not started |
@@ -155,6 +157,22 @@ Mandatory references:
 - Added `purchase-pricing.ts`, public exports, pricing error code and `purchase-pricing-totals.test.ts`.
 - Added architecture documentation in `purchase-pricing-and-totals.md` and preserved Step 8+ scope boundaries.
 - Fresh isolated Node 22 verification of pricing behavior: 4 tests passed, 0 failed, covering deterministic line totals, sequential percentage discounts, over-discount rejection and same-currency document aggregation.
+- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+
+## Step 8 Exit Criteria and Evidence
+
+- Added line-level matching between confirmed `supplier-invoice` lines and confirmed Inventory `receipt` lines only.
+- Matching uses canonical positive base-quantity strings so invoice and receipt entered units may differ without changing the matching result.
+- Every match is an immutable durable fact with its own `matchId`, Company ID, invoice document/line IDs, receipt document/line IDs, Product ID and matched base quantity.
+- Company and Product identity must agree across both sides.
+- Duplicate `matchId` values and duplicate invoice-line/receipt-line pairs are rejected.
+- Cumulative matches cannot exceed either the invoice-line base quantity or the receipt-line base quantity, including allocation of one receipt line across different invoice lines.
+- Invoice-line status is derived as `unmatched`, `partially-matched` or `fully-matched`; matching status is not stored as an authoritative mutable field.
+- Added `purchase-receipt-invoice-matching.ts`, Step 8 domain error codes, public exports and `purchase-receipt-invoice-matching.test.ts`.
+- Added architecture documentation in `purchase-receipt-invoice-matching.md`; Step 9 remains responsible for actual Inventory receipt integration and Step 10/11 for valuation/cost-resolution behavior.
+- TDD RED was reproduced before implementation with Node 22 as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 8 module.
+- Fresh isolated Node 22 verification of the final Step 8 matching source: 5 tests passed, 0 failed.
+- Fresh strict TypeScript check of the Step 8 source completed with exit code 0.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
 ## Change Requests
