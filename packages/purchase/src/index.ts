@@ -1,10 +1,17 @@
 export {
   PURCHASE_LINE_KINDS,
+  approvePurchaseDocument,
+  cancelPurchaseDocument,
+  confirmPurchaseDocument,
+  correctPurchaseDocument,
   createPurchaseCorrectionReference,
   createPurchaseDocument,
   createPurchaseDocumentLine,
   createPurchaseSourceReference,
+  reopenPurchaseDocument,
   rehydratePurchaseDocument,
+  returnPurchaseDocument,
+  submitPurchaseDocument,
 } from "./domain/purchase-document.ts";
 
 export type {
