@@ -32,6 +32,11 @@ export const PURCHASE_DOMAIN_ERROR_CODES = Object.freeze({
   lifecycleHistoryInvalid: "purchase.lifecycle_history_invalid",
   lifecycleMetadataInvalid: "purchase.lifecycle_metadata_invalid",
   relatedDocumentInvalid: "purchase.related_document_invalid",
+  fiscalScopeInvalid: "purchase.fiscal_scope_invalid",
+  fiscalScopeBlocked: "purchase.fiscal_scope_blocked",
+  fiscalDateInvalid: "purchase.fiscal_date_invalid",
+  fiscalDateLocked: "purchase.fiscal_date_locked",
+  scopeMismatch: "purchase.scope_mismatch",
 } as const);
 
 export type PurchaseDomainErrorCode =
