@@ -17,6 +17,7 @@ function assertDomainError(
 ): void {
   assert.throws(action, (error: unknown) => {
     assert.ok(error instanceof PurchaseDomainError);
+    assert.equal(typeof error.code, "string");
     assert.equal(error.code, code);
     assert.equal(error.field, field);
     return true;
@@ -41,6 +42,21 @@ const baseUnit = {
   roundingMode: "half-up" as const,
   taxpayerUnitCode: "1621",
 };
+
+test("rejects invalid commercial units with a defined domain error", () => {
+  assertDomainError(
+    () => createPurchaseCommercialTerms({
+      enteredQuantity: "1",
+      enteredUnit: { ...enteredUnit, precision: -1 },
+      baseUnit,
+      unitPrice: { amount: 1, currency: "IRR" },
+      discounts: [], charges: [],
+      tax: { treatment: "exempt", rateBasisPoints: null },
+    }),
+    "purchase.unit_invalid",
+    "commercialTerms.enteredUnit",
+  );
+});
 
 test("normalizes exact quantity and converts to base quantity without floating point", () => {
   assert.equal(normalizePurchaseQuantity("001.2500"), "1.25");
