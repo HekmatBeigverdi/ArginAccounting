@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–5 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 6 — Company, Branch, Fiscal Scope and Numbering — is next.
+Steps 1–6 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 7 — Purchase Pricing and Totals Engine — is next.
 
 ## Governance
 
@@ -17,6 +17,7 @@ Mandatory references:
 - [Purchase Domain Model](../architecture/purchase-domain-model.md)
 - [Purchase Commercial Semantics](../architecture/purchase-commercial-semantics.md)
 - [Purchase Document Types and Lifecycle](../architecture/purchase-lifecycle.md)
+- [Purchase Company, Branch, Fiscal Scope and Numbering](../architecture/purchase-scope-and-numbering.md)
 
 ## Baseline and Release Target
 
@@ -38,6 +39,8 @@ Mandatory references:
 - Monetary rounding is explicit and deterministic.
 - Approval and confirmation are distinct lifecycle gates; only confirmed Purchase facts may become operational inputs to later Inventory/Valuation integration.
 - Confirmed Purchase history is never silently rewritten; return/correction requires linked compensating document identity.
+- Every Purchase aggregate is bound to a durable Company/Branch/Fiscal scope whose Company matches the aggregate Company.
+- Purchase captures fiscal context for history, while `@argin/fiscal` remains authoritative for current period/lock policy and Number Series reservation.
 
 ## Step Status
 
@@ -48,7 +51,7 @@ Mandatory references:
 | 3 | Supplier, Product, Service and Commercial Snapshots | Completed |
 | 4 | Quantity, Unit, Currency, Price, Discount, Charge and Tax Semantics | Completed |
 | 5 | Purchase Document Types and Lifecycle | Completed |
-| 6 | Company, Branch, Fiscal Scope and Numbering | Not started |
+| 6 | Company, Branch, Fiscal Scope and Numbering | Completed |
 | 7 | Purchase Pricing and Totals Engine | Not started |
 | 8 | Receipt and Invoice Matching Policy | Not started |
 | 9 | Inventory Receipt Integration | Not started |
@@ -123,6 +126,21 @@ Mandatory references:
 - Existing Purchase aggregate tests were updated to use explicit document type and validate initial `draft` lifecycle state.
 - Fresh isolated Node 22 lifecycle smoke verification after implementation: 2 tests passed, 0 failed, covering confirmed-to-returned flow and self-linked correction rejection.
 - GitHub has no workflow run registered for the verified commit; full workspace/monorepo validation remains owned by later validation gates.
+
+## Step 6 Exit Criteria and Evidence
+
+- Added immutable `PurchaseDocumentScope` with durable Company, Branch, fiscal-year and fiscal-period IDs plus captured date boundaries/status/lock context.
+- Purchase business date must fall inside both the captured fiscal year and fiscal period.
+- New Purchase facts require captured fiscal year and period to be open; dates on or before captured `lockedThroughDate` are rejected.
+- Aggregate `companyId` must match `scope.companyId`; rehydration executes the same scope and date validation.
+- `PurchaseDocumentSnapshot` now carries its frozen scope and nullable `documentNumber`.
+- Number allocation is not duplicated in Purchase: `createPurchaseNumberSeriesRequest` produces the existing `@argin/fiscal.generateDocumentNumber` contract using `companyId`, `branchId`, `fiscalYearId` and `entityType = purchase:<documentType>`.
+- `@argin/fiscal` remains authoritative for current fiscal policy, historical-lock checks, sequence applicability/reservation and number formatting. Step 14 will re-check current Fiscal state and orchestrate number reservation inside the appropriate transaction boundary.
+- The captured scope is historical/Bridge evidence and must not be used to bypass a newer locally closed or locked period.
+- Added `purchase-scope.ts`, Step 6 domain error codes, public exports and `purchase-scope-numbering.test.ts`; existing aggregate tests were updated with scope fixtures and mismatch/lock coverage.
+- TDD RED was reproduced before implementation with Node 22 as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 6 module.
+- Fresh isolated Node 22 verification on the final Step 6 scope/numbering source: 4 tests passed, 0 failed.
+- Full package/monorepo validation is not claimed from the isolated verifier; broader validation remains owned by Steps 22–24.
 
 ## Change Requests
 
