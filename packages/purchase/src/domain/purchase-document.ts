@@ -31,6 +31,14 @@ import type {
   PurchaseLifecycleTransitionSnapshot,
   PurchaseLinkedLifecycleActionInput,
 } from "./purchase-lifecycle.ts";
+import {
+  assertPurchaseBusinessDateAllowed,
+  createPurchaseDocumentScope,
+} from "./purchase-scope.ts";
+import type {
+  CreatePurchaseDocumentScopeInput,
+  PurchaseDocumentScope,
+} from "./purchase-scope.ts";
 
 export const PURCHASE_LINE_KINDS = Object.freeze([
   "stock-product",
@@ -86,6 +94,7 @@ export interface CreatePurchaseDocumentLineInput {
 }
 
 export interface PurchaseDocumentSnapshot {
+  readonly scope: PurchaseDocumentScope;
   readonly documentId: string;
   readonly companyId: string;
   readonly supplierId: string;
@@ -93,6 +102,7 @@ export interface PurchaseDocumentSnapshot {
   readonly documentType: PurchaseDocumentType;
   readonly status: PurchaseDocumentStatus;
   readonly lifecycleHistory: readonly PurchaseLifecycleTransitionSnapshot[];
+  readonly documentNumber: string | null;
   readonly businessDate: string;
   readonly description: string | null;
   readonly sourceReference: PurchaseSourceReference | null;
@@ -104,11 +114,13 @@ export interface PurchaseDocumentSnapshot {
 }
 
 export interface CreatePurchaseDocumentInput {
+  readonly scope: CreatePurchaseDocumentScopeInput;
   readonly documentId: string;
   readonly companyId: string;
   readonly supplierId: string;
   readonly supplierSnapshot: CreatePurchaseSupplierSnapshotInput;
   readonly documentType: PurchaseDocumentType;
+  readonly documentNumber?: string | null;
   readonly businessDate: string;
   readonly description?: string | null;
   readonly sourceReference?: CreatePurchaseSourceReferenceInput | null;
@@ -197,6 +209,12 @@ function normalizePurchaseDocument(
   const companyId = identity(input.companyId, "companyId");
   const supplierId = identity(input.supplierId, "supplierId");
   if (lifecycle.documentId !== documentId || lifecycle.documentType !== input.documentType) return fail(PURCHASE_DOMAIN_ERROR_CODES.lifecycleMetadataInvalid, "lifecycle");
+
+  const scope = createPurchaseDocumentScope(input.scope);
+  if (scope.companyId !== companyId) return fail(PURCHASE_DOMAIN_ERROR_CODES.scopeMismatch, "scope.companyId");
+  const businessDate = normalizeBusinessDate(input.businessDate, "businessDate");
+  assertPurchaseBusinessDateAllowed(scope, businessDate);
+
   const supplierSnapshot = createPurchaseSupplierSnapshot(input.supplierSnapshot);
   if (supplierSnapshot.companyId !== companyId || supplierSnapshot.supplierId !== supplierId) return fail(PURCHASE_DOMAIN_ERROR_CODES.supplierSnapshotMismatch, "supplierSnapshot");
   const sourceReference = input.sourceReference == null ? null : createPurchaseSourceReference(input.sourceReference);
@@ -217,6 +235,7 @@ function normalizePurchaseDocument(
   }
   lines.sort((left, right) => left.position - right.position);
   return Object.freeze({
+    scope,
     documentId,
     companyId,
     supplierId,
@@ -224,7 +243,8 @@ function normalizePurchaseDocument(
     documentType: lifecycle.documentType,
     status: lifecycle.status,
     lifecycleHistory: lifecycle.history,
-    businessDate: normalizeBusinessDate(input.businessDate, "businessDate"),
+    documentNumber: optionalText(input.documentNumber, "documentNumber"),
+    businessDate,
     description: optionalText(input.description, "description"),
     sourceReference,
     correctionReference,
