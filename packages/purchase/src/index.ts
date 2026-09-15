@@ -46,6 +46,24 @@ export type {
 } from "./domain/purchase-commercial-snapshots.ts";
 
 export {
+  createPurchaseCommercialTerms,
+  normalizePurchaseQuantity,
+} from "./domain/purchase-commercial-semantics.ts";
+
+export type {
+  CreatePurchaseCommercialTermsInput,
+  PurchaseAdjustment,
+  PurchaseCommercialTerms,
+  PurchaseCommercialUnitSnapshot,
+  PurchaseCurrencyCode,
+  PurchaseMoneyRoundingMode,
+  PurchaseMoneySnapshot,
+  PurchaseQuantityRoundingMode,
+  PurchaseQuantitySnapshot,
+  PurchaseTaxSemantics,
+} from "./domain/purchase-commercial-semantics.ts";
+
+export {
   PURCHASE_DOCUMENT_STATUSES,
   PURCHASE_DOCUMENT_TRANSITIONS,
   PURCHASE_DOCUMENT_TYPES,
@@ -107,6 +125,22 @@ export type {
   PurchaseReceiptInvoiceMatchStatus,
   PurchaseReceiptMatchingLineReference,
 } from "./domain/purchase-receipt-invoice-matching.ts";
+
+export {
+  buildPurchaseInventoryReceiptRequest,
+  stagePurchaseInventoryReceipt,
+} from "./domain/purchase-inventory-receipt-integration.ts";
+
+export type {
+  BuildPurchaseInventoryReceiptRequestInput,
+  PurchaseInventoryReceiptAllocation,
+  PurchaseInventoryReceiptCommercialFact,
+  PurchaseInventoryReceiptPort,
+  PurchaseInventoryReceiptStageLine,
+  PurchaseInventoryReceiptStageRequest,
+  PurchaseInventoryReceiptStageResult,
+  PurchaseInventoryWarehouseReference,
+} from "./domain/purchase-inventory-receipt-integration.ts";
 
 export {
   PURCHASE_DOMAIN_ERROR_CODES,
