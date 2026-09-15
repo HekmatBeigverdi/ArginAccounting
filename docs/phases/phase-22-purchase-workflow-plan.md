@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–8 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 9 — Inventory Receipt Integration — is next.
+Steps 1–9 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 10 — Inventory Valuation Cost Input Integration — is next.
 
 ## Governance
 
@@ -20,6 +20,7 @@ Mandatory references:
 - [Purchase Company, Branch, Fiscal Scope and Numbering](../architecture/purchase-scope-and-numbering.md)
 - [Purchase Pricing and Totals Engine](../architecture/purchase-pricing-and-totals.md)
 - [Purchase Receipt and Invoice Matching Policy](../architecture/purchase-receipt-invoice-matching.md)
+- [Purchase Inventory Receipt Integration](../architecture/purchase-inventory-receipt-integration.md)
 
 ## Baseline and Release Target
 
@@ -45,6 +46,7 @@ Mandatory references:
 - Purchase captures fiscal context for history, while `@argin/fiscal` remains authoritative for current period/lock policy and Number Series reservation.
 - Pricing is deterministic: gross, ordered discounts, ordered charges, tax base, tax and grand total are derived with safe-integer money, basis points and `half-away-from-zero` rounding.
 - Receipt/invoice matching is line-level, uses durable match IDs and base quantities, and cannot over-allocate either an invoice line or a confirmed Inventory receipt line.
+- Purchase stages Inventory-owned receipt drafts from confirmed stock intent; Purchase never creates StockMovement facts directly or bypasses Inventory lifecycle/approval/confirmation.
 
 ## Step Status
 
@@ -58,7 +60,7 @@ Mandatory references:
 | 6 | Company, Branch, Fiscal Scope and Numbering | Completed |
 | 7 | Purchase Pricing and Totals Engine | Completed |
 | 8 | Receipt and Invoice Matching Policy | Completed |
-| 9 | Inventory Receipt Integration | Not started |
+| 9 | Inventory Receipt Integration | Completed |
 | 10 | Inventory Valuation Cost Input Integration | Not started |
 | 11 | Receipt-Before-Invoice and Cost Resolution Policy | Not started |
 | 12 | Purchase Return and Correction Workflow | Not started |
@@ -173,6 +175,23 @@ Mandatory references:
 - TDD RED was reproduced before implementation with Node 22 as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 8 module.
 - Fresh isolated Node 22 verification of the final Step 8 matching source: 5 tests passed, 0 failed.
 - Fresh strict TypeScript check of the Step 8 source completed with exit code 0.
+- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+
+## Step 9 Exit Criteria and Evidence
+
+- Added Purchase-to-Inventory receipt staging for confirmed `purchase-order` and `supplier-invoice` stock intent only.
+- Purchase does not create stock movements; `stagePurchaseInventoryReceipt` invokes only an InventorySourceDocumentPort-compatible `stageDraft` boundary and returns the Inventory-owned draft result.
+- Every staged line preserves durable Purchase `sourceLineId`, Product identity, canonical decimal quantity and Warehouse intent.
+- Staged quantity is expressed in the Purchase commercial fact's captured base unit, preventing entered-unit ambiguity between Purchase and Inventory.
+- Service/non-stock lines, unconfirmed documents, unsupported Purchase document types, duplicate source-line allocations and quantities above the captured Purchase base quantity are rejected.
+- Request carries `sourceSystem = purchase`, Purchase document type/ID, durable Inventory document ID, request key and payload fingerprint; final replay/idempotency behavior remains Step 17.
+- Step 9 uses a structurally Inventory-compatible port/request contract without adding a Purchase runtime dependency on Inventory; formal Application adapter wiring remains Steps 13–14.
+- The current aggregate does not yet persist `PurchaseCommercialTerms` directly on `PurchaseDocumentLineSnapshot`; Step 9 therefore consumes immutable Purchase-owned commercial facts keyed by durable line ID. Steps 13–16 must resolve these facts from Purchase state and must not create a second operator entry path.
+- Added `purchase-inventory-receipt-integration.ts`, Step 9 domain error codes, public exports and `purchase-inventory-receipt-integration.test.ts`.
+- Restored missing public exports for Step 4 commercial semantics used by the integration contract.
+- Added architecture documentation in `purchase-inventory-receipt-integration.md` and preserved Step 10+ boundaries.
+- TDD RED was observed before implementation as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 9 module.
+- Fresh isolated Node 22 verification of Step 9 integration behavior: 6 tests passed, 0 failed.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
 ## Change Requests
