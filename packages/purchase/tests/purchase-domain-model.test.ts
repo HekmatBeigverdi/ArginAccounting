@@ -59,6 +59,7 @@ function createValidDocument() {
     companyId: "company-001",
     supplierId: "party-supplier-001",
     supplierSnapshot,
+    documentType: "supplier-invoice",
     businessDate: "2026-09-14",
     createdAt,
     lines: [
@@ -75,6 +76,7 @@ function baseInput(documentId: string) {
     companyId: "company-001",
     supplierId: "party-supplier-001",
     supplierSnapshot,
+    documentType: "supplier-invoice" as const,
     businessDate: "2026-09-14",
     createdAt,
   };
@@ -92,6 +94,9 @@ function assertDomainError(action: () => unknown, code: string, field: string): 
 test("creates a persistence-neutral Purchase aggregate with immutable historical snapshots", () => {
   const document = createValidDocument();
   assert.equal(document.documentId, "purchase-doc-001");
+  assert.equal(document.documentType, "supplier-invoice");
+  assert.equal(document.status, "draft");
+  assert.deepEqual(document.lifecycleHistory, []);
   assert.equal(document.supplierSnapshot.displayName, "تأمین کننده نمونه");
   assert.equal(document.lines[0]?.itemSnapshot.taxpayerGoodsServiceId, "2720000014385");
   assert.equal(document.version, 1);
@@ -167,11 +172,12 @@ test("normalizes source and correction references while preventing self-referenc
   );
 });
 
-test("rehydration preserves historical snapshots and rejects invalid chronology", () => {
+test("rehydration preserves lifecycle and historical snapshots while rejecting invalid chronology", () => {
   const snapshot = createValidDocument();
   const rehydrated = rehydratePurchaseDocument(snapshot);
   assert.deepEqual(rehydrated.supplierSnapshot, snapshot.supplierSnapshot);
   assert.deepEqual(rehydrated.lines[0]?.itemSnapshot, snapshot.lines[0]?.itemSnapshot);
+  assert.equal(rehydrated.status, "draft");
   assertDomainError(
     () => rehydratePurchaseDocument({ ...snapshot, version: 0 }),
     PURCHASE_DOMAIN_ERROR_CODES.versionInvalid,
