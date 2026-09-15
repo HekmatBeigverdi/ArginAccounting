@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { InventorySourceDocumentPort } from "@argin/inventory";
 import {
   PURCHASE_DOMAIN_ERROR_CODES,
   PurchaseDomainError,
@@ -13,6 +12,7 @@ import {
   approvePurchaseDocument,
   confirmPurchaseDocument,
 } from "../src/index.ts";
+import type { PurchaseInventoryReceiptPort } from "../src/index.ts";
 
 const scope = {
   companyId: "company-001",
@@ -194,9 +194,9 @@ test("rejects duplicate Purchase line allocations in one receipt request", () =>
   );
 });
 
-test("stages through InventorySourceDocumentPort without creating stock movements directly", async () => {
+test("stages through an InventorySourceDocumentPort-compatible boundary without creating stock movements directly", async () => {
   const requests: unknown[] = [];
-  const port: InventorySourceDocumentPort = {
+  const port: PurchaseInventoryReceiptPort = {
     stageDraft: async request => {
       requests.push(request);
       return { inventoryDocumentId: request.inventoryDocumentId, status: "draft", version: 1 };
