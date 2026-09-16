@@ -110,7 +110,9 @@ Mandatory references:
 23. SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests
 24. Monorepo Validation, Documentation, Final Review and Release
 
-## Step 4 Exit Criteria and Evidence
+## Step 4 — Quantity, Unit, Currency, Price, Discount, Charge and Tax Semantics
+
+### Exit Criteria and Evidence
 
 - Canonical positive decimal quantity strings with exact entered-to-base conversion.
 - Entered/base unit snapshots include ratio, precision, rounding mode and Taxpayer unit code.
@@ -124,7 +126,9 @@ Mandatory references:
 - Fresh isolated Node 22 execution after implementation: 4 tests passed, 0 failed.
 - Full monorepo validation remains Step 24; no unobserved CI success is claimed.
 
-## Step 5 Exit Criteria and Evidence
+## Step 5 — Purchase Document Types and Lifecycle
+
+### Exit Criteria and Evidence
 
 - Frozen document types: `purchase-order`, `supplier-invoice`, `purchase-return`, `purchase-correction`.
 - Frozen statuses: `draft`, `submitted`, `approved`, `confirmed`, `cancelled`, `returned`, `corrected`.
@@ -139,7 +143,9 @@ Mandatory references:
 - Fresh isolated Node 22 lifecycle smoke verification after implementation: 2 tests passed, 0 failed, covering confirmed-to-returned flow and self-linked correction rejection.
 - GitHub has no workflow run registered for the verified commit; full workspace/monorepo validation remains owned by later validation gates.
 
-## Step 6 Exit Criteria and Evidence
+## Step 6 — Company, Branch, Fiscal Scope and Numbering
+
+### Exit Criteria and Evidence
 
 - Added immutable `PurchaseDocumentScope` with durable Company, Branch, fiscal-year and fiscal-period IDs plus captured date boundaries/status/lock context.
 - Purchase business date must fall inside both the captured fiscal year and fiscal period.
@@ -154,7 +160,9 @@ Mandatory references:
 - Fresh isolated Node 22 verification on the final Step 6 scope/numbering source: 4 tests passed, 0 failed.
 - Full package/monorepo validation is not claimed from the isolated verifier; broader validation remains owned by Steps 22–24.
 
-## Step 7 Exit Criteria and Evidence
+## Step 7 — Purchase Pricing and Totals Engine
+
+### Exit Criteria and Evidence
 
 - Added deterministic line pricing sequence: gross amount, ordered discounts, net after discount, ordered charges, tax base, tax amount and grand total.
 - Quantity × unit-price multiplication uses integer/BigInt decimal arithmetic; binary floating point is not used for monetary calculation.
@@ -167,7 +175,9 @@ Mandatory references:
 - Fresh isolated Node 22 verification of pricing behavior: 4 tests passed, 0 failed, covering deterministic line totals, sequential percentage discounts, over-discount rejection and same-currency document aggregation.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
-## Step 8 Exit Criteria and Evidence
+## Step 8 — Receipt and Invoice Matching Policy
+
+### Exit Criteria and Evidence
 
 - Added line-level matching between confirmed `supplier-invoice` lines and confirmed Inventory `receipt` lines only.
 - Matching uses canonical positive base-quantity strings so invoice and receipt entered units may differ without changing the matching result.
@@ -183,7 +193,9 @@ Mandatory references:
 - Fresh strict TypeScript check of the Step 8 source completed with exit code 0.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
-## Step 9 Exit Criteria and Evidence
+## Step 9 — Inventory Receipt Integration
+
+### Exit Criteria and Evidence
 
 - Added Purchase-to-Inventory receipt staging for confirmed `purchase-order` and `supplier-invoice` stock intent only.
 - Purchase does not create stock movements; `stagePurchaseInventoryReceipt` invokes only an InventorySourceDocumentPort-compatible `stageDraft` boundary and returns the Inventory-owned draft result.
@@ -200,7 +212,9 @@ Mandatory references:
 - Fresh isolated Node 22 verification of Step 9 integration behavior: 6 tests passed, 0 failed.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
-## Step 10 Exit Criteria and Evidence
+## Step 10 — Inventory Valuation Cost Input Integration
+
+### Exit Criteria and Evidence
 
 - Added linked Purchase Cost Input snapshots that preserve durable Cost Input, Inventory movement, receipt document/line, Product, Company, match and Purchase document/line identity.
 - Only confirmed `supplier-invoice` `stock-product` commercial facts can resolve normal Purchase cost; mismatched Company/Product/source identity and mixed currencies are rejected.
@@ -216,7 +230,9 @@ Mandatory references:
 - Fresh strict TypeScript source verification of the Step 10 implementation completed with exit code 0.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
-## Step 11 Exit Criteria and Evidence
+## Step 11 — Receipt-Before-Invoice and Cost Resolution Policy
+
+### Exit Criteria and Evidence
 
 - Frozen policy: confirmed physical receipts may precede supplier invoices; missing Purchase cost does not block Inventory confirmation, but valuation remains explicitly unresolved.
 - No automatic provisional/estimated cost and no silent zero-cost substitution are permitted.
@@ -229,7 +245,9 @@ Mandatory references:
 - TDD RED was established by defining the Step 11 test contract before the policy module existed.
 - Direct repository clone/package execution from this session was attempted after implementation but could not run because the execution container could not resolve `github.com`; therefore no fresh full-package pass is claimed here. Local `pnpm --filter @argin/purchase test` and `typecheck` remain the authoritative executable verification until Steps 22–24.
 
-## Step 12 Exit Criteria and Evidence
+## Step 12 — Purchase Return and Correction Workflow
+
+### Exit Criteria and Evidence
 
 - Confirmed `purchase-return` and `purchase-correction` documents are durable compensating facts linked to a confirmed supplier invoice; Company and Supplier identity must match and the compensation reason is mandatory.
 - Purchase returns create outbound Inventory intent for positive returned base quantity and cannot exceed the original line quantity. They do not mutate the original confirmed receipt movement or original Purchase Cost Input.
