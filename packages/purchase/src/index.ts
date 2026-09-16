@@ -141,5 +141,18 @@ export type {
   PurchaseUnitOfWorkContext,
 } from "./application/contracts/purchase-unit-of-work.ts";
 
+export {
+  PurchaseApplicationError,
+  createPurchaseApplicationServices,
+} from "./application/purchase-application-service.ts";
+export type {
+  PurchaseApplicationErrorCode,
+  PurchaseApplicationServiceDependencies,
+  PurchaseApplicationServices,
+  PurchaseInventoryMovementReaderPort,
+  PurchaseReceiptLineReaderPort,
+  PurchaseValuationRecalculationPort,
+} from "./application/purchase-application-service.ts";
+
 export { PURCHASE_DOMAIN_ERROR_CODES, PurchaseDomainError } from "./domain/purchase-domain-errors.ts";
 export type { PurchaseDomainErrorCode } from "./domain/purchase-domain-errors.ts";
