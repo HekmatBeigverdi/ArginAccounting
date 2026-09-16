@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–11 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 12 — Purchase Return and Correction Workflow — is next.
+Steps 1–12 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 13 — Application, Query and Repository Contracts — is next.
 
 ## Governance
 
@@ -23,6 +23,7 @@ Mandatory references:
 - [Purchase Inventory Receipt Integration](../architecture/purchase-inventory-receipt-integration.md)
 - [Purchase Inventory Valuation Cost Input Integration](../architecture/purchase-inventory-valuation-cost-input.md)
 - [Purchase Receipt-Before-Invoice and Cost Resolution Policy](../architecture/purchase-receipt-before-invoice-policy.md)
+- [Purchase Return and Correction Workflow](../architecture/purchase-return-correction-workflow.md)
 
 ## Baseline and Release Target
 
@@ -51,6 +52,7 @@ Mandatory references:
 - Purchase stages Inventory-owned receipt drafts from confirmed stock intent; Purchase never creates StockMovement facts directly or bypasses Inventory lifecycle/approval/confirmation.
 - Normal confirmed Purchase cost is supplied automatically to Inventory Valuation through durable movement/match/source identity; partially matched or missing commercial cost remains explicitly unresolved and is never silently zero.
 - Receipt-before-invoice uses defer-until-authoritative-cost: physical receipt confirmation is not blocked, valuation remains unresolved, and later authoritative cost requires deterministic recalculation from the affected movement.
+- Returns and corrections are immutable compensating Purchase documents. They never rewrite confirmed supplier invoices, confirmed Inventory movements or historical authoritative Cost Inputs in place.
 
 ## Step Status
 
@@ -67,7 +69,7 @@ Mandatory references:
 | 9 | Inventory Receipt Integration | Completed |
 | 10 | Inventory Valuation Cost Input Integration | Completed |
 | 11 | Receipt-Before-Invoice and Cost Resolution Policy | Completed |
-| 12 | Purchase Return and Correction Workflow | Not started |
+| 12 | Purchase Return and Correction Workflow | Completed |
 | 13 | Application, Query and Repository Contracts | Not started |
 | 14 | Application Services and Transaction Boundaries | Not started |
 | 15 | Migration, Schema, Constraints and Indexing | Not started |
@@ -226,6 +228,19 @@ Mandatory references:
 - Added architecture documentation in `purchase-receipt-before-invoice-policy.md`.
 - TDD RED was established by defining the Step 11 test contract before the policy module existed.
 - Direct repository clone/package execution from this session was attempted after implementation but could not run because the execution container could not resolve `github.com`; therefore no fresh full-package pass is claimed here. Local `pnpm --filter @argin/purchase test` and `typecheck` remain the authoritative executable verification until Steps 22–24.
+
+## Step 12 Exit Criteria and Evidence
+
+- Confirmed `purchase-return` and `purchase-correction` documents are durable compensating facts linked to a confirmed supplier invoice; Company and Supplier identity must match and the compensation reason is mandatory.
+- Purchase returns create outbound Inventory intent for positive returned base quantity and cannot exceed the original line quantity. They do not mutate the original confirmed receipt movement or original Purchase Cost Input.
+- Partial returns remain independent linked return documents; application orchestration decides whether cumulative coverage qualifies the original document for the terminal `returned` lifecycle state.
+- Corrections support `commercial-replacement`, `quantity-decrease`, and `quantity-increase` effects. Quantity deltas produce outbound-compensation or inbound-follow-up Inventory intent instead of editing old movements.
+- Commercial corrections affecting movements that already consumed authoritative Purchase cost declare `recalculationReason = cost_basis_changed` and list durable affected movement IDs for deterministic valuation replay.
+- A correction with no affected historical movement does not request historical replay; its corrected commercial fact is used by later matching/cost resolution.
+- Added `purchase-return-correction-workflow.ts`, Step 12 domain error codes, public exports and `purchase-return-correction-workflow.test.ts`.
+- Added architecture documentation in `purchase-return-correction-workflow.md`; Steps 13–14 own persistence/application orchestration, Step 17 owns replay/idempotency semantics, and Phase 23 owns accounting reversal/posting.
+- TDD RED was observed before implementation as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 12 module.
+- Fresh full-package/monorepo validation is not claimed from this session; authoritative package verification remains `pnpm --filter @argin/purchase test` and `pnpm --filter @argin/purchase typecheck` locally until the formal validation gates in Steps 22–24.
 
 ## Change Requests
 
