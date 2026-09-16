@@ -177,7 +177,7 @@ function allocationForMatch(
   allMatches: readonly PurchaseReceiptInvoiceMatchSnapshot[],
   fact: PurchaseInventoryValuationCommercialFact,
 ): number {
-  const lineCost = calculatePurchaseLineTotals(fact.commercialTerms).taxBaseAmount.amount;
+  const lineCost = calculatePurchaseLineTotals(fact.commercialTerms).taxBaseAmount;
   const invoiceQuantity = parsePositiveQuantity(fact.commercialTerms.quantity.baseQuantity, "commercialFacts.commercialTerms.quantity.baseQuantity");
   const relevant = allMatches
     .filter(match => match.invoiceDocumentId === target.invoiceDocumentId &&
