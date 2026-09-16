@@ -93,5 +93,20 @@ export type {
   PurchaseReceiptCostUnresolvedReason,
 } from "./domain/purchase-receipt-before-invoice-policy.ts";
 
+export {
+  createPurchaseCorrectionWorkflowPlan,
+  createPurchaseReturnWorkflowPlan,
+} from "./domain/purchase-return-correction-workflow.ts";
+export type {
+  PurchaseCompensationDocumentReference,
+  PurchaseCorrectionEffect,
+  PurchaseCorrectionInventoryEffect,
+  PurchaseCorrectionLineInput,
+  PurchaseCorrectionWorkflowPlan,
+  PurchaseReturnInventoryLine,
+  PurchaseReturnLineInput,
+  PurchaseReturnWorkflowPlan,
+} from "./domain/purchase-return-correction-workflow.ts";
+
 export { PURCHASE_DOMAIN_ERROR_CODES, PurchaseDomainError } from "./domain/purchase-domain-errors.ts";
 export type { PurchaseDomainErrorCode } from "./domain/purchase-domain-errors.ts";
