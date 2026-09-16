@@ -108,5 +108,38 @@ export type {
   PurchaseReturnWorkflowPlan,
 } from "./domain/purchase-return-correction-workflow.ts";
 
+export {
+  createPurchaseOperationContext,
+  normalizePurchaseDocumentListQuery,
+} from "./application/contracts/purchase-application-contracts.ts";
+export type {
+  CreatePurchaseCommand,
+  GetPurchaseDocumentQuery,
+  GetPurchaseReceiptCostDecisionQuery,
+  MatchPurchaseReceiptInvoiceCommand,
+  PurchaseApplicationCommandService,
+  PurchaseApplicationQueryService,
+  PurchaseFiscalEligibilityPort,
+  PurchaseLifecycleCommand,
+  PurchaseNumberReservationPort,
+  PurchaseOperationContext,
+  ResolvePurchaseMovementCostCommand,
+  StagePurchaseReceiptCommand,
+} from "./application/contracts/purchase-application-contracts.ts";
+export type {
+  NormalizedPurchaseDocumentListQuery,
+  PurchaseCommercialFactRepository,
+  PurchaseCommercialFactSnapshot,
+  PurchaseDocumentListQuery,
+  PurchaseDocumentRepository,
+  PurchaseReceiptInvoiceMatchRepository,
+  PurchaseUnresolvedValuationCostReference,
+  PurchaseValuationCostInputRepository,
+} from "./application/contracts/purchase-repository.ts";
+export type {
+  PurchaseUnitOfWork,
+  PurchaseUnitOfWorkContext,
+} from "./application/contracts/purchase-unit-of-work.ts";
+
 export { PURCHASE_DOMAIN_ERROR_CODES, PurchaseDomainError } from "./domain/purchase-domain-errors.ts";
 export type { PurchaseDomainErrorCode } from "./domain/purchase-domain-errors.ts";
