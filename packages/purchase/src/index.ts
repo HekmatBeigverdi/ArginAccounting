@@ -143,6 +143,22 @@ export type {
 } from "./domain/purchase-inventory-receipt-integration.ts";
 
 export {
+  createPurchaseInventoryValuationCostInput,
+  createPurchaseInventoryValuationCostInputProvider,
+} from "./domain/purchase-inventory-valuation-cost-input.ts";
+
+export type {
+  CreatePurchaseInventoryValuationCostInputInput,
+  PurchaseInventoryResolvedInboundCostBasis,
+  PurchaseInventoryValuationCommercialFact,
+  PurchaseInventoryValuationCostInputProvider,
+  PurchaseInventoryValuationCostInputResolver,
+  PurchaseInventoryValuationCostInputSnapshot,
+  PurchaseInventoryValuationSourceLink,
+  PurchaseValuationMovementReference,
+} from "./domain/purchase-inventory-valuation-cost-input.ts";
+
+export {
   PURCHASE_DOMAIN_ERROR_CODES,
   PurchaseDomainError,
 } from "./domain/purchase-domain-errors.ts";
