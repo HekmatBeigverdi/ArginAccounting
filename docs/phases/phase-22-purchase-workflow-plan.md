@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–12 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 13 — Application, Query and Repository Contracts — is next.
+Steps 1–13 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 14 — Application Services and Transaction Boundaries — is next.
 
 ## Governance
 
@@ -24,6 +24,7 @@ Mandatory references:
 - [Purchase Inventory Valuation Cost Input Integration](../architecture/purchase-inventory-valuation-cost-input.md)
 - [Purchase Receipt-Before-Invoice and Cost Resolution Policy](../architecture/purchase-receipt-before-invoice-policy.md)
 - [Purchase Return and Correction Workflow](../architecture/purchase-return-correction-workflow.md)
+- [Purchase Application, Query and Repository Contracts](../architecture/purchase-application-query-repository-contracts.md)
 
 ## Baseline and Release Target
 
@@ -53,6 +54,7 @@ Mandatory references:
 - Normal confirmed Purchase cost is supplied automatically to Inventory Valuation through durable movement/match/source identity; partially matched or missing commercial cost remains explicitly unresolved and is never silently zero.
 - Receipt-before-invoice uses defer-until-authoritative-cost: physical receipt confirmation is not blocked, valuation remains unresolved, and later authoritative cost requires deterministic recalculation from the affected movement.
 - Returns and corrections are immutable compensating Purchase documents. They never rewrite confirmed supplier invoices, confirmed Inventory movements or historical authoritative Cost Inputs in place.
+- Application contracts are persistence-neutral and expose durable Purchase document, commercial fact, match, cost-input, request and operation identities without SQLite row IDs.
 
 ## Step Status
 
@@ -70,7 +72,7 @@ Mandatory references:
 | 10 | Inventory Valuation Cost Input Integration | Completed |
 | 11 | Receipt-Before-Invoice and Cost Resolution Policy | Completed |
 | 12 | Purchase Return and Correction Workflow | Completed |
-| 13 | Application, Query and Repository Contracts | Not started |
+| 13 | Application, Query and Repository Contracts | Completed |
 | 14 | Application Services and Transaction Boundaries | Not started |
 | 15 | Migration, Schema, Constraints and Indexing | Not started |
 | 16 | SQLite Repository and Unit of Work | Not started |
@@ -136,12 +138,10 @@ Mandatory references:
 - `returned` and `corrected` require a reason plus a distinct linked compensating document ID; self-linking is rejected.
 - Approved-to-draft reopening requires an explicit reason.
 - Lifecycle history is chronological, immutable and records actor, timestamps, reason and related document identity.
-- Purchase aggregate now carries `documentType`, `status`, `lifecycleHistory`, shared aggregate `version`, `createdAt` and `updatedAt`.
-- Lifecycle transitions increment aggregate version without assuming `version === history.length + 1`, preserving compatibility with future draft edits and Step 17 optimistic concurrency.
+- Purchase aggregate carries document type/status/history/version/timestamps.
+- Lifecycle transitions increment aggregate version without assuming `version === history.length + 1`.
 - Added `purchase-lifecycle.ts`, lifecycle domain errors, aggregate lifecycle actions, public exports and `purchase-lifecycle.test.ts`.
-- Existing Purchase aggregate tests were updated to use explicit document type and validate initial `draft` lifecycle state.
-- Fresh isolated Node 22 lifecycle smoke verification after implementation: 2 tests passed, 0 failed, covering confirmed-to-returned flow and self-linked correction rejection.
-- GitHub has no workflow run registered for the verified commit; full workspace/monorepo validation remains owned by later validation gates.
+- Fresh isolated Node 22 lifecycle smoke verification after implementation: 2 tests passed, 0 failed.
 
 ## Step 6 — Company, Branch, Fiscal Scope and Numbering
 
@@ -150,115 +150,101 @@ Mandatory references:
 - Added immutable `PurchaseDocumentScope` with durable Company, Branch, fiscal-year and fiscal-period IDs plus captured date boundaries/status/lock context.
 - Purchase business date must fall inside both the captured fiscal year and fiscal period.
 - New Purchase facts require captured fiscal year and period to be open; dates on or before captured `lockedThroughDate` are rejected.
-- Aggregate `companyId` must match `scope.companyId`; rehydration executes the same scope and date validation.
-- `PurchaseDocumentSnapshot` now carries its frozen scope and nullable `documentNumber`.
-- Number allocation is not duplicated in Purchase: `createPurchaseNumberSeriesRequest` produces the existing `@argin/fiscal.generateDocumentNumber` contract using `companyId`, `branchId`, `fiscalYearId` and `entityType = purchase:<documentType>`.
-- `@argin/fiscal` remains authoritative for current fiscal policy, historical-lock checks, sequence applicability/reservation and number formatting. Step 14 will re-check current Fiscal state and orchestrate number reservation inside the appropriate transaction boundary.
-- The captured scope is historical/Bridge evidence and must not be used to bypass a newer locally closed or locked period.
-- Added `purchase-scope.ts`, Step 6 domain error codes, public exports and `purchase-scope-numbering.test.ts`; existing aggregate tests were updated with scope fixtures and mismatch/lock coverage.
-- TDD RED was reproduced before implementation with Node 22 as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 6 module.
-- Fresh isolated Node 22 verification on the final Step 6 scope/numbering source: 4 tests passed, 0 failed.
-- Full package/monorepo validation is not claimed from the isolated verifier; broader validation remains owned by Steps 22–24.
+- Aggregate `companyId` must match `scope.companyId`.
+- `PurchaseDocumentSnapshot` carries frozen scope and nullable `documentNumber`.
+- Number allocation remains owned by `@argin/fiscal`; Purchase only produces the compatible number-series request.
+- Fresh isolated Node 22 verification: 4 tests passed, 0 failed.
 
 ## Step 7 — Purchase Pricing and Totals Engine
 
 ### Exit Criteria and Evidence
 
-- Added deterministic line pricing sequence: gross amount, ordered discounts, net after discount, ordered charges, tax base, tax amount and grand total.
-- Quantity × unit-price multiplication uses integer/BigInt decimal arithmetic; binary floating point is not used for monetary calculation.
-- Each percentage adjustment is evaluated against the current amount in stored order and rounded with `half-away-from-zero`; fixed adjustments remain explicit money.
-- A discount that would make a line negative is rejected with `purchase.pricing_invalid`.
-- Tax is calculated from the post-discount/post-charge tax base only for `taxable` terms; exempt/not-subject/unspecified yield zero tax.
-- Document totals aggregate line totals only when all lines share the same currency; mixed-currency aggregation is rejected.
-- Added `purchase-pricing.ts`, public exports, pricing error code and `purchase-pricing-totals.test.ts`.
-- Added architecture documentation in `purchase-pricing-and-totals.md` and preserved Step 8+ scope boundaries.
-- Fresh isolated Node 22 verification of pricing behavior: 4 tests passed, 0 failed, covering deterministic line totals, sequential percentage discounts, over-discount rejection and same-currency document aggregation.
-- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+- Deterministic sequence: gross, ordered discounts, net after discount, ordered charges, tax base, tax and grand total.
+- Binary floating point is not used for monetary calculation.
+- Percentage adjustments use `half-away-from-zero` rounding.
+- Tax uses the post-discount/post-charge tax base.
+- Document aggregation rejects mixed currencies.
+- Added `purchase-pricing.ts`, public exports and tests.
+- Fresh isolated Node 22 verification: 4 tests passed, 0 failed.
 
 ## Step 8 — Receipt and Invoice Matching Policy
 
 ### Exit Criteria and Evidence
 
-- Added line-level matching between confirmed `supplier-invoice` lines and confirmed Inventory `receipt` lines only.
-- Matching uses canonical positive base-quantity strings so invoice and receipt entered units may differ without changing the matching result.
-- Every match is an immutable durable fact with its own `matchId`, Company ID, invoice document/line IDs, receipt document/line IDs, Product ID and matched base quantity.
-- Company and Product identity must agree across both sides.
-- Duplicate `matchId` values and duplicate invoice-line/receipt-line pairs are rejected.
-- Cumulative matches cannot exceed either the invoice-line base quantity or the receipt-line base quantity, including allocation of one receipt line across different invoice lines.
-- Invoice-line status is derived as `unmatched`, `partially-matched` or `fully-matched`; matching status is not stored as an authoritative mutable field.
-- Added `purchase-receipt-invoice-matching.ts`, Step 8 domain error codes, public exports and `purchase-receipt-invoice-matching.test.ts`.
-- Added architecture documentation in `purchase-receipt-invoice-matching.md`; Step 9 remains responsible for actual Inventory receipt integration and Step 10/11 for valuation/cost-resolution behavior.
-- TDD RED was reproduced before implementation with Node 22 as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 8 module.
-- Fresh isolated Node 22 verification of the final Step 8 matching source: 5 tests passed, 0 failed.
-- Fresh strict TypeScript check of the Step 8 source completed with exit code 0.
-- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+- Matching is line-level between confirmed supplier-invoice and confirmed Inventory receipt lines.
+- Matching uses canonical base quantities and durable match IDs.
+- Company/Product identity must agree and cumulative allocations cannot exceed either side.
+- Status is derived as `unmatched`, `partially-matched` or `fully-matched`.
+- Added matching domain module, errors, public exports and tests.
+- Fresh isolated Node 22 verification: 5 tests passed, 0 failed; strict TypeScript exit code 0.
 
 ## Step 9 — Inventory Receipt Integration
 
 ### Exit Criteria and Evidence
 
-- Added Purchase-to-Inventory receipt staging for confirmed `purchase-order` and `supplier-invoice` stock intent only.
-- Purchase does not create stock movements; `stagePurchaseInventoryReceipt` invokes only an InventorySourceDocumentPort-compatible `stageDraft` boundary and returns the Inventory-owned draft result.
-- Every staged line preserves durable Purchase `sourceLineId`, Product identity, canonical decimal quantity and Warehouse intent.
-- Staged quantity is expressed in the Purchase commercial fact's captured base unit, preventing entered-unit ambiguity between Purchase and Inventory.
-- Service/non-stock lines, unconfirmed documents, unsupported Purchase document types, duplicate source-line allocations and quantities above the captured Purchase base quantity are rejected.
-- Request carries `sourceSystem = purchase`, Purchase document type/ID, durable Inventory document ID, request key and payload fingerprint; final replay/idempotency behavior remains Step 17.
-- Step 9 uses a structurally Inventory-compatible port/request contract without adding a Purchase runtime dependency on Inventory; formal Application adapter wiring remains Steps 13–14.
-- The current aggregate does not yet persist `PurchaseCommercialTerms` directly on `PurchaseDocumentLineSnapshot`; Step 9 therefore consumes immutable Purchase-owned commercial facts keyed by durable line ID. Steps 13–16 must resolve these facts from Purchase state and must not create a second operator entry path.
-- Added `purchase-inventory-receipt-integration.ts`, Step 9 domain error codes, public exports and `purchase-inventory-receipt-integration.test.ts`.
-- Restored missing public exports for Step 4 commercial semantics used by the integration contract.
-- Added architecture documentation in `purchase-inventory-receipt-integration.md` and preserved Step 10+ boundaries.
-- TDD RED was observed before implementation as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 9 module.
-- Fresh isolated Node 22 verification of Step 9 integration behavior: 6 tests passed, 0 failed.
-- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+- Confirmed Purchase stock intent stages Inventory-owned receipt drafts only; Purchase never creates stock movements directly.
+- Staged lines preserve durable source line, Product, base quantity and Warehouse intent.
+- Service/non-stock lines, unconfirmed documents, duplicate allocations and over-quantity are rejected.
+- Request carries durable source identity, request key and payload fingerprint.
+- Commercial facts are resolved from Purchase state rather than re-entered by the operator.
+- Added integration module, errors, public exports, tests and architecture documentation.
+- Fresh isolated Node 22 verification: 6 tests passed, 0 failed.
 
 ## Step 10 — Inventory Valuation Cost Input Integration
 
 ### Exit Criteria and Evidence
 
-- Added linked Purchase Cost Input snapshots that preserve durable Cost Input, Inventory movement, receipt document/line, Product, Company, match and Purchase document/line identity.
-- Only confirmed `supplier-invoice` `stock-product` commercial facts can resolve normal Purchase cost; mismatched Company/Product/source identity and mixed currencies are rejected.
-- The valuation base uses Step 7 `taxBaseAmount` (`net after discount + line charges`) and excludes VAT/tax from the normal inventory cost base.
-- A Purchase line distributed across multiple receipt matches allocates cost by canonical base quantity using deterministic cumulative rounding; full allocation sums exactly to the Purchase line tax base.
-- Cost resolution is movement-level: a fully matched partial receipt can resolve even when the supplier invoice has quantity remaining for later receipts.
-- A movement with no match, incomplete match coverage or missing commercial fact remains `null`/unresolved; zero cost is never silently substituted.
-- The derived basis is structurally compatible with `InventoryResolvedInboundCostBasis`; `createPurchaseInventoryValuationCostInputProvider` exposes it through an `InventoryValuationCostInputProvider`-compatible boundary without adding a runtime Purchase dependency on Inventory.
-- Added `purchase-inventory-valuation-cost-input.ts`, Step 10 domain errors, public exports and `purchase-inventory-valuation-cost-input.test.ts`.
-- Added architecture documentation in `purchase-inventory-valuation-cost-input.md`; receipt-before-invoice/provisional replacement policy remains Step 11.
-- TDD RED was observed before implementation as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 10 module.
-- Fresh Node 22 focused verifier after implementation: 5 tests passed, 0 failed, covering resolved cost, unresolved partial coverage, deterministic remainder allocation, provider adaptation and ineligible/mismatched source rejection.
-- Fresh strict TypeScript source verification of the Step 10 implementation completed with exit code 0.
-- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+- Purchase-backed Cost Input preserves durable movement/receipt/match/Purchase source provenance.
+- Only confirmed supplier-invoice stock-product facts resolve normal Purchase cost.
+- Valuation base uses `taxBaseAmount` and excludes VAT from normal inventory cost.
+- Multi-receipt allocation is deterministic and exact after remainder allocation.
+- Incomplete/missing cost remains unresolved; zero cost is never silently substituted.
+- Provider boundary is structurally compatible with Phase 21 valuation.
+- Fresh focused Node 22 verifier: 5 tests passed, 0 failed; strict TypeScript exit code 0.
 
 ## Step 11 — Receipt-Before-Invoice and Cost Resolution Policy
 
 ### Exit Criteria and Evidence
 
-- Frozen policy: confirmed physical receipts may precede supplier invoices; missing Purchase cost does not block Inventory confirmation, but valuation remains explicitly unresolved.
-- No automatic provisional/estimated cost and no silent zero-cost substitution are permitted.
-- Derived unresolved reasons are `awaiting-supplier-invoice`, `partial-invoice-match`, and `supplier-invoice-cost-unavailable`.
-- Movement-level quantity coverage is authoritative: only full confirmed invoice coverage for the movement may resolve Purchase-backed Cost Input.
-- A later full invoice/match resolves through the existing Step 10 Cost Input builder rather than introducing a second cost-calculation path.
-- Every unresolved or newly resolved decision declares `requiresRecalculation = true` with `recalculationReason = cost_basis_changed`; Steps 13–14 own the actual valuation command/UoW orchestration.
-- Added `purchase-receipt-before-invoice-policy.ts`, public exports and `purchase-receipt-before-invoice-policy.test.ts`.
-- Added architecture documentation in `purchase-receipt-before-invoice-policy.md`.
-- TDD RED was established by defining the Step 11 test contract before the policy module existed.
-- Direct repository clone/package execution from this session was attempted after implementation but could not run because the execution container could not resolve `github.com`; therefore no fresh full-package pass is claimed here. Local `pnpm --filter @argin/purchase test` and `typecheck` remain the authoritative executable verification until Steps 22–24.
+- Confirmed physical receipt may precede supplier invoice.
+- Missing Purchase cost does not block Inventory confirmation but valuation remains unresolved.
+- No automatic provisional/estimated or silent zero cost is permitted.
+- Unresolved reasons: `awaiting-supplier-invoice`, `partial-invoice-match`, `supplier-invoice-cost-unavailable`.
+- Full later coverage resolves through Step 10 and requires `cost_basis_changed` recalculation.
+- Added policy module, public exports, tests and architecture documentation.
+- Full package verification remains deferred to formal validation gates.
 
 ## Step 12 — Purchase Return and Correction Workflow
 
 ### Exit Criteria and Evidence
 
-- Confirmed `purchase-return` and `purchase-correction` documents are durable compensating facts linked to a confirmed supplier invoice; Company and Supplier identity must match and the compensation reason is mandatory.
-- Purchase returns create outbound Inventory intent for positive returned base quantity and cannot exceed the original line quantity. They do not mutate the original confirmed receipt movement or original Purchase Cost Input.
-- Partial returns remain independent linked return documents; application orchestration decides whether cumulative coverage qualifies the original document for the terminal `returned` lifecycle state.
-- Corrections support `commercial-replacement`, `quantity-decrease`, and `quantity-increase` effects. Quantity deltas produce outbound-compensation or inbound-follow-up Inventory intent instead of editing old movements.
-- Commercial corrections affecting movements that already consumed authoritative Purchase cost declare `recalculationReason = cost_basis_changed` and list durable affected movement IDs for deterministic valuation replay.
-- A correction with no affected historical movement does not request historical replay; its corrected commercial fact is used by later matching/cost resolution.
-- Added `purchase-return-correction-workflow.ts`, Step 12 domain error codes, public exports and `purchase-return-correction-workflow.test.ts`.
-- Added architecture documentation in `purchase-return-correction-workflow.md`; Steps 13–14 own persistence/application orchestration, Step 17 owns replay/idempotency semantics, and Phase 23 owns accounting reversal/posting.
-- TDD RED was observed before implementation as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 12 module.
-- Fresh full-package/monorepo validation is not claimed from this session; authoritative package verification remains `pnpm --filter @argin/purchase test` and `pnpm --filter @argin/purchase typecheck` locally until the formal validation gates in Steps 22–24.
+- Confirmed purchase-return and purchase-correction documents are durable compensating facts linked to a confirmed supplier invoice.
+- Purchase returns create outbound Inventory intent and cannot exceed original line quantity.
+- Partial returns remain independent linked documents.
+- Corrections support commercial replacement, quantity decrease and quantity increase effects.
+- Quantity deltas create compensating Inventory intent instead of editing old movements.
+- Historical Purchase-cost changes declare `cost_basis_changed` replay from affected movements.
+- Added workflow module, errors, public exports, tests and architecture documentation.
+- TDD RED preceded implementation; full package verification remains deferred to formal validation gates.
+
+## Step 13 — Application, Query and Repository Contracts
+
+### Exit Criteria and Evidence
+
+- Added durable `PurchaseOperationContext` carrying Company, Branch, request ID, operation ID, actor ID and normalized UTC timestamp.
+- Added command contracts for Purchase creation/lifecycle, Inventory receipt staging, receipt/invoice matching and movement-cost resolution without implementing orchestration.
+- Added read-only Query service contracts and normalized document-list filtering with bounded pagination.
+- Added `PurchaseDocumentRepository`, `PurchaseCommercialFactRepository`, `PurchaseReceiptInvoiceMatchRepository`, and `PurchaseValuationCostInputRepository`.
+- Commercial facts remain a separate authoritative repository keyed by durable Purchase document/line IDs; downstream modules must not create a second operator-entry path.
+- Added persistence-neutral `PurchaseUnitOfWork` exposing the four repositories inside one transaction context; concrete SQLite commit/rollback remains Step 16.
+- Added narrow Fiscal ports for current-period eligibility and authoritative Purchase number reservation; the historical scope snapshot cannot bypass current Fiscal locks.
+- `requestId` and `operationId` are carried now, while final idempotency/replay semantics remain Step 17.
+- Added public exports and `purchase-application-contracts.test.ts`.
+- Added architecture documentation in `purchase-application-query-repository-contracts.md`.
+- TDD RED was established by committing the Step 13 contract test before the new application-contract modules existed.
+- Fresh focused Node 22 verification of runtime contract normalization: 3 tests passed, 0 failed.
+- Fresh strict TypeScript verification of the Step 13 contract modules completed with exit code 0.
+- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
 ## Change Requests
 
