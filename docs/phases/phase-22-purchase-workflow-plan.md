@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–10 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 11 — Receipt-Before-Invoice and Cost Resolution Policy — is next.
+Steps 1–11 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 12 — Purchase Return and Correction Workflow — is next.
 
 ## Governance
 
@@ -22,6 +22,7 @@ Mandatory references:
 - [Purchase Receipt and Invoice Matching Policy](../architecture/purchase-receipt-invoice-matching.md)
 - [Purchase Inventory Receipt Integration](../architecture/purchase-inventory-receipt-integration.md)
 - [Purchase Inventory Valuation Cost Input Integration](../architecture/purchase-inventory-valuation-cost-input.md)
+- [Purchase Receipt-Before-Invoice and Cost Resolution Policy](../architecture/purchase-receipt-before-invoice-policy.md)
 
 ## Baseline and Release Target
 
@@ -49,6 +50,7 @@ Mandatory references:
 - Receipt/invoice matching is line-level, uses durable match IDs and base quantities, and cannot over-allocate either an invoice line or a confirmed Inventory receipt line.
 - Purchase stages Inventory-owned receipt drafts from confirmed stock intent; Purchase never creates StockMovement facts directly or bypasses Inventory lifecycle/approval/confirmation.
 - Normal confirmed Purchase cost is supplied automatically to Inventory Valuation through durable movement/match/source identity; partially matched or missing commercial cost remains explicitly unresolved and is never silently zero.
+- Receipt-before-invoice uses defer-until-authoritative-cost: physical receipt confirmation is not blocked, valuation remains unresolved, and later authoritative cost requires deterministic recalculation from the affected movement.
 
 ## Step Status
 
@@ -64,7 +66,7 @@ Mandatory references:
 | 8 | Receipt and Invoice Matching Policy | Completed |
 | 9 | Inventory Receipt Integration | Completed |
 | 10 | Inventory Valuation Cost Input Integration | Completed |
-| 11 | Receipt-Before-Invoice and Cost Resolution Policy | Not started |
+| 11 | Receipt-Before-Invoice and Cost Resolution Policy | Completed |
 | 12 | Purchase Return and Correction Workflow | Not started |
 | 13 | Application, Query and Repository Contracts | Not started |
 | 14 | Application Services and Transaction Boundaries | Not started |
@@ -211,6 +213,19 @@ Mandatory references:
 - Fresh Node 22 focused verifier after implementation: 5 tests passed, 0 failed, covering resolved cost, unresolved partial coverage, deterministic remainder allocation, provider adaptation and ineligible/mismatched source rejection.
 - Fresh strict TypeScript source verification of the Step 10 implementation completed with exit code 0.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+
+## Step 11 Exit Criteria and Evidence
+
+- Frozen policy: confirmed physical receipts may precede supplier invoices; missing Purchase cost does not block Inventory confirmation, but valuation remains explicitly unresolved.
+- No automatic provisional/estimated cost and no silent zero-cost substitution are permitted.
+- Derived unresolved reasons are `awaiting-supplier-invoice`, `partial-invoice-match`, and `supplier-invoice-cost-unavailable`.
+- Movement-level quantity coverage is authoritative: only full confirmed invoice coverage for the movement may resolve Purchase-backed Cost Input.
+- A later full invoice/match resolves through the existing Step 10 Cost Input builder rather than introducing a second cost-calculation path.
+- Every unresolved or newly resolved decision declares `requiresRecalculation = true` with `recalculationReason = cost_basis_changed`; Steps 13–14 own the actual valuation command/UoW orchestration.
+- Added `purchase-receipt-before-invoice-policy.ts`, public exports and `purchase-receipt-before-invoice-policy.test.ts`.
+- Added architecture documentation in `purchase-receipt-before-invoice-policy.md`.
+- TDD RED was established by defining the Step 11 test contract before the policy module existed.
+- Direct repository clone/package execution from this session was attempted after implementation but could not run because the execution container could not resolve `github.com`; therefore no fresh full-package pass is claimed here. Local `pnpm --filter @argin/purchase test` and `typecheck` remain the authoritative executable verification until Steps 22–24.
 
 ## Change Requests
 
