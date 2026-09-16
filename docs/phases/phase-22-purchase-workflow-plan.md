@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–9 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 10 — Inventory Valuation Cost Input Integration — is next.
+Steps 1–10 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 11 — Receipt-Before-Invoice and Cost Resolution Policy — is next.
 
 ## Governance
 
@@ -21,6 +21,7 @@ Mandatory references:
 - [Purchase Pricing and Totals Engine](../architecture/purchase-pricing-and-totals.md)
 - [Purchase Receipt and Invoice Matching Policy](../architecture/purchase-receipt-invoice-matching.md)
 - [Purchase Inventory Receipt Integration](../architecture/purchase-inventory-receipt-integration.md)
+- [Purchase Inventory Valuation Cost Input Integration](../architecture/purchase-inventory-valuation-cost-input.md)
 
 ## Baseline and Release Target
 
@@ -47,6 +48,7 @@ Mandatory references:
 - Pricing is deterministic: gross, ordered discounts, ordered charges, tax base, tax and grand total are derived with safe-integer money, basis points and `half-away-from-zero` rounding.
 - Receipt/invoice matching is line-level, uses durable match IDs and base quantities, and cannot over-allocate either an invoice line or a confirmed Inventory receipt line.
 - Purchase stages Inventory-owned receipt drafts from confirmed stock intent; Purchase never creates StockMovement facts directly or bypasses Inventory lifecycle/approval/confirmation.
+- Normal confirmed Purchase cost is supplied automatically to Inventory Valuation through durable movement/match/source identity; partially matched or missing commercial cost remains explicitly unresolved and is never silently zero.
 
 ## Step Status
 
@@ -61,7 +63,7 @@ Mandatory references:
 | 7 | Purchase Pricing and Totals Engine | Completed |
 | 8 | Receipt and Invoice Matching Policy | Completed |
 | 9 | Inventory Receipt Integration | Completed |
-| 10 | Inventory Valuation Cost Input Integration | Not started |
+| 10 | Inventory Valuation Cost Input Integration | Completed |
 | 11 | Receipt-Before-Invoice and Cost Resolution Policy | Not started |
 | 12 | Purchase Return and Correction Workflow | Not started |
 | 13 | Application, Query and Repository Contracts | Not started |
@@ -192,6 +194,22 @@ Mandatory references:
 - Added architecture documentation in `purchase-inventory-receipt-integration.md` and preserved Step 10+ boundaries.
 - TDD RED was observed before implementation as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 9 module.
 - Fresh isolated Node 22 verification of Step 9 integration behavior: 6 tests passed, 0 failed.
+- Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+
+## Step 10 Exit Criteria and Evidence
+
+- Added linked Purchase Cost Input snapshots that preserve durable Cost Input, Inventory movement, receipt document/line, Product, Company, match and Purchase document/line identity.
+- Only confirmed `supplier-invoice` `stock-product` commercial facts can resolve normal Purchase cost; mismatched Company/Product/source identity and mixed currencies are rejected.
+- The valuation base uses Step 7 `taxBaseAmount` (`net after discount + line charges`) and excludes VAT/tax from the normal inventory cost base.
+- A Purchase line distributed across multiple receipt matches allocates cost by canonical base quantity using deterministic cumulative rounding; full allocation sums exactly to the Purchase line tax base.
+- Cost resolution is movement-level: a fully matched partial receipt can resolve even when the supplier invoice has quantity remaining for later receipts.
+- A movement with no match, incomplete match coverage or missing commercial fact remains `null`/unresolved; zero cost is never silently substituted.
+- The derived basis is structurally compatible with `InventoryResolvedInboundCostBasis`; `createPurchaseInventoryValuationCostInputProvider` exposes it through an `InventoryValuationCostInputProvider`-compatible boundary without adding a runtime Purchase dependency on Inventory.
+- Added `purchase-inventory-valuation-cost-input.ts`, Step 10 domain errors, public exports and `purchase-inventory-valuation-cost-input.test.ts`.
+- Added architecture documentation in `purchase-inventory-valuation-cost-input.md`; receipt-before-invoice/provisional replacement policy remains Step 11.
+- TDD RED was observed before implementation as `ERR_MODULE_NOT_FOUND` for the not-yet-created Step 10 module.
+- Fresh Node 22 focused verifier after implementation: 5 tests passed, 0 failed, covering resolved cost, unresolved partial coverage, deterministic remainder allocation, provider adaptation and ineligible/mismatched source rejection.
+- Fresh strict TypeScript source verification of the Step 10 implementation completed with exit code 0.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
 
 ## Change Requests
