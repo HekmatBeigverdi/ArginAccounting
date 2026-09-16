@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–13 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 14 — Application Services and Transaction Boundaries — is next.
+Steps 1–14 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 15 — Migration, Schema, Constraints and Indexing — is next.
 
 ## Governance
 
@@ -25,6 +25,7 @@ Mandatory references:
 - [Purchase Receipt-Before-Invoice and Cost Resolution Policy](../architecture/purchase-receipt-before-invoice-policy.md)
 - [Purchase Return and Correction Workflow](../architecture/purchase-return-correction-workflow.md)
 - [Purchase Application, Query and Repository Contracts](../architecture/purchase-application-query-repository-contracts.md)
+- [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
 
@@ -48,13 +49,15 @@ Mandatory references:
 - Confirmed Purchase history is never silently rewritten; return/correction requires linked compensating document identity.
 - Every Purchase aggregate is bound to a durable Company/Branch/Fiscal scope whose Company matches the aggregate Company.
 - Purchase captures fiscal context for history, while `@argin/fiscal` remains authoritative for current period/lock policy and Number Series reservation.
-- Pricing is deterministic: gross, ordered discounts, ordered charges, tax base, tax and grand total are derived with safe-integer money, basis points and `half-away-from-zero` rounding.
+- Pricing is deterministic: gross, ordered discounts, net after discount, ordered charges, tax base, tax and grand total are derived with safe-integer money, basis points and `half-away-from-zero` rounding.
 - Receipt/invoice matching is line-level, uses durable match IDs and base quantities, and cannot over-allocate either an invoice line or a confirmed Inventory receipt line.
 - Purchase stages Inventory-owned receipt drafts from confirmed stock intent; Purchase never creates StockMovement facts directly or bypasses Inventory lifecycle/approval/confirmation.
 - Normal confirmed Purchase cost is supplied automatically to Inventory Valuation through durable movement/match/source identity; partially matched or missing commercial cost remains explicitly unresolved and is never silently zero.
 - Receipt-before-invoice uses defer-until-authoritative-cost: physical receipt confirmation is not blocked, valuation remains unresolved, and later authoritative cost requires deterministic recalculation from the affected movement.
 - Returns and corrections are immutable compensating Purchase documents. They never rewrite confirmed supplier invoices, confirmed Inventory movements or historical authoritative Cost Inputs in place.
 - Application contracts are persistence-neutral and expose durable Purchase document, commercial fact, match, cost-input, request and operation identities without SQLite row IDs.
+- Application Services re-check current Fiscal eligibility before Purchase mutations, keep Purchase writes inside `PurchaseUnitOfWork`, and invoke Inventory/Valuation only through explicit ports without direct cross-context persistence.
+- Valuation recalculation caused by a newly committed Purchase-backed Cost Input occurs only after the Purchase UoW has committed that Cost Input.
 
 ## Step Status
 
@@ -73,7 +76,7 @@ Mandatory references:
 | 11 | Receipt-Before-Invoice and Cost Resolution Policy | Completed |
 | 12 | Purchase Return and Correction Workflow | Completed |
 | 13 | Application, Query and Repository Contracts | Completed |
-| 14 | Application Services and Transaction Boundaries | Not started |
+| 14 | Application Services and Transaction Boundaries | Completed |
 | 15 | Migration, Schema, Constraints and Indexing | Not started |
 | 16 | SQLite Repository and Unit of Work | Not started |
 | 17 | Idempotency, Optimistic Concurrency and Replay Safety | Not started |
@@ -245,6 +248,24 @@ Mandatory references:
 - Fresh focused Node 22 verification of runtime contract normalization: 3 tests passed, 0 failed.
 - Fresh strict TypeScript verification of the Step 13 contract modules completed with exit code 0.
 - Full package/monorepo validation remains owned by Steps 22–24 and is not claimed here.
+
+## Step 14 — Application Services and Transaction Boundaries
+
+### Exit Criteria and Evidence
+
+- Added `createPurchaseApplicationServices` exposing concrete command and query services over the Step 13 contracts.
+- Purchase creation re-checks current Fiscal eligibility, reserves an authoritative Purchase number when needed, creates the Domain aggregate, and persists the aggregate plus Purchase-owned commercial facts inside one Purchase UoW.
+- Submit, approve, confirm, cancel and reopen load the aggregate inside the UoW, enforce Company/Branch scope, validate `expectedVersion`, re-check current Fiscal eligibility, invoke the existing Domain transition and persist with the original expected version.
+- Explicit terminal `returnPurchase`/`correct` transitions require an already confirmed compensating Purchase document of the expected type that points back to the original. Confirming a partial return alone does not automatically mark the original fully returned.
+- Inventory receipt staging resolves Purchase-owned commercial facts in a completed Purchase read transaction and only then invokes the Inventory-owned staging port; Purchase never writes Inventory movements.
+- Receipt/invoice matching resolves the authoritative confirmed Inventory receipt line through a reader port, combines existing invoice/receipt allocations, re-runs the Step 8 Domain matcher, and only persists the validated match.
+- Movement-cost resolution reads the authoritative Inventory movement, resolves Purchase matches/commercial facts, evaluates the Step 11 policy, persists newly resolved/replaced Cost Input inside the Purchase UoW, and invokes valuation recalculation only after that UoW commits.
+- Query services implement document lookup/listing and read-only receipt-cost decision inspection using Step 13 normalization.
+- Added explicit application errors and narrow external ports for Inventory movement reading, confirmed receipt-line reading and valuation recalculation without transferring authority into Purchase.
+- Added public exports and `purchase-application-service.test.ts` covering create ordering, lifecycle Fiscal/version enforcement and Inventory staging side-effect ordering.
+- Added architecture documentation in `purchase-application-services-and-transaction-boundaries.md`.
+- TDD RED was established by committing the Step 14 application-service test before the service module existed.
+- Direct full-package execution from this session was attempted after implementation, but the execution container could not resolve `github.com`; therefore no fresh full-package pass is claimed here. Formal package/monorepo validation remains Steps 22–24.
 
 ## Change Requests
 
