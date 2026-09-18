@@ -788,3 +788,74 @@ export class SqlitePurchaseValuationCostInputRepository implements PurchaseValua
     if (result.rowsAffected !== 1) return appError("PURCHASE_APP_NOT_FOUND", "movementId");
   }
 }
+
+
+type IdempotencyRow = {
+  company_id: string;
+  request_id: string;
+  operation_id: string;
+  operation: string;
+  payload_fingerprint: string;
+  outcome_kind: PurchaseIdempotencyRecord["outcomeKind"];
+  outcome_id: string;
+  outcome_version: number | null;
+  outcome_status: string | null;
+  result_json: string;
+  recorded_at: string;
+};
+
+const mapIdempotency = (row: IdempotencyRow): PurchaseIdempotencyRecord => Object.freeze({
+  companyId: row.company_id,
+  requestId: row.request_id,
+  operationId: row.operation_id,
+  operation: row.operation,
+  payloadFingerprint: row.payload_fingerprint,
+  outcomeKind: row.outcome_kind,
+  outcomeId: row.outcome_id,
+  outcomeVersion: row.outcome_version,
+  outcomeStatus: row.outcome_status,
+  resultJson: row.result_json,
+  recordedAt: row.recorded_at,
+});
+
+export class SqlitePurchaseIdempotencyRepository implements PurchaseIdempotencyRepository {
+  constructor(private readonly db: DatabaseSession) {}
+
+  async findByRequestId(companyId: string, requestId: string): Promise<PurchaseIdempotencyRecord | null> {
+    const row = await this.db.queryOne<IdempotencyRow>(
+      "SELECT * FROM purchase_idempotency WHERE company_id=? AND request_id=?",
+      [companyId, requestId],
+    );
+    return row ? mapIdempotency(row) : null;
+  }
+
+  async findByOperationId(companyId: string, operationId: string): Promise<PurchaseIdempotencyRecord | null> {
+    const row = await this.db.queryOne<IdempotencyRow>(
+      "SELECT * FROM purchase_idempotency WHERE company_id=? AND operation_id=?",
+      [companyId, operationId],
+    );
+    return row ? mapIdempotency(row) : null;
+  }
+
+  async add(record: PurchaseIdempotencyRecord): Promise<void> {
+    try {
+      await this.db.execute(
+        `INSERT INTO purchase_idempotency
+         (company_id,request_id,operation_id,operation,payload_fingerprint,outcome_kind,outcome_id,
+          outcome_version,outcome_status,recorded_at,result_json)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          record.companyId, record.requestId, record.operationId, record.operation, record.payloadFingerprint,
+          record.outcomeKind, record.outcomeId, record.outcomeVersion, record.outcomeStatus,
+          record.recordedAt, record.resultJson,
+        ],
+      );
+    } catch (error) {
+      const text = errorText(error);
+      if (text.includes("purchase_idempotency") || text.includes("request_id") || text.includes("operation_id")) {
+        return appError("PURCHASE_APP_IDEMPOTENCY_CONFLICT", "requestId");
+      }
+      throw error;
+    }
+  }
+}
