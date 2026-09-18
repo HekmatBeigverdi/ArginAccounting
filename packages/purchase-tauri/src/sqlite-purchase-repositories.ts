@@ -641,7 +641,7 @@ const hydrateCostInput = (row: CostInputRow): PurchaseInventoryValuationCostInpu
     receiptLineId: row.receipt_line_id,
     productId: row.product_id,
     sources: Object.freeze([...sources]),
-    basis: Object.freeze({ ...basis, allocations: Object.freeze([...basis.allocations]) }),
+    basis: Object.freeze({ ...basis, allocations: Object.freeze([]) as readonly [] }),
   });
 };
 
