@@ -292,7 +292,7 @@ export function createPurchaseApplicationServices(
     });
   };
 
-  const commands: PurchaseApplicationCommandService = Object.freeze({
+  const commands: PurchaseApplicationCommandService = Object.freeze<PurchaseApplicationCommandService>({
     async create(command: CreatePurchaseCommand) {
       const operation = createPurchaseOperationContext(command.context);
       if (command.document.companyId !== operation.companyId) return fail("PURCHASE_APP_SCOPE_MISMATCH", "document.companyId");
