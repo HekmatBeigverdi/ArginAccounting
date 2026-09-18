@@ -37,6 +37,7 @@
 - [Inventory Application, Query and Repository Contracts](architecture/inventory-application-contracts.md)
 - [Inventory Application Services, Idempotency, and Concurrency](architecture/inventory-application-services.md)
 - [Inventory Argin Bridge and Future Synchronization Contract](architecture/inventory-argin-bridge-contract.md)
+- [Purchase Argin Bridge Synchronization Contract](architecture/purchase-argin-bridge-contract.md)
 - [Inventory Desktop Workspace](architecture/inventory-desktop-workspace.md)
 - [Inventory Document Domain Foundation](architecture/inventory-documents.md)
 - [Inventory Master Data Dependency Guards and ERP Integration](architecture/inventory-master-data-erp-integration.md)
