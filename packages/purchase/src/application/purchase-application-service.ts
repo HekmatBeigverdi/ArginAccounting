@@ -51,6 +51,8 @@ import type {
 import type {
   PurchaseCommercialFactSnapshot,
   PurchaseDocumentListQuery,
+  PurchaseIdempotencyOutcomeKind,
+  PurchaseIdempotencyRecord,
 } from "./contracts/purchase-repository.ts";
 import type {
   PurchaseUnitOfWork,
@@ -61,6 +63,7 @@ export type PurchaseApplicationErrorCode =
   | "PURCHASE_APP_INPUT_INVALID"
   | "PURCHASE_APP_NOT_FOUND"
   | "PURCHASE_APP_VERSION_CONFLICT"
+  | "PURCHASE_APP_IDEMPOTENCY_CONFLICT"
   | "PURCHASE_APP_SCOPE_MISMATCH"
   | "PURCHASE_APP_DEPENDENCY_INVALID";
 
@@ -166,6 +169,73 @@ function validateExpectedVersion(document: PurchaseDocumentSnapshot, expectedVer
   if (document.version !== expectedVersion) return fail("PURCHASE_APP_VERSION_CONFLICT", "expectedVersion");
 }
 
+function operationName(prefix: string, identity: string): string {
+  return `${prefix}:${required(identity, "operationIdentity")}`;
+}
+
+function sameIdempotencyRecord(left: PurchaseIdempotencyRecord, right: PurchaseIdempotencyRecord): boolean {
+  return left.companyId === right.companyId &&
+    left.requestId === right.requestId &&
+    left.operationId === right.operationId &&
+    left.operation === right.operation &&
+    left.payloadFingerprint === right.payloadFingerprint;
+}
+
+async function replayIfCommitted<T>(
+  repositories: PurchaseUnitOfWorkContext,
+  operationContext: ReturnType<typeof createPurchaseOperationContext>,
+  operation: string,
+): Promise<T | null> {
+  const [byRequest, byOperation] = await Promise.all([
+    repositories.idempotency.findByRequestId(operationContext.companyId, operationContext.requestId),
+    repositories.idempotency.findByOperationId(operationContext.companyId, operationContext.operationId),
+  ]);
+  if (byRequest === null && byOperation === null) return null;
+
+  const prior = byRequest ?? byOperation!;
+  if (
+    prior.requestId !== operationContext.requestId ||
+    prior.operationId !== operationContext.operationId ||
+    prior.operation !== operation ||
+    prior.payloadFingerprint !== operationContext.payloadFingerprint ||
+    (byRequest !== null && byOperation !== null && !sameIdempotencyRecord(byRequest, byOperation))
+  ) {
+    return fail("PURCHASE_APP_IDEMPOTENCY_CONFLICT", "requestId");
+  }
+
+  try {
+    return JSON.parse(prior.resultJson) as T;
+  } catch {
+    return fail("PURCHASE_APP_DEPENDENCY_INVALID", "idempotency.resultJson");
+  }
+}
+
+async function persistIdempotentOutcome<T>(
+  repositories: PurchaseUnitOfWorkContext,
+  operationContext: ReturnType<typeof createPurchaseOperationContext>,
+  operation: string,
+  outcomeKind: PurchaseIdempotencyOutcomeKind,
+  outcomeId: string,
+  outcomeVersion: number | null,
+  outcomeStatus: string | null,
+  result: T,
+): Promise<T> {
+  await repositories.idempotency.add(Object.freeze({
+    companyId: operationContext.companyId,
+    requestId: operationContext.requestId,
+    operationId: operationContext.operationId,
+    operation,
+    payloadFingerprint: operationContext.payloadFingerprint,
+    outcomeKind,
+    outcomeId,
+    outcomeVersion,
+    outcomeStatus,
+    resultJson: JSON.stringify(result),
+    recordedAt: operationContext.occurredAt,
+  }));
+  return result;
+}
+
 function commercialFactsFromCreate(
   document: PurchaseDocumentSnapshot,
   termsByLine: Readonly<Record<string, PurchaseCommercialTerms>>,
@@ -263,19 +333,24 @@ export function createPurchaseApplicationServices(
   const mutateLifecycle = async (
     command: PurchaseLifecycleCommand,
     transition: (document: PurchaseDocumentSnapshot, action: any) => PurchaseDocumentSnapshot,
+    prefix: string,
     linkedType?: "purchase-return" | "purchase-correction",
   ): Promise<PurchaseDocumentSnapshot> => {
-    const operation = createPurchaseOperationContext(command.context);
+    const operationContext = createPurchaseOperationContext(command.context);
+    const operation = operationName(prefix, command.documentId);
     return dependencies.uow.execute(async repositories => {
-      const current = await getDocument(repositories, operation.companyId, command.documentId);
-      assertContextMatchesDocument(operation, current);
+      const replay = await replayIfCommitted<PurchaseDocumentSnapshot>(repositories, operationContext, operation);
+      if (replay !== null) return replay;
+
+      const current = await getDocument(repositories, operationContext.companyId, command.documentId);
+      assertContextMatchesDocument(operationContext, current);
       validateExpectedVersion(current, command.expectedVersion);
       await assertFiscalAllowed(dependencies.fiscalEligibility, current);
 
       let next: PurchaseDocumentSnapshot;
       if (linkedType) {
         const relatedDocumentId = required(command.relatedDocumentId ?? "", "relatedDocumentId");
-        const related = await getDocument(repositories, operation.companyId, relatedDocumentId);
+        const related = await getDocument(repositories, operationContext.companyId, relatedDocumentId);
         if (
           related.documentType !== linkedType ||
           related.status !== "confirmed" ||
@@ -288,7 +363,10 @@ export function createPurchaseApplicationServices(
         next = transition(current, lifecycleAction(command));
       }
       await repositories.documents.update(next, command.expectedVersion);
-      return next;
+      return persistIdempotentOutcome(
+        repositories, operationContext, operation, "document",
+        next.documentId, next.version, next.status, next,
+      );
     });
   };
 
@@ -298,7 +376,10 @@ export function createPurchaseApplicationServices(
       if (command.document.companyId !== operation.companyId) return fail("PURCHASE_APP_SCOPE_MISMATCH", "document.companyId");
       if (command.document.scope.branchId !== operation.branchId) return fail("PURCHASE_APP_SCOPE_MISMATCH", "document.scope.branchId");
 
+      const operationNameValue = operationName("create", command.document.documentId);
       return dependencies.uow.execute(async repositories => {
+        const replay = await replayIfCommitted<PurchaseDocumentSnapshot>(repositories, operation, operationNameValue);
+        if (replay !== null) return replay;
         await dependencies.fiscalEligibility.assertOperationAllowed({
           companyId: command.document.companyId,
           branchId: command.document.scope.branchId,
@@ -316,17 +397,20 @@ export function createPurchaseApplicationServices(
         const facts = commercialFactsFromCreate(document, command.commercialTermsByLine);
         await repositories.documents.add(document);
         if (facts.length > 0) await repositories.commercialFacts.addBatch(facts);
-        return document;
+        return persistIdempotentOutcome(
+          repositories, operation, operationNameValue, "document",
+          document.documentId, document.version, document.status, document,
+        );
       });
     },
 
-    submit: command => mutateLifecycle(command, submitPurchaseDocument),
-    approve: command => mutateLifecycle(command, approvePurchaseDocument),
-    confirm: command => mutateLifecycle(command, confirmPurchaseDocument),
-    cancel: command => mutateLifecycle(command, cancelPurchaseDocument),
-    reopen: command => mutateLifecycle(command, reopenPurchaseDocument),
-    returnPurchase: command => mutateLifecycle(command, returnPurchaseDocument, "purchase-return"),
-    correct: command => mutateLifecycle(command, correctPurchaseDocument, "purchase-correction"),
+    submit: command => mutateLifecycle(command, submitPurchaseDocument, "submit"),
+    approve: command => mutateLifecycle(command, approvePurchaseDocument, "approve"),
+    confirm: command => mutateLifecycle(command, confirmPurchaseDocument, "confirm"),
+    cancel: command => mutateLifecycle(command, cancelPurchaseDocument, "cancel"),
+    reopen: command => mutateLifecycle(command, reopenPurchaseDocument, "reopen"),
+    returnPurchase: command => mutateLifecycle(command, returnPurchaseDocument, "return", "purchase-return"),
+    correct: command => mutateLifecycle(command, correctPurchaseDocument, "correct", "purchase-correction"),
 
     async stageInventoryReceipt(command: StagePurchaseReceiptCommand) {
       const operation = createPurchaseOperationContext(command.context);
