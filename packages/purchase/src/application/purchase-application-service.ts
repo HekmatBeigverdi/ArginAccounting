@@ -65,7 +65,8 @@ export type PurchaseApplicationErrorCode =
   | "PURCHASE_APP_VERSION_CONFLICT"
   | "PURCHASE_APP_IDEMPOTENCY_CONFLICT"
   | "PURCHASE_APP_SCOPE_MISMATCH"
-  | "PURCHASE_APP_DEPENDENCY_INVALID";
+  | "PURCHASE_APP_DEPENDENCY_INVALID"
+  | "PURCHASE_APP_UNAUTHORIZED";
 
 export class PurchaseApplicationError extends Error {
   constructor(
