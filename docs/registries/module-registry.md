@@ -37,7 +37,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 - Transaction boundary: all Purchase repositories in one UoW use the same transaction-bound `DatabaseSession`; production Desktop uses the pinned SQLite transaction guarantee from `@argin/database-tauri`.
 - Inventory ownership: Purchase may read confirmed receipt/movement facts but never writes Inventory tables directly; quantity side effects continue through Inventory ports.
 - Valuation ownership: Purchase supplies Cost Input provenance only; FIFO/MWA remains Phase 21 authority.
-- Bridge: durable Purchase document/line/match/cost identities and sync metadata are reserved; synchronization envelopes remain Phase 22 Step 18.
+- Bridge: Step 18 freezes versioned sync envelopes for Purchase documents, commercial facts, receipt/invoice matches and Purchase-backed Cost Inputs; projections and FIFO/MWA state are rebuildable and are not synchronized as authority.
 
 ## Required Fields for Future Entries
 
