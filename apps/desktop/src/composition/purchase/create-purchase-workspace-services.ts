@@ -77,6 +77,7 @@ export interface PurchaseWorkspaceServices {
     readonly documentType: PurchaseDocumentType;
     readonly businessDate: string;
     readonly description: string | null;
+    readonly correctionReference?: { readonly documentId: string; readonly reason: string } | null;
     readonly lines: readonly PurchaseWorkspaceLineInput[];
   }): Promise<PurchaseDocumentSnapshot>;
   submit(document: PurchaseDocumentSnapshot, reason?: string | null): Promise<PurchaseDocumentSnapshot>;
@@ -84,6 +85,8 @@ export interface PurchaseWorkspaceServices {
   confirm(document: PurchaseDocumentSnapshot, reason?: string | null): Promise<PurchaseDocumentSnapshot>;
   cancel(document: PurchaseDocumentSnapshot, reason?: string | null): Promise<PurchaseDocumentSnapshot>;
   reopen(document: PurchaseDocumentSnapshot, reason: string): Promise<PurchaseDocumentSnapshot>;
+  returnPurchase(document: PurchaseDocumentSnapshot, relatedDocumentId: string, reason: string): Promise<PurchaseDocumentSnapshot>;
+  correct(document: PurchaseDocumentSnapshot, relatedDocumentId: string, reason: string): Promise<PurchaseDocumentSnapshot>;
   stageInventoryReceipt(document: PurchaseDocumentSnapshot, warehouseId: string): Promise<{ inventoryDocumentId: string; status: string; version: number }>;
 }
 
@@ -458,7 +461,9 @@ export function createPurchaseWorkspaceServices(input: {
           },
           documentId: newId(), companyId: args.companyId, supplierId: supplier.id,
           supplierSnapshot: supplierSnapshot(supplier), documentType: args.documentType,
-          businessDate: args.businessDate, description: args.description, createdAt, lines: lineInputs,
+          businessDate: args.businessDate, description: args.description,
+          correctionReference: args.correctionReference ?? null,
+          createdAt, lines: lineInputs,
         },
         commercialTermsByLine,
       });
@@ -468,6 +473,14 @@ export function createPurchaseWorkspaceServices(input: {
     confirm: (document, reason) => secured.confirm(security, lifecycleCommand(document, "confirm", reason)),
     cancel: (document, reason) => secured.cancel(security, lifecycleCommand(document, "cancel", reason)),
     reopen: (document, reason) => secured.reopen(security, lifecycleCommand(document, "reopen", reason)),
+    returnPurchase: (document, relatedDocumentId, reason) => secured.returnPurchase(security, {
+      ...lifecycleCommand(document, "return", reason),
+      relatedDocumentId,
+    }),
+    correct: (document, relatedDocumentId, reason) => secured.correct(security, {
+      ...lifecycleCommand(document, "correct", reason),
+      relatedDocumentId,
+    }),
     async stageInventoryReceipt(document, warehouseId) {
       const detail = await this.get(document.companyId, document.documentId);
       if (!detail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
