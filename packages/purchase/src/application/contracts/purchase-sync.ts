@@ -1,8 +1,8 @@
 import {
   rehydratePurchaseDocument,
   type PurchaseDocumentSnapshot,
-  type PurchaseDocumentStatus,
 } from "../../domain/purchase-document.ts";
+import type { PurchaseDocumentStatus } from "../../domain/purchase-lifecycle.ts";
 import {
   createPurchaseCommercialTerms,
   normalizePurchaseQuantity,
@@ -286,15 +286,20 @@ function normalizeCommercialFact(snapshot: PurchaseCommercialFactSnapshot): Read
   const purchaseDocumentId = text(snapshot.purchaseDocumentId);
   const purchaseLineId = text(snapshot.purchaseLineId);
   const revision = positiveVersion(snapshot.revision);
-  const terms = createPurchaseCommercialTerms({
-    enteredQuantity: snapshot.commercialTerms.quantity.enteredQuantity,
-    enteredUnit: snapshot.commercialTerms.quantity.enteredUnit,
-    baseUnit: snapshot.commercialTerms.quantity.baseUnit,
-    unitPrice: snapshot.commercialTerms.unitPrice,
-    discounts: snapshot.commercialTerms.discounts,
-    charges: snapshot.commercialTerms.charges,
-    tax: snapshot.commercialTerms.tax,
-  });
+  let terms: PurchaseCommercialTerms;
+  try {
+    terms = createPurchaseCommercialTerms({
+      enteredQuantity: snapshot.commercialTerms.quantity.enteredQuantity,
+      enteredUnit: snapshot.commercialTerms.quantity.enteredUnit,
+      baseUnit: snapshot.commercialTerms.quantity.baseUnit,
+      unitPrice: snapshot.commercialTerms.unitPrice,
+      discounts: snapshot.commercialTerms.discounts,
+      charges: snapshot.commercialTerms.charges,
+      tax: snapshot.commercialTerms.tax,
+    });
+  } catch {
+    return fail("purchase.sync.fact-invalid");
+  }
   return Object.freeze({
     companyId,
     purchaseDocumentId,
@@ -377,7 +382,15 @@ function normalizeCostInput(
       receiptDocumentId,
       receiptLineId,
       productId,
-      matchedBaseQuantity: normalizePurchaseQuantity(source.matchedBaseQuantity),
+      matchedBaseQuantity: (() => {
+        try {
+          const value = normalizePurchaseQuantity(source.matchedBaseQuantity);
+          if (value === "0") return fail("purchase.sync.cost-input-invalid");
+          return value;
+        } catch {
+          return fail("purchase.sync.cost-input-invalid");
+        }
+      })(),
       allocatedBaseCost: source.allocatedBaseCost,
     });
   });
@@ -411,7 +424,12 @@ export function createPurchaseDocumentSyncUpsertEnvelope(
 ): Readonly<PurchaseDocumentSyncUpsertEnvelope> {
   const metadata = normalizeMetadata(input);
   const reference = normalizeReference(input.reference);
-  const snapshot = rehydratePurchaseDocument(input.snapshot);
+  let snapshot: PurchaseDocumentSnapshot;
+  try {
+    snapshot = rehydratePurchaseDocument(input.snapshot);
+  } catch {
+    return fail("purchase.sync.snapshot-mismatch");
+  }
   if (
     snapshot.companyId !== reference.companyId ||
     snapshot.scope.branchId !== reference.branchId ||
