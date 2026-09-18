@@ -90,6 +90,7 @@ export interface PurchaseInventoryMovementReaderPort {
 }
 
 export interface PurchaseValuationRecalculationPort {
+  /** Must treat requestId + operationId as a replay-safe identity. */
   costBasisChanged(input: {
     readonly companyId: string;
     readonly movement: PurchaseValuationMovementReference;
