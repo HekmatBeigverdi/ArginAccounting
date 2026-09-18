@@ -188,5 +188,26 @@ export type {
   PurchaseValuationCostInputSyncEnvelope,
 } from "./application/contracts/purchase-sync.ts";
 
+
+export {
+  PURCHASE_APPROVAL_REQUEST_TYPE,
+  purchaseCorrelationId,
+  purchasePermissions,
+} from "./application/contracts/purchase-security.ts";
+export type {
+  PurchaseApprovalGateway,
+  PurchaseApprovalReference,
+  PurchaseAuditAction,
+  PurchaseAuditEvent,
+  PurchaseAuditSink,
+  PurchaseAuthorizationContext,
+  PurchaseAuthorizationPolicy,
+  PurchasePermission,
+  PurchaseSecurityContext,
+} from "./application/contracts/purchase-security.ts";
+
+export { SecuredPurchaseService } from "./application/secured-purchase-service.ts";
+export type { SecuredPurchaseServiceDependencies } from "./application/secured-purchase-service.ts";
+
 export { PURCHASE_DOMAIN_ERROR_CODES, PurchaseDomainError } from "./domain/purchase-domain-errors.ts";
 export type { PurchaseDomainErrorCode } from "./domain/purchase-domain-errors.ts";
