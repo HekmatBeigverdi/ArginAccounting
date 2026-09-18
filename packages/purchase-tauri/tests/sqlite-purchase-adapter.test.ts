@@ -6,6 +6,7 @@ import { PurchaseApplicationError, type PurchaseUnitOfWorkContext } from "@argin
 import {
   SqlitePurchaseCommercialFactRepository,
   SqlitePurchaseDocumentRepository,
+  SqlitePurchaseIdempotencyRepository,
   SqlitePurchaseReceiptInvoiceMatchRepository,
   SqlitePurchaseUnitOfWork,
   SqlitePurchaseValuationCostInputRepository,
@@ -31,7 +32,7 @@ class RecordingDatabase implements DatabaseExecutor {
   async close(): Promise<void> {}
 }
 
-test("Purchase UoW exposes four repositories through one transaction-bound session", async () => {
+test("Purchase UoW exposes five repositories through one transaction-bound session", async () => {
   const db = new RecordingDatabase();
   const uow = new SqlitePurchaseUnitOfWork(db);
   let captured: PurchaseUnitOfWorkContext | undefined;
@@ -41,6 +42,7 @@ test("Purchase UoW exposes four repositories through one transaction-bound sessi
     assert.ok(context.commercialFacts);
     assert.ok(context.matches);
     assert.ok(context.costInputs);
+    assert.ok(context.idempotency);
     assert.equal(uow.sessionFor(context), db);
     return "ok";
   });
@@ -117,4 +119,27 @@ test("Match and Cost Input repositories write only their owned Purchase tables",
   assert.match(db.statements[0]?.sql ?? "", /purchase_receipt_invoice_matches/u);
   assert.match(db.statements[1]?.sql ?? "", /purchase_valuation_cost_inputs/u);
   assert.doesNotMatch(db.statements.map(item => item.sql).join("\n"), /UPDATE inventory_|INSERT INTO inventory_/u);
+});
+
+
+test("Purchase idempotency repository persists exact replay identity and result", async () => {
+  const db = new RecordingDatabase();
+  const repo = new SqlitePurchaseIdempotencyRepository(db);
+  await repo.add({
+    companyId: "company-1",
+    requestId: "request-1",
+    operationId: "operation-1",
+    operation: "create:purchase-1",
+    payloadFingerprint: "fingerprint-1",
+    outcomeKind: "document",
+    outcomeId: "purchase-1",
+    outcomeVersion: 1,
+    outcomeStatus: "draft",
+    resultJson: JSON.stringify({ documentId: "purchase-1", version: 1 }),
+    recordedAt: "2026-09-18T08:00:00.000Z",
+  });
+  assert.match(db.statements.at(-1)?.sql ?? "", /INSERT INTO purchase_idempotency/u);
+  assert.deepEqual(db.statements.at(-1)?.parameters.slice(0, 5), [
+    "company-1", "request-1", "operation-1", "create:purchase-1", "fingerprint-1",
+  ]);
 });
