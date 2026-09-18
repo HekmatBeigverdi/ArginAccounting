@@ -1,6 +1,7 @@
 import type {
   PurchaseCommercialFactRepository,
   PurchaseDocumentRepository,
+  PurchaseIdempotencyRepository,
   PurchaseReceiptInvoiceMatchRepository,
   PurchaseValuationCostInputRepository,
 } from "./purchase-repository.ts";
@@ -10,6 +11,7 @@ export interface PurchaseUnitOfWorkContext {
   readonly commercialFacts: PurchaseCommercialFactRepository;
   readonly matches: PurchaseReceiptInvoiceMatchRepository;
   readonly costInputs: PurchaseValuationCostInputRepository;
+  readonly idempotency: PurchaseIdempotencyRepository;
 }
 
 /**
