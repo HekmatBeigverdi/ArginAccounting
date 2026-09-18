@@ -62,7 +62,8 @@ const context = {
   companyId: "company-001",
   branchId: "branch-001",
   requestId: "request-001",
-  operationId: "operation-001",
+  operationId: "operation-create",
+  payloadFingerprint: "fingerprint-create",
   actorUserId: "user-001",
   occurredAt: "2026-09-17T08:00:00.000Z",
 };
@@ -73,6 +74,8 @@ function createHarness() {
   const matches: any[] = [];
   const costInputs = new Map<string, any>();
   const events: string[] = [];
+  const idempotencyByRequest = new Map<string, any>();
+  const idempotencyByOperation = new Map<string, any>();
 
   const repositories = {
     documents: {
@@ -99,6 +102,15 @@ function createHarness() {
       async listByInvoiceLine(_companyId: string, documentId: string, lineId: string) { return matches.filter(x => x.invoiceDocumentId === documentId && x.invoiceLineId === lineId); },
       async listByReceiptLine(_companyId: string, documentId: string, lineId: string) { return matches.filter(x => x.receiptDocumentId === documentId && x.receiptLineId === lineId); },
       async add(match: any) { matches.push(match); },
+    },
+    idempotency: {
+      async findByRequestId(companyId: string, requestId: string) { return idempotencyByRequest.get(`${companyId}:${requestId}`) ?? null; },
+      async findByOperationId(companyId: string, operationId: string) { return idempotencyByOperation.get(`${companyId}:${operationId}`) ?? null; },
+      async add(record: any) {
+        events.push("idempotency:add");
+        idempotencyByRequest.set(`${record.companyId}:${record.requestId}`, record);
+        idempotencyByOperation.set(`${record.companyId}:${record.operationId}`, record);
+      },
     },
     costInputs: {
       async findByMovement(_companyId: string, movementId: string) { return costInputs.get(movementId) ?? null; },
@@ -173,8 +185,8 @@ test("create orchestrates fiscal validation, number reservation and atomic Purch
   assert.equal(document.documentNumber, "PINV-000001");
   assert.equal(h.documents.size, 1);
   assert.equal(h.commercialFacts.size, 1);
-  assert.deepEqual(h.events.slice(0, 6), [
-    "uow:begin", "fiscal:check", "number:reserve", "document:add", "commercial:add", "uow:commit",
+  assert.deepEqual(h.events.slice(0, 7), [
+    "uow:begin", "fiscal:check", "number:reserve", "document:add", "commercial:add", "idempotency:add", "uow:commit",
   ]);
 });
 
@@ -182,21 +194,22 @@ test("lifecycle mutation rechecks current fiscal eligibility and uses expected a
   const h = createHarness();
   const created = await h.services.commands.create(createCommand());
   h.events.length = 0;
-  const submitted = await h.services.commands.submit({ context, documentId: created.documentId, expectedVersion: created.version });
+  const submitContext = { ...context, requestId: "request-submit", operationId: "operation-submit", payloadFingerprint: "fingerprint-submit" };
+  const submitted = await h.services.commands.submit({ context: submitContext, documentId: created.documentId, expectedVersion: created.version });
   assert.equal(submitted.status, "submitted");
-  assert.deepEqual(h.events, ["uow:begin", "fiscal:check", "document:update:1", "uow:commit"]);
+  assert.deepEqual(h.events, ["uow:begin", "fiscal:check", "document:update:1", "idempotency:add", "uow:commit"]);
 });
 
 test("Inventory receipt staging resolves Purchase-owned commercial facts and only calls the Inventory port after Purchase read transaction", async () => {
   const h = createHarness();
   let document = await h.services.commands.create(createCommand());
-  document = await h.services.commands.submit({ context, documentId: document.documentId, expectedVersion: document.version });
-  document = await h.services.commands.approve({ context, documentId: document.documentId, expectedVersion: document.version });
-  document = await h.services.commands.confirm({ context, documentId: document.documentId, expectedVersion: document.version });
+  document = await h.services.commands.submit({ context: { ...context, requestId: "r-submit", operationId: "o-submit", payloadFingerprint: "fp-submit" }, documentId: document.documentId, expectedVersion: document.version });
+  document = await h.services.commands.approve({ context: { ...context, requestId: "r-approve", operationId: "o-approve", payloadFingerprint: "fp-approve" }, documentId: document.documentId, expectedVersion: document.version });
+  document = await h.services.commands.confirm({ context: { ...context, requestId: "r-confirm", operationId: "o-confirm", payloadFingerprint: "fp-confirm" }, documentId: document.documentId, expectedVersion: document.version });
   h.events.length = 0;
 
   const result = await h.services.commands.stageInventoryReceipt({
-    context,
+    context: { ...context, requestId: "r-stage", operationId: "o-stage", payloadFingerprint: "fingerprint-001" },
     purchaseDocumentId: document.documentId,
     inventoryDocumentId: "inventory-receipt-001",
     allocations: [{
@@ -208,5 +221,5 @@ test("Inventory receipt staging resolves Purchase-owned commercial facts and onl
   });
 
   assert.equal(result.status, "draft");
-  assert.deepEqual(h.events, ["uow:begin", "uow:commit", "inventory:stage"]);
+  assert.deepEqual(h.events, ["uow:begin", "uow:commit", "inventory:stage", "uow:begin", "idempotency:add", "uow:commit"]);
 });
