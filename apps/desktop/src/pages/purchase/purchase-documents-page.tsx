@@ -110,6 +110,8 @@ export function PurchaseDocumentsPage() {
   const [reasonOpen,setReasonOpen]=useState<"cancel"|"reopen"|null>(null);
   const [reason,setReason]=useState("");
   const [receiptOpen,setReceiptOpen]=useState(false);
+  const [linkCompensationOpen,setLinkCompensationOpen]=useState<"return"|"correct"|null>(null);
+  const [relatedDocumentId,setRelatedDocumentId]=useState("");
   const [warehouseId,setWarehouseId]=useState("");
   const [warehouses,setWarehouses]=useState<readonly WarehouseListItemDto[]>([]);
   const [suppliers,setSuppliers]=useState<readonly PartySelectorDto[]>([]);
@@ -122,6 +124,8 @@ export function PurchaseDocumentsPage() {
     supplierId:"",
     businessDate:"",
     description:"",
+    originalDocumentId:"",
+    correctionReason:"",
   });
 
   const selected=detail?.document??null;
@@ -156,7 +160,7 @@ export function PurchaseDocumentsPage() {
   const openNew=async()=>{
     if(!services||!active.companyId)return;
     setError("");setLines([]);setLineDraft(emptyLine());
-    setNewDraft(d=>({...d,businessDate:gregorianToJalali(new Date().toISOString().slice(0,10))}));
+    setNewDraft(d=>({...d,businessDate:gregorianToJalali(new Date().toISOString().slice(0,10)),originalDocumentId:"",correctionReason:""}));
     const [s,p]=await Promise.all([services.selectSuppliers(active.companyId),services.selectItems(active.companyId)]);
     setSuppliers(s);setItems(p);setNewOpen(true);
   };
@@ -193,7 +197,10 @@ export function PurchaseDocumentsPage() {
       const created=await services.create({
         companyId:active.companyId,branchId:active.branchId,fiscalYearId:active.fiscalYearId,
         supplierId:newDraft.supplierId,documentType:newDraft.documentType,
-        businessDate:jalaliToGregorian(newDraft.businessDate),description:newDraft.description.trim()||null,lines:prepared,
+        businessDate:jalaliToGregorian(newDraft.businessDate),description:newDraft.description.trim()||null,
+        correctionReference:["purchase-return","purchase-correction"].includes(newDraft.documentType)
+          ? {documentId:newDraft.originalDocumentId,reason:newDraft.correctionReason.trim()} : null,
+        lines:prepared,
       });
       setNewOpen(false);setMessage("پیش‌نویس سند خرید ایجاد شد.");await reload();await openDocument(created.documentId);
     }catch(e){setError(errorMessage(e));}finally{setSaving(false);}
@@ -209,6 +216,24 @@ export function PurchaseDocumentsPage() {
       else if(action==="cancel")await services.cancel(selected,actionReason);
       else await services.reopen(selected,actionReason?.trim()||"بازگشایی برای اصلاح");
       setReasonOpen(null);setReason("");setMessage("وضعیت سند با موفقیت به‌روزرسانی شد.");
+      await reload();await openDocument(selected.documentId);
+    }catch(e){
+      setError(errorMessage(e));
+      if(e instanceof PurchaseApplicationError&&e.code==="PURCHASE_APP_VERSION_CONFLICT")await openDocument(selected.documentId);
+    }finally{setSaving(false);}
+  };
+
+  const linkCompensation=async(event:FormEvent)=>{
+    event.preventDefault();
+    if(!services||!selected||!linkCompensationOpen||!relatedDocumentId)return;
+    const related=documents.find(item=>item.documentId===relatedDocumentId);
+    if(!related)return;
+    setSaving(true);setError("");setMessage("");
+    try{
+      if(linkCompensationOpen==="return") await services.returnPurchase(selected,relatedDocumentId,related.correctionReference?.reason??"برگشت خرید");
+      else await services.correct(selected,relatedDocumentId,related.correctionReference?.reason??"اصلاح خرید");
+      setLinkCompensationOpen(null);setRelatedDocumentId("");
+      setMessage(linkCompensationOpen==="return"?"برگشت خرید به سند اصلی متصل شد.":"اصلاح خرید به سند اصلی متصل شد.");
       await reload();await openDocument(selected.documentId);
     }catch(e){
       setError(errorMessage(e));
@@ -267,6 +292,8 @@ export function PurchaseDocumentsPage() {
                 {selected&&["draft","submitted","approved"].includes(selected.status)&&can(purchasePermissions.cancel)&&<button className="danger" onClick={()=>{setReason("");setReasonOpen("cancel");}}>لغو</button>}
                 {selected?.status==="approved"&&can(purchasePermissions.reopen)&&<button onClick={()=>{setReason("");setReasonOpen("reopen");}}>بازگشت به پیش‌نویس</button>}
                 {selected?.status==="confirmed"&&["purchase-order","supplier-invoice"].includes(selected.documentType)&&selected.lines.some(x=>x.lineKind==="stock-product")&&can("purchases.receipts.stage")&&<button onClick={()=>void openReceipt()}>ایجاد پیش‌نویس رسید انبار</button>}
+                {selected?.status==="confirmed"&&selected.documentType==="supplier-invoice"&&can(purchasePermissions.return)&&documents.some(x=>x.documentType==="purchase-return"&&x.status==="confirmed"&&x.correctionReference?.documentId===selected.documentId)&&<button onClick={()=>{setRelatedDocumentId("");setLinkCompensationOpen("return");}}>ثبت برگشت تأییدشده</button>}
+                {selected?.status==="confirmed"&&selected.documentType==="supplier-invoice"&&can(purchasePermissions.correct)&&documents.some(x=>x.documentType==="purchase-correction"&&x.status==="confirmed"&&x.correctionReference?.documentId===selected.documentId)&&<button onClick={()=>{setRelatedDocumentId("");setLinkCompensationOpen("correct");}}>ثبت اصلاح تأییدشده</button>}
               </div>
               <div className="purchase-summary">
                 <div><span>جمع قبل از مالیات</span><strong>{money.format(detail.totals.taxBaseAmount)} ریال</strong></div>
@@ -293,18 +320,27 @@ export function PurchaseDocumentsPage() {
       {newOpen&&<div className="purchase-modal" role="presentation"><div className="purchase-modal__sheet" role="dialog" aria-modal="true" aria-label="ایجاد سند خرید">
         <form className="purchase-new-header" onSubmit={createDocument}>
           <h2>سند خرید جدید</h2>
-          <label>نوع سند<select value={newDraft.documentType} onChange={e=>setNewDraft(d=>({...d,documentType:e.target.value as PurchaseDocumentType}))}>
+          <label>نوع سند<select value={newDraft.documentType} onChange={e=>{
+            const documentType=e.target.value as PurchaseDocumentType;
+            setNewDraft(d=>({...d,documentType,originalDocumentId:"",correctionReason:""}));
+          }}>
             <option value="purchase-order">سفارش خرید</option><option value="supplier-invoice">فاکتور تأمین‌کننده</option>
+            <option value="purchase-return">برگشت از خرید</option><option value="purchase-correction">اصلاح خرید</option>
           </select></label>
-          <label>تأمین‌کننده<select required value={newDraft.supplierId} onChange={e=>setNewDraft(d=>({...d,supplierId:e.target.value}))}><option value="">انتخاب کنید…</option>{suppliers.map(x=><option key={x.id} value={x.id}>{x.code} — {x.displayName}</option>)}</select></label>
+          {["purchase-return","purchase-correction"].includes(newDraft.documentType)&&<label>سند اصلی<select required value={newDraft.originalDocumentId} onChange={e=>{
+            const original=documents.find(x=>x.documentId===e.target.value);
+            setNewDraft(d=>({...d,originalDocumentId:e.target.value,supplierId:original?.supplierId??""}));
+          }}><option value="">انتخاب فاکتور قطعی…</option>{documents.filter(x=>x.documentType==="supplier-invoice"&&x.status==="confirmed").map(x=><option key={x.documentId} value={x.documentId}>{x.documentNumber??x.documentId} — {x.supplierSnapshot.displayName}</option>)}</select></label>}
+          <label>تأمین‌کننده<select required disabled={["purchase-return","purchase-correction"].includes(newDraft.documentType)} value={newDraft.supplierId} onChange={e=>setNewDraft(d=>({...d,supplierId:e.target.value}))}><option value="">انتخاب کنید…</option>{suppliers.map(x=><option key={x.id} value={x.id}>{x.code} — {x.displayName}</option>)}</select></label>
           <label>تاریخ شمسی<input required dir="ltr" inputMode="numeric" placeholder="1405/06/27" value={newDraft.businessDate} onChange={e=>setNewDraft(d=>({...d,businessDate:e.target.value}))}/></label>
+          {["purchase-return","purchase-correction"].includes(newDraft.documentType)&&<label className="wide">علت برگشت یا اصلاح<textarea required value={newDraft.correctionReason} onChange={e=>setNewDraft(d=>({...d,correctionReason:e.target.value}))}/></label>}
           <label className="wide">شرح<input value={newDraft.description} onChange={e=>setNewDraft(d=>({...d,description:e.target.value}))}/></label>
           <section className="purchase-new-lines wide">
             <h3>ردیف‌های خرید</h3>
             {lines.map((line,index)=><div className="purchase-draft-line" key={index}><span>{index+1}</span><strong>{line.productTitle}</strong><span dir="ltr">{line.quantity} {line.unitTitle}</span><span>{money.format(Number(line.unitPrice||0))} ریال</span><button type="button" onClick={()=>setLines(current=>current.filter((_,i)=>i!==index))}>حذف</button></div>)}
             {!lines.length&&<p className="empty">حداقل یک ردیف اضافه کنید.</p>}
           </section>
-          <footer className="wide"><button type="button" onClick={()=>setNewOpen(false)}>انصراف</button><button className="primary" disabled={saving||!lines.length||!newDraft.supplierId}>ایجاد پیش‌نویس</button></footer>
+          <footer className="wide"><button type="button" onClick={()=>setNewOpen(false)}>انصراف</button><button className="primary" disabled={saving||!lines.length||!newDraft.supplierId||(["purchase-return","purchase-correction"].includes(newDraft.documentType)&&(!newDraft.originalDocumentId||!newDraft.correctionReason.trim()))}>ایجاد پیش‌نویس</button></footer>
         </form>
         <form className="purchase-line-form" onSubmit={addLine}>
           <h3>افزودن ردیف</h3>
@@ -324,6 +360,15 @@ export function PurchaseDocumentsPage() {
         <h2>{reasonOpen==="cancel"?"لغو سند خرید":"بازگشت به پیش‌نویس"}</h2>
         <label>علت<textarea required autoFocus value={reason} onChange={e=>setReason(e.target.value)}/></label>
         <footer><button type="button" onClick={()=>setReasonOpen(null)}>انصراف</button><button className={reasonOpen==="cancel"?"danger":"primary"} disabled={saving||!reason.trim()}>تأیید</button></footer>
+      </form></div>}
+
+      {linkCompensationOpen&&selected&&<div className="purchase-modal" role="presentation"><form onSubmit={linkCompensation} role="dialog" aria-modal="true">
+        <h2>{linkCompensationOpen==="return"?"اتصال برگشت خرید":"اتصال اصلاح خرید"}</h2>
+        <p>فقط سند جبرانی قطعی که به همین فاکتور اصلی ارجاع دارد قابل انتخاب است.</p>
+        <label>سند جبرانی<select required value={relatedDocumentId} onChange={e=>setRelatedDocumentId(e.target.value)}><option value="">انتخاب کنید…</option>
+          {documents.filter(x=>x.documentType===(linkCompensationOpen==="return"?"purchase-return":"purchase-correction")&&x.status==="confirmed"&&x.correctionReference?.documentId===selected.documentId).map(x=><option key={x.documentId} value={x.documentId}>{x.documentNumber??x.documentId}</option>)}
+        </select></label>
+        <footer><button type="button" onClick={()=>setLinkCompensationOpen(null)}>انصراف</button><button className="primary" disabled={saving||!relatedDocumentId}>ثبت ارتباط</button></footer>
       </form></div>}
 
       {receiptOpen&&selected&&<div className="purchase-modal" role="presentation"><form onSubmit={stageReceipt} role="dialog" aria-modal="true">
