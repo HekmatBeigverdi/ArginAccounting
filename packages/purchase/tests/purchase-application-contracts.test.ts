@@ -6,6 +6,7 @@ import {
   normalizePurchaseDocumentListQuery,
   type PurchaseDocumentRepository,
   type PurchaseCommercialFactRepository,
+  type PurchaseIdempotencyRepository,
   type PurchaseReceiptInvoiceMatchRepository,
   type PurchaseValuationCostInputRepository,
   type PurchaseUnitOfWork,
@@ -16,6 +17,7 @@ const context = createPurchaseOperationContext({
   branchId: "branch-001",
   requestId: "request-001",
   operationId: "operation-001",
+  payloadFingerprint: "fingerprint-001",
   actorUserId: "user-001",
   occurredAt: "2026-09-17T06:30:00+00:00",
 });
@@ -26,6 +28,7 @@ test("normalizes a durable Purchase operation context", () => {
     branchId: "branch-001",
     requestId: "request-001",
     operationId: "operation-001",
+    payloadFingerprint: "fingerprint-001",
     actorUserId: "user-001",
     occurredAt: "2026-09-17T06:30:00.000Z",
   });
@@ -76,6 +79,11 @@ test("repository and UoW contracts compose without persistence assumptions", asy
     listByReceiptLine: async () => [],
     add: async () => undefined,
   };
+  const idempotency: PurchaseIdempotencyRepository = {
+    findByRequestId: async () => null,
+    findByOperationId: async () => null,
+    add: async () => undefined,
+  };
   const costInputs: PurchaseValuationCostInputRepository = {
     findByMovement: async () => null,
     listUnresolvedByCompany: async () => [],
@@ -83,7 +91,7 @@ test("repository and UoW contracts compose without persistence assumptions", asy
     replaceForMovement: async () => undefined,
   };
   const uow: PurchaseUnitOfWork = {
-    execute: async work => work({ documents, commercialFacts, matches, costInputs }),
+    execute: async work => work({ documents, commercialFacts, matches, costInputs, idempotency }),
   };
 
   const result = await uow.execute(async repositories => ({
