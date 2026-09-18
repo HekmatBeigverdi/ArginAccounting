@@ -41,6 +41,7 @@ typechecks
 Unintegrated
 unpost
 unposted
+upserts
 Vazirmatn
 viewports
 Vite
