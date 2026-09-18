@@ -197,3 +197,5 @@
 ## vision
 
 - [Product Vision](vision/product-vision.md)
+
+- [Purchase Security, Approval, Audit and Traceability](security/purchase-security-approval-audit.md)
