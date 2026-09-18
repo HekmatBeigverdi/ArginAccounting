@@ -13,6 +13,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Accounting Dimensions | `@argin/accounting`, `@argin/accounting-tauri`, Desktop | Implemented | 11 | `docs/phases/phase-11-accounting-dimensions.md` |
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
+| Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 Step 16 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -26,6 +27,17 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 - ERP: future Purchase/Sales/Manufacturing modules use public quantity-confirmation ports; Phase 21 valuation consumes immutable movement feed. Neither writes Inventory tables directly.
 - Bridge: durable document/line/movement/transfer/reversal identities are synchronization identities; derived balance projections are not independently authoritative.
 - Quality: Phase 20 includes real SQLite migration/rollback/restart/rebuild tests, Desktop integration contracts, bounded readers, accessibility regression gates and representative query-plan tests.
+
+## Purchase Workflow — Phase 22 Current State
+
+- Purpose/ownership: supplier Purchase documents, commercial terms, receipt/invoice matching, Purchase-backed Inventory Cost Input provenance, return/correction workflows and Purchase operational queries.
+- Domain/Application: `packages/purchase` owns Purchase Domain facts, Application contracts/services and Inventory/Valuation integration boundaries.
+- SQLite adapter: `packages/purchase-tauri` owns the four Purchase repositories and `SqlitePurchaseUnitOfWork`.
+- Migrations: `0030_purchase_workflow.sql` defines primary Purchase persistence; `0031_purchase_scope_snapshot.sql` completes the captured historical Fiscal scope required for rehydration.
+- Transaction boundary: all Purchase repositories in one UoW use the same transaction-bound `DatabaseSession`; production Desktop uses the pinned SQLite transaction guarantee from `@argin/database-tauri`.
+- Inventory ownership: Purchase may read confirmed receipt/movement facts but never writes Inventory tables directly; quantity side effects continue through Inventory ports.
+- Valuation ownership: Purchase supplies Cost Input provenance only; FIFO/MWA remains Phase 21 authority.
+- Bridge: durable Purchase document/line/match/cost identities and sync metadata are reserved; synchronization envelopes remain Phase 22 Step 18.
 
 ## Required Fields for Future Entries
 
