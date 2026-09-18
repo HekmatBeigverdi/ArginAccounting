@@ -3,7 +3,6 @@ import type {
   GetPurchaseDocumentQuery,
   GetPurchaseReceiptCostDecisionQuery,
   MatchPurchaseReceiptInvoiceCommand,
-  PurchaseApplicationServices,
   PurchaseLifecycleCommand,
   ResolvePurchaseMovementCostCommand,
   StagePurchaseReceiptCommand,
@@ -20,7 +19,7 @@ import {
   type PurchasePermission,
   type PurchaseSecurityContext,
 } from "./contracts/purchase-security.ts";
-import { PurchaseApplicationError } from "./purchase-application-service.ts";
+import { PurchaseApplicationError, type PurchaseApplicationServices } from "./purchase-application-service.ts";
 
 export interface SecuredPurchaseServiceDependencies {
   readonly application: PurchaseApplicationServices;
@@ -113,21 +112,21 @@ export class SecuredPurchaseService {
   }
 
   async cancel(security: PurchaseSecurityContext, command: PurchaseLifecycleCommand): Promise<PurchaseDocumentSnapshot> {
-    return this.lifecycle(security, command, purchasePermissions.cancel, "purchase.document.cancel", this.deps.application.commands.cancel);
+    return this.lifecycle(security, command, purchasePermissions.cancel, "purchase.document.cancel", value => this.deps.application.commands.cancel(value));
   }
 
   async reopen(security: PurchaseSecurityContext, command: PurchaseLifecycleCommand): Promise<PurchaseDocumentSnapshot> {
-    return this.lifecycle(security, command, purchasePermissions.reopen, "purchase.document.reopen", this.deps.application.commands.reopen);
+    return this.lifecycle(security, command, purchasePermissions.reopen, "purchase.document.reopen", value => this.deps.application.commands.reopen(value));
   }
 
   async returnPurchase(security: PurchaseSecurityContext, command: PurchaseLifecycleCommand): Promise<PurchaseDocumentSnapshot> {
-    return this.lifecycle(security, command, purchasePermissions.return, "purchase.document.return", this.deps.application.commands.returnPurchase, {
+    return this.lifecycle(security, command, purchasePermissions.return, "purchase.document.return", value => this.deps.application.commands.returnPurchase(value), {
       relatedDocumentId: command.relatedDocumentId ?? null,
     });
   }
 
   async correct(security: PurchaseSecurityContext, command: PurchaseLifecycleCommand): Promise<PurchaseDocumentSnapshot> {
-    return this.lifecycle(security, command, purchasePermissions.correct, "purchase.document.correct", this.deps.application.commands.correct, {
+    return this.lifecycle(security, command, purchasePermissions.correct, "purchase.document.correct", value => this.deps.application.commands.correct(value), {
       relatedDocumentId: command.relatedDocumentId ?? null,
     });
   }
