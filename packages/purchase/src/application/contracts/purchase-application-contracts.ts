@@ -12,6 +12,7 @@ export interface PurchaseOperationContext {
   readonly branchId: string;
   readonly requestId: string;
   readonly operationId: string;
+  readonly payloadFingerprint: string;
   readonly actorUserId: string;
   readonly occurredAt: string;
 }
@@ -43,6 +44,7 @@ export function createPurchaseOperationContext(input: PurchaseOperationContext):
     branchId: required(input.branchId, "branchId"),
     requestId: required(input.requestId, "requestId"),
     operationId: required(input.operationId, "operationId"),
+    payloadFingerprint: required(input.payloadFingerprint, "payloadFingerprint"),
     actorUserId: required(input.actorUserId, "actorUserId"),
     occurredAt: occurredAt.toISOString(),
   });
