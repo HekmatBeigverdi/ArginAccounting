@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { DatabaseExecuteResult, DatabaseExecutor, DatabaseSession, DatabaseValue } from "@argin/database";
-import { PurchaseApplicationError } from "@argin/purchase";
+import { PurchaseApplicationError, type PurchaseUnitOfWorkContext } from "@argin/purchase";
 import {
   SqlitePurchaseCommercialFactRepository,
   SqlitePurchaseDocumentRepository,
@@ -34,7 +34,7 @@ class RecordingDatabase implements DatabaseExecutor {
 test("Purchase UoW exposes four repositories through one transaction-bound session", async () => {
   const db = new RecordingDatabase();
   const uow = new SqlitePurchaseUnitOfWork(db);
-  let captured: Parameters<Parameters<typeof uow.execute>[0]>[0] | undefined;
+  let captured: PurchaseUnitOfWorkContext | undefined;
   const result = await uow.execute(async (context) => {
     captured = context;
     assert.ok(context.documents);
