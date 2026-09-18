@@ -327,9 +327,20 @@ Indexes support bounded Purchase document lists, Supplier/date, type/date, Branc
 
 Current Fiscal locks, Supplier role eligibility, cumulative over-match checks, cumulative return coverage, current Product/Warehouse eligibility, Cost Input recalculation ordering and full payload-fingerprint replay rules remain Application/UoW responsibilities.
 
-### Migration
+### SQLite Application Adapter
+
+`@argin/purchase-tauri` provides `SqlitePurchaseDocumentRepository`, `SqlitePurchaseCommercialFactRepository`, `SqlitePurchaseReceiptInvoiceMatchRepository`, `SqlitePurchaseValuationCostInputRepository` and `SqlitePurchaseUnitOfWork`.
+
+Document updates use Company/document/expected-version compare-and-swap. All four repositories inside one Purchase UoW are bound to the same transaction-scoped `DatabaseSession`. Production Desktop transactions inherit the pinned SQLite `BEGIN IMMEDIATE / COMMIT / ROLLBACK` guarantee from `@argin/database-tauri`.
+
+The Purchase adapter may read Inventory receipt/movement facts needed for unresolved-cost derivation, but it never writes Inventory-owned tables.
+
+### Migrations
 
 - `apps/desktop/src-tauri/migrations/0030_purchase_workflow.sql`
+- `apps/desktop/src-tauri/migrations/0031_purchase_scope_snapshot.sql`
+
+Migration `0031` adds the complete captured Fiscal scope snapshot required to rehydrate Purchase documents without substituting current Fiscal state for historical facts.
 
 ### Retention and sensitivity
 
