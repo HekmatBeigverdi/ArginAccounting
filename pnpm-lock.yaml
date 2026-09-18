@@ -175,6 +175,12 @@ importers:
       '@argin/product-tauri':
         specifier: workspace:*
         version: link:../../packages/product-tauri
+      '@argin/purchase':
+        specifier: workspace:*
+        version: link:../../packages/purchase
+      '@argin/purchase-tauri':
+        specifier: workspace:*
+        version: link:../../packages/purchase-tauri
       '@argin/security':
         specifier: workspace:*
         version: link:../../packages/security
