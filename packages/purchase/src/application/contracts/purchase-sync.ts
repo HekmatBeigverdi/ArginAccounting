@@ -361,7 +361,11 @@ function normalizeCostInput(
   }
   if (quantity === "0") return fail("purchase.sync.cost-input-invalid");
 
+  if (!Array.isArray(snapshot.sources) || snapshot.sources.length === 0) {
+    return fail("purchase.sync.cost-input-invalid");
+  }
   const sourceIds = new Set<string>();
+  let allocatedBaseCost = 0;
   const sources = snapshot.sources.map(source => {
     if (
       source.productId !== productId ||
@@ -375,6 +379,8 @@ function normalizeCostInput(
     const matchId = text(source.matchId);
     if (sourceIds.has(matchId)) return fail("purchase.sync.cost-input-invalid");
     sourceIds.add(matchId);
+    allocatedBaseCost += source.allocatedBaseCost;
+    if (!Number.isSafeInteger(allocatedBaseCost)) return fail("purchase.sync.cost-input-invalid");
     return Object.freeze({
       matchId,
       purchaseDocumentId: text(source.purchaseDocumentId),
@@ -395,6 +401,11 @@ function normalizeCostInput(
     });
   });
 
+  if (allocatedBaseCost !== basis.baseCost) return fail("purchase.sync.cost-input-invalid");
+  const currency = text(basis.currency).toUpperCase();
+  if (!/^[A-Z]{3}$/u.test(currency)) return fail("purchase.sync.cost-input-invalid");
+  if (!/^\d+(?:\.\d+)?$/u.test(String(basis.unitCost))) return fail("purchase.sync.cost-input-invalid");
+
   return Object.freeze({
     costInputId,
     companyId,
@@ -409,7 +420,7 @@ function normalizeCostInput(
       productId,
       warehouseId: text(basis.warehouseId),
       quantity,
-      currency: text(basis.currency).toUpperCase(),
+      currency,
       baseCost: basis.baseCost,
       landedCost: basis.landedCost,
       totalCost: basis.totalCost,
