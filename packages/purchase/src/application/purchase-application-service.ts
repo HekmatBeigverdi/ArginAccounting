@@ -413,46 +413,74 @@ export function createPurchaseApplicationServices(
     correct: command => mutateLifecycle(command, correctPurchaseDocument, "correct", "purchase-correction"),
 
     async stageInventoryReceipt(command: StagePurchaseReceiptCommand) {
-      const operation = createPurchaseOperationContext(command.context);
-      const snapshot = await dependencies.uow.execute(async repositories => {
-        const purchase = await getDocument(repositories, operation.companyId, command.purchaseDocumentId);
-        assertContextMatchesDocument(operation, purchase);
-        const facts = await repositories.commercialFacts.listByDocument(operation.companyId, purchase.documentId);
-        return Object.freeze({ purchase, facts });
+      const operationContext = createPurchaseOperationContext(command.context);
+      if (required(command.payloadFingerprint, "payloadFingerprint") !== operationContext.payloadFingerprint) {
+        return fail("PURCHASE_APP_IDEMPOTENCY_CONFLICT", "payloadFingerprint");
+      }
+      const operation = operationName("stage-receipt", `${command.purchaseDocumentId}:${command.inventoryDocumentId}`);
+      const snapshotOrReplay = await dependencies.uow.execute(async repositories => {
+        const replay = await replayIfCommitted<Awaited<ReturnType<PurchaseInventoryReceiptPort["stageDraft"]>>>(
+          repositories, operationContext, operation,
+        );
+        if (replay !== null) return Object.freeze({ replay, purchase: null, facts: null });
+        const purchase = await getDocument(repositories, operationContext.companyId, command.purchaseDocumentId);
+        assertContextMatchesDocument(operationContext, purchase);
+        const facts = await repositories.commercialFacts.listByDocument(operationContext.companyId, purchase.documentId);
+        return Object.freeze({ replay: null, purchase, facts });
       });
-      return stagePurchaseInventoryReceipt(dependencies.inventoryReceipt, {
-        purchase: snapshot.purchase,
+      if (snapshotOrReplay.replay !== null) return snapshotOrReplay.replay;
+
+      const result = await stagePurchaseInventoryReceipt(dependencies.inventoryReceipt, {
+        purchase: snapshotOrReplay.purchase!,
         inventoryDocumentId: command.inventoryDocumentId,
-        commercialFacts: snapshot.facts.map(fact => ({
+        commercialFacts: snapshotOrReplay.facts!.map(fact => ({
           purchaseLineId: fact.purchaseLineId,
           commercialTerms: fact.commercialTerms,
         })),
         allocations: command.allocations,
-        requestKey: operation.requestId,
-        payloadFingerprint: command.payloadFingerprint,
+        requestKey: operationContext.requestId,
+        payloadFingerprint: operationContext.payloadFingerprint,
+      });
+
+      return dependencies.uow.execute(async repositories => {
+        const replay = await replayIfCommitted<typeof result>(repositories, operationContext, operation);
+        if (replay !== null) return replay;
+        return persistIdempotentOutcome(
+          repositories, operationContext, operation, "inventory-receipt",
+          result.inventoryDocumentId, result.version, result.status, result,
+        );
       });
     },
 
     async matchReceiptInvoice(command: MatchPurchaseReceiptInvoiceCommand) {
-      const operation = createPurchaseOperationContext(command.context);
+      const operationContext = createPurchaseOperationContext(command.context);
       const requested = command.match;
-      if (requested.companyId !== operation.companyId) return fail("PURCHASE_APP_SCOPE_MISMATCH", "match.companyId");
+      if (requested.companyId !== operationContext.companyId) return fail("PURCHASE_APP_SCOPE_MISMATCH", "match.companyId");
+      const operation = operationName("match", requested.matchId);
+
+      const preReplay = await dependencies.uow.execute(repositories =>
+        replayIfCommitted<PurchaseReceiptInvoiceMatchSnapshot>(repositories, operationContext, operation));
+      if (preReplay !== null) return preReplay;
+
       const receiptLine = await dependencies.receiptLines.findConfirmedLine({
-        companyId: operation.companyId,
+        companyId: operationContext.companyId,
         receiptDocumentId: requested.receiptDocumentId,
         receiptLineId: requested.receiptLineId,
       });
       if (!receiptLine) return fail("PURCHASE_APP_NOT_FOUND", "receiptLine");
 
       return dependencies.uow.execute(async repositories => {
-        const invoice = await getDocument(repositories, operation.companyId, requested.invoiceDocumentId);
-        assertContextMatchesDocument(operation, invoice);
+        const replay = await replayIfCommitted<PurchaseReceiptInvoiceMatchSnapshot>(repositories, operationContext, operation);
+        if (replay !== null) return replay;
+
+        const invoice = await getDocument(repositories, operationContext.companyId, requested.invoiceDocumentId);
+        assertContextMatchesDocument(operationContext, invoice);
         const line = invoice.lines.find(candidate => candidate.lineId === requested.invoiceLineId);
         if (!line) return fail("PURCHASE_APP_NOT_FOUND", "invoiceLineId");
-        const fact = await repositories.commercialFacts.findByLine(operation.companyId, invoice.documentId, line.lineId);
+        const fact = await repositories.commercialFacts.findByLine(operationContext.companyId, invoice.documentId, line.lineId);
         if (!fact) return fail("PURCHASE_APP_NOT_FOUND", "commercialFact");
-        const invoiceMatches = await repositories.matches.listByInvoiceLine(operation.companyId, invoice.documentId, line.lineId);
-        const receiptMatches = await repositories.matches.listByReceiptLine(operation.companyId, receiptLine.documentId, receiptLine.lineId);
+        const invoiceMatches = await repositories.matches.listByInvoiceLine(operationContext.companyId, invoice.documentId, line.lineId);
+        const receiptMatches = await repositories.matches.listByReceiptLine(operationContext.companyId, receiptLine.documentId, receiptLine.lineId);
         const match = createPurchaseReceiptInvoiceMatch({
           matchId: requested.matchId,
           invoiceLine: {
@@ -469,17 +497,28 @@ export function createPurchaseApplicationServices(
           existingMatches: uniqueMatches(invoiceMatches, receiptMatches),
         });
         await repositories.matches.add(match);
-        return match;
+        return persistIdempotentOutcome(
+          repositories, operationContext, operation, "match",
+          match.matchId, null, null, match,
+        );
       });
     },
 
     async resolveMovementCost(command: ResolvePurchaseMovementCostCommand) {
-      const operation = createPurchaseOperationContext(command.context);
-      const movement = await dependencies.inventoryMovements.findById(operation.companyId, command.movementId);
+      const operationContext = createPurchaseOperationContext(command.context);
+      const operation = operationName("resolve-cost", command.movementId);
+      const preReplay = await dependencies.uow.execute(repositories =>
+        replayIfCommitted<PurchaseReceiptBeforeInvoiceCostDecision>(repositories, operationContext, operation));
+      if (preReplay !== null) return preReplay;
+
+      const movement = await dependencies.inventoryMovements.findById(operationContext.companyId, command.movementId);
       if (!movement) return fail("PURCHASE_APP_NOT_FOUND", "movementId");
-      if (movement.companyId !== operation.companyId) return fail("PURCHASE_APP_SCOPE_MISMATCH", "movement.companyId");
+      if (movement.companyId !== operationContext.companyId) return fail("PURCHASE_APP_SCOPE_MISMATCH", "movement.companyId");
 
       const decision = await dependencies.uow.execute(async repositories => {
+        const replay = await replayIfCommitted<PurchaseReceiptBeforeInvoiceCostDecision>(repositories, operationContext, operation);
+        if (replay !== null) return replay;
+
         const matches = await repositories.matches.listByReceiptLine(
           movement.companyId,
           movement.documentId,
@@ -491,11 +530,11 @@ export function createPurchaseApplicationServices(
           const key = `${match.invoiceDocumentId}:${match.invoiceLineId}`;
           if (seen.has(key)) continue;
           seen.add(key);
-          const invoice = await repositories.documents.findById(operation.companyId, match.invoiceDocumentId);
+          const invoice = await repositories.documents.findById(operationContext.companyId, match.invoiceDocumentId);
           if (!invoice) continue;
           const line = invoice.lines.find(candidate => candidate.lineId === match.invoiceLineId);
           if (!line) continue;
-          const fact = await repositories.commercialFacts.findByLine(operation.companyId, invoice.documentId, line.lineId);
+          const fact = await repositories.commercialFacts.findByLine(operationContext.companyId, invoice.documentId, line.lineId);
           if (!fact) continue;
           commercialFacts.push({
             companyId: invoice.companyId,
@@ -515,9 +554,9 @@ export function createPurchaseApplicationServices(
           commercialFacts,
         });
         if (result.status === "resolved" && result.costInput) {
-          const existing = await repositories.costInputs.findByMovement(operation.companyId, movement.movementId);
+          const existing = await repositories.costInputs.findByMovement(operationContext.companyId, movement.movementId);
           if (existing) {
-            await repositories.costInputs.replaceForMovement(operation.companyId, movement.movementId, result.costInput);
+            await repositories.costInputs.replaceForMovement(operationContext.companyId, movement.movementId, result.costInput);
           } else {
             await repositories.costInputs.add(result.costInput);
           }
@@ -527,13 +566,21 @@ export function createPurchaseApplicationServices(
 
       if (decision.status === "resolved") {
         await dependencies.valuationRecalculation.costBasisChanged({
-          companyId: operation.companyId,
+          companyId: operationContext.companyId,
           movement,
-          requestId: operation.requestId,
-          operationId: operation.operationId,
+          requestId: operationContext.requestId,
+          operationId: operationContext.operationId,
         });
       }
-      return decision;
+
+      return dependencies.uow.execute(async repositories => {
+        const replay = await replayIfCommitted<PurchaseReceiptBeforeInvoiceCostDecision>(repositories, operationContext, operation);
+        if (replay !== null) return replay;
+        return persistIdempotentOutcome(
+          repositories, operationContext, operation, "cost-resolution",
+          command.costInputId, null, decision.status, decision,
+        );
+      });
     },
   });
 
