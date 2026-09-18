@@ -17,7 +17,6 @@ CREATE TABLE purchase_documents (
     fiscal_period_id TEXT NOT NULL,
     supplier_snapshot_json TEXT NOT NULL,
     source_system TEXT,
-    source_document_type TEXT,
     source_document_id TEXT,
     source_line_id TEXT,
     correction_reference_document_id TEXT,
@@ -56,10 +55,10 @@ CREATE TABLE purchase_documents (
         CHECK (length(trim(supplier_snapshot_json)) >= 2),
     CONSTRAINT ck_purchase_documents_source_shape
         CHECK (
-            (source_system IS NULL AND source_document_type IS NULL AND source_document_id IS NULL AND source_line_id IS NULL)
+            (source_system IS NULL AND source_document_id IS NULL AND source_line_id IS NULL)
             OR
-            (source_system IS NOT NULL AND source_document_type IS NOT NULL AND source_document_id IS NOT NULL
-             AND length(trim(source_system)) >= 1 AND length(trim(source_document_type)) >= 1 AND length(trim(source_document_id)) >= 1)
+            (source_system IS NOT NULL AND source_document_id IS NOT NULL
+             AND length(trim(source_system)) >= 1 AND length(trim(source_document_id)) >= 1)
         ),
     CONSTRAINT ck_purchase_documents_correction_shape
         CHECK (
@@ -218,7 +217,7 @@ CREATE TABLE purchase_commercial_facts (
            AND entered_quantity NOT IN ('0','0.0') AND base_quantity NOT IN ('0','0.0')),
     CONSTRAINT ck_purchase_commercial_facts_units
         CHECK (length(trim(entered_unit_id)) >= 1 AND length(trim(base_unit_id)) >= 1),
-    CONSTRAINT ck_purchase_commercial_facts_unit_price CHECK (unit_price_amount >= 0),
+    CONSTRAINT ck_purchase_commercial_facts_unit_price CHECK (unit_price_amount BETWEEN 0 AND 9007199254740991),
     CONSTRAINT ck_purchase_commercial_facts_currency
         CHECK (length(currency) = 3 AND currency = upper(currency)),
     CONSTRAINT ck_purchase_commercial_facts_tax
@@ -329,7 +328,8 @@ CREATE TABLE purchase_valuation_cost_inputs (
         CHECK (length(trim(quantity)) >= 1 AND quantity = trim(quantity) AND quantity NOT IN ('0','0.0')),
     CONSTRAINT ck_purchase_cost_inputs_currency CHECK (length(currency) = 3 AND currency = upper(currency)),
     CONSTRAINT ck_purchase_cost_inputs_amounts
-        CHECK (base_cost >= 0 AND landed_cost >= 0 AND total_cost >= 0 AND total_cost = base_cost + landed_cost),
+        CHECK (base_cost BETWEEN 0 AND 9007199254740991 AND landed_cost BETWEEN 0 AND 9007199254740991
+           AND total_cost BETWEEN 0 AND 9007199254740991 AND total_cost = base_cost + landed_cost),
     CONSTRAINT ck_purchase_cost_inputs_unit_cost CHECK (length(trim(unit_cost)) >= 1 AND unit_cost = trim(unit_cost)),
     CONSTRAINT ck_purchase_cost_inputs_sources CHECK (length(trim(sources_json)) >= 2),
     CONSTRAINT ck_purchase_cost_inputs_basis CHECK (length(trim(basis_json)) >= 2),
