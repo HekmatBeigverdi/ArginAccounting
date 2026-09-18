@@ -91,3 +91,18 @@ test("Purchase workspace follows display density tokens", async () => {
     "--ui-density-font-size",
   ]) assert.ok(css.includes(token), token);
 });
+
+
+test("Purchase workspace exposes linked return and correction document workflows", async () => {
+  const [page, composition] = await Promise.all([
+    read("src/pages/purchase/purchase-documents-page.tsx"),
+    read("src/composition/purchase/create-purchase-workspace-services.ts"),
+  ]);
+  assert.match(page, /purchase-return/u);
+  assert.match(page, /purchase-correction/u);
+  assert.match(page, /سند اصلی/u);
+  assert.match(page, /علت برگشت یا اصلاح/u);
+  assert.match(composition, /correctionReference/u);
+  assert.match(composition, /returnPurchase/u);
+  assert.match(composition, /correct/u);
+});
