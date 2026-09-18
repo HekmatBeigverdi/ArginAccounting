@@ -11,6 +11,8 @@ import {
   type PurchaseDocumentSnapshot,
   type PurchaseDocumentStatus,
   type PurchaseDocumentType,
+  type PurchaseIdempotencyRecord,
+  type PurchaseIdempotencyRepository,
   type PurchaseInventoryValuationCostInputSnapshot,
   type PurchaseItemSnapshot,
   type PurchaseReceiptInvoiceMatchRepository,
