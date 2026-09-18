@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–17 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 18 — Argin Bridge Purchase Synchronization Contract — is next.
+Steps 1–18 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 19 — Permissions, Approval, Audit and Traceability — is next.
 
 ## Governance
 
@@ -28,6 +28,7 @@ Mandatory references:
 - [Purchase SQLite Schema](../architecture/purchase-sqlite-schema.md)
 - [Purchase SQLite Persistence and Unit of Work](../architecture/purchase-sqlite-persistence.md)
 - [Purchase Idempotency, Optimistic Concurrency and Replay Safety](../architecture/purchase-idempotency-concurrency-replay.md)
+- [Purchase Argin Bridge Synchronization Contract](../architecture/purchase-argin-bridge-contract.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -65,6 +66,7 @@ Mandatory references:
 - `@argin/purchase-tauri` implements the persistence-neutral contracts over one transaction-bound `DatabaseSession`; Purchase repositories may read Inventory authority but never write Inventory-owned tables directly.
 - Historical Purchase Fiscal scope is persisted and rehydrated from captured facts rather than reconstructed from current Fiscal state.
 - Every Purchase mutation uses durable Company-scoped request ID + operation ID + payload fingerprint identity; exact committed retries replay the stored outcome, while any identity/payload mismatch conflicts.
+- Argin Bridge synchronizes authoritative Purchase documents/lines, commercial facts, receipt-invoice matches and Purchase-backed Cost Inputs as versioned/revisioned durable facts; matching summaries, unresolved-cost status, balances and FIFO/MWA layers remain rebuildable projections and are never independent synchronization authority.
 
 ## Step Status
 
@@ -87,7 +89,7 @@ Mandatory references:
 | 15 | Migration, Schema, Constraints and Indexing | Completed |
 | 16 | SQLite Repository and Unit of Work | Completed |
 | 17 | Idempotency, Optimistic Concurrency and Replay Safety | Completed |
-| 18 | Argin Bridge Purchase Synchronization Contract | Not started |
+| 18 | Argin Bridge Purchase Synchronization Contract | Completed |
 | 19 | Permissions, Approval, Audit and Traceability | Not started |
 | 20 | Persian RTL Purchase Workspace | Not started |
 | 21 | Purchase Queries and Operational Reports | Not started |
@@ -342,6 +344,30 @@ Mandatory references:
 - Direct full-package execution from this session was attempted again and is still blocked by DNS resolution of `github.com`; no full package or monorepo pass is claimed here.
 - Fresh final source verification checks Step 17 identity matching, replay-before-version ordering, idempotency persistence, no direct Inventory writes, migration 32 registration and Step Status.
 - Formal real SQLite concurrent-request/crash/restart integration remains Step 23; final monorepo validation remains Step 24.
+
+
+## Step 18 — Argin Bridge Purchase Synchronization Contract
+
+### Exit Criteria and Evidence
+
+- Added versioned wire-neutral Purchase synchronization contract `PURCHASE_SYNC_CONTRACT_VERSION = 1`.
+- Added authoritative envelope families for Purchase Document, Purchase Commercial Fact, Receipt/Invoice Match and Purchase Valuation Cost Input.
+- Purchase Document upsert carries durable Company/Branch/document identity, complete validated aggregate snapshot, local optimistic version and explicit upstream dependencies for Branch, Fiscal scope, Supplier, Product/Service masters and linked original Purchase document where applicable.
+- Purchase Document tombstone is reserved exclusively for real deletion of a last-known Draft; cancelled, confirmed, returned and corrected business lifecycle states are never tombstones.
+- Purchase Return and Purchase Correction synchronize as ordinary durable Purchase document upserts with their correction reference, preserving historical source facts.
+- Commercial Fact envelopes carry their authoritative Purchase line revision and depend on the owning Purchase document/line; downstream Inventory/Valuation remains prohibited from becoming commercial-price authority.
+- Receipt/Invoice Match envelopes are immutable revision-1 facts depending on both Purchase invoice line and Inventory receipt line plus Product identity. Matching summaries remain derived and unsynchronized.
+- Purchase Cost Input envelopes carry explicit local revision and dependencies on authoritative Inventory movement/receipt, Product/Warehouse, every Purchase Match and every source Purchase document/line; FIFO/MWA layers/states are not synchronized.
+- Every envelope carries operation ID, request ID, payload fingerprint, canonical UTC changed-at, origin, optional external references and nullable positive server revision.
+- Local optimistic version/revision is explicitly distinct from server revision. Timestamp-based last-write-wins is prohibited for confirmed/immutable Purchase facts.
+- Expected apply semantics are frozen: same durable identity + same fingerprint/payload replays/acknowledges; same identity/revision with different payload conflicts; dependency-missing facts must be deferred rather than partially applied.
+- Historical captured Fiscal scope travels with Purchase Document snapshots and must not be reconstructed from current Fiscal state at the receiver.
+- No sync envelope exists for report rows, matching status summaries, unresolved-cost projections, Inventory balances or valuation layers because they are rebuildable.
+- Existing Step 15–17 sync metadata is sufficient for this contract; Step 18 adds no schema migration, outbox, worker, network transport, remote API or PostgreSQL implementation.
+- Added `purchase-sync.ts`, public exports, focused `purchase-sync-contract.test.ts`, architecture documentation, module registry and documentation index entries.
+- TDD ordering was preserved: the Step 18 contract test was committed before the production sync-contract module/export existed. RED was reproduced as missing-module resolution before implementation.
+- Fresh final source verification validates contract version, four authoritative envelope families, Draft-only tombstones, return/correction-as-upsert semantics, dependency generation, local/server revision separation, projection exclusion and frozen Step Status.
+- Full cross-store apply/dependency-deferral/restart/Argin Bridge integration remains Step 23; final monorepo validation remains Step 24.
 
 ## Change Requests
 
