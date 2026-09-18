@@ -100,3 +100,31 @@ export interface PurchaseValuationCostInputRepository {
     costInput: PurchaseInventoryValuationCostInputSnapshot,
   ): Promise<void>;
 }
+
+
+export type PurchaseIdempotencyOutcomeKind =
+  | "document"
+  | "inventory-receipt"
+  | "match"
+  | "cost-resolution";
+
+export interface PurchaseIdempotencyRecord {
+  readonly companyId: string;
+  readonly requestId: string;
+  readonly operationId: string;
+  readonly operation: string;
+  readonly payloadFingerprint: string;
+  readonly outcomeKind: PurchaseIdempotencyOutcomeKind;
+  readonly outcomeId: string;
+  readonly outcomeVersion: number | null;
+  readonly outcomeStatus: string | null;
+  /** Exact committed result envelope; replay must not depend on later aggregate state. */
+  readonly resultJson: string;
+  readonly recordedAt: string;
+}
+
+export interface PurchaseIdempotencyRepository {
+  findByRequestId(companyId: string, requestId: string): Promise<PurchaseIdempotencyRecord | null>;
+  findByOperationId(companyId: string, operationId: string): Promise<PurchaseIdempotencyRecord | null>;
+  add(record: PurchaseIdempotencyRecord): Promise<void>;
+}
