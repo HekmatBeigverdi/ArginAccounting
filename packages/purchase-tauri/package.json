@@ -3,7 +3,9 @@
   "version": "0.22.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
@@ -13,7 +15,8 @@
   },
   "dependencies": {
     "@argin/database": "workspace:*",
-    "@argin/purchase": "workspace:*"
+    "@argin/purchase": "workspace:*",
+    "@argin/audit": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20",
