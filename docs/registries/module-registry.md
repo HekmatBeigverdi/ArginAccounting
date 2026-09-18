@@ -38,6 +38,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 - Inventory ownership: Purchase may read confirmed receipt/movement facts but never writes Inventory tables directly; quantity side effects continue through Inventory ports.
 - Valuation ownership: Purchase supplies Cost Input provenance only; FIFO/MWA remains Phase 21 authority.
 - Bridge: Step 18 freezes versioned sync envelopes for Purchase documents, commercial facts, receipt/invoice matches and Purchase-backed Cost Inputs; projections and FIFO/MWA state are rebuildable and are not synchronized as authority.
+- Security: Step 19 adds independent Purchase permissions, persisted Company/Branch authorization, submission-cycle-aware shared Approval, and deterministic request/operation-traceable shared Audit.
 
 ## Required Fields for Future Entries
 
