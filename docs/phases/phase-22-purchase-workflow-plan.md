@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–18 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 19 — Permissions, Approval, Audit and Traceability — is next.
+Steps 1–19 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 20 — Persian RTL Purchase Workspace — is next.
 
 ## Governance
 
@@ -29,6 +29,7 @@ Mandatory references:
 - [Purchase SQLite Persistence and Unit of Work](../architecture/purchase-sqlite-persistence.md)
 - [Purchase Idempotency, Optimistic Concurrency and Replay Safety](../architecture/purchase-idempotency-concurrency-replay.md)
 - [Purchase Argin Bridge Synchronization Contract](../architecture/purchase-argin-bridge-contract.md)
+- [Purchase Security, Approval, Audit and Traceability](../security/purchase-security-approval-audit.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -67,6 +68,7 @@ Mandatory references:
 - Historical Purchase Fiscal scope is persisted and rehydrated from captured facts rather than reconstructed from current Fiscal state.
 - Every Purchase mutation uses durable Company-scoped request ID + operation ID + payload fingerprint identity; exact committed retries replay the stored outcome, while any identity/payload mismatch conflicts.
 - Argin Bridge synchronizes authoritative Purchase documents/lines, commercial facts, receipt-invoice matches and Purchase-backed Cost Inputs as versioned/revisioned durable facts; matching summaries, unresolved-cost status, balances and FIFO/MWA layers remain rebuildable projections and are never independent synchronization authority.
+- Purchase authorization is permission- and persisted-Branch scoped; Approval and Confirm are separate rights, each resubmission has its own shared Approval cycle, and successful mutations are traced in shared Audit with request ID + operation ID.
 
 ## Step Status
 
@@ -90,7 +92,7 @@ Mandatory references:
 | 16 | SQLite Repository and Unit of Work | Completed |
 | 17 | Idempotency, Optimistic Concurrency and Replay Safety | Completed |
 | 18 | Argin Bridge Purchase Synchronization Contract | Completed |
-| 19 | Permissions, Approval, Audit and Traceability | Not started |
+| 19 | Permissions, Approval, Audit and Traceability | Completed |
 | 20 | Persian RTL Purchase Workspace | Not started |
 | 21 | Purchase Queries and Operational Reports | Not started |
 | 22 | Domain and Application Tests | Not started |
@@ -368,6 +370,33 @@ Mandatory references:
 - TDD ordering was preserved: the Step 18 contract test was committed before the production sync-contract module/export existed. RED was reproduced as missing-module resolution before implementation.
 - Fresh final source verification validates contract version, four authoritative envelope families, Draft-only tombstones, return/correction-as-upsert semantics, dependency generation, local/server revision separation, projection exclusion and frozen Step Status.
 - Full cross-store apply/dependency-deferral/restart/Argin Bridge integration remains Step 23; final monorepo validation remains Step 24.
+
+
+## Step 19 — Permissions, Approval, Audit and Traceability
+
+### Exit Criteria and Evidence
+
+- Added independent Purchase permissions for view/create/edit/submit/approve/confirm/cancel/reopen/return/correct, Inventory receipt staging, receipt-invoice matching, cost resolution and report export.
+- Registered the Purchase permission definitions in the shared Security default-permission catalog under module `purchases`, making them assignable through normal Role/Permission infrastructure.
+- Added `PurchaseAuthorizationPolicy`, `PurchaseSecurityContext`, `PurchaseApprovalGateway` and `PurchaseAuditSink` contracts without introducing a Purchase-owned security/approval/audit store.
+- Added `SecuredPurchaseService`; document-scoped mutations reload the persisted Purchase document and authorize against its real Company/Branch before mutation.
+- Create authorizes against the requested document scope because no persisted aggregate exists yet; receipt staging and matching authorize against the persisted owning Purchase document.
+- Approval and confirmation remain separate permissions. Confirm requires an Approved shared Approval request before Purchase mutation.
+- Approval identity is submission-cycle-aware: the cycle key is the latest Purchase lifecycle transition to `submitted`. Deterministic shared Approval identity is `purchase-document:{companyId}:{documentId}:{approvalCycleKey}`.
+- Reopen/resubmit therefore creates a new Approval request and an Approval from an older document version cannot silently authorize amended content.
+- Submit ordering is Purchase mutation/replay -> create/repair shared Approval -> shared Audit. This lets Step 17 replay repair a failed post-commit Approval composition without duplicating Purchase effects.
+- Approve orders shared Approval before Purchase Approve; retry is safe because the shared adapter treats already-Approved as replay and Purchase mutation remains idempotent.
+- Confirm resolves the current submission cycle and calls `requireApproved` before Purchase confirmation.
+- Return/Correction remain separately permissioned actions and Audit retains the durable compensating related-document identity.
+- Added `SharedPurchaseApprovalGateway` over `@argin/audit` Phase 8 Approval and `SharedPurchaseAuditSink` over shared append-only Audit.
+- Shared Audit uses deterministic identity `purchase:{action}:{operationId}:{targetId}`, stores both request ID and operation ID, and de-duplicates successful replay.
+- Cross-module trace metadata covers generated Inventory receipt ID/version, Match + receipt/invoice line identities, and movement/Cost Input resolution identities without changing bounded-context ownership.
+- Added `PURCHASE_APP_UNAUTHORIZED` mapping for authorization denial before mutation.
+- Updated `@argin/purchase-tauri` to depend on the shared Audit/Approval package; no new Purchase-specific Approval/Audit database or migration was added.
+- Added focused `purchase-security-integration.test.ts` and Purchase-Tauri shared adapter contract tests plus security architecture documentation, module registry and documentation index entries.
+- Core Step 19 security contract test was committed before the secured Purchase service/security contracts existed.
+- Fresh final source verification checks permission uniqueness/catalog registration, persisted-Branch authorization, current-cycle Approval gating, request+operation Audit traceability, deterministic shared Approval/Audit identities, shared-module dependency and Step Status.
+- Full package execution is not claimed unless the package test/typecheck commands are observed successfully; formal Desktop permission wiring is Step 20 and broad integration validation remains Step 23/24.
 
 ## Change Requests
 
