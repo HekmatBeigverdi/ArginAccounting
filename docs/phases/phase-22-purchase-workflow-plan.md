@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–16 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 17 — Idempotency, Optimistic Concurrency and Replay Safety — is next.
+Steps 1–17 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 18 — Argin Bridge Purchase Synchronization Contract — is next.
 
 ## Governance
 
@@ -27,6 +27,7 @@ Mandatory references:
 - [Purchase Application, Query and Repository Contracts](../architecture/purchase-application-query-repository-contracts.md)
 - [Purchase SQLite Schema](../architecture/purchase-sqlite-schema.md)
 - [Purchase SQLite Persistence and Unit of Work](../architecture/purchase-sqlite-persistence.md)
+- [Purchase Idempotency, Optimistic Concurrency and Replay Safety](../architecture/purchase-idempotency-concurrency-replay.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -63,6 +64,7 @@ Mandatory references:
 - Valuation recalculation caused by a newly committed Purchase-backed Cost Input occurs only after the Purchase UoW has committed that Cost Input.
 - `@argin/purchase-tauri` implements the persistence-neutral contracts over one transaction-bound `DatabaseSession`; Purchase repositories may read Inventory authority but never write Inventory-owned tables directly.
 - Historical Purchase Fiscal scope is persisted and rehydrated from captured facts rather than reconstructed from current Fiscal state.
+- Every Purchase mutation uses durable Company-scoped request ID + operation ID + payload fingerprint identity; exact committed retries replay the stored outcome, while any identity/payload mismatch conflicts.
 
 ## Step Status
 
@@ -84,7 +86,7 @@ Mandatory references:
 | 14 | Application Services and Transaction Boundaries | Completed |
 | 15 | Migration, Schema, Constraints and Indexing | Completed |
 | 16 | SQLite Repository and Unit of Work | Completed |
-| 17 | Idempotency, Optimistic Concurrency and Replay Safety | Not started |
+| 17 | Idempotency, Optimistic Concurrency and Replay Safety | Completed |
 | 18 | Argin Bridge Purchase Synchronization Contract | Not started |
 | 19 | Permissions, Approval, Audit and Traceability | Not started |
 | 20 | Persian RTL Purchase Workspace | Not started |
@@ -317,6 +319,29 @@ Mandatory references:
 - Fresh executable focused UoW verification: 2 tests passed, 0 failed, including success and rollback cleanup.
 - Fresh SQLite execution of migration 0031 passed and rejected invalid insert/update Fiscal scope snapshots.
 - Full repository/real-database restart, rollback, upgrade and Desktop integration validation remains Steps 23–24.
+
+
+## Step 17 — Idempotency, Optimistic Concurrency and Replay Safety
+
+### Exit Criteria and Evidence
+
+- Extended `PurchaseOperationContext` with mandatory `payloadFingerprint`; every mutation now carries Company, Branch, request ID, operation ID, payload fingerprint, actor and occurred-at identity.
+- Added `PurchaseIdempotencyRecord` / `PurchaseIdempotencyRepository` contracts and included the repository in `PurchaseUnitOfWorkContext`.
+- Exact replay requires the same Company + request ID + operation ID + normalized operation + payload fingerprint. Reusing either durable identity with a different companion identity, operation or fingerprint raises `PURCHASE_APP_IDEMPOTENCY_CONFLICT`.
+- Replay lookup executes before current document loading/version validation so an exact retry of a previously committed mutation returns its original outcome even when the aggregate later advanced.
+- Successful create and lifecycle mutations persist Purchase changes plus exact idempotency outcome in the same Purchase UoW.
+- Receipt/invoice Match creation rechecks replay inside the mutation UoW and persists Match + replay outcome together.
+- Inventory receipt staging performs pre-replay suppression and persists its exact returned Inventory draft result; downstream Inventory receives the same request identity/fingerprint and remains authoritative for its own idempotent side effect.
+- Movement Cost resolution suppresses committed replay, preserves Cost Input-before-recalculation ordering, and records the exact final decision. Valuation recalculation receives request ID + operation ID and is explicitly required to consume them as replay-safe identity.
+- Existing aggregate compare-and-swap (`expectedVersion`) and Commercial Fact revision compare-and-swap remain independent safeguards for genuinely new operations; idempotency does not bypass stale-version checks except for exact committed replay.
+- Added migration `0032_purchase_replay_safety.sql` and registered version 32. `purchase_idempotency.result_json` stores exact replay result; new rows require result JSON and idempotency evidence is append-only through UPDATE/DELETE rejection triggers.
+- Added `SqlitePurchaseIdempotencyRepository` and bound it into `SqlitePurchaseUnitOfWork`; request and operation IDs are independently queryable.
+- Added focused `purchase-replay-safety.test.ts`, updated Application/UoW harnesses for the fifth repository, and added SQLite adapter/migration replay tests.
+- Added architecture documentation in `purchase-idempotency-concurrency-replay.md`.
+- TDD ordering was preserved: the Step 17 replay contract test was committed before the new idempotency contracts, repository and Application replay implementation.
+- Direct full-package execution from this session was attempted again and is still blocked by DNS resolution of `github.com`; no full package or monorepo pass is claimed here.
+- Fresh final source verification checks Step 17 identity matching, replay-before-version ordering, idempotency persistence, no direct Inventory writes, migration 32 registration and Step Status.
+- Formal real SQLite concurrent-request/crash/restart integration remains Step 23; final monorepo validation remains Step 24.
 
 ## Change Requests
 
