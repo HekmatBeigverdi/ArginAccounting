@@ -3,6 +3,7 @@ import type { PurchaseUnitOfWork, PurchaseUnitOfWorkContext } from "@argin/purch
 import {
   SqlitePurchaseCommercialFactRepository,
   SqlitePurchaseDocumentRepository,
+  SqlitePurchaseIdempotencyRepository,
   SqlitePurchaseReceiptInvoiceMatchRepository,
   SqlitePurchaseValuationCostInputRepository,
 } from "./sqlite-purchase-repositories.ts";
@@ -12,6 +13,7 @@ const contextFor = (database: DatabaseSession): PurchaseUnitOfWorkContext => Obj
   commercialFacts: new SqlitePurchaseCommercialFactRepository(database),
   matches: new SqlitePurchaseReceiptInvoiceMatchRepository(database),
   costInputs: new SqlitePurchaseValuationCostInputRepository(database),
+  idempotency: new SqlitePurchaseIdempotencyRepository(database),
 });
 
 /**
