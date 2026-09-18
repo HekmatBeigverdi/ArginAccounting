@@ -17,6 +17,12 @@ WHEN NEW.fiscal_year_start_date IS NULL
   OR NEW.fiscal_period_end_date IS NULL
   OR NEW.fiscal_year_status IS NULL
   OR NEW.fiscal_period_status IS NULL
+  OR NEW.fiscal_year_status NOT IN ('draft','open','closing','closed')
+  OR NEW.fiscal_period_status NOT IN ('open','locked','closed')
+  OR NEW.fiscal_year_start_date > NEW.fiscal_year_end_date
+  OR NEW.fiscal_period_start_date > NEW.fiscal_period_end_date
+  OR NEW.fiscal_period_start_date < NEW.fiscal_year_start_date
+  OR NEW.fiscal_period_end_date > NEW.fiscal_year_end_date
 BEGIN
   SELECT RAISE(ABORT, 'purchase fiscal scope snapshot is required');
 END;
