@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–19 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 20 — Persian RTL Purchase Workspace — is next.
+Steps 1–20 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 21 — Purchase Queries and Operational Reports — is next.
 
 ## Governance
 
@@ -30,6 +30,7 @@ Mandatory references:
 - [Purchase Idempotency, Optimistic Concurrency and Replay Safety](../architecture/purchase-idempotency-concurrency-replay.md)
 - [Purchase Argin Bridge Synchronization Contract](../architecture/purchase-argin-bridge-contract.md)
 - [Purchase Security, Approval, Audit and Traceability](../security/purchase-security-approval-audit.md)
+- [Purchase Desktop Workspace](../architecture/purchase-desktop-workspace.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -69,6 +70,7 @@ Mandatory references:
 - Every Purchase mutation uses durable Company-scoped request ID + operation ID + payload fingerprint identity; exact committed retries replay the stored outcome, while any identity/payload mismatch conflicts.
 - Argin Bridge synchronizes authoritative Purchase documents/lines, commercial facts, receipt-invoice matches and Purchase-backed Cost Inputs as versioned/revisioned durable facts; matching summaries, unresolved-cost status, balances and FIFO/MWA layers remain rebuildable projections and are never independent synchronization authority.
 - Purchase authorization is permission- and persisted-Branch scoped; Approval and Confirm are separate rights, each resubmission has its own shared Approval cycle, and successful mutations are traced in shared Audit with request ID + operation ID.
+- Desktop Purchase UI is Persian RTL with a Jalali input boundary and LTR commercial numeric fields; it consumes secured Purchase Application contracts, shared Master Data/Fiscal/Approval/Audit services and stages Inventory drafts only through Inventory-owned Application services.
 
 ## Step Status
 
@@ -93,7 +95,7 @@ Mandatory references:
 | 17 | Idempotency, Optimistic Concurrency and Replay Safety | Completed |
 | 18 | Argin Bridge Purchase Synchronization Contract | Completed |
 | 19 | Permissions, Approval, Audit and Traceability | Completed |
-| 20 | Persian RTL Purchase Workspace | Not started |
+| 20 | Persian RTL Purchase Workspace | Completed |
 | 21 | Purchase Queries and Operational Reports | Not started |
 | 22 | Domain and Application Tests | Not started |
 | 23 | SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests | Not started |
@@ -397,6 +399,30 @@ Mandatory references:
 - Core Step 19 security contract test was committed before the secured Purchase service/security contracts existed.
 - Fresh final source verification checks permission uniqueness/catalog registration, persisted-Branch authorization, current-cycle Approval gating, request+operation Audit traceability, deterministic shared Approval/Audit identities, shared-module dependency and Step Status.
 - Full package execution is not claimed unless the package test/typecheck commands are observed successfully; formal Desktop permission wiring is Step 20 and broad integration validation remains Step 23/24.
+
+
+## Step 20 — Persian RTL Purchase Workspace
+
+### Exit Criteria and Evidence
+
+- Added permission-scoped Desktop route `/purchases/documents` and navigation entry `اسناد خرید` under `خرید و تدارکات`.
+- Added Persian RTL Purchase list/detail workspace with status/version surfaces, commercial line table, totals, lifecycle actions and visible lifecycle history.
+- Purchase dates remain Gregorian internally while the UI accepts/displays Jalali dates and uses `fa-IR-u-ca-persian`; quantity, unit-price, discount and charge inputs are explicitly LTR.
+- Added Supplier selector from active Party master data constrained to the Supplier role and Product/Service selector from active purchasable Product master data.
+- Supplier and Product/Service facts are captured through the existing Purchase snapshot builders; Product unit/tax profiles feed `PurchaseCommercialTerms` instead of duplicating commercial semantics in React.
+- New Purchase creation supports Purchase Order, Supplier Invoice, Purchase Return and Purchase Correction. Return/Correction require a confirmed original Supplier Invoice, capture `correctionReference` plus reason, and keep the original Supplier identity.
+- Confirmed compensating Return/Correction documents can be linked through the secured terminal actions on the original Supplier Invoice; confirmed source facts are not rewritten in place.
+- Lifecycle Submit/Approve/Confirm/Cancel/Reopen/Return/Correct actions remain permission-aware and go through `SecuredPurchaseService`, preserving Step 19 shared Approval/Audit behavior.
+- Stale optimistic versions map to localized feedback and force a reload of the selected persisted Purchase aggregate before the operator retries.
+- Added Purchase -> Inventory receipt-draft UI for confirmed stock Purchase Order/Supplier Invoice facts. Operator selects a destination Warehouse; Purchase sends durable source intent and the Desktop adapter creates an Inventory-owned Draft through `InventoryDraftService`, with no direct Inventory SQL write and no automatic stock confirmation.
+- Added shared Fiscal composition for current operation-date validation and Purchase number allocation through `generateDocumentNumber`; the UI does not generate numbers itself.
+- Added `@argin/purchase` and `@argin/purchase-tauri` to Desktop dependencies and the Desktop pnpm-lock importer.
+- Added responsive Purchase CSS using the shared display-density control/row/cell/gap/font tokens.
+- Added focused `purchase-workspace-contract.test.ts` before the production Workspace files; a second test-first extension froze the Return/Correction UI contract before that behavior was added.
+- Added `purchase-desktop-workspace.md`, updated module registry and documentation index.
+- Fresh source-contract verification confirms route/navigation, RTL/Jalali/LTR conventions, secured composition, Master Data selectors, Fiscal numbering/date checks, stale-version reload, Return/Correction flows, Inventory-draft staging without direct Inventory SQL, Desktop dependency registration and density tokens.
+- Step 20 intentionally does not implement Step 21 operational Purchase reports. The current frozen Purchase Application contract also has no persisted Draft-update command, so the creation modal builds the complete Draft atomically rather than inventing an alternate UI-only update path.
+- Full Desktop/package test/typecheck/build execution is not claimed unless observed successfully; broader Desktop/SQLite/Inventory/Valuation/Bridge integration remains Step 23 and final monorepo validation remains Step 24.
 
 ## Change Requests
 
