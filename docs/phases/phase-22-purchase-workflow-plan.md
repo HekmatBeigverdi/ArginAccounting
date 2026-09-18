@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–14 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 15 — Migration, Schema, Constraints and Indexing — is next.
+Steps 1–15 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 16 — SQLite Repository and Unit of Work — is next.
 
 ## Governance
 
@@ -25,6 +25,7 @@ Mandatory references:
 - [Purchase Receipt-Before-Invoice and Cost Resolution Policy](../architecture/purchase-receipt-before-invoice-policy.md)
 - [Purchase Return and Correction Workflow](../architecture/purchase-return-correction-workflow.md)
 - [Purchase Application, Query and Repository Contracts](../architecture/purchase-application-query-repository-contracts.md)
+- [Purchase SQLite Schema](../architecture/purchase-sqlite-schema.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -56,6 +57,7 @@ Mandatory references:
 - Receipt-before-invoice uses defer-until-authoritative-cost: physical receipt confirmation is not blocked, valuation remains unresolved, and later authoritative cost requires deterministic recalculation from the affected movement.
 - Returns and corrections are immutable compensating Purchase documents. They never rewrite confirmed supplier invoices, confirmed Inventory movements or historical authoritative Cost Inputs in place.
 - Application contracts are persistence-neutral and expose durable Purchase document, commercial fact, match, cost-input, request and operation identities without SQLite row IDs.
+- Purchase persistence is additive and durable-ID based: lifecycle/match facts are append-only, document numbering is Fiscal/Branch scoped, and Bridge-ready synchronization metadata is stored without making SQLite row identity authoritative.
 - Application Services re-check current Fiscal eligibility before Purchase mutations, keep Purchase writes inside `PurchaseUnitOfWork`, and invoke Inventory/Valuation only through explicit ports without direct cross-context persistence.
 - Valuation recalculation caused by a newly committed Purchase-backed Cost Input occurs only after the Purchase UoW has committed that Cost Input.
 
@@ -77,7 +79,7 @@ Mandatory references:
 | 12 | Purchase Return and Correction Workflow | Completed |
 | 13 | Application, Query and Repository Contracts | Completed |
 | 14 | Application Services and Transaction Boundaries | Completed |
-| 15 | Migration, Schema, Constraints and Indexing | Not started |
+| 15 | Migration, Schema, Constraints and Indexing | Completed |
 | 16 | SQLite Repository and Unit of Work | Not started |
 | 17 | Idempotency, Optimistic Concurrency and Replay Safety | Not started |
 | 18 | Argin Bridge Purchase Synchronization Contract | Not started |
@@ -266,6 +268,27 @@ Mandatory references:
 - Added architecture documentation in `purchase-application-services-and-transaction-boundaries.md`.
 - TDD RED was established by committing the Step 14 application-service test before the service module existed.
 - Direct full-package execution from this session was attempted after implementation, but the execution container could not resolve `github.com`; therefore no fresh full-package pass is claimed here. Formal package/monorepo validation remains Steps 22–24.
+
+
+## Step 15 — Migration, Schema, Constraints and Indexing
+
+### Exit Criteria and Evidence
+
+- Added and registered Desktop migration `0030_purchase_workflow.sql` as migration version 30 after Phase 21 migrations 28/29.
+- Added durable Purchase tables for documents, lines, lifecycle, commercial facts, receipt/invoice matches, Purchase valuation Cost Inputs and idempotency storage.
+- Purchase document storage preserves Company/Branch/Fiscal/Supplier scope, immutable Supplier snapshot JSON, source/correction references, optimistic version and Bridge-ready synchronization metadata.
+- Purchase lines preserve durable item identity and immutable item snapshot JSON while commercial pricing remains normalized in `purchase_commercial_facts`; downstream Inventory/Valuation flows must not create duplicate operator-entered commercial values.
+- Commercial monetary values are constrained to non-negative JavaScript-safe integers; percentage tax rate storage is bounded to basis-point range and currency is normalized to uppercase three-letter form.
+- Lifecycle and receipt/invoice match facts are append-only at SQLite boundary through UPDATE/DELETE rejection triggers.
+- Document numbers are unique within Company + Fiscal Year + Branch + Purchase document type; duplicate invoice-line/receipt-line match pairs are rejected; one current Purchase Cost Input exists per Inventory movement.
+- `purchase_idempotency` reserves durable Company/request and Company/operation uniqueness plus payload fingerprint/outcome storage for Step 17 without defining replay semantics early.
+- Indexes cover Step 13 list/query paths, Supplier/Branch/Fiscal filters, match lookups from both sides, Cost Input movement lookup and future Bridge incremental-change scans.
+- Migration is additive and performs no destructive transformation of existing Inventory/Valuation data; concrete SQLite repositories and pinned transaction UoW remain Step 16.
+- Updated the canonical Database Dictionary and added architecture documentation in `purchase-sqlite-schema.md`.
+- TDD RED was observed before implementation: the focused migration-contract suite failed 5/5 because migration version 30 and `0030_purchase_workflow.sql` did not yet exist.
+- Fresh focused migration-contract verification after implementation: 5 tests passed, 0 failed.
+- Fresh SQLite execution of the final Step 15 schema passed with dependency-compatible tables and exercised document-number uniqueness, append-only lifecycle, duplicate match rejection, Cost Input movement uniqueness and operation-ID uniqueness.
+- Full empty-database/upgrade/restart/rollback/Desktop integration validation remains owned by Steps 23–24 and is not claimed here.
 
 ## Change Requests
 
