@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–15 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 16 — SQLite Repository and Unit of Work — is next.
+Steps 1–16 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 17 — Idempotency, Optimistic Concurrency and Replay Safety — is next.
 
 ## Governance
 
@@ -26,6 +26,7 @@ Mandatory references:
 - [Purchase Return and Correction Workflow](../architecture/purchase-return-correction-workflow.md)
 - [Purchase Application, Query and Repository Contracts](../architecture/purchase-application-query-repository-contracts.md)
 - [Purchase SQLite Schema](../architecture/purchase-sqlite-schema.md)
+- [Purchase SQLite Persistence and Unit of Work](../architecture/purchase-sqlite-persistence.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -60,6 +61,8 @@ Mandatory references:
 - Purchase persistence is additive and durable-ID based: lifecycle/match facts are append-only, document numbering is Fiscal/Branch scoped, and Bridge-ready synchronization metadata is stored without making SQLite row identity authoritative.
 - Application Services re-check current Fiscal eligibility before Purchase mutations, keep Purchase writes inside `PurchaseUnitOfWork`, and invoke Inventory/Valuation only through explicit ports without direct cross-context persistence.
 - Valuation recalculation caused by a newly committed Purchase-backed Cost Input occurs only after the Purchase UoW has committed that Cost Input.
+- `@argin/purchase-tauri` implements the persistence-neutral contracts over one transaction-bound `DatabaseSession`; Purchase repositories may read Inventory authority but never write Inventory-owned tables directly.
+- Historical Purchase Fiscal scope is persisted and rehydrated from captured facts rather than reconstructed from current Fiscal state.
 
 ## Step Status
 
@@ -80,7 +83,7 @@ Mandatory references:
 | 13 | Application, Query and Repository Contracts | Completed |
 | 14 | Application Services and Transaction Boundaries | Completed |
 | 15 | Migration, Schema, Constraints and Indexing | Completed |
-| 16 | SQLite Repository and Unit of Work | Not started |
+| 16 | SQLite Repository and Unit of Work | Completed |
 | 17 | Idempotency, Optimistic Concurrency and Replay Safety | Not started |
 | 18 | Argin Bridge Purchase Synchronization Contract | Not started |
 | 19 | Permissions, Approval, Audit and Traceability | Not started |
@@ -289,6 +292,31 @@ Mandatory references:
 - Fresh focused migration-contract verification after implementation: 5 tests passed, 0 failed.
 - Fresh SQLite execution of the final Step 15 schema passed with dependency-compatible tables and exercised document-number uniqueness, append-only lifecycle, duplicate match rejection, Cost Input movement uniqueness and operation-ID uniqueness.
 - Full empty-database/upgrade/restart/rollback/Desktop integration validation remains owned by Steps 23–24 and is not claimed here.
+
+
+## Step 16 — SQLite Repository and Unit of Work
+
+### Exit Criteria and Evidence
+
+- Added new workspace package `@argin/purchase-tauri` with no reverse dependency from `@argin/purchase`.
+- Added concrete `SqlitePurchaseDocumentRepository`, `SqlitePurchaseCommercialFactRepository`, `SqlitePurchaseReceiptInvoiceMatchRepository` and `SqlitePurchaseValuationCostInputRepository`.
+- Added `SqlitePurchaseUnitOfWork`; every callback receives all four repositories over one transaction-bound `DatabaseSession`, and `sessionFor(context)` is valid only while that transaction callback is active.
+- Production transaction semantics are delegated to `DatabaseExecutor.transaction()`; Desktop composition therefore inherits the pinned SQLite `BEGIN IMMEDIATE / COMMIT / ROLLBACK` guarantee already provided by `@argin/database-tauri`.
+- Purchase document reads rehydrate through Domain invariants, including immutable Supplier/Item snapshots, lifecycle history and the complete captured Fiscal scope.
+- Document update is compare-and-swap using Company + document ID + expected version and maps stale existing rows to `PURCHASE_APP_VERSION_CONFLICT`.
+- Commercial Fact rehydration recreates `PurchaseCommercialTerms` through Domain normalization and cross-checks indexed quantity/unit/price/currency/tax columns against the stored authoritative JSON fact.
+- Commercial Fact replacement is revision-aware and uses per-line compare-and-swap.
+- Receipt/invoice Match repository reads/appends only Purchase-owned immutable match facts and never writes Inventory receipt rows.
+- Purchase Cost Input repository persists/replaces only Purchase-owned provenance; it never calculates FIFO/MWA or writes Inventory/Inventory-Valuation tables.
+- `listUnresolvedByCompany` derives receipt-before-invoice states from authoritative confirmed Purchase-backed Inventory receipt movements plus Purchase Match/Commercial facts without creating a second operator-entry path.
+- Step 16 exposed a Step 15 persistence gap: the full historical `PurchaseDocumentScope` snapshot was not durable. Added and registered additive migration `0031_purchase_scope_snapshot.sql` to persist Fiscal year/period date bounds, captured statuses and `lockedThroughDate`; new writes reject incomplete/invalid scope snapshots.
+- Added `purchase-sqlite-persistence.md`, updated Database Dictionary, module registry and workspace lockfile.
+- TDD contract tests for the scope correction and SQLite adapter were committed before production adapter files existed.
+- Direct full-package RED/GREEN execution from this session remains unavailable because the execution container cannot resolve `github.com`; no full `@argin/purchase-tauri` package pass is claimed.
+- Fresh static verification against final GitHub source passed all checked invariants: four repositories, CAS SQL, Domain rehydration, transaction-bound UoW, scope migration registration and no direct Inventory writes.
+- Fresh executable focused UoW verification: 2 tests passed, 0 failed, including success and rollback cleanup.
+- Fresh SQLite execution of migration 0031 passed and rejected invalid insert/update Fiscal scope snapshots.
+- Full repository/real-database restart, rollback, upgrade and Desktop integration validation remains Steps 23–24.
 
 ## Change Requests
 
