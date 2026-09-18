@@ -157,5 +157,36 @@ export type {
   PurchaseValuationRecalculationPort,
 } from "./application/purchase-application-service.ts";
 
+
+export {
+  PURCHASE_SYNC_CHANGE_KINDS,
+  PURCHASE_SYNC_CONTRACT_VERSION,
+  PurchaseSyncContractError,
+  createPurchaseCommercialFactSyncEnvelope,
+  createPurchaseDocumentSyncTombstoneEnvelope,
+  createPurchaseDocumentSyncUpsertEnvelope,
+  createPurchaseReceiptInvoiceMatchSyncEnvelope,
+  createPurchaseValuationCostInputSyncEnvelope,
+} from "./application/contracts/purchase-sync.ts";
+export type {
+  CreatePurchaseCommercialFactSyncInput,
+  CreatePurchaseDocumentSyncTombstoneInput,
+  CreatePurchaseDocumentSyncUpsertInput,
+  CreatePurchaseReceiptInvoiceMatchSyncInput,
+  CreatePurchaseValuationCostInputSyncInput,
+  PurchaseCommercialFactSyncEnvelope,
+  PurchaseDocumentSyncEnvelope,
+  PurchaseDocumentSyncTombstoneEnvelope,
+  PurchaseDocumentSyncUpsertEnvelope,
+  PurchaseReceiptInvoiceMatchSyncEnvelope,
+  PurchaseSyncChangeKind,
+  PurchaseSyncContractErrorCode,
+  PurchaseSyncDependency,
+  PurchaseSyncDocumentReference,
+  PurchaseSyncExternalReference,
+  PurchaseSyncOrigin,
+  PurchaseValuationCostInputSyncEnvelope,
+} from "./application/contracts/purchase-sync.ts";
+
 export { PURCHASE_DOMAIN_ERROR_CODES, PurchaseDomainError } from "./domain/purchase-domain-errors.ts";
 export type { PurchaseDomainErrorCode } from "./domain/purchase-domain-errors.ts";
