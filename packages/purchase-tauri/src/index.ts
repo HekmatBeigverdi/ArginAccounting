@@ -1,6 +1,7 @@
 export {
   SqlitePurchaseCommercialFactRepository,
   SqlitePurchaseDocumentRepository,
+  SqlitePurchaseIdempotencyRepository,
   SqlitePurchaseReceiptInvoiceMatchRepository,
   SqlitePurchaseValuationCostInputRepository,
 } from "./sqlite-purchase-repositories.ts";
