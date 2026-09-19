@@ -8,6 +8,7 @@ import type { PurchaseAuditAction, PurchaseAuditEvent, PurchaseAuditSink } from 
 const auditAction = (action: PurchaseAuditAction): AuditAction => {
   switch (action) {
     case "purchase.document.create": return "create";
+    case "purchase.document.edit": return "update";
     case "purchase.document.submit": return "submit";
     case "purchase.document.approve": return "approve";
     case "purchase.document.cancel": return "cancel";

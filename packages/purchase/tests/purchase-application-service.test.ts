@@ -83,6 +83,7 @@ function createHarness() {
       async findByNumber() { return null; },
       async list() { return [...documents.values()]; },
       async add(document: any) { events.push("document:add"); documents.set(document.documentId, document); },
+      async replaceLines() {},
       async update(document: any, expectedVersion: number) {
         events.push(`document:update:${expectedVersion}`);
         documents.set(document.documentId, document);
@@ -96,6 +97,11 @@ function createHarness() {
         for (const fact of facts) commercialFacts.set(`${fact.purchaseDocumentId}:${fact.purchaseLineId}`, fact);
       },
       async replaceBatch() {},
+      async removeByDocument(_companyId: string, documentId: string) {
+        for (const [key, fact] of commercialFacts) {
+          if (fact.purchaseDocumentId === documentId) commercialFacts.delete(key);
+        }
+      },
     },
     matches: {
       async findById(_companyId: string, matchId: string) { return matches.find(x => x.matchId === matchId) ?? null; },
@@ -198,6 +204,49 @@ test("lifecycle mutation rechecks current fiscal eligibility and uses expected a
   const submitted = await h.services.commands.submit({ context: submitContext, documentId: created.documentId, expectedVersion: created.version });
   assert.equal(submitted.status, "submitted");
   assert.deepEqual(h.events, ["uow:begin", "fiscal:check", "document:update:1", "idempotency:add", "uow:commit"]);
+});
+
+test("editing a submitted document is rejected even with its current version", async () => {
+  const h = createHarness();
+  const created = await h.services.commands.create(createCommand());
+  const submitted = await h.services.commands.submit({
+    context: { ...context, requestId: "submit", operationId: "submit", payloadFingerprint: "submit" },
+    documentId: created.documentId, expectedVersion: created.version,
+  });
+  await assert.rejects(h.services.commands.edit({
+    context: { ...context, requestId: "edit", operationId: "edit", payloadFingerprint: "edit" },
+    documentId: submitted.documentId, expectedVersion: submitted.version,
+    changes: { ...createCommand().document, description: "Forbidden change" },
+    commercialTermsByLine: createCommand().commercialTermsByLine,
+  }), (error: unknown) => error instanceof Error && "field" in error && error.field === "status");
+  assert.equal(h.documents.get(created.documentId).status, "submitted");
+  assert.equal(h.documents.get(created.documentId).description, created.description);
+});
+
+test("reopened draft can be edited and replayed without changing its lifecycle history or reserving a number", async () => {
+  const h = createHarness();
+  let document = await h.services.commands.create(createCommand());
+  for (const action of ["submit", "approve", "reopen"] as const) {
+    document = await h.services.commands[action]({
+      context: { ...context, requestId: action, operationId: action, payloadFingerprint: action },
+      documentId: document.documentId, expectedVersion: document.version, reason: "Update draft",
+    });
+  }
+  const command = {
+    context: { ...context, requestId: "edit", operationId: "edit", payloadFingerprint: "edit" },
+    documentId: document.documentId, expectedVersion: document.version,
+    changes: { ...createCommand().document, description: "Edited after reopening" },
+    commercialTermsByLine: createCommand().commercialTermsByLine,
+  };
+  h.events.length = 0;
+  const edited = await h.services.commands.edit(command);
+  assert.equal(edited.version, document.version + 1);
+  assert.deepEqual(edited.lifecycleHistory, document.lifecycleHistory);
+  assert.equal(edited.documentNumber, document.documentNumber);
+  assert.equal(edited.description, "Edited after reopening");
+  assert.ok(!h.events.includes("number:reserve"));
+  assert.deepEqual(await h.services.commands.edit(command), edited);
+  assert.equal(h.documents.get(document.documentId).version, edited.version);
 });
 
 test("Inventory receipt staging resolves Purchase-owned commercial facts and only calls the Inventory port after Purchase read transaction", async () => {

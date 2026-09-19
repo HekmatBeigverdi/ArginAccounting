@@ -114,6 +114,7 @@ export {
 } from "./application/contracts/purchase-application-contracts.ts";
 export type {
   CreatePurchaseCommand,
+  EditPurchaseCommand,
   GetPurchaseDocumentQuery,
   GetPurchaseReceiptCostDecisionQuery,
   MatchPurchaseReceiptInvoiceCommand,

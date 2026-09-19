@@ -40,6 +40,10 @@ const mapWriteError = (error: unknown): never => {
     return appError("inventory.application.movement-duplicate", "reversalOfMovementId");
   }
   if (text.includes("opening")) return appError("inventory.application.opening-duplicate", "openingKey");
+  if (text.includes("unique") && (text.includes("uq_inventory_documents_source") ||
+      (text.includes("inventory_documents") && text.includes("source_document_id")))) {
+    return appError("inventory.application.source-document-duplicate", "sourceReference");
+  }
   if (text.includes("document") && text.includes("unique")) {
     return appError("inventory.application.document-number-duplicate", "documentNumber");
   }
@@ -191,6 +195,15 @@ const appendMissingLifecycle = async (db: DatabaseSession, document: InventoryDo
 
 export class SqliteInventoryDocumentRepository implements InventoryDocumentRepository {
   constructor(private readonly db: DatabaseSession) {}
+
+  async findBySource(companyId: string, sourceSystem: string, sourceDocumentType: string, sourceDocumentId: string): Promise<InventoryDocumentSnapshot | null> {
+    const row = await this.db.queryOne<DocumentRow>(
+      `SELECT * FROM inventory_documents WHERE company_id=? AND source_system=?
+        AND source_document_type=? AND source_document_id=? AND deleted_at IS NULL`,
+      [companyId, sourceSystem, sourceDocumentType, sourceDocumentId],
+    );
+    return row ? hydrateDocument(this.db, row) : null;
+  }
 
   async findById(companyId: string, documentId: string): Promise<InventoryDocumentSnapshot | null> {
     const row = await this.db.queryOne<DocumentRow>(

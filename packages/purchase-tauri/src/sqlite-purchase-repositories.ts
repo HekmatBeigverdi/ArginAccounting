@@ -31,7 +31,7 @@ const appError = (
 const errorText = (error: unknown): string =>
   (error instanceof Error ? error.message : String(error)).toLowerCase();
 
-const mapWriteError = (error: unknown, field = "persistence"): never => {
+const mapWriteError = (error: unknown, _field = "persistence"): never => {
   if (error instanceof PurchaseApplicationError) throw error;
   const text = errorText(error);
   if (text.includes("purchase_documents") && text.includes("unique")) {
@@ -373,6 +373,13 @@ export class SqlitePurchaseDocumentRepository implements PurchaseDocumentReposit
     }
   }
 
+  async replaceLines(document: PurchaseDocumentSnapshot): Promise<void> {
+    if (document.status !== "draft") return appError("PURCHASE_APP_INPUT_INVALID", "status");
+    await this.db.execute("DELETE FROM purchase_document_lines WHERE company_id=? AND document_id=?",
+      [document.companyId, document.documentId]);
+    for (const line of document.lines) await writeLine(this.db, document, line);
+  }
+
   async update(document: PurchaseDocumentSnapshot, expectedVersion: number): Promise<void> {
     const source = document.sourceReference;
     const correction = document.correctionReference;
@@ -487,6 +494,11 @@ export class SqlitePurchaseCommercialFactRepository implements PurchaseCommercia
       [companyId, purchaseDocumentId],
     );
     return Object.freeze(rows.map(hydrateCommercialFact));
+  }
+
+  async removeByDocument(companyId: string, purchaseDocumentId: string): Promise<void> {
+    await this.db.execute("DELETE FROM purchase_commercial_facts WHERE company_id=? AND purchase_document_id=?",
+      [companyId, purchaseDocumentId]);
   }
 
   async addBatch(facts: readonly PurchaseCommercialFactSnapshot[]): Promise<void> {

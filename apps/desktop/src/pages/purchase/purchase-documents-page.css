@@ -187,7 +187,7 @@
 .purchase-new-lines { display: grid; gap: var(--ui-density-gap); }
 .purchase-draft-line {
   display: grid;
-  grid-template-columns: 34px minmax(140px, 1fr) 130px 140px auto;
+  grid-template-columns: 34px minmax(100px, 1fr) auto auto auto auto;
   align-items: center;
   gap: var(--ui-density-gap);
   min-height: var(--ui-density-row-height);

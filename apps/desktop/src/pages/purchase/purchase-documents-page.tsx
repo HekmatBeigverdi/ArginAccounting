@@ -22,11 +22,11 @@ import { useAuditServices } from "../../composition/audit";
 import {
   createPurchaseWorkspaceServices,
   type PurchaseWorkspaceDetail,
-  type PurchaseWorkspaceLineInput,
   type PurchaseWorkspaceServices,
 } from "../../composition/purchase/create-purchase-workspace-services";
 import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
+import { emptyLine, latinDigits, purchaseLineDrafts, purchaseLineInput, type LineDraft } from "./purchase-draft-form";
 import "./purchase-documents-page.css";
 
 const TYPE_LABELS: Record<PurchaseDocumentType, string> = {
@@ -44,6 +44,10 @@ const STATUS_LABELS: Record<PurchaseDocumentStatus, string> = {
   returned: "برگشت‌شده",
   corrected: "اصلاح‌شده",
 };
+const RECEIPT_STATUS_LABELS: Record<string, string> = {
+  draft: "پیش‌نویس", submitted: "ارسال‌شده", approved: "تأییدشده",
+  confirmed: "قطعی", cancelled: "لغوشده", reversed: "برگشت‌شده",
+};
 const faDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
   year: "numeric",
   month: "2-digit",
@@ -58,10 +62,6 @@ const faDateTime = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
 });
 const money = new Intl.NumberFormat("fa-IR");
 
-const latinDigits = (value: string) =>
-  value
-    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
-    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
 const div = (a: number, b: number) => Math.trunc(a / b);
 const mod = (a: number, b: number) => a - Math.trunc(a / b) * b;
 function jalCal(jy: number) {
@@ -173,36 +173,27 @@ function jalaliToGregorian(value: string) {
   );
 }
 
-interface LineDraft {
-  productId: string;
-  productTitle: string;
-  quantity: string;
-  unitId: string;
-  unitTitle: string;
-  unitPrice: string;
-  discountPercent: string;
-  chargeAmount: string;
-  description: string;
-}
-const emptyLine = (): LineDraft => ({
-  productId: "",
-  productTitle: "",
-  quantity: "",
-  unitId: "",
-  unitTitle: "",
-  unitPrice: "",
-  discountPercent: "0",
-  chargeAmount: "0",
-  description: "",
-});
-
 function errorMessage(error: unknown): string {
   if (error instanceof PurchaseApplicationError) {
     if (error.code === "PURCHASE_APP_VERSION_CONFLICT")
       return "این سند هم‌زمان تغییر کرده است. نسخه جدید بارگذاری شد؛ دوباره عملیات را بررسی کنید.";
     if (error.code === "PURCHASE_APP_UNAUTHORIZED")
       return "برای این عملیات مجوز کافی ندارید.";
+    if (error.field === "status") return "فقط سند پیش‌نویس قابل ویرایش است؛ وضعیت سند را بازخوانی کنید.";
+    if (error.field === "scope") return "شرکت، شعبه، سال مالی و نوع سند هنگام ویرایش قابل تغییر نیستند.";
     if (error.field === "approval") return "چرخه تأیید این سند کامل نشده است.";
+    if (error.field === "fiscalYearId")
+      return "سال مالی انتخاب‌شده برای شرکت فعال معتبر نیست؛ سال مالی را دوباره انتخاب کنید.";
+    if (error.field === "businessDate")
+      return "تاریخ فاکتور خارج از محدوده سال مالی فعال است؛ تاریخ فاکتور یا سال مالی فعال بالای برنامه را اصلاح کنید.";
+    if (error.field === "fiscalPeriodId")
+      return "برای تاریخ فاکتور در سال مالی فعال، دوره مالی تعریف نشده است؛ دوره‌های مالی را بررسی کنید.";
+    if (error.field === "supplierId")
+      return "تأمین‌کننده در شرکت فعال یافت نشد؛ تأمین‌کننده را دوباره انتخاب کنید.";
+    if (error.field === "supplierRole")
+      return "طرف حساب انتخاب‌شده نقش تأمین‌کننده ندارد؛ یک تأمین‌کننده انتخاب کنید.";
+    if (error.field === "supplierStatus")
+      return "تأمین‌کننده انتخاب‌شده غیرفعال است؛ یک تأمین‌کننده فعال انتخاب کنید.";
     return "عملیات خرید معتبر نیست؛ " + error.field;
   }
   if (error instanceof Error && error.message) return error.message;
@@ -226,6 +217,8 @@ export function PurchaseDocumentsPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [newOpen, setNewOpen] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<PurchaseDocumentSnapshot | null>(null);
+  const [editingLine, setEditingLine] = useState<number | null>(null);
   const [reasonOpen, setReasonOpen] = useState<"cancel" | "reopen" | null>(
     null,
   );
@@ -315,6 +308,9 @@ export function PurchaseDocumentsPage() {
   const openNew = async () => {
     if (!services || !active.companyId) return;
     setError("");
+    setEditingDocument(null);
+    setEditingLine(null);
+    setProduct(null);
     setLines([]);
     setLineDraft(emptyLine());
     setNewDraft((d) => ({
@@ -330,6 +326,54 @@ export function PurchaseDocumentsPage() {
     setSuppliers(s);
     setItems(p);
     setNewOpen(true);
+  };
+
+  const openEdit = async () => {
+    if (!services || !selected) return;
+    setError("");
+    try {
+      const [fresh, suppliers, items] = await Promise.all([
+        services.get(selected.companyId, selected.documentId),
+        services.selectSuppliers(selected.companyId),
+        services.selectItems(selected.companyId),
+      ]);
+      if (!fresh) throw new Error("سند خرید یافت نشد.");
+      if (fresh.document.status !== "draft") {
+        setDetail(fresh);
+        throw new Error("فقط سند پیش‌نویس قابل ویرایش است.");
+      }
+      const drafts = purchaseLineDrafts(fresh);
+      setDetail(fresh);
+      setEditingDocument(fresh.document);
+      setEditingLine(null);
+      setProduct(null);
+      setLineDraft(emptyLine());
+      setLines(drafts);
+      setSuppliers(suppliers);
+      setItems(items);
+      setNewDraft({
+        documentType: fresh.document.documentType,
+        supplierId: fresh.document.supplierId,
+        businessDate: gregorianToJalali(fresh.document.businessDate),
+        description: fresh.document.description ?? "",
+        originalDocumentId: fresh.document.correctionReference?.documentId ?? "",
+        correctionReason: fresh.document.correctionReference?.reason ?? "",
+      });
+      setNewOpen(true);
+    } catch (error) { setError(errorMessage(error)); }
+  };
+
+  const editLine = async (index: number) => {
+    if (!services || !lines[index]) return;
+    setError("");
+    try {
+      const line = lines[index]!;
+      const item = await services.getItem(editingDocument?.companyId ?? active.companyId, line.productId);
+      if (!item) throw new Error("کالای این ردیف یافت نشد.");
+      setProduct(item);
+      setLineDraft({ ...line });
+      setEditingLine(index);
+    } catch (error) { setError(errorMessage(error)); }
   };
 
   const chooseProduct = async (productId: string) => {
@@ -350,6 +394,7 @@ export function PurchaseDocumentsPage() {
       ...d,
       productId,
       productTitle: selectedItem?.title ?? "",
+      taxLabel: undefined,
       unitId: defaultUnit,
       unitTitle: u?.title ?? "",
     }));
@@ -366,36 +411,38 @@ export function PurchaseDocumentsPage() {
     ) {
       return;
     }
-    setLines((current) => [...current, lineDraft]);
+    setLines((current) => editingLine === null
+      ? [...current, lineDraft]
+      : current.map((line, index) => index === editingLine ? lineDraft : line));
+    setEditingLine(null);
     setLineDraft(emptyLine());
     setProduct(null);
   };
 
   const createDocument = async (event: FormEvent) => {
     event.preventDefault();
-    if (
-      !services ||
-      !active.companyId ||
-      !active.branchId ||
-      !active.fiscalYearId ||
-      !lines.length
-    )
+    if (saving) return;
+    if (!services) {
+      setError("سرویس خرید آماده نیست؛ دوباره تلاش کنید.");
       return;
+    }
+    if (!active.companyId || !active.branchId || !active.fiscalYearId) {
+      setError("شرکت، شعبه و سال مالی فعال را انتخاب کنید.");
+      return;
+    }
+    if (!lines.length) {
+      setError("حداقل یک ردیف اضافه کنید.");
+      return;
+    }
+    if (lineDraft.productId || editingLine !== null) {
+      setError("ابتدا تغییرات ردیف را اعمال کنید یا از ویرایش ردیف انصراف دهید.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
-      const prepared: PurchaseWorkspaceLineInput[] = lines.map((line) => ({
-        productId: line.productId,
-        quantity: latinDigits(line.quantity),
-        unitId: line.unitId,
-        unitPrice: Number(latinDigits(line.unitPrice)),
-        discountRateBasisPoints: Math.round(
-          Number(latinDigits(line.discountPercent || "0")) * 100,
-        ),
-        chargeAmount: Number(latinDigits(line.chargeAmount || "0")),
-        description: line.description.trim() || null,
-      }));
-      const created = await services.create({
+      const prepared = lines.map(purchaseLineInput);
+      const input = {
         companyId: active.companyId,
         branchId: active.branchId,
         fiscalYearId: active.fiscalYearId,
@@ -413,13 +460,21 @@ export function PurchaseDocumentsPage() {
             }
           : null,
         lines: prepared,
-      });
+      };
+      const created = editingDocument
+        ? await services.edit(editingDocument, input)
+        : await services.create(input);
       setNewOpen(false);
-      setMessage("پیش‌نویس سند خرید ایجاد شد.");
+      setMessage(editingDocument ? "تغییرات سند خرید ذخیره شد." : "پیش‌نویس سند خرید ایجاد شد.");
       await reload();
       await openDocument(created.documentId);
     } catch (e) {
-      setError(errorMessage(e));
+      if (editingDocument && e instanceof PurchaseApplicationError && e.code === "PURCHASE_APP_VERSION_CONFLICT") {
+        await openDocument(editingDocument.documentId);
+        setError("این سند هم‌زمان تغییر کرده است. فرم را ببندید و ویرایش را دوباره از نسخه جدید باز کنید.");
+      } else {
+        setError(errorMessage(e));
+      }
     } finally {
       setSaving(false);
     }
@@ -510,14 +565,25 @@ export function PurchaseDocumentsPage() {
 
   const openReceipt = async () => {
     if (!services || !selected) return;
-    setWarehouses(
-      await services.selectWarehouses(
-        selected.companyId,
-        selected.scope.branchId,
-      ),
-    );
-    setWarehouseId("");
-    setReceiptOpen(true);
+    setError("");
+    try {
+      const fresh = await services.get(selected.companyId, selected.documentId);
+      if (!fresh) throw new Error("سند خرید یافت نشد.");
+      setDetail(fresh);
+      if (fresh.inventoryReceipt) {
+        setMessage("رسید انبار این سند قبلاً ایجاد شده است؛ وضعیت رسید: " +
+          RECEIPT_STATUS_LABELS[fresh.inventoryReceipt.status]);
+        return;
+      }
+      setWarehouses(
+        await services.selectWarehouses(
+          selected.companyId,
+          selected.scope.branchId,
+        ),
+      );
+      setWarehouseId("");
+      setReceiptOpen(true);
+    } catch (error) { setError(errorMessage(error)); }
   };
   const stageReceipt = async (event: FormEvent) => {
     event.preventDefault();
@@ -530,7 +596,9 @@ export function PurchaseDocumentsPage() {
         warehouseId,
       );
       setReceiptOpen(false);
-      setMessage("پیش‌نویس رسید انبار ایجاد شد: " + result.inventoryDocumentId);
+      await openDocument(selected.documentId);
+      setMessage("رسید انبار این سند ثبت شده است؛ وضعیت: " +
+        (RECEIPT_STATUS_LABELS[result.status] ?? result.status));
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -554,7 +622,7 @@ export function PurchaseDocumentsPage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="جست‌وجو در شماره سند یا تأمین‌کننده"
           />
-          <button onClick={() => void reload()} disabled={loading}>
+          <button onClick={() => void reload().then(() => selected && openDocument(selected.documentId))} disabled={loading}>
             بازخوانی
           </button>
           {can(purchasePermissions.create) && (
@@ -633,6 +701,15 @@ export function PurchaseDocumentsPage() {
                     </span>
                   </header>
                   <div className="purchase-detail__actions">
+                    {detail.inventoryReceipt && (
+                      <span className={"status status--" + detail.inventoryReceipt.status} role="status">
+                        رسید انبار {detail.inventoryReceipt.documentNumber ?? "بدون شماره"}
+                        {" — "}{RECEIPT_STATUS_LABELS[detail.inventoryReceipt.status]}
+                      </span>
+                    )}
+                    {selected?.status === "draft" && can(purchasePermissions.edit) && (
+                      <button disabled={saving} onClick={() => void openEdit()}>ویرایش</button>
+                    )}
                     {selected?.status === "draft" &&
                       can(purchasePermissions.submit) && (
                         <button onClick={() => void lifecycle("submit")}>
@@ -681,6 +758,7 @@ export function PurchaseDocumentsPage() {
                         </button>
                       )}
                     {selected?.status === "confirmed" &&
+                      !detail.inventoryReceipt &&
                       ["purchase-order", "supplier-invoice"].includes(
                         selected.documentType,
                       ) &&
@@ -840,13 +918,26 @@ export function PurchaseDocumentsPage() {
               className="purchase-modal__sheet"
               role="dialog"
               aria-modal="true"
-              aria-label="ایجاد سند خرید"
+              aria-label={editingDocument ? "ویرایش سند خرید" : "ایجاد سند خرید"}
             >
               <form className="purchase-new-header" onSubmit={createDocument}>
-                <h2>سند خرید جدید</h2>
+                <h2 className="wide">{editingDocument ? "ویرایش سند خرید " + (editingDocument.documentNumber ?? "") : "سند خرید جدید"}</h2>
+                <p className="wide">
+                  سال مالی فعال: {active.activeFiscalYear?.title ?? "انتخاب نشده"}
+                  {active.activeFiscalYear && (
+                    <> — از <bdi>{gregorianToJalali(active.activeFiscalYear.startDate)}</bdi>
+                      {" تا "}<bdi>{gregorianToJalali(active.activeFiscalYear.endDate)}</bdi></>
+                  )}
+                </p>
+                {error && (
+                  <div className="wide" role="alert">
+                    <Feedback tone="error">{error}</Feedback>
+                  </div>
+                )}
                 <label>
                   نوع سند
                   <select
+                    disabled={!!editingDocument}
                     value={newDraft.documentType}
                     onChange={(e) => {
                       const documentType = e.target
@@ -978,8 +1069,11 @@ export function PurchaseDocumentsPage() {
                       <span>
                         {money.format(Number(line.unitPrice || 0))} ریال
                       </span>
+                      <button type="button" disabled={saving || editingLine !== null || !!lineDraft.productId}
+                        onClick={() => void editLine(index)}>ویرایش</button>
                       <button
                         type="button"
+                        disabled={saving || editingLine !== null}
                         onClick={() =>
                           setLines((current) =>
                             current.filter((_, i) => i !== index),
@@ -995,7 +1089,7 @@ export function PurchaseDocumentsPage() {
                   )}
                 </section>
                 <footer className="wide">
-                  <button type="button" onClick={() => setNewOpen(false)}>
+                  <button type="button" disabled={saving} onClick={() => setNewOpen(false)}>
                     انصراف
                   </button>
                   <button
@@ -1011,12 +1105,12 @@ export function PurchaseDocumentsPage() {
                           !newDraft.correctionReason.trim()))
                     }
                   >
-                    ایجاد پیش‌نویس
+                    {saving ? "در حال ثبت…" : editingDocument ? "ذخیره تغییرات" : "ایجاد پیش‌نویس"}
                   </button>
                 </footer>
               </form>
               <form className="purchase-line-form" onSubmit={addLine}>
-                <h3>افزودن ردیف</h3>
+                <h3>{editingLine === null ? "افزودن ردیف" : "ویرایش ردیف " + (editingLine + 1)}</h3>
                 <label>
                   کالا / خدمت
                   <select
@@ -1114,11 +1208,11 @@ export function PurchaseDocumentsPage() {
                   <input
                     readOnly
                     value={
-                      product?.masterData.tax.treatment === "taxable"
+                      lineDraft.taxLabel ?? (product?.masterData.tax.treatment === "taxable"
                         ? (product.masterData.tax.vatRateBasisPoints ?? 0) /
                             100 +
                           "٪"
-                        : "معاف / مشمول نیست"
+                        : "معاف / مشمول نیست")
                     }
                   />
                 </label>
@@ -1135,8 +1229,15 @@ export function PurchaseDocumentsPage() {
                   />
                 </label>
                 <footer className="wide">
-                  <button type="submit" disabled={!product}>
-                    افزودن ردیف
+                  {(editingLine !== null || lineDraft.productId) && (
+                    <button type="button" disabled={saving} onClick={() => {
+                      setEditingLine(null);
+                      setLineDraft(emptyLine());
+                      setProduct(null);
+                    }}>انصراف از ردیف</button>
+                  )}
+                  <button type="submit" disabled={!product || saving}>
+                    {editingLine === null ? "افزودن ردیف" : "اعمال تغییرات ردیف"}
                   </button>
                 </footer>
               </form>

@@ -1,11 +1,12 @@
 import { PURCHASE_DOCUMENT_STATUSES, PURCHASE_DOCUMENT_TYPES } from "../../domain/purchase-lifecycle.ts";
-import type { PurchaseDocumentStatus, PurchaseDocumentType } from "../../domain/purchase-lifecycle.ts";
+import type { PurchaseDocumentType } from "../../domain/purchase-lifecycle.ts";
 import type { CreatePurchaseDocumentInput, PurchaseDocumentSnapshot } from "../../domain/purchase-document.ts";
 import type { PurchaseCommercialTerms } from "../../domain/purchase-commercial-semantics.ts";
 import type { PurchaseInventoryReceiptAllocation, PurchaseInventoryReceiptStageResult } from "../../domain/purchase-inventory-receipt-integration.ts";
 import type { PurchaseReceiptInvoiceMatchSnapshot } from "../../domain/purchase-receipt-invoice-matching.ts";
 import type { PurchaseReceiptBeforeInvoiceCostDecision } from "../../domain/purchase-receipt-before-invoice-policy.ts";
 import type { NormalizedPurchaseDocumentListQuery, PurchaseDocumentListQuery } from "./purchase-repository.ts";
+import type { PurchaseUnitOfWorkContext } from "./purchase-unit-of-work.ts";
 
 export interface PurchaseOperationContext {
   readonly companyId: string;
@@ -89,6 +90,12 @@ export interface PurchaseLifecycleCommand {
   readonly relatedDocumentId?: string | null;
 }
 
+export interface EditPurchaseCommand extends PurchaseLifecycleCommand {
+  readonly changes: Pick<CreatePurchaseDocumentInput,
+    "scope" | "supplierId" | "supplierSnapshot" | "businessDate" | "description" | "correctionReference" | "lines">;
+  readonly commercialTermsByLine: Readonly<Record<string, PurchaseCommercialTerms>>;
+}
+
 export interface StagePurchaseReceiptCommand {
   readonly context: PurchaseOperationContext;
   readonly purchaseDocumentId: string;
@@ -120,6 +127,7 @@ export interface GetPurchaseReceiptCostDecisionQuery {
 
 export interface PurchaseApplicationCommandService {
   create(command: CreatePurchaseCommand): Promise<PurchaseDocumentSnapshot>;
+  edit(command: EditPurchaseCommand): Promise<PurchaseDocumentSnapshot>;
   submit(command: PurchaseLifecycleCommand): Promise<PurchaseDocumentSnapshot>;
   approve(command: PurchaseLifecycleCommand): Promise<PurchaseDocumentSnapshot>;
   confirm(command: PurchaseLifecycleCommand): Promise<PurchaseDocumentSnapshot>;
@@ -139,12 +147,13 @@ export interface PurchaseApplicationQueryService {
 }
 
 export interface PurchaseNumberReservationPort {
+  /** Reserve in the owning Purchase transaction so numbering commits or rolls back with the document. */
   reserve(input: {
     readonly companyId: string;
     readonly branchId: string;
     readonly fiscalYearId: string;
     readonly documentType: PurchaseDocumentType;
-  }): Promise<string>;
+  }, context: PurchaseUnitOfWorkContext): Promise<string>;
 }
 
 export interface PurchaseFiscalEligibilityPort {

@@ -8,11 +8,13 @@ import {
 } from "@argin/fiscal-tauri";
 import {
   InventoryDraftService,
+  InventoryApplicationError,
   createInventoryDocumentLine,
   createInventoryLineOperation,
   type InventorySourceDocumentPort,
+  type InventoryDocumentSnapshot,
 } from "@argin/inventory";
-import { SqliteInventoryUnitOfWork } from "@argin/inventory-tauri";
+import { SqliteInventoryDocumentRepository, SqliteInventoryUnitOfWork } from "@argin/inventory-tauri";
 import { SqlitePartyReader } from "@argin/party-tauri";
 import type { PartyDetailDto, PartySelectorDto } from "@argin/party";
 import {
@@ -25,6 +27,7 @@ import {
   createPurchaseItemSnapshot,
   createPurchaseSupplierSnapshot,
   type PurchaseCommercialFactSnapshot,
+  type PurchaseCommercialTerms,
   type PurchaseDocumentSnapshot,
   type PurchaseDocumentType,
   type PurchaseLineTotals,
@@ -45,6 +48,7 @@ export interface PurchaseDesktopActor {
 }
 
 export interface PurchaseWorkspaceLineInput {
+  readonly lineId?: string;
   readonly productId: string;
   readonly quantity: string;
   readonly unitId: string;
@@ -59,6 +63,19 @@ export interface PurchaseWorkspaceDetail {
   readonly commercialFacts: readonly PurchaseCommercialFactSnapshot[];
   readonly lineTotals: Readonly<Record<string, PurchaseLineTotals>>;
   readonly totals: ReturnType<typeof calculatePurchaseDocumentTotals>;
+  readonly inventoryReceipt: Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version"> | null;
+}
+
+export interface PurchaseWorkspaceDraftInput {
+  readonly companyId: string;
+  readonly branchId: string;
+  readonly fiscalYearId: string;
+  readonly supplierId: string;
+  readonly documentType: PurchaseDocumentType;
+  readonly businessDate: string;
+  readonly description: string | null;
+  readonly correctionReference?: { readonly documentId: string; readonly reason: string } | null;
+  readonly lines: readonly PurchaseWorkspaceLineInput[];
 }
 
 export interface PurchaseWorkspaceServices {
@@ -69,17 +86,8 @@ export interface PurchaseWorkspaceServices {
   selectItems(companyId: string, search?: string): Promise<readonly ProductSelectorItemDto[]>;
   getItem(companyId: string, productId: string): Promise<ProductDto | null>;
   selectWarehouses(companyId: string, branchId: string): Promise<readonly WarehouseListItemDto[]>;
-  create(input: {
-    readonly companyId: string;
-    readonly branchId: string;
-    readonly fiscalYearId: string;
-    readonly supplierId: string;
-    readonly documentType: PurchaseDocumentType;
-    readonly businessDate: string;
-    readonly description: string | null;
-    readonly correctionReference?: { readonly documentId: string; readonly reason: string } | null;
-    readonly lines: readonly PurchaseWorkspaceLineInput[];
-  }): Promise<PurchaseDocumentSnapshot>;
+  create(input: PurchaseWorkspaceDraftInput): Promise<PurchaseDocumentSnapshot>;
+  edit(document: PurchaseDocumentSnapshot, input: PurchaseWorkspaceDraftInput): Promise<PurchaseDocumentSnapshot>;
   submit(document: PurchaseDocumentSnapshot, reason?: string | null): Promise<PurchaseDocumentSnapshot>;
   approve(document: PurchaseDocumentSnapshot, reason?: string | null): Promise<PurchaseDocumentSnapshot>;
   confirm(document: PurchaseDocumentSnapshot, reason?: string | null): Promise<PurchaseDocumentSnapshot>;
@@ -103,14 +111,6 @@ function prefix(type: PurchaseDocumentType): string {
 
 const approvalId = (companyId: string, documentId: string, cycle: string) =>
   "purchase-document:" + companyId + ":" + documentId + ":" + cycle;
-
-function latestSubmitCycle(document: PurchaseDocumentSnapshot): string {
-  for (let index = document.lifecycleHistory.length - 1; index >= 0; index -= 1) {
-    const item = document.lifecycleHistory[index];
-    if (item?.toStatus === "submitted") return item.occurredAt;
-  }
-  throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "approvalCycle");
-}
 
 function supplierSnapshot(detail: PartyDetailDto) {
   return createPurchaseSupplierSnapshot({
@@ -152,19 +152,19 @@ function itemSnapshot(product: ProductDto) {
   });
 }
 
-function termsFor(product: ProductDto, line: PurchaseWorkspaceLineInput) {
+function termsFor(product: ProductDto, line: PurchaseWorkspaceLineInput, previous?: PurchaseCommercialTerms) {
   if (!product.units) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "unitId");
   const entered = product.units.units.find(unit => unit.unitId === line.unitId);
   const base = product.units.units.find(unit => unit.unitId === product.units!.baseUnitId);
   if (!entered || !base) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "unitId");
   return createPurchaseCommercialTerms({
     enteredQuantity: line.quantity,
-    enteredUnit: {
+    enteredUnit: previous?.quantity.enteredUnit.unitId === line.unitId ? previous.quantity.enteredUnit : {
       unitId: entered.unitId, code: entered.code, title: entered.title,
       ratioToBase: String(entered.ratioToBase), precision: entered.precision,
       roundingMode: entered.roundingMode, taxpayerUnitCode: entered.taxpayerUnitCode ?? null,
     },
-    baseUnit: {
+    baseUnit: previous?.quantity.enteredUnit.unitId === line.unitId ? previous.quantity.baseUnit : {
       unitId: base.unitId, code: base.code, title: base.title,
       ratioToBase: String(base.ratioToBase), precision: base.precision,
       roundingMode: base.roundingMode, taxpayerUnitCode: base.taxpayerUnitCode ?? null,
@@ -172,7 +172,7 @@ function termsFor(product: ProductDto, line: PurchaseWorkspaceLineInput) {
     unitPrice: { amount: line.unitPrice, currency: "IRR" },
     discounts: line.discountRateBasisPoints > 0 ? [{ kind: "percentage", rateBasisPoints: line.discountRateBasisPoints }] : [],
     charges: line.chargeAmount > 0 ? [{ kind: "fixed", amount: { amount: line.chargeAmount, currency: "IRR" } }] : [],
-    tax: {
+    tax: previous?.tax ?? {
       treatment: product.masterData.tax.treatment,
       rateBasisPoints: product.masterData.tax.vatRateBasisPoints,
     },
@@ -188,6 +188,13 @@ export function createPurchaseWorkspaceServices(input: {
   const uow = new SqlitePurchaseUnitOfWork(database);
   const inventoryUow = new SqliteInventoryUnitOfWork(database);
   const inventoryDrafts = new InventoryDraftService(inventoryUow);
+  const inventoryDocuments = new SqliteInventoryDocumentRepository(database);
+  const findReceipt = (document: PurchaseDocumentSnapshot) => inventoryDocuments.findBySource(
+    document.companyId, "purchase", document.documentType, document.documentId,
+  );
+  const receiptResult = (receipt: InventoryDocumentSnapshot) => ({
+    inventoryDocumentId: receipt.documentId, status: receipt.status, version: receipt.version,
+  });
   const parties = new SqlitePartyReader(database);
   const products = new SqliteProductReader(database);
   const productSelector = new SqliteProductSelectorReader(database);
@@ -195,7 +202,6 @@ export function createPurchaseWorkspaceServices(input: {
   const fiscalYears = new SqliteFiscalYearRepository(database);
   const fiscalPeriods = new SqliteFiscalPeriodRepository(database);
   const locks = new SqliteHistoricalLockRepository(database);
-  const fiscalUow = new SqliteFiscalUnitOfWork(database);
 
   const can = (permission: PurchasePermission | string) =>
     actor.permissions.includes("system.full-access") || actor.permissions.includes(permission);
@@ -260,6 +266,7 @@ export function createPurchaseWorkspaceServices(input: {
           id: "purchase:" + event.action + ":" + event.operationId + ":" + (event.documentId ?? event.operationId),
           occurredAt: event.occurredAt,
           action: event.action.endsWith(".create") ? "create"
+            : event.action.endsWith(".edit") ? "update"
             : event.action.endsWith(".submit") ? "submit"
             : event.action.endsWith(".approve") ? "approve"
             : event.action.endsWith(".cancel") ? "cancel" : "status-change",
@@ -341,7 +348,8 @@ export function createPurchaseWorkspaceServices(input: {
       },
     },
     numberReservation: {
-      async reserve(args) {
+      async reserve(args, context) {
+        const fiscalUow = SqliteFiscalUnitOfWork.fromSession(uow.sessionFor(context));
         const entityType = "purchase:" + args.documentType;
         await fiscalUow.run(async ({ numberSeries }) => {
           if (!await numberSeries.findApplicable(args.companyId, args.branchId, args.fiscalYearId, entityType)) {
@@ -383,6 +391,76 @@ export function createPurchaseWorkspaceServices(input: {
     };
   };
 
+  async function prepareDraft(args: PurchaseWorkspaceDraftInput, previous?: PurchaseWorkspaceDetail) {
+    if (!args.lines.length) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "lines");
+    const year = await fiscalYears.findById(args.fiscalYearId);
+    if (!year || year.companyId !== args.companyId) {
+      throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "fiscalYearId");
+    }
+    if (args.businessDate < year.startDate || args.businessDate > year.endDate) {
+      throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "businessDate");
+    }
+    const period = await fiscalPeriods.findByDate(args.fiscalYearId, args.businessDate);
+    if (!period) {
+      throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "fiscalPeriodId");
+    }
+    const activeLocks = await locks.findActiveLocks(args.companyId, args.branchId, "purchases");
+    const supplier = await parties.getById({ companyId: args.companyId, partyId: args.supplierId });
+    if (!supplier) {
+      throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "supplierId");
+    }
+    if (!supplier.roles.includes("supplier")) {
+      throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "supplierRole");
+    }
+    if (supplier.status !== "active") {
+      throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "supplierStatus");
+    }
+    const lineInputs = [];
+    const commercialTermsByLine: Record<string, ReturnType<typeof createPurchaseCommercialTerms>> = {};
+    for (let index = 0; index < args.lines.length; index += 1) {
+      const draft = args.lines[index]!;
+      const product = await products.getById({ companyId: args.companyId, productId: draft.productId });
+      if (!product || product.status !== "active" || !product.capabilities.purchasable) {
+        throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "productId");
+      }
+      const existing = draft.lineId ? previous?.document.lines.find(line => line.lineId === draft.lineId) : undefined;
+      if (draft.lineId && !existing) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "lineId");
+      const sameItem = existing?.itemId === product.productId ? existing : undefined;
+      const priorTerms = sameItem
+        ? previous?.commercialFacts.find(fact => fact.purchaseLineId === sameItem.lineId)?.commercialTerms
+        : undefined;
+      const lineId = existing?.lineId ?? newId();
+      lineInputs.push({
+        lineId, position: index + 1,
+        lineKind: sameItem?.lineKind ?? (product.kind === "service" ? "service" as const
+          : product.masterData.operational.stockTracking ? "stock-product" as const : "non-stock-product" as const),
+        itemId: product.productId, itemType: product.kind, itemSnapshot: sameItem?.itemSnapshot ?? itemSnapshot(product),
+        description: draft.description,
+        sourceReference: existing?.sourceReference ?? null,
+      });
+      commercialTermsByLine[lineId] = termsFor(product, draft, priorTerms);
+    }
+    const createdAt = now();
+    return {
+      document: {
+        scope: {
+          companyId: args.companyId, branchId: args.branchId,
+          fiscalYearId: year.id, fiscalPeriodId: period.id,
+          fiscalYearStartDate: year.startDate, fiscalYearEndDate: year.endDate,
+          fiscalPeriodStartDate: period.startDate, fiscalPeriodEndDate: period.endDate,
+          fiscalYearStatus: year.status, fiscalPeriodStatus: period.status,
+          lockedThroughDate: activeLocks[0]?.lockedThroughDate ?? null,
+        },
+        documentId: newId(), companyId: args.companyId, supplierId: supplier.id,
+        supplierSnapshot: supplierSnapshot(supplier), documentType: args.documentType,
+        businessDate: args.businessDate, description: args.description,
+        correctionReference: args.correctionReference ?? null,
+        createdAt, lines: lineInputs,
+      },
+      commercialTermsByLine,
+    };
+  }
+
   return {
     can,
     async list(companyId, branchId, search) {
@@ -404,6 +482,7 @@ export function createPurchaseWorkspaceServices(input: {
       return {
         document, commercialFacts: facts, lineTotals: Object.freeze(lineTotals),
         totals: calculatePurchaseDocumentTotals(Object.values(lineTotals)),
+        inventoryReceipt: await findReceipt(document),
       };
     },
     selectSuppliers: (companyId, search) => parties.select({
@@ -417,55 +496,30 @@ export function createPurchaseWorkspaceServices(input: {
       companyId, branchId, includeCompanyWide: true, statuses: ["active"], limit: 100,
     }),
     async create(args) {
-      if (!args.lines.length) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "lines");
-      const year = await fiscalYears.findById(args.fiscalYearId);
-      const period = await fiscalPeriods.findByDate(args.fiscalYearId, args.businessDate);
-      const activeLocks = await locks.findActiveLocks(args.companyId, args.branchId, "purchases");
-      const supplier = await parties.getById({ companyId: args.companyId, partyId: args.supplierId });
-      if (!year || year.companyId !== args.companyId || !period || !supplier || !supplier.roles.includes("supplier") || supplier.status !== "active") {
-        throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "create");
-      }
-      const lineInputs = [];
-      const commercialTermsByLine: Record<string, ReturnType<typeof createPurchaseCommercialTerms>> = {};
-      for (let index = 0; index < args.lines.length; index += 1) {
-        const draft = args.lines[index]!;
-        const product = await products.getById({ companyId: args.companyId, productId: draft.productId });
-        if (!product || product.status !== "active" || !product.capabilities.purchasable) {
-          throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "productId");
-        }
-        const lineId = newId();
-        lineInputs.push({
-          lineId, position: index + 1,
-          lineKind: product.kind === "service" ? "service" as const
-            : product.masterData.operational.stockTracking ? "stock-product" as const : "non-stock-product" as const,
-          itemId: product.productId, itemType: product.kind, itemSnapshot: itemSnapshot(product),
-          description: draft.description,
-        });
-        commercialTermsByLine[lineId] = termsFor(product, draft);
-      }
-      const createdAt = now();
-      const rid = newId();
+      const prepared = await prepareDraft(args);
       return secured.create(security, {
         context: {
-          companyId: args.companyId, branchId: args.branchId, requestId: rid, operationId: newId(),
-          payloadFingerprint: fingerprint(args), actorUserId: actor.id, occurredAt: createdAt,
+          companyId: args.companyId, branchId: args.branchId, requestId: newId(), operationId: newId(),
+          payloadFingerprint: fingerprint(args), actorUserId: actor.id, occurredAt: prepared.document.createdAt,
         },
-        document: {
-          scope: {
-            companyId: args.companyId, branchId: args.branchId,
-            fiscalYearId: year.id, fiscalPeriodId: period.id,
-            fiscalYearStartDate: year.startDate, fiscalYearEndDate: year.endDate,
-            fiscalPeriodStartDate: period.startDate, fiscalPeriodEndDate: period.endDate,
-            fiscalYearStatus: year.status, fiscalPeriodStatus: period.status,
-            lockedThroughDate: activeLocks[0]?.lockedThroughDate ?? null,
-          },
-          documentId: newId(), companyId: args.companyId, supplierId: supplier.id,
-          supplierSnapshot: supplierSnapshot(supplier), documentType: args.documentType,
-          businessDate: args.businessDate, description: args.description,
-          correctionReference: args.correctionReference ?? null,
-          createdAt, lines: lineInputs,
-        },
-        commercialTermsByLine,
+        ...prepared,
+      });
+    },
+    async edit(document, args) {
+      await authorization.require({ branchId: document.scope.branchId }, "purchases.documents.edit");
+      if (args.companyId !== document.companyId || args.branchId !== document.scope.branchId ||
+          args.fiscalYearId !== document.scope.fiscalYearId || args.documentType !== document.documentType) {
+        throw new PurchaseApplicationError("PURCHASE_APP_SCOPE_MISMATCH", "scope");
+      }
+      const previous = await this.get(document.companyId, document.documentId);
+      if (!previous) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+      const prepared = await prepareDraft(args, previous);
+      const command = lifecycleCommand(document, "edit");
+      return secured.edit(security, {
+        ...command,
+        context: { ...command.context, payloadFingerprint: fingerprint([document.documentId, document.version, args]) },
+        changes: prepared.document,
+        commercialTermsByLine: prepared.commercialTermsByLine,
       });
     },
     submit: (document, reason) => secured.submit(security, lifecycleCommand(document, "submit", reason)),
@@ -482,8 +536,14 @@ export function createPurchaseWorkspaceServices(input: {
       relatedDocumentId,
     }),
     async stageInventoryReceipt(document, warehouseId) {
+      await authorization.require({ branchId: document.scope.branchId }, "purchases.receipts.stage");
       const detail = await this.get(document.companyId, document.documentId);
       if (!detail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+      if (detail.inventoryReceipt) return {
+        inventoryDocumentId: detail.inventoryReceipt.documentId,
+        status: detail.inventoryReceipt.status, version: detail.inventoryReceipt.version,
+      };
+      document = detail.document;
       const allocations = document.lines.filter(line => line.lineKind === "stock-product").map(line => {
         const fact = detail.commercialFacts.find(item => item.purchaseLineId === line.lineId);
         if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
@@ -495,15 +555,24 @@ export function createPurchaseWorkspaceServices(input: {
       if (!allocations.length) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "allocations");
       const rid = newId();
       const fp = fingerprint([document.documentId, warehouseId, allocations]);
-      return secured.stageInventoryReceipt(security, {
-        context: {
-          companyId: document.companyId, branchId: document.scope.branchId,
-          requestId: rid, operationId: newId(), payloadFingerprint: fp,
-          actorUserId: actor.id, occurredAt: now(),
-        },
-        purchaseDocumentId: document.documentId, inventoryDocumentId: newId(),
-        allocations, payloadFingerprint: fp,
-      });
+      try {
+        return await secured.stageInventoryReceipt(security, {
+          context: {
+            companyId: document.companyId, branchId: document.scope.branchId,
+            requestId: rid, operationId: newId(), payloadFingerprint: fp,
+            actorUserId: actor.id, occurredAt: now(),
+          },
+          purchaseDocumentId: document.documentId, inventoryDocumentId: newId(),
+          allocations, payloadFingerprint: fp,
+        });
+      } catch (error) {
+        if (error instanceof InventoryApplicationError && error.code === "inventory.application.source-document-duplicate") {
+          // Another request may have created the same source receipt after our read.
+          const existing = await findReceipt(detail.document);
+          if (existing) return receiptResult(existing);
+        }
+        throw error;
+      }
     },
   };
 }

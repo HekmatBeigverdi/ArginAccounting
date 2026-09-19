@@ -77,6 +77,20 @@ Tax treatment and rate are read from Product master data and shown rather than r
 
 The Desktop composition builds `PurchaseCommercialTerms`; pricing/tax totals are calculated by the Phase 22 Purchase pricing engine.
 
+## Draft Editing
+
+Users with `purchases.documents.edit` can open a draft in the populated Purchase form,
+change its supplier, date, description and commercial lines, then save changes.
+Document ID, number, type, company, branch, fiscal year and lifecycle history are retained.
+Existing line tax and unit snapshots are retained when editing the same item and unit.
+The form supports the same single percentage discount and fixed charge as creation;
+documents with other adjustment combinations are rejected rather than silently simplified.
+
+The secured edit command rechecks draft status, expected version and fiscal eligibility.
+Header, lines, commercial facts and replay result are committed in one transaction.
+Submitted documents cannot be edited; a document returned to draft can be edited again.
+Edits are recorded as `purchase.document.edit` / Audit `update`.
+
 ## Return and Correction
 
 Return/correction creation requires a confirmed Supplier Invoice as the original document.
@@ -133,6 +147,11 @@ When an applicable Purchase number series does not yet exist, Desktop compositio
 ## Inventory Receipt Staging
 
 For a confirmed Purchase Order or Supplier Invoice with stock-product lines, an authorized user can choose a destination Warehouse and request an Inventory receipt draft.
+
+Once a receipt exists, Purchase displays its current Inventory number and status instead of the creation button.
+The link is resolved from Inventory's persisted source reference, including receipts created before this UI update.
+Repeated requests return the existing receipt, including after Inventory confirmation; concurrent creation is
+also protected by the existing unique source constraint. Source conflicts are distinguished from duplicate numbers.
 
 The Purchase workspace sends source intent through the Purchase -> Inventory contract.
 

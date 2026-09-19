@@ -4,6 +4,7 @@ import {
   confirmPurchaseDocument,
   correctPurchaseDocument,
   createPurchaseDocument,
+  rehydratePurchaseDocument,
   reopenPurchaseDocument,
   returnPurchaseDocument,
   submitPurchaseDocument,
@@ -373,6 +374,50 @@ export function createPurchaseApplicationServices(
   };
 
   const commands: PurchaseApplicationCommandService = Object.freeze<PurchaseApplicationCommandService>({
+    async edit(command) {
+      const context = createPurchaseOperationContext(command.context);
+      const operation = operationName("edit", command.documentId);
+      return dependencies.uow.execute(async repositories => {
+        const replay = await replayIfCommitted<PurchaseDocumentSnapshot>(repositories, context, operation);
+        if (replay !== null) return replay;
+        const current = await getDocument(repositories, context.companyId, command.documentId);
+        assertContextMatchesDocument(context, current);
+        validateExpectedVersion(current, command.expectedVersion);
+        if (current.status !== "draft") return fail("PURCHASE_APP_INPUT_INVALID", "status");
+        const changes = command.changes;
+        if (changes.scope.companyId !== current.companyId ||
+            changes.scope.branchId !== current.scope.branchId ||
+            changes.scope.fiscalYearId !== current.scope.fiscalYearId) {
+          return fail("PURCHASE_APP_SCOPE_MISMATCH", "scope");
+        }
+        if (!changes.lines?.length) return fail("PURCHASE_APP_INPUT_INVALID", "lines");
+        await assertFiscalAllowed(dependencies.fiscalEligibility, current);
+        const validated = createPurchaseDocument({
+          ...current,
+          scope: changes.scope,
+          supplierId: changes.supplierId,
+          supplierSnapshot: changes.supplierSnapshot,
+          businessDate: changes.businessDate,
+          description: changes.description ?? null,
+          correctionReference: changes.correctionReference ?? null,
+          lines: changes.lines,
+        });
+        const next = rehydratePurchaseDocument({
+          ...validated,
+          lifecycleHistory: current.lifecycleHistory,
+          version: current.version + 1,
+          updatedAt: context.occurredAt,
+        });
+        await assertFiscalAllowed(dependencies.fiscalEligibility, next);
+        const facts = commercialFactsFromCreate(next, command.commercialTermsByLine);
+        await repositories.documents.update(next, command.expectedVersion);
+        await repositories.commercialFacts.removeByDocument(next.companyId, next.documentId);
+        await repositories.documents.replaceLines(next);
+        await repositories.commercialFacts.addBatch(facts);
+        return persistIdempotentOutcome(repositories, context, operation, "document",
+          next.documentId, next.version, next.status, next);
+      });
+    },
     async create(command: CreatePurchaseCommand) {
       const operation = createPurchaseOperationContext(command.context);
       if (command.document.companyId !== operation.companyId) return fail("PURCHASE_APP_SCOPE_MISMATCH", "document.companyId");
@@ -394,7 +439,7 @@ export function createPurchaseApplicationServices(
           branchId: command.document.scope.branchId,
           fiscalYearId: command.document.scope.fiscalYearId,
           documentType: command.document.documentType,
-        });
+        }, repositories);
         const document = createPurchaseDocument({ ...command.document, documentNumber });
         const facts = commercialFactsFromCreate(document, command.commercialTermsByLine);
         await repositories.documents.add(document);

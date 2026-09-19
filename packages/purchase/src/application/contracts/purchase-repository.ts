@@ -40,6 +40,8 @@ export interface PurchaseDocumentRepository {
   list(query: NormalizedPurchaseDocumentListQuery): Promise<readonly PurchaseDocumentSnapshot[]>;
   add(document: PurchaseDocumentSnapshot): Promise<void>;
   update(document: PurchaseDocumentSnapshot, expectedVersion: number): Promise<void>;
+  /** Replace draft lines inside the owning transaction, after removing their commercial facts. */
+  replaceLines(document: PurchaseDocumentSnapshot): Promise<void>;
 }
 
 export interface PurchaseCommercialFactSnapshot {
@@ -58,6 +60,7 @@ export interface PurchaseCommercialFactRepository {
   ): Promise<PurchaseCommercialFactSnapshot | null>;
   listByDocument(companyId: string, purchaseDocumentId: string): Promise<readonly PurchaseCommercialFactSnapshot[]>;
   addBatch(facts: readonly PurchaseCommercialFactSnapshot[]): Promise<void>;
+  removeByDocument(companyId: string, purchaseDocumentId: string): Promise<void>;
   replaceBatch(
     companyId: string,
     purchaseDocumentId: string,

@@ -1,5 +1,6 @@
 import type {
   CreatePurchaseCommand,
+  EditPurchaseCommand,
   GetPurchaseDocumentQuery,
   GetPurchaseReceiptCostDecisionQuery,
   MatchPurchaseReceiptInvoiceCommand,
@@ -42,6 +43,15 @@ const approvalCycleKey = (document: PurchaseDocumentSnapshot): string => {
 
 export class SecuredPurchaseService {
   constructor(public readonly deps: SecuredPurchaseServiceDependencies) {}
+
+  async edit(security: PurchaseSecurityContext, command: EditPurchaseCommand): Promise<PurchaseDocumentSnapshot> {
+    const before = await this.requireDocument(security, command, purchasePermissions.edit);
+    const result = await this.deps.application.commands.edit(command);
+    await this.record("purchase.document.edit", security, command.context, before, result, null, {
+      version: result.version,
+    });
+    return result;
+  }
 
   async create(security: PurchaseSecurityContext, command: CreatePurchaseCommand): Promise<PurchaseDocumentSnapshot> {
     await this.require(

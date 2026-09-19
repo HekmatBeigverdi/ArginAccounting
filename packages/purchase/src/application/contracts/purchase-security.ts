@@ -40,6 +40,7 @@ export interface PurchaseAuthorizationPolicy {
 
 export type PurchaseAuditAction =
   | "purchase.document.create"
+  | "purchase.document.edit"
   | "purchase.document.submit"
   | "purchase.document.approve"
   | "purchase.document.confirm"

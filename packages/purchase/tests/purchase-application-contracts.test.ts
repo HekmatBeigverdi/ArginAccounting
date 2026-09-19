@@ -66,11 +66,13 @@ test("repository and UoW contracts compose without persistence assumptions", asy
     list: async () => [],
     add: async () => undefined,
     update: async () => undefined,
+    replaceLines: async () => undefined,
   };
   const commercialFacts: PurchaseCommercialFactRepository = {
     findByLine: async () => null,
     listByDocument: async () => [],
     addBatch: async () => undefined,
+    removeByDocument: async () => undefined,
     replaceBatch: async () => undefined,
   };
   const matches: PurchaseReceiptInvoiceMatchRepository = {
