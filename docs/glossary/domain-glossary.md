@@ -83,3 +83,16 @@ This glossary defines canonical English repository terms and their Persian UI me
 ## Inventory Fiscal Scope and Number Reservation
 
 Inventory fiscal scope binds a quantity document to a fiscal year/period and origin Branch, with an optional transfer destination Branch. Number reservation uses the shared series partition of Company, year, origin Branch and document type; the display number is not the durable document identity. See [Inventory scope and numbering](../architecture/inventory-documents.md).
+
+## Purchase Workflow Terms
+
+| English | Persian | Definition |
+| --- | --- | --- |
+| Purchase Document | سند خرید | Supplier-facing commercial aggregate owned by Phase 22; includes Purchase Order, Supplier Invoice, Purchase Return and Purchase Correction. |
+| Purchase Commercial Fact | واقعیت تجاری خرید | Authoritative immutable/revisioned commercial line input containing Purchase quantity/unit price/discount/charge/tax/currency semantics; normal stock Purchase price is entered here once. |
+| Supplier Invoice | فاکتور تأمین‌کننده | Confirmed Purchase document whose authoritative commercial facts may resolve normal stock Purchase Cost Input after linkage to confirmed Inventory receipt/movement identity. |
+| Purchase Receipt / Invoice Match | تطبیق رسید و فاکتور خرید | Durable line-level allocation between a confirmed Supplier Invoice line and confirmed Inventory receipt line using canonical base quantity. |
+| Purchase-backed Cost Input | ورودی هزینه مبتنی بر خرید | Authoritative valuation input derived from confirmed Purchase Commercial Facts and durable Match/movement identity; consumed by FIFO/MWA without duplicating Supplier price entry. |
+| Receipt-before-Invoice | رسید قبل از فاکتور | Workflow where physical Inventory receipt is confirmed before authoritative Supplier Invoice cost; quantity may exist while valuation remains explicitly unresolved. |
+| Purchase Return | برگشت از خرید | Compensating Purchase document that represents supplier return and creates outbound Inventory intent without rewriting the original confirmed receipt. |
+| Purchase Correction | اصلاح خرید | Linked compensating Purchase document for commercial replacement or quantity increase/decrease; historical confirmed Purchase/Inventory facts are not edited in place. |
