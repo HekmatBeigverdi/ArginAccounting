@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–23 are complete on `phase/22-purchase-workflow`. Step 24 release preparation is implemented, but the phase is not yet release-complete because fresh full monorepo validation/promotion evidence is not available in this environment and Phase 21 promotion/reconciliation remains a release prerequisite.
+Steps 1–23 are complete. Step 24 release preparation and promotion through `develop` and `main` are complete. Fresh full monorepo validation PASS evidence is still unavailable in this environment, and semantic Tag/GitHub Release publication remains pending.
 
 ## Governance
 
@@ -103,7 +103,7 @@ Mandatory references:
 | 21 | Purchase Queries and Operational Reports | Completed |
 | 22 | Domain and Application Tests | Completed |
 | 23 | SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests | Completed |
-| 24 | Monorepo Validation, Documentation, Final Review and Release | Release prepared — validation/promotion pending |
+| 24 | Monorepo Validation, Documentation, Final Review and Release | Promotion complete — validation evidence unavailable; Tag/Release pending |
 
 ## Fixed Execution Sequence
 
@@ -496,7 +496,7 @@ Mandatory references:
 - Added the `0.22.0` release section to `CHANGELOG.md`.
 - Reconciled stale root `README.md`, `ROADMAP.md`, phase index, release checklist, root architecture, database design, module map and Purchase glossary terminology.
 - Reconfirmed release ordering: Phase 22 is based directly on Phase 21 and must not be tagged/published from a `main` state that does not contain the required Phase 21 state.
-- Reconfirmed repository state before release preparation: `develop` and `main` remain on the Phase 20 integrated baseline; Phase 21 and Phase 22 have not yet been promoted.
+- Phase 21 was promoted to `develop` via PR #21, Phase 22 was reconciled with that integration via PR #22 and promoted to `develop` via PR #23, then the integrated Phase 21 + Phase 22 state was promoted to `main` via PR #24.
 - Semantic Tag and GitHub Release creation remain manual repository-owner actions, as requested.
 
 ### Validation / Promotion Gate Still Open
@@ -505,7 +505,7 @@ Mandatory references:
 - No GitHub Actions workflow/status is registered for the current Phase 22 head, so there is no independent CI PASS evidence to substitute for local execution.
 - Therefore this record does **not** claim that `pnpm validate:phase22` passed, does **not** claim final monorepo validation passed, and does **not** claim Phase 22 is merged/released.
 - Per `phase-definition-of-done.md` and `RELEASE_CHECKLIST.md`, promotion to `develop`/`main` and semantic publication remain gated on actual observed validation evidence.
-- Phase 21 Step 20 must also be reconciled/promoted before Phase 22 publication.
+- The Phase 21 promotion prerequisite is satisfied in `main`; no separate claim is made here that the Phase 21 final validation/release gate passed.
 
 ### Prepared Release Metadata
 
