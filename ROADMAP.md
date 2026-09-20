@@ -99,16 +99,39 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Real SQLite migration/rollback/restart/balance-rebuild tests, performance/query-plan validation and Phase 20 quality gate
    - All 22 fixed steps completed and owner-accepted; semantic tag/GitHub Release `v0.20.0` remains manual
 21. 🚧 Inventory Valuation
+   - FIFO and Moving Weighted Average consume authoritative inbound Cost Inputs, not Sales prices.
+   - Manual Cost Input entry is an exception/repair path for opening, legacy, migration, manual receipt or missing upstream commercial cost; it is not the normal Purchase price-entry workflow.
+   - Normal Purchase-linked receipts must receive Cost Input automatically from Phase 22 Purchase Workflow.
+   - Registered Cost Inputs remain reviewable/traceable and historical correction must route through Audit + deterministic recalculation.
+   - Canonical pricing ownership is frozen in [Commercial Pricing and Inventory Valuation Boundary](docs/architecture/commercial-pricing-and-valuation-boundary.md).
 
 ## Purchases
 
 22. ⏳ Purchase Workflow
+   - Own supplier/Purchase commercial pricing: quantity, unit purchase price, discounts, charges, tax inputs, currency and supplier context.
+   - For stock items, link Purchase commercial lines to confirmed Inventory receipt/movement and automatically provide the authoritative Cost Input to Phase 21.
+   - User enters normal supplier price once in Purchase; Inventory Valuation must not request duplicate manual entry.
+   - Support receipt-before-invoice policy explicitly: unresolved cost or approved provisional cost followed by controlled correction/recalculation; never silent zero cost.
+   - Future higher supplier prices create new Purchase transactions and never rewrite historical receipts.
+   - Services/non-stock items do not create inventory Cost Inputs solely because they are purchased.
+   - Preserve durable source identity, Audit, idempotency, optimistic concurrency and Argin Bridge ownership boundaries.
 23. ⏳ Purchase Posting
+   - Consume Phase 22 Purchase facts and Phase 21 valuation outputs without creating a second purchase-price store.
+   - Own supplier payable, purchase/VAT accounting effects, configured Inventory/GRNI treatment, landed-cost accounting, corrections/reversals and reconciliation.
+   - Posting must preserve source integrity and idempotency and must not duplicate Purchase or Inventory authoritative pricing data.
 
 ## Sales
 
 24. ⏳ Sales Workflow
+   - Own Sales price lists and actual Sales invoice-line prices separately from inventory cost.
+   - Support extensible price-list policy: base/default, wholesale, customer/segment-specific, effective dates, currency and future tier/discount rules.
+   - The final Sales invoice-line price is a Sales commercial fact and never becomes an Inventory Cost Input.
+   - Confirmed stock sales create/consume Inventory issue movements; FIFO/MWA independently determines cost of goods sold.
+   - Product Master Data must not become a single mutable authoritative Sales-price store for all contexts.
 25. ⏳ Sales Posting
+   - Post revenue/tax/receivable from Sales commercial facts.
+   - Post COGS/inventory relief from Inventory Valuation outputs, never from selling price.
+   - Join the commercial and costing accounting effects while preserving independent source provenance and correction chains.
 
 ## Treasury
 
