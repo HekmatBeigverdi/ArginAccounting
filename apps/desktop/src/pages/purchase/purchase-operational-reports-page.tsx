@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import type {
   PurchaseDocumentRegisterReport,
   PurchaseInvoiceMatchingReport,
@@ -178,23 +178,21 @@ export function PurchaseOperationalReportsPage() {
       .catch(reason => setError(errorMessage(reason)));
   }, [services, active.companyId]);
 
-  const filters = useMemo(() => ({
-    companyId: active.companyId,
-    branchId: active.branchId || null,
-    fiscalYearId: active.fiscalYearId || null,
-    supplierId: supplierId || null,
-    fromBusinessDate: dateFrom ? jalaliToGregorian(dateFrom) : null,
-    toBusinessDate: dateTo ? jalaliToGregorian(dateTo) : null,
-    limit: pageSize,
-    offset: page * pageSize,
-  }), [active.companyId, active.branchId, active.fiscalYearId, supplierId, dateFrom, dateTo, page]);
-
   const load = async (nextPage = page) => {
     if (!services || !active.companyId || !active.fiscalYearId) return;
     setLoading(true);
     setError("");
     try {
-      const scoped = { ...filters, offset: nextPage * pageSize };
+      const scoped = {
+        companyId: active.companyId,
+        branchId: active.branchId || null,
+        fiscalYearId: active.fiscalYearId || null,
+        supplierId: supplierId || null,
+        fromBusinessDate: dateFrom ? jalaliToGregorian(dateFrom) : null,
+        toBusinessDate: dateTo ? jalaliToGregorian(dateTo) : null,
+        limit: pageSize,
+        offset: nextPage * pageSize,
+      };
       if (tab === "register") setRegister(await services.readDocumentRegister(scoped));
       else if (tab === "suppliers") setSupplierSummary(await services.readSupplierActivity(scoped));
       else if (tab === "matching") setMatching(await services.readInvoiceMatching(scoped));
