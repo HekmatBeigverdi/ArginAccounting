@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–21 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 22 — Domain and Application Tests — is next.
+Steps 1–22 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 23 — SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests — is next.
 
 ## Governance
 
@@ -32,6 +32,7 @@ Mandatory references:
 - [Purchase Security, Approval, Audit and Traceability](../security/purchase-security-approval-audit.md)
 - [Purchase Desktop Workspace](../architecture/purchase-desktop-workspace.md)
 - [Purchase Operational Reports](../architecture/purchase-operational-reports.md)
+- [Phase 22 Purchase Domain and Application Tests](../testing/phase-22-purchase-domain-application-tests.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -99,7 +100,7 @@ Mandatory references:
 | 19 | Permissions, Approval, Audit and Traceability | Completed |
 | 20 | Persian RTL Purchase Workspace | Completed |
 | 21 | Purchase Queries and Operational Reports | Completed |
-| 22 | Domain and Application Tests | Not started |
+| 22 | Domain and Application Tests | Completed |
 | 23 | SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests | Not started |
 | 24 | Monorepo Validation, Documentation, Final Review and Release | Not started |
 
@@ -447,6 +448,21 @@ Mandatory references:
 - Added focused test-first files: `purchase-operational-reports.test.ts`, `sqlite-purchase-operational-report-reader.test.ts`, and `purchase-operational-reports-contract.test.ts`.
 - Added `purchase-operational-reports.md`, documentation index entry and module-registry record; Step 20 Desktop documentation now links to the Step 21 reporting boundary.
 - Real package test/typecheck execution is not claimed unless observed successfully. Exhaustive Domain/Application tests remain Step 22, real SQLite/cross-module/Desktop integration remains Step 23, and final monorepo validation remains Step 24.
+
+
+## Step 22 — Domain and Application Tests
+
+### Exit Criteria and Evidence
+
+- Reviewed the complete existing `@argin/purchase` Domain/Application test inventory from Steps 2–21 and retained the frozen boundaries; Step 22 adds regression coverage rather than new business features.
+- Added `purchase-application-boundary-coverage.test.ts` for Company/Branch Create scope rejection, receipt-stage fingerprint conflict, receipt/invoice Match orchestration, missing receipt authority, resolved/unresolved Cost Input flows, post-commit valuation recalculation ordering, read-only queries and cost preview.
+- Added replay coverage for receipt/invoice Match and Movement Cost resolution so exact retries cannot create a second Match, write Cost Input twice or request valuation recalculation twice.
+- Added `purchase-domain-edge-coverage.test.ts` for half-away-from-zero quantity/tax rounding, quantity-increase Correction, commercial-only Correction, deterministic affected-movement identities, invalid Correction direction, exact Return decimals and duplicate compensation lines.
+- Added `purchase-security-query-coverage.test.ts` for persisted Branch re-authorization on document reads, active-Branch list scoping, view permission on cost-decision queries, and dedicated permissions/Audit for receipt staging, matching and cost resolution.
+- Existing Step tests remain the primary evidence for aggregate model, snapshots, commercial semantics, lifecycle, scope/numbering, matching, Inventory receipt intent, Cost Input, receipt-before-invoice policy, Return/Correction, replay conflicts, Approval/Audit, Bridge sync and operational reports.
+- Added `phase-22-purchase-domain-application-tests.md` as the canonical Domain/Application coverage matrix and updated documentation index/module registry.
+- Step 22 does not claim SQLite/migration/cross-module integration coverage; those remain Step 23.
+- Fresh direct package execution was attempted from this assistant environment, but repository access is blocked by `Could not resolve host: github.com`. No unobserved test/typecheck pass is claimed. Authoritative local verification remains `pnpm --filter @argin/purchase test` plus `pnpm --filter @argin/purchase typecheck`.
 
 ## Change Requests
 
