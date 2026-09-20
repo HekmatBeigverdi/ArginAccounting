@@ -66,7 +66,7 @@ export function createPurchaseReportServices(input: {
     };
   };
 
-  return Object.freeze({
+  return Object.freeze<PurchaseReportServices>({
     canView,
     canViewCompanyWide: fullAccess,
     async selectSuppliers(companyId, search) {
