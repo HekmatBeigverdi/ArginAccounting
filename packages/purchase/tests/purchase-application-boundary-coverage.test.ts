@@ -448,3 +448,71 @@ test("query services return persisted documents, bounded lists and non-mutating 
   assert.equal(h.costInputs.size, 0);
   assert.equal(h.events.includes("valuation:recalculate"), false);
 });
+
+
+test("matching replay returns the stored match before reading the Inventory receipt again", async () => {
+  const h = createHarness();
+  const invoice = await confirmedInvoice(h);
+  h.setReceiptLine(receiptLine);
+  const command = {
+    context: context("match-replay"),
+    match: {
+      matchId: "match-replay-001",
+      companyId: "company-001",
+      invoiceDocumentId: invoice.documentId,
+      invoiceLineId: "invoice-line-001",
+      receiptDocumentId: receiptLine.documentId,
+      receiptLineId: receiptLine.lineId,
+      productId: "product-001",
+      matchedBaseQuantity: "6",
+    },
+  };
+
+  const first = await h.services.commands.matchReceiptInvoice(command);
+  h.setReceiptLine(null);
+  const writesBeforeReplay = h.events.filter(value => value === "match:add").length;
+  const replay = await h.services.commands.matchReceiptInvoice(command);
+
+  assert.deepEqual(replay, first);
+  assert.equal(h.matches.length, 1);
+  assert.equal(h.events.filter(value => value === "match:add").length, writesBeforeReplay);
+});
+
+test("resolved Cost Input replay does not persist cost or trigger valuation recalculation twice", async () => {
+  const h = createHarness();
+  const invoice = await confirmedInvoice(h);
+  h.setReceiptLine(receiptLine);
+  await h.services.commands.matchReceiptInvoice({
+    context: context("match-cost-replay"),
+    match: {
+      matchId: "match-cost-replay-001",
+      companyId: "company-001",
+      invoiceDocumentId: invoice.documentId,
+      invoiceLineId: "invoice-line-001",
+      receiptDocumentId: receiptLine.documentId,
+      receiptLineId: receiptLine.lineId,
+      productId: "product-001",
+      matchedBaseQuantity: "6",
+    },
+  });
+  h.setMovement(movement);
+  const command = {
+    context: context("resolve-cost-replay"),
+    movementId: movement.movementId,
+    costInputId: "cost-input-replay-001",
+  };
+
+  const first = await h.services.commands.resolveMovementCost(command);
+  const recalcBeforeReplay = h.events.filter(value => value === "valuation:recalculate").length;
+  const costWritesBeforeReplay = h.events.filter(value => value === "cost:add" || value === "cost:replace").length;
+  h.setMovement(null);
+
+  const replay = await h.services.commands.resolveMovementCost(command);
+
+  assert.deepEqual(replay, first);
+  assert.equal(h.events.filter(value => value === "valuation:recalculate").length, recalcBeforeReplay);
+  assert.equal(
+    h.events.filter(value => value === "cost:add" || value === "cost:replace").length,
+    costWritesBeforeReplay,
+  );
+});
