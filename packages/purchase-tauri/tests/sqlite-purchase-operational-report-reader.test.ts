@@ -66,7 +66,7 @@ test("matching report reads Supplier Invoice lines only and remains bounded", as
 test("unresolved-cost report scans only confirmed Purchase receipts missing Cost Input", async () => {
   const db = new ReportDatabase();
   const reader = new SqlitePurchaseOperationalReportReader(db);
-  const result = await reader.readUnresolvedCosts(query);
+  const result = await reader.readUnresolvedCosts({ ...query, supplierId: null });
   assert.deepEqual(result, { items: [], nextOffset: null });
   const read = db.reads[0]!;
   assert.match(read.sql, /inventory_stock_movements/u);
@@ -78,4 +78,14 @@ test("unresolved-cost report scans only confirmed Purchase receipts missing Cost
   assert.match(read.sql, /d\.origin_branch_id=\?/u);
   assert.match(read.sql, /d\.fiscal_year_id=\?/u);
   assert.deepEqual(read.parameters.slice(-2), [26, 50]);
+});
+
+
+test("unresolved-cost reader rejects Supplier filter instead of silently ignoring it", async () => {
+  const db = new ReportDatabase();
+  const reader = new SqlitePurchaseOperationalReportReader(db);
+  await assert.rejects(
+    () => reader.readUnresolvedCosts(query),
+    /supplierId/u,
+  );
 });
