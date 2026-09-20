@@ -99,7 +99,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Real SQLite migration/rollback/restart/balance-rebuild tests, performance/query-plan validation and Phase 20 quality gate
    - All 22 fixed steps completed and owner-accepted; semantic tag/GitHub Release `v0.20.0` remains manual
 21. 🚧 Inventory Valuation
-   - Steps 1–19 are implemented and owner-accepted; Step 20 final monorepo validation/documentation/promotion/release remains pending.
+   - Steps 1–19 are implemented and owner-accepted; the Phase 21 code state is now included in `develop`/`main` as the required Phase 22 baseline, while its own final validation/release record remains separate.
    - FIFO and Moving Weighted Average consume authoritative inbound Cost Inputs, not Sales prices.
    - Manual Cost Input entry is an exception/repair path for opening, legacy, migration, manual receipt or missing upstream commercial cost; it is not the normal Purchase price-entry workflow.
    - Normal Purchase-linked receipts receive Cost Input through the Phase 22 Purchase Workflow boundary.
@@ -109,7 +109,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 ## Purchases
 
 22. 🚧 Purchase Workflow
-   - Steps 1–23 are implemented and owner-accepted; Step 24 release preparation is in progress and publication remains blocked until Phase 21 is promoted/reconciled and the Phase 22 full validation gate has observed PASS evidence.
+   - Steps 1–23 are implemented and owner-accepted; release preparation and promotion to `develop`/`main` are complete. Fresh full validation PASS evidence is not available in this environment; semantic Tag/GitHub Release publication is the remaining repository-owner action.
    - Own supplier/Purchase commercial pricing: quantity, unit purchase price, discounts, charges, tax inputs, currency and supplier context.
    - For stock items, link Purchase commercial lines to confirmed Inventory receipt/movement and automatically provide the authoritative Cost Input to Phase 21.
    - User enters normal supplier price once in Purchase; Inventory Valuation does not request duplicate normal Purchase price entry.
@@ -197,7 +197,7 @@ A phase is complete only when:
 
 ## Current Target
 
-Close the Phase 21 release gate first, then complete Phase 22 final validation/promotion. Phase 23 — Purchase Posting is the next implementation phase after `v0.22.0` is safely based on the promoted Phase 21 + Phase 22 state.
+Phase 22 is now promoted on top of Phase 21 in `main`. Publish `v0.22.0` from the verified `main` release commit, then Phase 23 — Purchase Posting is the next implementation phase.
 
 ## Latest Completed Inventory Milestone
 
