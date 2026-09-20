@@ -99,22 +99,25 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Real SQLite migration/rollback/restart/balance-rebuild tests, performance/query-plan validation and Phase 20 quality gate
    - All 22 fixed steps completed and owner-accepted; semantic tag/GitHub Release `v0.20.0` remains manual
 21. 🚧 Inventory Valuation
+   - Steps 1–19 are implemented and owner-accepted; Step 20 final monorepo validation/documentation/promotion/release remains pending.
    - FIFO and Moving Weighted Average consume authoritative inbound Cost Inputs, not Sales prices.
    - Manual Cost Input entry is an exception/repair path for opening, legacy, migration, manual receipt or missing upstream commercial cost; it is not the normal Purchase price-entry workflow.
-   - Normal Purchase-linked receipts must receive Cost Input automatically from Phase 22 Purchase Workflow.
-   - Registered Cost Inputs remain reviewable/traceable and historical correction must route through Audit + deterministic recalculation.
+   - Normal Purchase-linked receipts receive Cost Input through the Phase 22 Purchase Workflow boundary.
+   - Registered Cost Inputs remain reviewable/traceable and historical correction routes through Audit + deterministic recalculation.
    - Canonical pricing ownership is frozen in [Commercial Pricing and Inventory Valuation Boundary](docs/architecture/commercial-pricing-and-valuation-boundary.md).
 
 ## Purchases
 
-22. ⏳ Purchase Workflow
+22. 🚧 Purchase Workflow
+   - Steps 1–23 are implemented and owner-accepted; Step 24 release preparation is in progress and publication remains blocked until Phase 21 is promoted/reconciled and the Phase 22 full validation gate has observed PASS evidence.
    - Own supplier/Purchase commercial pricing: quantity, unit purchase price, discounts, charges, tax inputs, currency and supplier context.
    - For stock items, link Purchase commercial lines to confirmed Inventory receipt/movement and automatically provide the authoritative Cost Input to Phase 21.
-   - User enters normal supplier price once in Purchase; Inventory Valuation must not request duplicate manual entry.
-   - Support receipt-before-invoice policy explicitly: unresolved cost or approved provisional cost followed by controlled correction/recalculation; never silent zero cost.
+   - User enters normal supplier price once in Purchase; Inventory Valuation does not request duplicate normal Purchase price entry.
+   - Receipt-before-invoice remains explicitly unresolved until authoritative Supplier Invoice cost is available; silent zero cost is forbidden.
    - Future higher supplier prices create new Purchase transactions and never rewrite historical receipts.
    - Services/non-stock items do not create inventory Cost Inputs solely because they are purchased.
    - Preserve durable source identity, Audit, idempotency, optimistic concurrency and Argin Bridge ownership boundaries.
+   - Prepared release target: `v0.22.0` — `ArginAccounting v0.22.0 — Purchase Workflow`.
 23. ⏳ Purchase Posting
    - Consume Phase 22 Purchase facts and Phase 21 valuation outputs without creating a second purchase-price store.
    - Own supplier payable, purchase/VAT accounting effects, configured Inventory/GRNI treatment, landed-cost accounting, corrections/reversals and reconciliation.
@@ -194,7 +197,7 @@ A phase is complete only when:
 
 ## Current Target
 
-[Phase 21 — Inventory Valuation](docs/roadmap/roadmap.md). Phase 21 must consume immutable Phase 20 quantity movements without rewriting quantity history.
+Close the Phase 21 release gate first, then complete Phase 22 final validation/promotion. Phase 23 — Purchase Posting is the next implementation phase after `v0.22.0` is safely based on the promoted Phase 21 + Phase 22 state.
 
 ## Latest Completed Inventory Milestone
 
