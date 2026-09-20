@@ -185,6 +185,7 @@ export class SqlitePurchaseOperationalReportReader implements PurchaseOperationa
 
   async readUnresolvedCosts(queryInput: PurchaseOperationalReportQuery): Promise<PurchaseUnresolvedCostReport> {
     const query = normalizePurchaseOperationalReportQuery(queryInput);
+    if (query.supplierId !== null) throw new TypeError("purchase.report_input_invalid:supplierId");
     const where = [
       "m.company_id=?",
       "d.document_type='receipt'",
