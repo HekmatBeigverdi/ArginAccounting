@@ -6,12 +6,48 @@ export {
   SqliteInventoryMovementRepository,
 } from "./sqlite-inventory-repositories.ts";
 
+export {
+  SqliteInventoryCostLayerRepository,
+  SqliteInventoryValuationCostInputProvider,
+  SqliteInventoryValuationEntryRepository,
+  SqliteInventoryValuationMovementReader,
+  SqliteInventoryValuationPolicyRepository,
+  SqliteInventoryValuationStateRepository,
+} from "./sqlite-inventory-valuation-repositories.ts";
+
+export {
+  SqliteInventoryValuationIdempotencyRepository,
+  SqliteInventoryValuationStreamVersionRepository,
+  SqliteInventoryValuationUnitOfWork,
+} from "./sqlite-inventory-valuation-concurrency.ts";
+
+export { SqliteInventoryValuationReportReader } from "./sqlite-inventory-valuation-report-reader.ts";
+export { SqliteInventoryValuationStatusReader } from "./sqlite-inventory-valuation-status-reader.ts";
+export { SqliteInventoryValuationBootstrapService } from "./sqlite-inventory-valuation-bootstrap-service.ts";
+export type {
+  InitializeInventoryValuationInput,
+  InitializeInventoryValuationResult,
+  InventoryBootstrapValuationMethod,
+} from "./sqlite-inventory-valuation-bootstrap-service.ts";
+export { SqliteInventoryValuationLiveService } from "./sqlite-inventory-valuation-live-service.ts";
+export type { InventoryValuationCatchUpResult } from "./sqlite-inventory-valuation-live-service.ts";
+export {
+  SqliteInventoryInboundCostInputService,
+} from "./sqlite-inventory-inbound-cost-input-service.ts";
+export type {
+  CorrectManualInventoryInboundCostInput,
+  InventoryInboundCostCandidate,
+  InventoryResolvedInboundCost,
+  SetManualInventoryInboundCostInput,
+  SetManualInventoryInboundCostResult,
+} from "./sqlite-inventory-inbound-cost-input-service.ts";
 export { SqliteInventoryOpeningBalanceRepository } from "./sqlite-inventory-opening-repository.ts";
 export { SqliteInventoryUnitOfWork } from "./sqlite-inventory-unit-of-work.ts";
 export { ensureInventoryNumberSeries } from "./ensure-inventory-number-series.ts";
 export type { InventoryLineLocationTitles } from "./sqlite-inventory-workspace-reader.ts";
 export { SharedInventoryApprovalGateway } from "./shared-inventory-approval-gateway.ts";
 export { SharedInventoryAuditSink } from "./shared-inventory-audit-sink.ts";
+export { SharedInventoryValuationAuditSink } from "./shared-inventory-valuation-audit-sink.ts";
 export { InventoryWarehouseDependencyGuard } from "./inventory-warehouse-dependency-guard.ts";
 export type {
   InventoryWarehouseDependencyBlocker,
@@ -35,3 +71,4 @@ export type {
   InventoryTabularData,
   InventoryTabularRow,
 } from "./inventory-tabular-codec.ts";
+export { SqliteInventorySourceCostInputService } from "./sqlite-inventory-source-cost-input-service.ts";

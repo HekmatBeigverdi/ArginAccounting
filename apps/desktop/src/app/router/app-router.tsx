@@ -26,13 +26,15 @@ import { WarehousesPage } from "../../pages/warehouse/warehouses-page";
 import { InventoryDocumentsPage } from "../../pages/inventory/inventory-documents-page";
 import { InventoryQuantityReportsPage } from "../../pages/inventory/inventory-quantity-reports-page";
 import { InventoryTransferCenterPage } from "../../pages/inventory/inventory-transfer-center-page";
+import { InventoryValuationWorkspacePage } from "../../pages/inventory/inventory-valuation-workspace-page";
+import { PurchaseDocumentsPage } from "../../pages/purchase/purchase-documents-page";
+import { PurchaseOperationalReportsPage } from "../../pages/purchase/purchase-operational-reports-page";
 
 export function AppRouter() {
   return (
     <HashRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-
         <Route element={<AppShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -45,7 +47,10 @@ export function AppRouter() {
           <Route path="/inventory/warehouses" element={<WarehousesPage />} />
           <Route path="/inventory/documents" element={<InventoryDocumentsPage />} />
           <Route path="/inventory/reports" element={<InventoryQuantityReportsPage />} />
+          <Route path="/inventory/valuation" element={<InventoryValuationWorkspacePage />} />
           <Route path="/inventory/transfer-center" element={<InventoryTransferCenterPage />} />
+          <Route path="/purchases/documents" element={<PurchaseDocumentsPage />} />
+          <Route path="/purchases/reports" element={<PurchaseOperationalReportsPage />} />
           <Route path="/fiscal/years" element={<FiscalYearsPage />} />
           <Route path="/fiscal/years/new" element={<NewFiscalYearPage />} />
           <Route path="/approval/requests" element={<ApprovalRequestsPage />} />

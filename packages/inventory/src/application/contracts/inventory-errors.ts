@@ -3,6 +3,7 @@ export const INVENTORY_APPLICATION_ERROR_CODES = Object.freeze({
   notFound: "inventory.application.not-found",
   concurrencyConflict: "inventory.application.concurrency-conflict",
   duplicateDocumentNumber: "inventory.application.document-number-duplicate",
+  duplicateSourceDocument: "inventory.application.source-document-duplicate",
   duplicateMovement: "inventory.application.movement-duplicate",
   duplicateOpening: "inventory.application.opening-duplicate",
   stockConflict: "inventory.application.stock-conflict",

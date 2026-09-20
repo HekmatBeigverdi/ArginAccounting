@@ -1,0 +1,448 @@
+.valuation-page {
+  display: grid;
+  gap: var(--ui-density-gap, 16px);
+  direction: rtl;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.valuation-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.valuation-head > div:first-child { min-width: 0; }
+.valuation-head h2 { margin: 0 0 6px; }
+.valuation-head p {
+  margin: 0;
+  color: var(--text-muted, #667085);
+  line-height: 1.8;
+}
+
+.valuation-status {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 12px;
+  background: var(--surface-subtle, #f8fafc);
+  flex: 0 0 auto;
+}
+.valuation-status small { font-size: .8rem; color: var(--text-muted, #667085); }
+.valuation-status--attention-required { border-color: #f59e0b; }
+.valuation-status--current { border-color: #10b981; }
+
+.valuation-note {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface-subtle, #f8fafc);
+  line-height: 1.9;
+  overflow-wrap: anywhere;
+}
+
+.valuation-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.valuation-tabs button,
+.valuation-more,
+.valuation-table button {
+  min-height: var(--ui-density-control-height, 34px);
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  padding: 0 10px;
+  cursor: pointer;
+}
+.valuation-tabs button.active { font-weight: 700; border-color: currentColor; }
+
+.valuation-filters {
+  --valuation-filter-control-height: var(--ui-density-control-height, 36px);
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(240px, 1.25fr) minmax(220px, 1fr) repeat(2, minmax(180px, .8fr));
+  gap: 12px;
+  align-items: end;
+  min-width: 0;
+  padding: 14px;
+  overflow: visible;
+  border: 1px solid var(--border-color, #e4e7ec);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+.valuation-filters label {
+  display: grid;
+  grid-template-rows: auto var(--valuation-filter-control-height);
+  gap: 6px;
+  min-width: 0;
+  align-content: end;
+  font-weight: 600;
+}
+.valuation-filters select,
+.valuation-filters input,
+.valuation-filters > button {
+  width: 100%;
+  min-width: 0;
+  height: var(--valuation-filter-control-height);
+  min-height: var(--valuation-filter-control-height);
+  box-sizing: border-box;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  padding: 0 10px;
+}
+.valuation-filters select,
+.valuation-filters input {
+  line-height: normal;
+}
+.valuation-filters > button {
+  align-self: end;
+  font-weight: 700;
+}
+
+/* Keep the shared Persian date picker visually identical to the adjacent selects. */
+.valuation-filters .ui-persian-date,
+.valuation-filters .ui-persian-date__control {
+  width: 100%;
+  min-width: 0;
+  height: var(--valuation-filter-control-height);
+}
+.valuation-filters .ui-persian-date__input {
+  height: var(--valuation-filter-control-height);
+  min-height: var(--valuation-filter-control-height);
+  padding: 0 12px 0 42px;
+  text-align: center;
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.valuation-filters .ui-persian-date__trigger {
+  inset-inline-end: 4px;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translateY(-50%);
+}
+
+.valuation-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.valuation-cards article {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border-color, #e4e7ec);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+}
+.valuation-cards span { color: var(--text-muted, #667085); }
+
+.valuation-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border-color, #e4e7ec);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+}
+.valuation-section__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+}
+.valuation-section__head > div { min-width: 0; }
+.valuation-section__head h3 { margin: 0 0 5px; font-size: 1.02rem; }
+.valuation-section__head p {
+  margin: 0;
+  color: var(--text-muted, #667085);
+  line-height: 1.7;
+  font-size: .92rem;
+}
+.valuation-count {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-subtle, #f8fafc);
+  color: var(--text-muted, #667085);
+  font-size: .78rem;
+}
+.valuation-empty {
+  margin: 0;
+  padding: 18px;
+  border: 1px dashed var(--border-color, #d0d5dd);
+  border-radius: 12px;
+  text-align: center;
+  color: var(--text-muted, #667085);
+  background: var(--surface-subtle, #f8fafc);
+  line-height: 1.9;
+}
+
+.valuation-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--border-color, #e4e7ec);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  -webkit-overflow-scrolling: touch;
+}
+.valuation-table table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+.valuation-table--cost-inputs table { min-width: 760px; }
+.valuation-table--registered table { min-width: 900px; }
+.valuation-table th,
+.valuation-table td {
+  padding: 7px 9px;
+  text-align: right;
+  border-bottom: 1px solid var(--border-color, #eef2f6);
+  vertical-align: middle;
+  line-height: 1.45;
+  font-size: .9rem;
+}
+.valuation-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-subtle, #f8fafc);
+  z-index: 1;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.valuation-table td { white-space: normal; overflow-wrap: anywhere; }
+.valuation-table--compact th,
+.valuation-table--compact td { padding: 5px 8px; }
+.valuation-table tbody tr:last-child td { border-bottom: 0; }
+.valuation-table tbody tr:hover { background: var(--surface-subtle, #fafbfc); }
+
+.valuation-readable {
+  display: block;
+  min-width: 0;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  unicode-bidi: plaintext;
+  cursor: help;
+}
+.valuation-readable--wide { max-width: 250px; }
+.valuation-date-cell,
+.valuation-number-cell,
+.valuation-money-cell,
+.valuation-action-cell { white-space: nowrap !important; }
+.valuation-number-cell,
+.valuation-money-cell { font-variant-numeric: tabular-nums; }
+
+.valuation-unresolved-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+.valuation-primary-action,
+.valuation-secondary-action {
+  white-space: nowrap;
+  font-weight: 700;
+  min-width: 78px;
+}
+.valuation-secondary-action { background: var(--surface-subtle, #f8fafc) !important; }
+.valuation-muted { color: var(--text-muted, #667085); font-size: .82rem; white-space: nowrap; }
+
+/* The shared Dialog is 34rem by default. The valuation form needs a wider,
+   viewport-safe shell; the previous child min-width caused the modal to clip. */
+.valuation-page .ui-dialog-backdrop {
+  padding: 20px;
+  overflow: hidden;
+}
+.valuation-page .ui-dialog {
+  width: min(46rem, calc(100vw - 40px));
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.valuation-page .ui-dialog__header {
+  padding: 18px 20px;
+}
+.valuation-page .ui-dialog__header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.valuation-page .ui-dialog__body {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px;
+}
+.valuation-page .ui-dialog__footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  background: var(--surface, #fff);
+}
+.valuation-page .ui-dialog__footer button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 8px;
+}
+
+.valuation-cost-dialog {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+.valuation-cost-dialog__hint {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-subtle, #f8fafc);
+  color: var(--text-muted, #667085);
+  line-height: 1.75;
+}
+.valuation-cost-dialog__hint--warning {
+  background: #fff7ed;
+  color: #9a3412;
+}
+.valuation-cost-dialog__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid var(--border-color, #e4e7ec);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 0;
+}
+.valuation-cost-dialog__facts > div {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--border-color, #eef2f6);
+}
+.valuation-cost-dialog__facts > div:nth-child(odd) { border-inline-end: 1px solid var(--border-color, #eef2f6); }
+.valuation-cost-dialog__facts > div:nth-last-child(-n+2) { border-bottom: 0; }
+.valuation-cost-dialog__facts dt { color: var(--text-muted, #667085); font-size: .84rem; }
+.valuation-cost-dialog__facts dd {
+  margin: 0;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.valuation-cost-dialog__field {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  font-weight: 700;
+}
+.valuation-cost-dialog__field input,
+.valuation-cost-dialog__field textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  box-sizing: border-box;
+}
+.valuation-cost-dialog__field input { min-height: 40px; }
+.valuation-cost-dialog__field textarea { resize: vertical; }
+.valuation-cost-dialog__field small {
+  font-weight: 400;
+  color: var(--text-muted, #667085);
+  line-height: 1.7;
+}
+.valuation-current-cost {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #e4e7ec);
+  border-radius: 10px;
+  background: var(--surface-subtle, #f8fafc);
+}
+.valuation-current-cost span,
+.valuation-current-cost small { color: var(--text-muted, #667085); }
+.valuation-current-cost strong { font-variant-numeric: tabular-nums; }
+.valuation-dialog-submit { font-weight: 700; }
+
+.valuation-trace {
+  position: fixed;
+  inset: auto 24px 48px 24px;
+  max-width: 760px;
+  margin-inline: auto;
+  padding: 18px;
+  border: 1px solid var(--border-color, #d0d5dd);
+  border-radius: 14px;
+  background: var(--surface, #fff);
+  box-shadow: 0 16px 48px rgba(0,0,0,.18);
+  z-index: 30;
+}
+.valuation-trace > button { float: left; }
+.valuation-trace h3 { margin-top: 0; }
+.valuation-trace bdi,
+.valuation-table bdi { direction: ltr; unicode-bidi: isolate; }
+.valuation-page .ui-persian-date,
+.valuation-page .ui-persian-date__control { width: 100%; min-width: 0; }
+.valuation-page .ui-persian-date { position: relative; z-index: 30; }
+.valuation-page .ui-persian-date__popover { z-index: 1500; }
+
+@media (max-width: 1100px) {
+  .valuation-filters { grid-template-columns: repeat(2, minmax(190px, 1fr)); }
+  .valuation-readable { max-width: 145px; }
+  .valuation-readable--wide { max-width: 210px; }
+}
+
+@media (max-width: 720px) {
+  .valuation-head { display: grid; }
+  .valuation-status { width: auto; }
+  .valuation-filters { grid-template-columns: 1fr; }
+  .valuation-section__head { display: grid; }
+  .valuation-table { margin-inline: 0; }
+  .valuation-readable { max-width: 140px; }
+  .valuation-page .ui-dialog-backdrop { padding: 10px; }
+  .valuation-page .ui-dialog {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+  .valuation-page .ui-dialog__header,
+  .valuation-page .ui-dialog__body,
+  .valuation-page .ui-dialog__footer { padding-inline: 14px; }
+  .valuation-cost-dialog__facts { grid-template-columns: 1fr; }
+  .valuation-cost-dialog__facts > div:nth-child(odd) { border-inline-end: 0; }
+  .valuation-cost-dialog__facts > div:nth-last-child(2) { border-bottom: 1px solid var(--border-color, #eef2f6); }
+  .valuation-current-cost { grid-template-columns: 1fr; }
+  .valuation-trace { inset: auto 10px 30px 10px; }
+}

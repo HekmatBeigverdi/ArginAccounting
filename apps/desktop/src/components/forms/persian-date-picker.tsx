@@ -187,7 +187,19 @@ export function PersianDatePicker({
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => setOpen((current) => !current)}
         >
-          <span aria-hidden="true">▦</span>
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M7 2v3M17 2v3M3.5 9h17M5.5 4h13a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+          </svg>
         </button>
       </div>
       {invalid ? <span className="ui-field__error">تاریخ شمسی معتبر وارد کنید.</span> : null}

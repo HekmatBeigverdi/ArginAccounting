@@ -28,12 +28,13 @@ Historical Phase 01–17 documentation is retained as project history and is not
 16. [Phase 16 — Accounting Reports](phase-16-accounting-reports.md) — implementation/final review complete; prepared semantic release `v0.16.0`
 17. [Phase 17 — Parties](phase-17-parties.md) — implementation, validation, documentation, and merge complete; semantic release `v0.17.0` prepared for manual GitHub publication
 18. [Phase 18 — Products and Services](phase-18-products-services-plan.md) — implementation and Step 20 merge preparation complete; semantic release `v0.18.0` prepared for manual Tag/GitHub Release publication
-
 19. [Phase 19 — Warehouses](phase-19-warehouses-plan.md) — Steps 1–20 complete; manual Tag/GitHub Release publication tracked separately
+20. [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md) — all 22 fixed steps complete and owner-accepted; merged to `main`; semantic Tag/GitHub Release `v0.20.0` remains manual
 
-## Current Phase
+## Current Phases
 
-20. [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md) — Steps 1–4 complete; fixed 22-step sequence preserved; Step 5 is next
+21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–19 complete; Step 20 final validation/promotion/release remains pending
+22. [Phase 22 — Purchase Workflow](phase-22-purchase-workflow-plan.md) — Steps 1–23 complete; Step 24 final validation/release preparation is active; `v0.22.0` must not be published ahead of required Phase 21 promotion/reconciliation
 
 ## Renumbering Rule
 

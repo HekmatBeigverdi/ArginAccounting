@@ -57,6 +57,11 @@ fn database_migrations() -> Vec<Migration> {
         Migration { version: 25, description: "warehouse_maintenance_tombstones", sql: include_str!("../migrations/0025_warehouse_maintenance_tombstones.sql"), kind: MigrationKind::Up },
         Migration { version: 26, description: "inventory_documents", sql: include_str!("../migrations/0026_inventory_documents.sql"), kind: MigrationKind::Up },
         Migration { version: 27, description: "inventory_reversal_persistence", sql: include_str!("../migrations/0027_inventory_reversal_persistence.sql"), kind: MigrationKind::Up },
+        Migration { version: 28, description: "inventory_valuation", sql: include_str!("../migrations/0028_inventory_valuation.sql"), kind: MigrationKind::Up },
+        Migration { version: 29, description: "inventory_valuation_concurrency", sql: include_str!("../migrations/0029_inventory_valuation_concurrency.sql"), kind: MigrationKind::Up },
+        Migration { version: 30, description: "purchase_workflow", sql: include_str!("../migrations/0030_purchase_workflow.sql"), kind: MigrationKind::Up },
+        Migration { version: 31, description: "purchase_scope_snapshot", sql: include_str!("../migrations/0031_purchase_scope_snapshot.sql"), kind: MigrationKind::Up },
+        Migration { version: 32, description: "purchase_replay_safety", sql: include_str!("../migrations/0032_purchase_replay_safety.sql"), kind: MigrationKind::Up },
     ]
 }
 

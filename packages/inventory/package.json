@@ -4,7 +4,20 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./valuation-strategy": "./src/domain/inventory-valuation-strategy.ts",
+    "./valuation-policy": "./src/domain/inventory-valuation-policy.ts",
+    "./inbound-cost": "./src/domain/inventory-inbound-cost.ts",
+    "./outflow-cost": "./src/domain/inventory-outflow-cost.ts",
+    "./transfer-cost": "./src/domain/inventory-transfer-cost.ts",
+    "./adjustment-reversal-valuation": "./src/domain/inventory-adjustment-reversal-valuation.ts",
+    "./valuation-recalculation": "./src/domain/inventory-valuation-recalculation.ts",
+    "./cost-resolution-policy": "./src/domain/inventory-cost-resolution-policy.ts",
+    "./valuation-contracts": "./src/application/contracts/inventory-valuation-contracts.ts",
+    "./valuation-concurrency": "./src/application/contracts/inventory-valuation-concurrency.ts",
+    "./valuation-sync": "./src/application/contracts/inventory-valuation-sync.ts",
+    "./valuation-security": "./src/application/contracts/inventory-valuation-security.ts",
+    "./valuation-reports": "./src/application/contracts/inventory-valuation-reports.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
