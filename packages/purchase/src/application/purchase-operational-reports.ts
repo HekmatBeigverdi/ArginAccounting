@@ -121,7 +121,7 @@ export interface PurchaseUnresolvedCostReportRow {
   readonly warehouseCode: string;
   readonly warehouseTitle: string;
   readonly quantity: string;
-  readonly reason: "awaiting-supplier-invoice" | "partial-invoice-match" | "supplier-invoice-cost-unavailable";
+  readonly reason: "cost-input-pending" | "invoice-match-required" | "awaiting-supplier-invoice" | "partial-invoice-match" | "supplier-invoice-cost-unavailable";
 }
 
 export interface PurchaseUnresolvedCostReport {

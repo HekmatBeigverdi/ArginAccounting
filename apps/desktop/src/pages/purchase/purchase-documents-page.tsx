@@ -606,6 +606,22 @@ export function PurchaseDocumentsPage() {
     }
   };
 
+  const resolveReceiptCost = async () => {
+    if (!services || !selected) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      await services.resolveReceiptCost(selected);
+      await openDocument(selected.documentId);
+      setMessage("رسید با فاکتور تطبیق داده شد و مبنای هزینه موجودی ثبت شد. محاسبه ارزش موجودی از مسیر ارزش‌گذاری انجام می‌شود.");
+    } catch (error) {
+      setError(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const facts = useMemo(
     () =>
       new Map(
@@ -707,6 +723,13 @@ export function PurchaseDocumentsPage() {
                         {" — "}{RECEIPT_STATUS_LABELS[detail.inventoryReceipt.status]}
                       </span>
                     )}
+                    {selected?.documentType === "supplier-invoice" && selected.status === "confirmed" &&
+                      detail.inventoryReceipt?.status === "confirmed" &&
+                      can(purchasePermissions.manageMatching) && can(purchasePermissions.resolveCost) && (
+                        <button disabled={saving} onClick={() => void resolveReceiptCost()}>
+                          تطبیق و ثبت هزینه رسید
+                        </button>
+                      )}
                     {selected?.status === "draft" && can(purchasePermissions.edit) && (
                       <button disabled={saving} onClick={() => void openEdit()}>ویرایش</button>
                     )}

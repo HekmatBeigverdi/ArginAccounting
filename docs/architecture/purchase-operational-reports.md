@@ -59,15 +59,17 @@ Quantity aggregation uses canonical decimal arithmetic; binary floating point is
 
 The unresolved-cost report shows confirmed Inventory receipt movements sourced from Purchase that still have no Purchase-backed authoritative Cost Input.
 
-Reasons remain the Phase 22 Step 11 reasons:
+Reasons include the Phase 22 Step 11 reasons and Desktop integration states:
 
 - `awaiting-supplier-invoice`;
+- `invoice-match-required`: a confirmed source invoice exists, but no line match has been recorded;
+- `cost-input-pending`: matches and commercial facts are available, but cost persistence/delivery is incomplete;
 - `partial-invoice-match`;
 - `supplier-invoice-cost-unavailable`.
 
 The report joins Inventory receipt movement, Product and Warehouse identities for operator visibility, but does not mutate Inventory or Valuation.
 
-A fully matched receipt with valid authoritative Supplier Invoice commercial facts is not labelled unresolved merely because the Cost Input worker has not been invoked by this report. Reports remain read-only.
+A fully matched receipt with valid Supplier Invoice facts remains visible as `cost-input-pending` until both the Purchase Cost Input and its Inventory-consumable basis exist. This includes interrupted delivery after Purchase persistence. Reports remain read-only; the secured Purchase workspace action performs matching and cost delivery.
 
 ## Query Scope and Bounds
 

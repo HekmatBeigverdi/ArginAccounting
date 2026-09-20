@@ -14,13 +14,14 @@ import {
   type InventorySourceDocumentPort,
   type InventoryDocumentSnapshot,
 } from "@argin/inventory";
-import { SqliteInventoryDocumentRepository, SqliteInventoryUnitOfWork } from "@argin/inventory-tauri";
+import { SqliteInventoryDocumentRepository, SqliteInventoryUnitOfWork, SqliteInventoryValuationMovementReader, SqliteInventorySourceCostInputService } from "@argin/inventory-tauri";
 import { SqlitePartyReader } from "@argin/party-tauri";
 import type { PartyDetailDto, PartySelectorDto } from "@argin/party";
 import {
   PurchaseApplicationError,
   SecuredPurchaseService,
   calculatePurchaseDocumentTotals,
+  calculatePurchaseMatchingStatus,
   calculatePurchaseLineTotals,
   createPurchaseApplicationServices,
   createPurchaseCommercialTerms,
@@ -79,6 +80,7 @@ export interface PurchaseWorkspaceDraftInput {
 }
 
 export interface PurchaseWorkspaceServices {
+  resolveReceiptCost(document: PurchaseDocumentSnapshot): Promise<void>;
   readonly can: (permission: PurchasePermission | string) => boolean;
   list(companyId: string, branchId: string, search: string): Promise<readonly PurchaseDocumentSnapshot[]>;
   get(companyId: string, documentId: string): Promise<PurchaseWorkspaceDetail | null>;
@@ -365,9 +367,24 @@ export function createPurchaseWorkspaceServices(input: {
       },
     },
     inventoryReceipt,
-    receiptLines: { async findConfirmedLine() { return null; } },
-    inventoryMovements: { async findById() { return null; } },
-    valuationRecalculation: { async costBasisChanged() {} },
+    receiptLines: {
+      async findConfirmedLine({ companyId, receiptDocumentId, receiptLineId }) {
+        const receipt = await inventoryDocuments.findById(companyId, receiptDocumentId);
+        const line = receipt?.lines.find(item => item.lineId === receiptLineId);
+        if (receipt?.documentType !== "receipt" || receipt.status !== "confirmed" || !line?.operation) return null;
+        return { companyId, documentId: receipt.documentId, lineId: line.lineId,
+          documentType: receipt.documentType, status: receipt.status, productId: line.productId,
+          baseQuantity: line.operation.quantity.baseQuantity };
+      },
+    },
+    inventoryMovements: new SqliteInventoryValuationMovementReader(database),
+    valuationRecalculation: {
+      async costBasisChanged({ companyId, movement }) {
+        const cost = await uow.execute(context => context.costInputs.findByMovement(companyId, movement.movementId));
+        if (!cost) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "costInput");
+        await new SqliteInventorySourceCostInputService(database).accept(companyId, cost.basis);
+      },
+    },
   });
 
   const secured = new SecuredPurchaseService({
@@ -535,6 +552,66 @@ export function createPurchaseWorkspaceServices(input: {
       ...lifecycleCommand(document, "correct", reason),
       relatedDocumentId,
     }),
+    async resolveReceiptCost(document) {
+      const current = await uow.execute(context => context.documents.findById(document.companyId, document.documentId));
+      if (!current) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+      await authorization.require({ branchId: current.scope.branchId }, "purchases.matching.manage");
+      await authorization.require({ branchId: current.scope.branchId }, "purchases.cost-resolution.manage");
+      if (current.documentType !== "supplier-invoice" || current.status !== "confirmed") {
+        throw new Error("تطبیق خودکار فقط برای فاکتور تأمین‌کننده قطعی مجاز است.");
+      }
+      const linked = await findReceipt(current);
+      const receipt = linked && await inventoryDocuments.findById(current.companyId, linked.documentId);
+      if (!receipt || receipt.documentType !== "receipt" || receipt.status !== "confirmed" ||
+          receipt.scope?.branchId !== current.scope.branchId) {
+        throw new Error("رسید مرتبط باید در همان شعبه قطعی شده باشد.");
+      }
+      const movements = await database.query<{ movement_id: string; line_id: string }>(
+        "SELECT movement_id,line_id FROM inventory_stock_movements WHERE company_id=? AND document_id=? AND reversal_of_movement_id IS NULL",
+        [current.companyId, receipt.documentId]);
+      if (!movements.length) throw new Error("گردش قطعی موجودی برای این رسید یافت نشد.");
+      // Preflight every movement so a pre-existing manual basis is never overwritten.
+      for (const movement of movements) {
+        const cost = await database.queryOne<{ basis_line_id: string }>(
+          "SELECT basis_line_id FROM inventory_valuation_cost_inputs WHERE company_id=? AND movement_id=?",
+          [current.companyId, movement.movement_id]);
+        if (cost && cost.basis_line_id !== `purchase-cost:${movement.movement_id}`) {
+          throw new Error("برای این رسید قبلاً مبنای هزینه دیگری ثبت شده است؛ اصلاح هزینه باید از مسیر ارزش‌گذاری انجام شود.");
+        }
+      }
+      for (const movement of movements) {
+        const line = receipt.lines.find(item => item.lineId === movement.line_id);
+        const source = line?.sourceReference;
+        if (!line?.operation || source?.sourceSystem !== "purchase" || source.documentId !== current.documentId || !source.lineId) {
+          throw new Error("ارتباط ردیف رسید با ردیف فاکتور مشخص نیست؛ تطبیق خودکار امکان‌پذیر نیست.");
+        }
+        const existing = await uow.execute(context => context.matches.listByReceiptLine(current.companyId, receipt.documentId, line.lineId));
+        const coverage = calculatePurchaseMatchingStatus(line.operation.quantity.baseQuantity, existing.map(match => match.matchedBaseQuantity));
+        if (coverage.status === "partially-matched" || existing.some(match => match.invoiceDocumentId !== current.documentId || match.invoiceLineId !== source.lineId)) {
+          throw new Error("این رسید قبلاً تطبیق متفاوت یا جزئی دارد؛ تطبیق موجود باید بررسی شود.");
+        }
+        const context = (key: string) => ({
+          companyId: current.companyId, branchId: current.scope.branchId,
+          requestId: key, operationId: key, payloadFingerprint: key,
+          actorUserId: actor.id, occurredAt: now(),
+        });
+        if (coverage.status === "unmatched") {
+          const matchId = `source-match:${current.documentId}:${line.lineId}`;
+          await secured.matchReceiptInvoice(security, {
+            context: context(matchId),
+            match: { matchId, companyId: current.companyId,
+              invoiceDocumentId: current.documentId, invoiceLineId: source.lineId,
+              receiptDocumentId: receipt.documentId, receiptLineId: line.lineId,
+              productId: line.productId, matchedBaseQuantity: line.operation.quantity.baseQuantity },
+          });
+        }
+        const costInputId = `purchase-cost:${movement.movement_id}`;
+        const result = await secured.resolveMovementCost(security, {
+          context: context(costInputId), movementId: movement.movement_id, costInputId,
+        });
+        if (result.status !== "resolved") throw new Error("تطبیق انجام شد اما مبنای هزینه فاکتور هنوز کامل نیست.");
+      }
+    },
     async stageInventoryReceipt(document, warehouseId) {
       await authorization.require({ branchId: document.scope.branchId }, "purchases.receipts.stage");
       const detail = await this.get(document.companyId, document.documentId);

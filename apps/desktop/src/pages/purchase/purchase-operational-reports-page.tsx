@@ -48,6 +48,8 @@ const MATCH_LABELS = {
   "fully-matched": "تطبیق کامل",
 } as const;
 const COST_REASON_LABELS = {
+  "cost-input-pending": "تطبیق انجام شده؛ ثبت مبنای هزینه موجودی تکمیل نشده",
+  "invoice-match-required": "فاکتور قطعی موجود است؛ رسید نیاز به تطبیق دارد",
   "awaiting-supplier-invoice": "در انتظار فاکتور تأمین‌کننده",
   "partial-invoice-match": "تطبیق فاکتور ناقص",
   "supplier-invoice-cost-unavailable": "هزینه معتبر فاکتور در دسترس نیست",

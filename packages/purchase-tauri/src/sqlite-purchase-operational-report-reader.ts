@@ -50,6 +50,7 @@ type UnresolvedSeedRow = {
   warehouse_code: string;
   warehouse_title: string;
   quantity_delta: string;
+  source_invoice_status: string | null;
 };
 
 const parse = <T>(value: string, field: string): T => {
@@ -191,7 +192,7 @@ export class SqlitePurchaseOperationalReportReader implements PurchaseOperationa
       "d.document_type='receipt'",
       "d.status='confirmed'",
       "d.source_system='purchase'",
-      "c.cost_input_id IS NULL",
+      "(c.cost_input_id IS NULL OR vc.basis_line_id IS NULL)",
     ];
     const params: DatabaseValue[] = [query.companyId];
     if (query.branchId !== null) { where.push("d.origin_branch_id=?"); params.push(query.branchId); }
@@ -203,11 +204,15 @@ export class SqlitePurchaseOperationalReportReader implements PurchaseOperationa
       "SELECT m.movement_id,m.document_id AS receipt_document_id,d.document_number AS receipt_document_number," +
       "m.line_id AS receipt_line_id,m.business_date,d.origin_branch_id AS branch_id,m.product_id," +
       "p.code AS product_code,p.title AS product_title,m.warehouse_id,w.code AS warehouse_code,w.title AS warehouse_title," +
-      "m.quantity_delta FROM inventory_stock_movements m " +
+      "m.quantity_delta,source_invoice.status AS source_invoice_status FROM inventory_stock_movements m " +
       "JOIN inventory_documents d ON d.company_id=m.company_id AND d.id=m.document_id " +
+      "LEFT JOIN inventory_document_lines receipt_line ON receipt_line.company_id=m.company_id AND receipt_line.document_id=m.document_id AND receipt_line.id=m.line_id " +
+      "LEFT JOIN purchase_document_lines invoice_line ON invoice_line.company_id=m.company_id AND invoice_line.document_id=receipt_line.source_document_id AND invoice_line.id=receipt_line.source_line_id AND invoice_line.item_id=m.product_id " +
+      "LEFT JOIN purchase_documents source_invoice ON source_invoice.company_id=m.company_id AND source_invoice.id=invoice_line.document_id AND source_invoice.id=d.source_document_id AND source_invoice.document_type='supplier-invoice' AND receipt_line.source_system='purchase' " +
       "JOIN products p ON p.company_id=m.company_id AND p.id=m.product_id " +
       "JOIN warehouses w ON w.company_id=m.company_id AND w.id=m.warehouse_id " +
       "LEFT JOIN purchase_valuation_cost_inputs c ON c.company_id=m.company_id AND c.movement_id=m.movement_id " +
+      "LEFT JOIN inventory_valuation_cost_inputs vc ON vc.company_id=m.company_id AND vc.movement_id=m.movement_id AND vc.basis_line_id=c.cost_input_id " +
       "WHERE " + where.join(" AND ") +
       " ORDER BY m.business_date,m.business_order,m.movement_id LIMIT ? OFFSET ?",
       [...params, query.limit + 1, query.offset],
@@ -227,7 +232,8 @@ export class SqlitePurchaseOperationalReportReader implements PurchaseOperationa
       );
       let reason: PurchaseUnresolvedCostReportRow["reason"] | null =
         coverage.status === "unmatched"
-          ? "awaiting-supplier-invoice"
+          ? (["confirmed", "returned", "corrected"].includes(seed.source_invoice_status ?? "")
+            ? "invoice-match-required" : "awaiting-supplier-invoice")
           : coverage.status === "partially-matched"
             ? "partial-invoice-match"
             : null;
@@ -243,7 +249,7 @@ export class SqlitePurchaseOperationalReportReader implements PurchaseOperationa
           }
         }
       }
-      if (reason === null) continue;
+      if (reason === null) reason = "cost-input-pending";
 
       items.push(Object.freeze({
         movementId: seed.movement_id,

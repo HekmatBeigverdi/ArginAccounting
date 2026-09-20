@@ -197,3 +197,26 @@ Step 20 does not implement:
 - arbitrary persisted Draft editing, because the current frozen Purchase Application contract creates the complete Draft atomically rather than exposing an update-Draft command.
 
 The last point is an Application-contract boundary, not an alternate write path in the UI.
+
+## Confirmed Receipt Matching and Cost Recovery
+
+A confirmed Supplier Invoice with a confirmed linked receipt exposes **تطبیق و ثبت هزینه رسید**.
+This is an explicit secured write, separate from viewing a document or report. It requires both
+`purchases.matching.manage` and `purchases.cost-resolution.manage` in the persisted invoice branch.
+The action also works for receipts created before this integration was added.
+
+Only durable Purchase source document/line references are used; matching is never inferred from
+product names, dates, or equal quantities. The existing Purchase application validates invoice and
+receipt status, Company, Product and cumulative base quantity. Partial or conflicting existing
+matches require review and are not silently expanded. Receipt quantity movements are not changed.
+
+The workflow invokes the secured matching and cost-resolution commands with stable operation IDs.
+Retries preserve match identity and the completed outcome. The Inventory adapter consumes the exact
+Purchase cost basis (including discounts and line charges, excluding VAT), without recalculating it
+from a rounded unit cost. Existing manual cost inputs are rejected before creating Purchase facts.
+
+Cost delivery is separate from Purchase persistence, as required by the application boundary. A
+failed delivery can be retried using the same action. Reports retain such movements as pending.
+Inventory owns the monetary projections: accepting a source basis advances the valuation stream
+revision and makes the basis available to the existing valuation workflow; it does not invent FIFO
+layers, post journals, or rewrite historical valuation entries.
