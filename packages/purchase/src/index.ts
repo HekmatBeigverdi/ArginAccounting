@@ -210,5 +210,28 @@ export type {
 export { SecuredPurchaseService } from "./application/secured-purchase-service.ts";
 export type { SecuredPurchaseServiceDependencies } from "./application/secured-purchase-service.ts";
 
+export {
+  PURCHASE_OPERATIONAL_REPORT_LIMITS,
+  buildPurchaseDocumentRegisterRow,
+  buildPurchaseSupplierActivitySummary,
+  calculatePurchaseMatchingStatus,
+  normalizePurchaseOperationalReportQuery,
+} from "./application/purchase-operational-reports.ts";
+export type {
+  NormalizedPurchaseOperationalReportQuery,
+  PurchaseDocumentRegisterReport,
+  PurchaseDocumentRegisterRow,
+  PurchaseInvoiceMatchingReport,
+  PurchaseInvoiceMatchingReportRow,
+  PurchaseMatchingQuantityStatus,
+  PurchaseMatchingStatus,
+  PurchaseOperationalReportQuery,
+  PurchaseOperationalReportReader,
+  PurchaseSupplierActivitySummaryReport,
+  PurchaseSupplierActivitySummaryRow,
+  PurchaseUnresolvedCostReport,
+  PurchaseUnresolvedCostReportRow,
+} from "./application/purchase-operational-reports.ts";
+
 export { PURCHASE_DOMAIN_ERROR_CODES, PurchaseDomainError } from "./domain/purchase-domain-errors.ts";
 export type { PurchaseDomainErrorCode } from "./domain/purchase-domain-errors.ts";
