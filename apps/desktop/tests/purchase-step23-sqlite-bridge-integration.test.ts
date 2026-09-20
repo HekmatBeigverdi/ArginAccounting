@@ -26,7 +26,9 @@ import {
 const migrationsDirectory = new URL("../src-tauri/migrations/", import.meta.url);
 
 function migrationFiles() {
-  return readdirSync(migrationsDirectory).filter(file => /^\\d{4}_.+\\.sql$/u.test(file)).sort();
+  const files = readdirSync(migrationsDirectory).filter(file => /^\d{4}_.+\.sql$/u.test(file)).sort();
+  assert.ok(files.length > 0, "SQLite migration files must be discovered before preparing the test database");
+  return files;
 }
 
 function applyMigrations(sqlite: DatabaseSync, throughVersion = 32, afterVersion = 0) {
@@ -153,10 +155,10 @@ function purchaseFixture() {
 
 function seedConfirmedReceipt(sqlite: DatabaseSync) {
   sqlite.exec(
-    "INSERT INTO inventory_documents (id,company_id,document_type,status,document_number,business_date,origin_branch_id,fiscal_year_id,fiscal_period_id,source_system,source_document_id,version,created_at,updated_at) " +
-    "VALUES ('receipt','company','receipt','confirmed','REC-1','2026-09-20','branch','year','period','purchase','invoice',1,'2026-09-20T09:00:00Z','2026-09-20T09:00:00Z');" +
-    "INSERT INTO inventory_document_lines (id,company_id,document_id,position,product_id,entered_quantity,base_quantity,entered_unit_id,base_unit_id,quantity_snapshot,warehouse_id,source_system,source_document_id,source_line_id) " +
-    "VALUES ('receipt-line','company','receipt',1,'product','2','2','piece','piece','{}','warehouse','purchase','invoice','invoice-line');" +
+    "INSERT INTO inventory_documents (id,company_id,document_type,status,document_number,business_date,origin_branch_id,fiscal_year_id,fiscal_period_id,source_system,source_document_type,source_document_id,version,created_at,updated_at) " +
+    "VALUES ('receipt','company','receipt','confirmed','REC-1','2026-09-20','branch','year','period','purchase','supplier-invoice','invoice',1,'2026-09-20T09:00:00Z','2026-09-20T09:00:00Z');" +
+    "INSERT INTO inventory_document_lines (id,company_id,document_id,position,product_id,entered_quantity,base_quantity,entered_unit_id,base_unit_id,quantity_snapshot,warehouse_id,source_system,source_document_type,source_document_id,source_line_id) " +
+    "VALUES ('receipt-line','company','receipt',1,'product','2','2','piece','piece','{}','warehouse','purchase','supplier-invoice','invoice','invoice-line');" +
     "INSERT INTO inventory_stock_movements (movement_id,company_id,document_id,line_id,product_id,warehouse_id,business_date,business_order,recorded_at,quantity_delta) " +
     "VALUES ('movement','company','receipt','receipt-line','product','warehouse','2026-09-20',1,'2026-09-20T09:01:00Z','2');"
   );
