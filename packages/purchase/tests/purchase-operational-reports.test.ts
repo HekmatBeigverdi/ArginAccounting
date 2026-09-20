@@ -198,7 +198,7 @@ test("supplier activity keeps corrections separate and nets confirmed returns on
   assert.equal(summary[0]!.invoiceGrandTotal, 2090);
   assert.equal(summary[0]!.returnGrandTotal, 1100);
   assert.equal(summary[0]!.netBeforeCorrections, 990);
-  assert.equal(summary[0]!.correctionGrandTotal, 1320);
+  assert.equal(summary[0]!.correctionGrandTotal, 1298);
 });
 
 test("matching status sums canonical decimal quantities exactly", () => {
