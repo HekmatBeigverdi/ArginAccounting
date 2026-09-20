@@ -72,6 +72,7 @@ Mandatory references:
 - Argin Bridge synchronizes authoritative Purchase documents/lines, commercial facts, receipt-invoice matches and Purchase-backed Cost Inputs as versioned/revisioned durable facts; matching summaries, unresolved-cost status, balances and FIFO/MWA layers remain rebuildable projections and are never independent synchronization authority.
 - Purchase authorization is permission- and persisted-Branch scoped; Approval and Confirm are separate rights, each resubmission has its own shared Approval cycle, and successful mutations are traced in shared Audit with request ID + operation ID.
 - Desktop Purchase UI is Persian RTL with a Jalali input boundary and LTR commercial numeric fields; it consumes secured Purchase Application contracts, shared Master Data/Fiscal/Approval/Audit services and stages Inventory drafts only through Inventory-owned Application services.
+- Operational Purchase reports are rebuildable read models over authoritative Purchase/Inventory/Valuation facts; they are Company/Branch/Fiscal scoped, bounded, read-only, and never become Bridge or accounting authority.
 
 ## Step Status
 
@@ -441,7 +442,7 @@ Mandatory references:
 - Desktop report workspace exposes four views: `دفتر اسناد خرید`, `خلاصه تأمین‌کنندگان`, `تطبیق فاکتور و رسید`, and `هزینه‌های حل‌نشده`.
 - Report composition reuses `purchases.documents.view` for viewing and independently enforces persisted Branch scope; Company-wide view remains limited to `system.full-access`.
 - Jalali report filters convert only when a report load is requested, so partially typed dates cannot throw during React render.
-- Supplier filtering is intentionally not pretended for unresolved-cost rows before authoritative invoice identity exists; Company/Branch/Fiscal/date filters still apply.
+- Supplier filtering is intentionally not pretended for unresolved-cost rows before authoritative invoice identity exists; the Desktop omits that filter for the unresolved-cost view and the SQLite reader rejects a non-null Supplier filter rather than silently ignoring it. Company/Branch/Fiscal/date filters still apply.
 - Added display-density-aware report CSS and read-only UI; Step 21 does not create Journal Vouchers, Posting Rules or Accounts Payable aging.
 - Added focused test-first files: `purchase-operational-reports.test.ts`, `sqlite-purchase-operational-report-reader.test.ts`, and `purchase-operational-reports-contract.test.ts`.
 - Added `purchase-operational-reports.md`, documentation index entry and module-registry record; Step 20 Desktop documentation now links to the Step 21 reporting boundary.
