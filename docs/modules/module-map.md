@@ -25,7 +25,7 @@
 
 - Master Data
 - Inventory — [Inventory Documents Module](inventory-documents.md): Phase 20 implements `@argin/inventory`, `@argin/inventory-tauri`, and Desktop quantity workflows for receipt, issue, opening, transfer, and adjustment documents; append-only movement history; rebuildable on-hand projections; quantity Kardex; Warehouse dependency guards; import/export/print; secured lifecycle; and persistence-neutral ERP/Argin Bridge contracts. Monetary valuation remains Phase 21.
-- Purchases — future commercial workflow owner; consumes Inventory public quantity-confirmation contracts instead of writing Inventory tables.
+- Purchases — Phase 22 implements `@argin/purchase`, `@argin/purchase-tauri`, and the Persian RTL Desktop Purchase workspace. Purchase owns Supplier commercial facts, receipt/invoice matching and Purchase-backed valuation Cost Input; it consumes Inventory public contracts and never writes Inventory quantity tables directly. Purchase accounting posting remains Phase 23.
 - Sales — future commercial workflow owner; consumes Inventory public quantity-confirmation contracts instead of writing Inventory tables.
 - Treasury
 
