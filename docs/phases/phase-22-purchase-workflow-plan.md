@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–23 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 24 — Monorepo Validation, Documentation, Final Review and Release — is next.
+Steps 1–23 are complete on `phase/22-purchase-workflow`. Step 24 release preparation is implemented, but the phase is not yet release-complete because fresh full monorepo validation/promotion evidence is not available in this environment and Phase 21 promotion/reconciliation remains a release prerequisite.
 
 ## Governance
 
@@ -103,7 +103,7 @@ Mandatory references:
 | 21 | Purchase Queries and Operational Reports | Completed |
 | 22 | Domain and Application Tests | Completed |
 | 23 | SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests | Completed |
-| 24 | Monorepo Validation, Documentation, Final Review and Release | Not started |
+| 24 | Monorepo Validation, Documentation, Final Review and Release | Release prepared — validation/promotion pending |
 
 ## Fixed Execution Sequence
 
@@ -484,6 +484,36 @@ Mandatory references:
 - Added `phase-22-purchase-sqlite-integration-tests.md` as the canonical Step 23 integration matrix and updated documentation index/module registry.
 - Step 23 does not claim final monorepo build/release validation; that remains Step 24.
 - Fresh full command execution is not claimed unless observed successfully in the current environment. Local authoritative verification commands are recorded in the Step 23 test matrix.
+
+
+## Step 24 — Monorepo Validation, Documentation, Final Review and Release
+
+### Release Preparation Completed
+
+- Added canonical `pnpm validate:phase22` covering Purchase, Purchase-Tauri, Inventory, Inventory-Tauri, Desktop, docs index/link validation, full monorepo typecheck/test/build/lint and Rust `cargo check`.
+- Confirmed `@argin/purchase` and `@argin/purchase-tauri` manifests are already versioned `0.22.0`.
+- Added `docs/phases/phase-22-release-notes.md` for `v0.22.0` / `ArginAccounting v0.22.0 — Purchase Workflow`.
+- Added the `0.22.0` release section to `CHANGELOG.md`.
+- Reconciled stale root `README.md`, `ROADMAP.md`, phase index, release checklist, root architecture, database design, module map and Purchase glossary terminology.
+- Reconfirmed release ordering: Phase 22 is based directly on Phase 21 and must not be tagged/published from a `main` state that does not contain the required Phase 21 state.
+- Reconfirmed repository state before release preparation: `develop` and `main` remain on the Phase 20 integrated baseline; Phase 21 and Phase 22 have not yet been promoted.
+- Semantic Tag and GitHub Release creation remain manual repository-owner actions, as requested.
+
+### Validation / Promotion Gate Still Open
+
+- A fresh attempt to clone the repository for full Step 24 validation failed before checkout with `Could not resolve host: github.com`.
+- No GitHub Actions workflow/status is registered for the current Phase 22 head, so there is no independent CI PASS evidence to substitute for local execution.
+- Therefore this record does **not** claim that `pnpm validate:phase22` passed, does **not** claim final monorepo validation passed, and does **not** claim Phase 22 is merged/released.
+- Per `phase-definition-of-done.md` and `RELEASE_CHECKLIST.md`, promotion to `develop`/`main` and semantic publication remain gated on actual observed validation evidence.
+- Phase 21 Step 20 must also be reconciled/promoted before Phase 22 publication.
+
+### Prepared Release Metadata
+
+- Version: `0.22.0`
+- Tag: `v0.22.0`
+- Release title: `ArginAccounting v0.22.0 — Purchase Workflow`
+- Release notes: `docs/phases/phase-22-release-notes.md`
+- Next implementation phase after safe publication: Phase 23 — Purchase Posting
 
 ## Change Requests
 
