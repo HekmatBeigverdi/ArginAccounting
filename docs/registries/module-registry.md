@@ -42,6 +42,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 - Desktop: Step 20 adds the Persian RTL Purchase list/detail/commercial-line workspace with Jalali boundary, lifecycle/Approval/history, stale-version recovery, Return/Correction flows and secured Inventory receipt-draft staging.
 - Reporting: Step 21 adds bounded operational Purchase reports for document register/totals, Supplier activity, invoice-receipt matching and unresolved Purchase-backed Inventory cost; reports are read-only rebuildable projections.
 - Testing: Step 22 expands Purchase Domain/Application regression coverage across command/query boundaries, compensation edge cases, security scope, and replay safety for matching and cost resolution.
+- Integration: Step 23 adds real-SQLite Purchase migration/UoW/restart/constraint/Bridge evidence and reconciles the concrete Desktop -> Inventory -> Valuation integration suite.
 
 ## Required Fields for Future Entries
 
