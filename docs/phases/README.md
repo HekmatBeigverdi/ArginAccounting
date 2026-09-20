@@ -31,9 +31,10 @@ Historical Phase 01–17 documentation is retained as project history and is not
 19. [Phase 19 — Warehouses](phase-19-warehouses-plan.md) — Steps 1–20 complete; manual Tag/GitHub Release publication tracked separately
 20. [Phase 20 — Inventory Documents](phase-20-inventory-documents-plan.md) — all 22 fixed steps complete and owner-accepted; merged to `main`; semantic Tag/GitHub Release `v0.20.0` remains manual
 
-## Current Phase
+## Current Phases
 
-21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–19 complete; fixed 20-step sequence preserved; Step 20 — Monorepo Validation, Documentation, Final Review and Release — is next
+21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–19 complete; Step 20 final validation/promotion/release remains pending
+22. [Phase 22 — Purchase Workflow](phase-22-purchase-workflow-plan.md) — Steps 1–23 complete; Step 24 final validation/release preparation is active; `v0.22.0` must not be published ahead of required Phase 21 promotion/reconciliation
 
 ## Renumbering Rule
 

@@ -20,13 +20,15 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 
 ## Current Status
 
-- Phase 01–16: implementation completed and integrated
-- Prepared release: Phase 16 — Accounting Reports (`v0.16.0`), semantic tag/GitHub Release publication pending repository-owner action
-- Current target: Phase 17 — Parties
+- Phase 01–20: implementation completed and integrated through the Phase 20 stable baseline.
+- Phase 21 — Inventory Valuation: implementation Steps 1–19 complete; final release gate/promotion remains pending.
+- Phase 22 — Purchase Workflow: implementation Steps 1–23 complete; final validation/release preparation is active.
+- Prepared Phase 22 target: `v0.22.0` — `ArginAccounting v0.22.0 — Purchase Workflow`.
+- Phase 22 must not be published before the required Phase 21 promotion/reconciliation.
 
-Phase 16 adds the first production-grade reporting layer over posted Journal facts: common report queries, balance/turnover semantics, Trial Balance, General Ledger, Subsidiary Ledger, Journal and Accounting Dimension reports, granular report/export permissions, optimized SQLite reads, Persian RTL report UX, drill-down/Journal traceability, Excel export, native Print/PDF, and query-plan/performance validation.
+Phase 22 owns Supplier/Purchase commercial facts and connects confirmed stock purchases to Inventory receipts and Phase 21 valuation Cost Inputs. Normal Purchase price is entered once in Purchase; Inventory remains quantity authority and Valuation remains FIFO/MWA authority. Receipt-before-invoice stays explicitly unresolved until authoritative cost is available.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 16 implementation record](docs/phases/phase-16-accounting-reports.md), [Phase 16 fixed implementation plan](docs/phases/phase-16-accounting-reports-plan.md), and [ADR-0016](docs/adr/ADR-0016-accounting-reports.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 21 record](docs/phases/phase-21-inventory-valuation-plan.md), [Phase 22 record](docs/phases/phase-22-purchase-workflow-plan.md), and [Phase 22 release notes](docs/phases/phase-22-release-notes.md).
 
 ## Main Modules
 
@@ -95,7 +97,7 @@ cd apps/desktop/src-tauri
 cargo check
 ```
 
-For the Phase 16 release gate, `pnpm validate:phase16` runs focused Accounting/SQLite/Desktop validation plus monorepo validation and the representative SQLite report query-plan check.
+For the Phase 22 release gate, `pnpm validate:phase22` runs focused Purchase/Purchase-Tauri/Inventory/Inventory-Tauri/Desktop validation plus documentation checks, full monorepo typecheck/test/build/lint, and Rust `cargo check`.
 
 Validation commands are requirements, not proof of success. Phase and release documents must record commands actually executed and their outcomes.
 
@@ -128,9 +130,9 @@ Validation commands are requirements, not proof of success. Phase and release do
 - [Product Vision](docs/vision/product-vision.md)
 - [Architecture](ARCHITECTURE.md)
 - [Roadmap](ROADMAP.md)
-- [Phase 16 — Accounting Reports](docs/phases/phase-16-accounting-reports.md)
-- [Phase 16 Fixed Implementation Plan](docs/phases/phase-16-accounting-reports-plan.md)
-- [ADR-0016 — Accounting Reports](docs/adr/ADR-0016-accounting-reports.md)
+- [Phase 21 — Inventory Valuation](docs/phases/phase-21-inventory-valuation-plan.md)
+- [Phase 22 — Purchase Workflow](docs/phases/phase-22-purchase-workflow-plan.md)
+- [Phase 22 Release Notes](docs/phases/phase-22-release-notes.md)
 - [ADR Registry](docs/adr/README.md)
 - [Database Design](docs/database/database-design.md)
 - [Accounting Engine](docs/accounting/accounting-engine.md)

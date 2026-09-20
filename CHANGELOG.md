@@ -6,6 +6,73 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.22.0] - Unreleased
+
+### Added
+
+- Supplier Purchase workflow with Purchase Order, Supplier Invoice, Purchase Return and Purchase Correction document types.
+- Immutable Supplier/Product/Service snapshots and authoritative Purchase Commercial Facts for quantity, unit price, discounts, charges, tax and currency.
+- Deterministic Purchase pricing with exact decimal quantities, safe-integer money, basis-point percentages and half-away-from-zero rounding.
+- Line-level Supplier Invoice / Inventory Receipt matching with durable Match identity and over-allocation protection.
+- Automatic Purchase-backed Inventory Valuation Cost Input for confirmed stock purchases without duplicate operator price entry.
+- Receipt-before-invoice unresolved-cost policy with later deterministic cost resolution/recalculation.
+- Immutable Purchase Return/Correction compensation workflows with Inventory follow-up effects instead of history rewrite.
+- Persistence-neutral Application/Repository/UoW contracts, replay-safe command orchestration and bounded read queries.
+- Persian RTL Purchase workspace and operational Purchase reports.
+
+### Database
+
+- Added `0030_purchase_workflow.sql`.
+- Added `0031_purchase_scope_snapshot.sql`.
+- Added `0032_purchase_replay_safety.sql`.
+- Added Purchase Document/Line/Lifecycle, Commercial Fact, Match, Cost Input and Idempotency persistence.
+- Added scoped document-number uniqueness, append-only Match/replay evidence, optimistic concurrency and Bridge change indexes.
+
+### Security and Audit
+
+- Added granular Purchase view/create/edit/lifecycle/Approval/Confirmation/receipt-staging/matching/cost-resolution permissions.
+- Enforced persisted Company/Branch scope at Application boundaries independently of UI visibility.
+- Integrated successful Purchase mutations with shared Approval/Audit traceability and durable request/operation identity.
+
+### Inventory and Valuation Integration
+
+- Purchase stages Inventory-owned receipt drafts and never writes stock movements directly.
+- Confirmed Supplier Invoice cost resolves against confirmed Inventory receipt/movement identity.
+- Purchase Cost Input is committed before Inventory Valuation recalculation/delivery.
+- Existing manual Inventory Cost Input is protected from automatic Purchase overwrite.
+- Services/non-stock purchases do not create Inventory Cost Inputs solely because they were purchased.
+
+### Argin Bridge
+
+- Added versioned envelopes for Purchase Document, Purchase Commercial Fact, Receipt/Invoice Match and Purchase Valuation Cost Input.
+- Preserved durable dependencies across Purchase, Inventory, Product, Warehouse and fiscal scope.
+- Kept reports, matching summaries and FIFO/MWA projections rebuildable rather than independent synchronization authority.
+
+### Tests and Validation
+
+- Added Domain/Application regression coverage across pricing, lifecycle, matching, Return/Correction, replay safety, authorization and query boundaries.
+- Added real SQLite migration, rollback, restart, constraint and optimistic-concurrency integration coverage.
+- Added concrete Desktop -> Purchase -> Inventory -> Valuation integration coverage.
+- Added Bridge JSON round-trip tests from facts rehydrated from SQLite.
+- Added canonical `pnpm validate:phase22` release gate.
+- Final full-gate execution remains evidence-based and must not be claimed until observed successfully.
+
+### Deferred
+
+- Supplier payable, GRNI, VAT and Journal posting: Phase 23 Purchase Posting.
+- Sales commercial workflow: Phase 24.
+- Live synchronization transport/acknowledgement/conflict handling: Phase 45.
+- Iranian Taxpayer System submission: Phases 31–35.
+
+### Release
+
+- Target semantic tag: `v0.22.0`.
+- Release title: `ArginAccounting v0.22.0 — Purchase Workflow`.
+- Phase 22 is built on Phase 21 Inventory Valuation and must not be published ahead of the required Phase 21 promotion/reconciliation.
+- Tag and GitHub Release publication remain manual repository-owner actions.
+
+---
+
 ## [0.20.0] - Unreleased
 
 ### Planning

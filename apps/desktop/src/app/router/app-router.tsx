@@ -27,6 +27,8 @@ import { InventoryDocumentsPage } from "../../pages/inventory/inventory-document
 import { InventoryQuantityReportsPage } from "../../pages/inventory/inventory-quantity-reports-page";
 import { InventoryTransferCenterPage } from "../../pages/inventory/inventory-transfer-center-page";
 import { InventoryValuationWorkspacePage } from "../../pages/inventory/inventory-valuation-workspace-page";
+import { PurchaseDocumentsPage } from "../../pages/purchase/purchase-documents-page";
+import { PurchaseOperationalReportsPage } from "../../pages/purchase/purchase-operational-reports-page";
 
 export function AppRouter() {
   return (
@@ -47,6 +49,8 @@ export function AppRouter() {
           <Route path="/inventory/reports" element={<InventoryQuantityReportsPage />} />
           <Route path="/inventory/valuation" element={<InventoryValuationWorkspacePage />} />
           <Route path="/inventory/transfer-center" element={<InventoryTransferCenterPage />} />
+          <Route path="/purchases/documents" element={<PurchaseDocumentsPage />} />
+          <Route path="/purchases/reports" element={<PurchaseOperationalReportsPage />} />
           <Route path="/fiscal/years" element={<FiscalYearsPage />} />
           <Route path="/fiscal/years/new" element={<NewFiscalYearPage />} />
           <Route path="/approval/requests" element={<ApprovalRequestsPage />} />

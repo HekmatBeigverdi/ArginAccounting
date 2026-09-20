@@ -34,6 +34,7 @@ For every table record:
 | Products and Services | `products`, identifiers/barcodes/external refs, `product_units`, `product_master_data`, sync/idempotency tables | Phase 18 |
 | Warehouses | `warehouses`, external refs, `warehouse_zones`, `warehouse_locations`, sync/idempotency tables | Phase 19 |
 | Inventory Documents | documents/lines/lifecycle, ordinary + compensation movement facts, opening facts, balance projections, business orders, idempotency | Phase 20 |
+| Purchase Workflow | purchase documents/lines/lifecycle, commercial facts, receipt-invoice matches, valuation Cost Inputs, idempotency | Phase 22 |
 
 ## Phase 10 — Chart of Accounts
 
@@ -269,3 +270,78 @@ Negative historical stock, exact transfer conservation, reversal quantity equali
 ### Retention and sensitivity
 
 Confirmed lifecycle/movement/opening/compensation facts are retained and corrected through compensating facts, not destructive deletion. Draft tombstones support future synchronization. Inventory data is company-confidential operational/financial data and follows the same local database protection and backup policy as other accounting records.
+
+
+## Phase 22 — Purchase Workflow
+
+### `purchase_documents`
+
+Company- and Branch-scoped Purchase aggregate root using durable TEXT identity. Stores Supplier identity plus immutable Supplier snapshot JSON, document type/status/number, Gregorian business date, Fiscal Year/Period, optional source/correction references, optimistic `version`, timestamps and Bridge-ready synchronization metadata.
+
+Important integrity rules:
+
+- document type is `purchase-order`, `supplier-invoice`, `purchase-return`, or `purchase-correction`;
+- lifecycle status is one of draft/submitted/approved/confirmed/cancelled/returned/corrected;
+- document number is unique by Company + Fiscal Year + Branch + Purchase document type when assigned;
+- Company/Branch/Supplier references are relational and same-company scoped;
+- correction references cannot self-reference and are only valid for return/correction document types when supplied;
+- `version >= 1`.
+
+### `purchase_document_lines`
+
+Stable durable Purchase line identity and position. Stores line classification, Product/Service identity, immutable item snapshot JSON, description and optional source reference. Commercial terms are intentionally not duplicated here.
+
+### `purchase_document_lifecycle`
+
+Append-only Purchase lifecycle history. UPDATE and DELETE are blocked by SQLite triggers. Terminal returned/corrected transitions require a reason and related Purchase document identity.
+
+### `purchase_commercial_facts`
+
+Current authoritative Purchase commercial fact per Purchase line. Stores the complete `PurchaseCommercialTerms` JSON plus canonical entered/base quantities, unit identities, safe-integer unit price, currency, tax treatment/rate, revision and Bridge-ready synchronization metadata.
+
+This is the durable source used by Inventory receipt staging and valuation-cost resolution. Inventory/Valuation must not create a second operator-entry path for Purchase quantity or price.
+
+### `purchase_receipt_invoice_matches`
+
+Append-only durable line-level allocation between a Purchase supplier-invoice line and a confirmed Inventory receipt line. Stores Product identity and canonical matched base quantity.
+
+The same invoice-line/receipt-line pair is unique. UPDATE and DELETE are blocked by triggers.
+
+### `purchase_valuation_cost_inputs`
+
+Current Purchase provenance for one resolved Inventory inbound movement. Stores receipt line, Product/Warehouse, exact quantity, currency, safe-integer costs, unit cost, source-link JSON and complete valuation-basis JSON. Company + movement identity is unique.
+
+Inventory still owns the movement; Phase 21 still owns FIFO/Moving Weighted Average evaluation and recalculation.
+
+### `purchase_idempotency`
+
+Durable request/replay storage reserved for Step 17. Primary identity is Company + request ID, while Company + operation ID is independently unique. Stores operation, payload fingerprint and durable outcome identity/version/status.
+
+Step 15 defines storage only; Step 17 defines authoritative replay/conflict semantics.
+
+### Index policy
+
+Indexes support bounded Purchase document lists, Supplier/date, type/date, Branch/date, Fiscal scope, correction-chain lookup, Product/line access, commercial-fact retrieval, receipt/invoice matching from either side, movement/receipt/Product Cost Input lookup, idempotency diagnostics and incremental Bridge change scans.
+
+### Cross-row responsibilities
+
+Current Fiscal locks, Supplier role eligibility, cumulative over-match checks, cumulative return coverage, current Product/Warehouse eligibility, Cost Input recalculation ordering and full payload-fingerprint replay rules remain Application/UoW responsibilities.
+
+### SQLite Application Adapter
+
+`@argin/purchase-tauri` provides `SqlitePurchaseDocumentRepository`, `SqlitePurchaseCommercialFactRepository`, `SqlitePurchaseReceiptInvoiceMatchRepository`, `SqlitePurchaseValuationCostInputRepository` and `SqlitePurchaseUnitOfWork`.
+
+Document updates use Company/document/expected-version compare-and-swap. All four repositories inside one Purchase UoW are bound to the same transaction-scoped `DatabaseSession`. Production Desktop transactions inherit the pinned SQLite `BEGIN IMMEDIATE / COMMIT / ROLLBACK` guarantee from `@argin/database-tauri`.
+
+The Purchase adapter may read Inventory receipt/movement facts needed for unresolved-cost derivation, but it never writes Inventory-owned tables.
+
+### Migrations
+
+- `apps/desktop/src-tauri/migrations/0030_purchase_workflow.sql`
+- `apps/desktop/src-tauri/migrations/0031_purchase_scope_snapshot.sql`
+
+Migration `0031` adds the complete captured Fiscal scope snapshot required to rehydrate Purchase documents without substituting current Fiscal state for historical facts.
+
+### Retention and sensitivity
+
+Lifecycle and match facts are append-only. Confirmed Purchase history is corrected through compensating return/correction documents rather than destructive rewrite. Purchase data is company-confidential commercial/financial data and follows the local database backup and protection policy.

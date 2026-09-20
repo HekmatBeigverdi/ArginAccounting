@@ -71,3 +71,4 @@ export type {
   InventoryTabularData,
   InventoryTabularRow,
 } from "./inventory-tabular-codec.ts";
+export { SqliteInventorySourceCostInputService } from "./sqlite-inventory-source-cost-input-service.ts";

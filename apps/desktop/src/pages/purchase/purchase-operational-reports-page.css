@@ -1,0 +1,97 @@
+.purchase-reports {
+  display: grid;
+  gap: var(--ui-density-section-gap);
+  min-width: 0;
+  font-size: var(--ui-density-font-size);
+}
+.purchase-reports__header h1 { margin: 0 0 6px; }
+.purchase-reports__header p { margin: 0; color: #667085; }
+.purchase-report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-density-gap);
+}
+.purchase-report-tabs button,
+.purchase-report-filters button,
+.purchase-report-pagination button {
+  min-height: var(--ui-density-control-height);
+  border: 1px solid var(--color-border, #cbd5e1);
+  border-radius: 7px;
+  background: var(--color-surface, #fff);
+  padding: var(--ui-density-cell-y) var(--ui-density-cell-x);
+  cursor: pointer;
+  font: inherit;
+}
+.purchase-report-tabs button.is-active {
+  background: var(--color-primary, #155eef);
+  color: #fff;
+  border-color: transparent;
+}
+.purchase-report-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.5fr) repeat(2, minmax(170px, 1fr)) auto;
+  gap: var(--ui-density-gap);
+  align-items: end;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  padding: var(--ui-density-panel-padding);
+  background: var(--color-surface, #fff);
+}
+.purchase-report-filters label {
+  display: grid;
+  gap: var(--ui-density-gap);
+  font-size: .82rem;
+  color: #475467;
+}
+.purchase-report-filters input,
+.purchase-report-filters select {
+  min-height: var(--ui-density-control-height);
+  box-sizing: border-box;
+  border: 1px solid #cfd4dc;
+  border-radius: 7px;
+  padding: var(--ui-density-cell-y) var(--ui-density-cell-x);
+  background: #fff;
+  font: inherit;
+}
+.purchase-report-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 10px;
+  background: var(--color-surface, #fff);
+}
+.purchase-report-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+.purchase-report-table th,
+.purchase-report-table td {
+  height: var(--ui-density-row-height);
+  box-sizing: border-box;
+  padding: var(--ui-density-cell-y) var(--ui-density-cell-x);
+  border-bottom: 1px solid #edf0f4;
+  text-align: right;
+  vertical-align: middle;
+}
+.purchase-report-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  color: #475467;
+  font-size: .78rem;
+}
+.purchase-report-table tbody tr:hover { background: #fafcff; }
+.purchase-report-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ui-density-gap);
+}
+.purchase-report-pagination button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+@media (max-width: 1000px) {
+  .purchase-report-filters { grid-template-columns: 1fr; }
+  .purchase-report-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

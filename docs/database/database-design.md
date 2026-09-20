@@ -134,6 +134,18 @@ Opening uniqueness is materialized in `inventory_opening_balances` and enforced 
 
 Cross-row rules that depend on the complete movement set—negative historical balance, transfer conservation, exact reversal compensation, payload fingerprint semantics and concurrent stock validation—remain Application/UoW responsibilities. The Step 10 read-check-write sequence now executes through the real SQLite transaction boundary delivered in Step 13.
 
+## Purchase Persistence — Phase 22
+
+Phase 22 adds `purchase_documents`, `purchase_document_lines`, `purchase_document_lifecycle`, `purchase_commercial_facts`, `purchase_receipt_invoice_matches`, `purchase_valuation_cost_inputs`, and `purchase_idempotency` through migrations 0030–0032.
+
+Purchase document and line identity is durable and independent from SQLite row ordering. Historical Supplier/Product/Service and Fiscal scope snapshots are persisted with the Purchase aggregate. Commercial Facts remain separate authoritative line facts so downstream Inventory Valuation consumes Purchase cost without creating a second operator-entry price store.
+
+Receipt/invoice Match facts are append-only and reference both Purchase line identity and Inventory receipt line identity. Purchase-backed Cost Inputs reference the confirmed Inventory movement/receipt/product/warehouse plus their Purchase Match/source provenance. Inventory remains authoritative for quantity movements; Purchase persistence never creates or mutates Inventory StockMovement facts directly.
+
+Purchase mutation replay is Company-scoped and persists request ID, operation ID, payload fingerprint and exact result JSON. Exact committed retries replay the stored result; changed payload under reused identity conflicts. Optimistic document updates use expected-version compare-and-swap.
+
+The Purchase SQLite Unit of Work binds Document, Commercial Fact, Match, Cost Input and Idempotency repositories to one transaction session. Bridge change metadata is persisted on authoritative Purchase facts, while operational report rows and FIFO/MWA projections remain rebuildable and are not separate synchronization authority.
+
 ## Transactions
 
 Use explicit Unit of Work boundaries for operations that write multiple aggregates, history records, audit entries, number-series values, or posting results. Phase 16 report execution is read-only and does not introduce a report-write transaction.

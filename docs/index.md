@@ -37,6 +37,7 @@
 - [Inventory Application, Query and Repository Contracts](architecture/inventory-application-contracts.md)
 - [Inventory Application Services, Idempotency, and Concurrency](architecture/inventory-application-services.md)
 - [Inventory Argin Bridge and Future Synchronization Contract](architecture/inventory-argin-bridge-contract.md)
+- [Purchase Argin Bridge Synchronization Contract](architecture/purchase-argin-bridge-contract.md)
 - [Inventory Desktop Workspace](architecture/inventory-desktop-workspace.md)
 - [Inventory Document Domain Foundation](architecture/inventory-documents.md)
 - [Inventory Master Data Dependency Guards and ERP Integration](architecture/inventory-master-data-erp-integration.md)
@@ -196,3 +197,15 @@
 ## vision
 
 - [Product Vision](vision/product-vision.md)
+
+- [Purchase Security, Approval, Audit and Traceability](security/purchase-security-approval-audit.md)
+
+- [Purchase Desktop Workspace](architecture/purchase-desktop-workspace.md)
+
+- [Purchase Operational Reports](architecture/purchase-operational-reports.md)
+
+- [Phase 22 Purchase Domain and Application Tests](testing/phase-22-purchase-domain-application-tests.md)
+
+- [Phase 22 Purchase SQLite and Cross-Module Integration Tests](testing/phase-22-purchase-sqlite-integration-tests.md)
+
+- [Phase 22 Release Notes](phases/phase-22-release-notes.md)
