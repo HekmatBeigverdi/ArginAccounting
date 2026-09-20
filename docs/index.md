@@ -205,3 +205,5 @@
 - [Purchase Operational Reports](architecture/purchase-operational-reports.md)
 
 - [Phase 22 Purchase Domain and Application Tests](testing/phase-22-purchase-domain-application-tests.md)
+
+- [Phase 22 Purchase SQLite and Cross-Module Integration Tests](testing/phase-22-purchase-sqlite-integration-tests.md)
