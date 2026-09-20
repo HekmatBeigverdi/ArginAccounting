@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–20 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 21 — Purchase Queries and Operational Reports — is next.
+Steps 1–21 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 22 — Domain and Application Tests — is next.
 
 ## Governance
 
@@ -31,6 +31,7 @@ Mandatory references:
 - [Purchase Argin Bridge Synchronization Contract](../architecture/purchase-argin-bridge-contract.md)
 - [Purchase Security, Approval, Audit and Traceability](../security/purchase-security-approval-audit.md)
 - [Purchase Desktop Workspace](../architecture/purchase-desktop-workspace.md)
+- [Purchase Operational Reports](../architecture/purchase-operational-reports.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -96,7 +97,7 @@ Mandatory references:
 | 18 | Argin Bridge Purchase Synchronization Contract | Completed |
 | 19 | Permissions, Approval, Audit and Traceability | Completed |
 | 20 | Persian RTL Purchase Workspace | Completed |
-| 21 | Purchase Queries and Operational Reports | Not started |
+| 21 | Purchase Queries and Operational Reports | Completed |
 | 22 | Domain and Application Tests | Not started |
 | 23 | SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests | Not started |
 | 24 | Monorepo Validation, Documentation, Final Review and Release | Not started |
@@ -423,6 +424,28 @@ Mandatory references:
 - Fresh source-contract verification confirms route/navigation, RTL/Jalali/LTR conventions, secured composition, Master Data selectors, Fiscal numbering/date checks, stale-version reload, Return/Correction flows, Inventory-draft staging without direct Inventory SQL, Desktop dependency registration and density tokens.
 - Step 20 intentionally does not implement Step 21 operational Purchase reports. The current frozen Purchase Application contract also has no persisted Draft-update command, so the creation modal builds the complete Draft atomically rather than inventing an alternate UI-only update path.
 - Full Desktop/package test/typecheck/build execution is not claimed unless observed successfully; broader Desktop/SQLite/Inventory/Valuation/Bridge integration remains Step 23 and final monorepo validation remains Step 24.
+
+
+## Step 21 — Purchase Queries and Operational Reports
+
+### Exit Criteria and Evidence
+
+- Added persistence-neutral Purchase operational-report contracts, bounded query normalization and exact report projection helpers in `purchase-operational-reports.ts`.
+- Report query scope supports mandatory Company plus optional Branch, Fiscal Year, Supplier and business-date range, with limit 1..500 and non-negative offset.
+- Purchase Document Register derives gross/discount/net/charge/tax-base/tax/grand-total from persisted authoritative Commercial Facts using the existing Purchase pricing engine instead of trusting duplicated UI totals.
+- Supplier Activity Summary separates Supplier Invoice, Purchase Return and Purchase Correction counts/amounts. `netBeforeCorrections` is explicitly Invoice less confirmed Return; Correction amount remains separate because a correction is not necessarily a simple additive delta.
+- Invoice/Receipt Matching report calculates matched/remaining canonical base quantities with exact decimal arithmetic and reports `unmatched`, `partially-matched` and `fully-matched`; persisted over-matching is treated as an invalid dependency state.
+- Unresolved-cost report exposes confirmed Purchase-sourced Inventory receipt movements missing Purchase-backed Cost Input and preserves the Step 11 unresolved reasons.
+- Added `SqlitePurchaseOperationalReportReader` with bounded lookahead reads over Purchase/Inventory authority; it performs no writes and does not create independent reporting authority.
+- Added Persian RTL Desktop route `/purchases/reports` and navigation item `گزارش‌های خرید` under `خرید و تدارکات`.
+- Desktop report workspace exposes four views: `دفتر اسناد خرید`, `خلاصه تأمین‌کنندگان`, `تطبیق فاکتور و رسید`, and `هزینه‌های حل‌نشده`.
+- Report composition reuses `purchases.documents.view` for viewing and independently enforces persisted Branch scope; Company-wide view remains limited to `system.full-access`.
+- Jalali report filters convert only when a report load is requested, so partially typed dates cannot throw during React render.
+- Supplier filtering is intentionally not pretended for unresolved-cost rows before authoritative invoice identity exists; Company/Branch/Fiscal/date filters still apply.
+- Added display-density-aware report CSS and read-only UI; Step 21 does not create Journal Vouchers, Posting Rules or Accounts Payable aging.
+- Added focused test-first files: `purchase-operational-reports.test.ts`, `sqlite-purchase-operational-report-reader.test.ts`, and `purchase-operational-reports-contract.test.ts`.
+- Added `purchase-operational-reports.md`, documentation index entry and module-registry record; Step 20 Desktop documentation now links to the Step 21 reporting boundary.
+- Real package test/typecheck execution is not claimed unless observed successfully. Exhaustive Domain/Application tests remain Step 22, real SQLite/cross-module/Desktop integration remains Step 23, and final monorepo validation remains Step 24.
 
 ## Change Requests
 
