@@ -187,7 +187,7 @@ export function PurchaseOperationalReportsPage() {
         companyId: active.companyId,
         branchId: active.branchId || null,
         fiscalYearId: active.fiscalYearId || null,
-        supplierId: supplierId || null,
+        supplierId: tab === "unresolved" ? null : supplierId || null,
         fromBusinessDate: dateFrom ? jalaliToGregorian(dateFrom) : null,
         toBusinessDate: dateTo ? jalaliToGregorian(dateTo) : null,
         limit: pageSize,
