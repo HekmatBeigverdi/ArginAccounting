@@ -201,3 +201,5 @@
 - [Purchase Security, Approval, Audit and Traceability](security/purchase-security-approval-audit.md)
 
 - [Purchase Desktop Workspace](architecture/purchase-desktop-workspace.md)
+
+- [Purchase Operational Reports](architecture/purchase-operational-reports.md)
