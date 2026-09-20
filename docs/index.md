@@ -203,3 +203,5 @@
 - [Purchase Desktop Workspace](architecture/purchase-desktop-workspace.md)
 
 - [Purchase Operational Reports](architecture/purchase-operational-reports.md)
+
+- [Phase 22 Purchase Domain and Application Tests](testing/phase-22-purchase-domain-application-tests.md)
