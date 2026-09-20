@@ -324,3 +324,67 @@ test("persisted Purchase, Match and Cost Input facts round-trip through Bridge e
     await database.close();
   }
 });
+
+
+test("real SQLite constraints enforce numbering, append-only facts and optimistic concurrency", async () => {
+  const sqlite = new DatabaseSync(":memory:");
+  const database = executorFor(sqlite);
+  try {
+    applyMigrations(sqlite);
+    seedMaster(sqlite);
+    seedConfirmedReceipt(sqlite);
+    const { document, fact } = purchaseFixture();
+    const documents = new SqlitePurchaseDocumentRepository(database);
+
+    await new SqlitePurchaseUnitOfWork(database).execute(async context => {
+      await context.documents.add(document);
+      await context.commercialFacts.addBatch([fact]);
+    });
+
+    const duplicate = createPurchaseDocument({
+      ...document,
+      documentId: "invoice-duplicate",
+      createdAt: "2026-09-20T08:05:00.000Z",
+    });
+    await assert.rejects(
+      () => documents.add(duplicate),
+      (error: unknown) => error instanceof Error && "field" in error && error.field === "documentNumber",
+    );
+
+    const matchRepository = new SqlitePurchaseReceiptInvoiceMatchRepository(database);
+    await matchRepository.add({
+      matchId: "immutable-match", companyId: "company", invoiceDocumentId: "invoice",
+      invoiceLineId: "invoice-line", receiptDocumentId: "receipt", receiptLineId: "receipt-line",
+      productId: "product", matchedBaseQuantity: "2",
+    });
+    assert.throws(
+      () => sqlite.prepare("UPDATE purchase_receipt_invoice_matches SET matched_base_quantity='1' WHERE match_id='immutable-match'").run(),
+      /append-only/u,
+    );
+    assert.throws(
+      () => sqlite.prepare("DELETE FROM purchase_receipt_invoice_matches WHERE match_id='immutable-match'").run(),
+      /append-only/u,
+    );
+
+    const idempotency = new SqlitePurchaseIdempotencyRepository(database);
+    await idempotency.add({
+      companyId: "company", requestId: "request-immutable", operationId: "operation-immutable",
+      operation: "create:invoice", payloadFingerprint: "fingerprint-immutable",
+      outcomeKind: "document", outcomeId: "invoice", outcomeVersion: 1, outcomeStatus: "draft",
+      resultJson: JSON.stringify(document), recordedAt: "2026-09-20T08:10:00.000Z",
+    });
+    assert.throws(
+      () => sqlite.prepare("UPDATE purchase_idempotency SET payload_fingerprint='changed' WHERE request_id='request-immutable'").run(),
+      /append-only/u,
+    );
+
+    const stale = { ...document, description: "stale", version: 2, updatedAt: "2026-09-20T08:20:00.000Z" };
+    await documents.update(stale, 1);
+    await assert.rejects(
+      () => documents.update({ ...stale, description: "second", version: 2 }, 1),
+      (error: unknown) => error instanceof Error && "code" in error && error.code === "PURCHASE_APP_VERSION_CONFLICT",
+    );
+  } finally {
+    await database.close();
+  }
+});
