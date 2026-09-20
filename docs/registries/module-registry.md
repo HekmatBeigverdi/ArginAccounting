@@ -40,6 +40,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 - Bridge: Step 18 freezes versioned sync envelopes for Purchase documents, commercial facts, receipt/invoice matches and Purchase-backed Cost Inputs; projections and FIFO/MWA state are rebuildable and are not synchronized as authority.
 - Security: Step 19 adds independent Purchase permissions, persisted Company/Branch authorization, submission-cycle-aware shared Approval, and deterministic request/operation-traceable shared Audit.
 - Desktop: Step 20 adds the Persian RTL Purchase list/detail/commercial-line workspace with Jalali boundary, lifecycle/Approval/history, stale-version recovery, Return/Correction flows and secured Inventory receipt-draft staging.
+- Reporting: Step 21 adds bounded operational Purchase reports for document register/totals, Supplier activity, invoice-receipt matching and unresolved Purchase-backed Inventory cost; reports are read-only rebuildable projections.
 
 ## Required Fields for Future Entries
 
