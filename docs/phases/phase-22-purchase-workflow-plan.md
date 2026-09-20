@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–22 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 23 — SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests — is next.
+Steps 1–23 are complete on `phase/22-purchase-workflow`. The fixed 24-step sequence remains frozen. Step 24 — Monorepo Validation, Documentation, Final Review and Release — is next.
 
 ## Governance
 
@@ -33,6 +33,7 @@ Mandatory references:
 - [Purchase Desktop Workspace](../architecture/purchase-desktop-workspace.md)
 - [Purchase Operational Reports](../architecture/purchase-operational-reports.md)
 - [Phase 22 Purchase Domain and Application Tests](../testing/phase-22-purchase-domain-application-tests.md)
+- [Phase 22 Purchase SQLite and Cross-Module Integration Tests](../testing/phase-22-purchase-sqlite-integration-tests.md)
 - [Purchase Application Services and Transaction Boundaries](../architecture/purchase-application-services-and-transaction-boundaries.md)
 
 ## Baseline and Release Target
@@ -101,7 +102,7 @@ Mandatory references:
 | 20 | Persian RTL Purchase Workspace | Completed |
 | 21 | Purchase Queries and Operational Reports | Completed |
 | 22 | Domain and Application Tests | Completed |
-| 23 | SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests | Not started |
+| 23 | SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests | Completed |
 | 24 | Monorepo Validation, Documentation, Final Review and Release | Not started |
 
 ## Fixed Execution Sequence
@@ -463,6 +464,26 @@ Mandatory references:
 - Added `phase-22-purchase-domain-application-tests.md` as the canonical Domain/Application coverage matrix and updated documentation index/module registry.
 - Step 22 does not claim SQLite/migration/cross-module integration coverage; those remain Step 23.
 - Fresh direct package execution was attempted from this assistant environment, but repository access is blocked by `Could not resolve host: github.com`. No unobserved test/typecheck pass is claimed. Authoritative local verification remains `pnpm --filter @argin/purchase test` plus `pnpm --filter @argin/purchase typecheck`.
+
+
+## Step 23 — SQLite, Migration, Inventory, Valuation, Bridge and Desktop Integration Tests
+
+### Exit Criteria and Evidence
+
+- Added `purchase-step23-sqlite-bridge-integration.test.ts` using real `node:sqlite` and the actual Desktop migration files rather than a mocked SQL recorder.
+- Added real upgrade coverage from migration 29 through Purchase migrations 30–32 and verified pre-existing Phase 21 data survives the upgrade.
+- Verified runtime creation of the complete Purchase persistence boundary plus the migration-31 historical Fiscal scope columns and migration-32 replay `result_json`.
+- Verified `SqlitePurchaseUnitOfWork` rollback on a forced Commercial Fact failure: Purchase document, lines and commercial facts all roll back together.
+- Added file-backed SQLite restart coverage proving Purchase aggregate snapshots and exact idempotency replay evidence survive process/database reopen.
+- Verified changed replay payload under an already persisted request identity is rejected after restart.
+- Added runtime SQLite constraint evidence for scoped Purchase document-number uniqueness, append-only Match facts, append-only idempotency evidence and stale optimistic-concurrency rejection.
+- Persisted and re-read Purchase Document, Commercial Fact, Receipt/Invoice Match and Purchase Cost Input, then built all four Argin Bridge envelopes from those real persisted facts and verified JSON round-trip without drift.
+- Verified the Cost Input Bridge envelope retains Inventory Movement/Document/Line/Product/Warehouse plus Purchase Match/Document/Line dependencies.
+- Reconciled the existing concrete `purchase-create-integration.test.ts` as Step 23 Desktop integration evidence: numbered creation/edit/reload, transactional rollback, Purchase -> Inventory receipt staging, confirmed receipt lookup, Match creation, unresolved/resolved cost reporting, Purchase Cost Input delivery into Inventory Valuation, replay/no-duplicate behavior, permission checks and persisted-Branch cost resolution.
+- Reused upstream Inventory SQLite/valuation integration suites as authority rather than duplicating their internal behavior.
+- Added `phase-22-purchase-sqlite-integration-tests.md` as the canonical Step 23 integration matrix and updated documentation index/module registry.
+- Step 23 does not claim final monorepo build/release validation; that remains Step 24.
+- Fresh full command execution is not claimed unless observed successfully in the current environment. Local authoritative verification commands are recorded in the Step 23 test matrix.
 
 ## Change Requests
 
