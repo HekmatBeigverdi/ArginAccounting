@@ -53,3 +53,11 @@ test("Purchase report page follows display-density tokens", async () => {
     "--ui-density-font-size",
   ]) assert.ok(css.includes(token), token);
 });
+
+
+test("Jalali filter conversion happens on report load, not during partial-input render", async () => {
+  const page = await read("src/pages/purchase/purchase-operational-reports-page.tsx");
+  assert.doesNotMatch(page, /const filters = useMemo/u);
+  assert.match(page, /fromBusinessDate:\s*dateFrom \? jalaliToGregorian\(dateFrom\) : null/u);
+  assert.match(page, /toBusinessDate:\s*dateTo \? jalaliToGregorian\(dateTo\) : null/u);
+});
