@@ -61,3 +61,9 @@ test("Jalali filter conversion happens on report load, not during partial-input 
   assert.match(page, /fromBusinessDate:\s*dateFrom \? jalaliToGregorian\(dateFrom\) : null/u);
   assert.match(page, /toBusinessDate:\s*dateTo \? jalaliToGregorian\(dateTo\) : null/u);
 });
+
+
+test("Unresolved-cost view does not pretend to apply a Supplier filter before an invoice match exists", async () => {
+  const page = await read("src/pages/purchase/purchase-operational-reports-page.tsx");
+  assert.match(page, /supplierId:\s*tab === "unresolved" \? null : supplierId \|\| null/u);
+});
