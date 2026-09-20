@@ -190,7 +190,7 @@ in addition to the existing Party, Product, Warehouse, Fiscal, Inventory and Aud
 
 Step 20 does not implement:
 
-- Purchase operational reporting/analytics — Step 21;
+- Purchase operational reports are delivered by Step 21 in [Purchase Operational Reports](purchase-operational-reports.md); Step 20 itself remains the transactional document workspace.
 - final exhaustive Domain/Application test expansion — Step 22;
 - full real-SQLite/Desktop/Bridge integration matrix — Step 23;
 - accounting posting — Phase 23;
