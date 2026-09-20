@@ -69,6 +69,28 @@ SQLite report adapter
 
 Export and print project canonical report DTOs rather than recalculating accounting values. See [Phase 16](docs/phases/phase-16-accounting-reports.md) and [ADR-0016](docs/adr/ADR-0016-accounting-reports.md).
 
+## Inventory Valuation and Purchase Commercial Boundary
+
+Phase 20 Inventory owns immutable quantity documents and Stock Movements. Phase 21 Inventory Valuation owns FIFO/Moving Weighted Average policy, Cost Inputs and rebuildable monetary projections. Phase 22 Purchase owns Supplier commercial facts and normal Purchase price entry.
+
+For stock purchases the dependency direction is:
+
+```text
+Purchase Commercial Fact
+        ↓
+Inventory Receipt / Movement identity
+        ↓
+Purchase-backed authoritative Cost Input
+        ↓
+Inventory Valuation FIFO / MWA
+```
+
+Purchase never writes Inventory Stock Movements directly, and Inventory Valuation does not ask the operator to re-enter a normal Supplier price already owned by Purchase. Receipt-before-invoice remains explicitly unresolved until authoritative Supplier Invoice cost exists. Purchase Return/Correction creates compensating facts rather than rewriting confirmed history.
+
+Argin Bridge synchronizes authoritative Purchase Documents, Commercial Facts, Matches and Purchase-backed Cost Inputs; operational reports and FIFO/MWA projections remain rebuildable. Purchase accounting posting is intentionally deferred to Phase 23.
+
+See [Commercial Pricing and Inventory Valuation Boundary](docs/architecture/commercial-pricing-and-valuation-boundary.md) and [Phase 22 Purchase Workflow](docs/phases/phase-22-purchase-workflow-plan.md).
+
 Operational modules do not write arbitrary journal entries. They submit deterministic, idempotent posting requests to the Posting Engine.
 
 See [Accounting Engine](docs/accounting/accounting-engine.md) and [Posting Engine](docs/accounting/posting-engine.md).
