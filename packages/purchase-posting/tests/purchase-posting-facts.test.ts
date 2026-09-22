@@ -74,7 +74,7 @@ function baseInput() {
       item,
       baseQuantity: "2.5",
       amounts,
-      valuation,
+      valuations: [valuation],
     }],
     totals: amounts,
     capturedAt: "2026-09-22T12:30:00.000Z",
@@ -100,8 +100,8 @@ test("captures immutable confirmed Purchase and valuation provenance without rec
   assert.equal(fact.purchaseDocumentVersion, 7);
   assert.equal(fact.lines[0]?.amounts.taxBaseAmount, 9_100);
   assert.equal(fact.lines[0]?.amounts.taxAmount, 910);
-  assert.equal(fact.lines[0]?.valuation?.method, "fifo");
-  assert.equal(fact.lines[0]?.valuation?.totalCost, 9_100);
+  assert.equal(fact.lines[0]?.valuations[0]?.method, "fifo");
+  assert.equal(fact.lines[0]?.valuations[0]?.totalCost, 9_100);
   assert.ok(Object.isFrozen(fact));
   assert.ok(Object.isFrozen(fact.lines));
   assert.ok(Object.isFrozen(fact.lines[0]!));
@@ -146,11 +146,11 @@ test("accepts service facts without an Inventory valuation snapshot", () => {
       },
       baseQuantity: "1",
       amounts: serviceAmounts,
-      valuation: null,
+      valuations: [],
     }],
     totals: serviceAmounts,
   });
-  assert.equal(fact.lines[0]?.valuation, null);
+  assert.deepEqual(fact.lines[0]?.valuations, []);
 });
 
 test("rejects duplicate line identities and positions", () => {
@@ -221,7 +221,7 @@ test("rejects valuation on service/non-stock facts and product identity mismatch
       }],
     }),
     PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid,
-    "line.valuation",
+    "line.valuations",
   );
 
   assertDomainError(
@@ -229,11 +229,11 @@ test("rejects valuation on service/non-stock facts and product identity mismatch
       ...baseInput(),
       lines: [{
         ...baseInput().lines[0]!,
-        valuation: { ...valuation, productId: "other-product" },
+        valuations: [{ ...valuation, productId: "other-product" }],
       }],
     }),
     PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid,
-    "line.valuation.productId",
+    "line.valuations[0].productId",
   );
 });
 
@@ -242,9 +242,25 @@ test("keeps commercial and valuation currencies independent for future currency/
     ...baseInput(),
     lines: [{
       ...baseInput().lines[0]!,
-      valuation: { ...valuation, currency: "USD" },
+      valuations: [{ ...valuation, currency: "USD" }],
     }],
   });
   assert.equal(fact.lines[0]?.amounts.currency, "IRR");
-  assert.equal(fact.lines[0]?.valuation?.currency, "USD");
+  assert.equal(fact.lines[0]?.valuations[0]?.currency, "USD");
+});
+
+
+test("preserves multiple valuation movements for one Purchase line", () => {
+  const fact = createPurchasePostingFact({
+    ...baseInput(),
+    lines: [{
+      ...baseInput().lines[0]!,
+      valuations: [
+        { ...valuation, valuationEntryId: "valuation-entry-a", movementId: "movement-a", receiptDocumentId: "receipt-a", receiptLineId: "receipt-line-a", quantity: "1", totalCost: 3_640 },
+        { ...valuation, valuationEntryId: "valuation-entry-b", movementId: "movement-b", receiptDocumentId: "receipt-b", receiptLineId: "receipt-line-b", quantity: "1.5", totalCost: 5_460 },
+      ],
+    }],
+  });
+  assert.equal(fact.lines[0]?.valuations.length, 2);
+  assert.equal(fact.lines[0]?.valuations[1]?.movementId, "movement-b");
 });
