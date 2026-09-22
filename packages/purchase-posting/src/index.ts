@@ -67,3 +67,19 @@ export type {
   PurchasePostingSourceReference,
   PurchasePostingTraceContext,
 } from "./domain/purchase-posting-source-reference.ts";
+
+export {
+  PURCHASE_POSTING_EVENT_DISPOSITIONS,
+  PURCHASE_POSTING_EVENT_KINDS,
+  PURCHASE_POSTING_EVENT_REASON_CODES,
+  classifyPurchasePostingEvent,
+  classifyPurchasePostingFact,
+  isPurchasePostingEventEligible,
+} from "./domain/purchase-posting-event-classification.ts";
+export type {
+  ClassifyPurchasePostingEventInput,
+  PurchasePostingEventClassification,
+  PurchasePostingEventDisposition,
+  PurchasePostingEventKind,
+  PurchasePostingEventReasonCode,
+} from "./domain/purchase-posting-event-classification.ts";
