@@ -62,7 +62,7 @@ Each line preserves:
 - Product/Service historical snapshot;
 - canonical base quantity;
 - already-calculated commercial amounts;
-- optional authoritative Inventory Valuation snapshot.
+- zero or more authoritative Inventory Valuation snapshots.
 
 No unit price, discount, tax or charge is entered again in Purchase Posting.
 
@@ -94,7 +94,7 @@ Document totals must equal the exact sum of captured line totals.
 
 ## Valuation Snapshot
 
-A stock-product line may carry authoritative Phase 21 valuation provenance:
+A stock-product line may carry zero or more authoritative Phase 21 valuation snapshots because one Purchase line can be matched to multiple Inventory receipts/movements:
 
 - valuation entry ID;
 - Inventory movement ID;
@@ -108,7 +108,7 @@ A stock-product line may carry authoritative Phase 21 valuation provenance:
 - unit cost;
 - total cost.
 
-Services and non-stock lines cannot carry Inventory valuation.
+Services and non-stock lines cannot carry Inventory valuation. Duplicate valuation-entry or Movement identity inside one Purchase line is rejected.
 
 Commercial currency and valuation currency are deliberately not forced to match in Step 3. Future accounting/FX policy may need both values, and Step 3 must preserve source facts rather than invent conversion policy.
 
