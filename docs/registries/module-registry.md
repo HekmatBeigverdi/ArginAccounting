@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting` | Domain source foundation implemented through Phase 23 Step 4 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
+| Purchase Posting | `@argin/purchase-posting` | Domain event foundation implemented through Phase 23 Step 5 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -48,11 +48,11 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Purchase Posting — Phase 23 Current State
 
 - Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
-- Domain: `packages/purchase-posting` owns the Step 2 aggregate shell, Step 3 immutable Facts/Snapshots, and Step 4 durable Source Identity/line-reference/trace contracts with exact Fact-version matching.
+- Domain: `packages/purchase-posting` owns the Step 2 aggregate shell, Step 3 immutable Facts/Snapshots, Step 4 durable Source Identity/trace contracts, and Step 5 deterministic Purchase accounting-event classification.
 - Non-ownership: it does not own supplier commercial pricing, Inventory quantities, FIFO/MWA valuation state or Journal tables.
 - Persistence: none yet; SQLite schema/repository work remains Steps 20–21.
 - Bridge: durable source system/type/ID, source version/revision, Company/Branch, request/operation and correlation/causation metadata are established; the actual versioned Argin Bridge envelope remains Step 22.
-- Testing: Step 4 adds focused coverage for exact source-to-Fact matching, source versions/revisions, durable line references, trace chains, self-causation and delimiter-safe canonical source keys.
+- Testing: Step 5 adds full 4×3 document-type/source-status classification coverage and protects against duplicate effects from returned/corrected original Supplier Invoices.
 
 ## Required Fields for Future Entries
 
