@@ -402,6 +402,7 @@ pnpm --filter @argin/purchase-posting test
 - Added `PurchasePostingTraceContext` with independent `requestId`, `operationId`, `correlationId` and optional `causationId`.
 - Root operations may have null causation; self-causation is rejected.
 - Added composed `PurchasePostingSourceReference` that combines durable source identity with execution trace context without conflating the two concepts.
+- Added Fact-derived factories so Source Identity and Line References are generated directly from the immutable Step 3 Fact without re-entering Company/Branch/Document/Version fields.
 - Added exact source-to-Fact validation for Company, Branch, Purchase document type, Purchase document ID and Purchase aggregate version.
 - Added exact line-reference validation against the immutable line set captured in Step 3.
 - Added deterministic `purchasePostingSourceIdentityKey` for canonical lookup/reference use.
@@ -419,6 +420,7 @@ pnpm --filter @argin/purchase-posting test
 - [x] Source aggregate version is mandatory.
 - [x] Optional independent source revision is explicit.
 - [x] Exact Purchase line references are durable.
+- [x] Source identity can be derived directly from a Step 3 Fact without duplicate data entry.
 - [x] Source identity can be validated against a Step 3 Fact.
 - [x] Source line reference can be validated against the captured Fact line set.
 - [x] Request and operation identity are distinct from business source identity.
