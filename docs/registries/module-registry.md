@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting` | Domain foundation implemented through Phase 23 Step 2 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
+| Purchase Posting | `@argin/purchase-posting` | Domain facts foundation implemented through Phase 23 Step 3 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -48,11 +48,11 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Purchase Posting — Phase 23 Current State
 
 - Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
-- Domain: `packages/purchase-posting` currently owns only the Step 2 aggregate shell, durable scope identity, base status vocabulary, Journal-link invariant, version and UTC timestamp invariants.
+- Domain: `packages/purchase-posting` owns the Step 2 aggregate shell plus Step 3 immutable Purchase Posting Facts/Snapshots for Supplier, item, commercial totals and zero-to-many Inventory Valuation provenance.
 - Non-ownership: it does not own supplier commercial pricing, Inventory quantities, FIFO/MWA valuation state or Journal tables.
 - Persistence: none yet; SQLite schema/repository work remains Steps 20–21.
-- Bridge: durable IDs and serialization-safe state are established now; the actual versioned Argin Bridge envelope remains Step 22.
-- Testing: Step 2 focused runtime verification covers aggregate creation, rehydration, identity normalization, invalid Journal linkage, version validation and timestamp chronology.
+- Bridge: durable IDs, Purchase document version and serialization-safe immutable Fact snapshots are established now; canonical source-reference metadata is Step 4 and the actual versioned Argin Bridge envelope remains Step 22.
+- Testing: Step 3 adds focused coverage for immutable commercial facts, Supplier/Company scope, document-total reconciliation, multi-movement valuation provenance, non-stock/service boundaries and cross-company rejection.
 
 ## Required Fields for Future Entries
 
