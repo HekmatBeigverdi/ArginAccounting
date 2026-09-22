@@ -93,7 +93,7 @@ function assertRole(value: PurchasePostingAccountRole, field: string): PurchaseP
 }
 
 function assertEventKind(
-  value: PurchasePostingRule["eventKind"],
+  value: PurchasePostingEventKind | null,
   field: string,
 ): PurchasePostingRule["eventKind"] {
   if (value === null) return null;
