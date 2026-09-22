@@ -134,7 +134,7 @@ Exact accounting event meaning is not inferred here. Step 5 owns event classific
 
 The Fact Snapshot is Bridge-compatible because all identities are durable and the payload is serializable.
 
-However, the canonical Bridge envelope, schema version, correlation/causation and idempotency metadata are intentionally deferred to Steps 4 and 22.
+Durable source identity plus request/operation/correlation/causation metadata are defined by Step 4. The final Bridge envelope, schema version, payload fingerprint and synchronization metadata remain Step 22.
 
 The Bridge must treat these snapshots as immutable provenance, not editable copies of Purchase or Valuation master state.
 
