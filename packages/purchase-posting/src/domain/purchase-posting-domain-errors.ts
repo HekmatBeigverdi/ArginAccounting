@@ -21,6 +21,7 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   sourceReferenceMismatch: "purchase_posting.source_reference_mismatch",
   traceContextInvalid: "purchase_posting.trace_context_invalid",
   selfCausation: "purchase_posting.self_causation",
+  eventClassificationInvalid: "purchase_posting.event_classification_invalid",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
