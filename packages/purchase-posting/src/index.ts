@@ -83,3 +83,19 @@ export type {
   PurchasePostingEventKind,
   PurchasePostingEventReasonCode,
 } from "./domain/purchase-posting-event-classification.ts";
+
+export {
+  PURCHASE_POSTING_ACCOUNT_ROLES,
+  createPurchasePostingRule,
+  resolvePurchasePostingAccount,
+  selectPurchasePostingRule,
+} from "./domain/purchase-posting-rules.ts";
+export type {
+  CreatePurchasePostingRuleInput,
+  PurchasePostingAccountReader,
+  PurchasePostingAccountResolution,
+  PurchasePostingAccountResolutionContext,
+  PurchasePostingAccountRole,
+  PurchasePostingAccountSnapshot,
+  PurchasePostingRule,
+} from "./domain/purchase-posting-rules.ts";
