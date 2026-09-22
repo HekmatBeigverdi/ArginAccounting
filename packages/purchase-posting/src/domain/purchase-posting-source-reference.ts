@@ -88,6 +88,17 @@ function required(value: string, field: string): string {
   return normalized;
 }
 
+function traceRequired(value: string, field: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.traceContextInvalid, field);
+  }
+  const normalized = value.trim();
+  if (normalized.length > 128) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.traceContextInvalid, field);
+  }
+  return normalized;
+}
+
 function positiveInteger(value: number, field: string): number {
   if (!Number.isSafeInteger(value) || value < 1) {
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.versionInvalid, field);
@@ -140,19 +151,19 @@ export function createPurchasePostingTraceContext(
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.traceContextInvalid, "trace");
   }
 
-  const operationId = required(input.operationId, "trace.operationId");
+  const operationId = traceRequired(input.operationId, "trace.operationId");
   const causationId = input.causationId == null
     ? null
-    : required(input.causationId, "trace.causationId");
+    : traceRequired(input.causationId, "trace.causationId");
 
   if (causationId === operationId) {
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.selfCausation, "trace.causationId");
   }
 
   return Object.freeze({
-    requestId: required(input.requestId, "trace.requestId"),
+    requestId: traceRequired(input.requestId, "trace.requestId"),
     operationId,
-    correlationId: required(input.correlationId, "trace.correlationId"),
+    correlationId: traceRequired(input.correlationId, "trace.correlationId"),
     causationId,
   });
 }
@@ -209,12 +220,13 @@ export function purchasePostingSourceIdentityKey(
 ): string {
   const normalized = createPurchasePostingSourceIdentity(source);
   const revision = normalized.sourceRevision === null ? "-" : String(normalized.sourceRevision);
+  const component = (value: string): string => encodeURIComponent(value);
   return [
     normalized.sourceSystem,
-    normalized.companyId,
-    normalized.branchId,
+    component(normalized.companyId),
+    component(normalized.branchId),
     normalized.sourceType,
-    normalized.sourceId,
+    component(normalized.sourceId),
     `v${normalized.sourceVersion}`,
     `r${revision}`,
   ].join(":");
