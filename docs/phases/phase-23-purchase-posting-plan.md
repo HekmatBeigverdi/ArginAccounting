@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–5 are complete. Steps 6–30 are not started.
+Steps 1–6 are complete. Steps 7–30 are not started.
 
 ## Governance
 
@@ -26,6 +26,7 @@ Mandatory references:
 - [Purchase Posting Facts and Snapshots](../architecture/purchase-posting-facts-and-snapshots.md)
 - [Purchase Posting Source Identity](../architecture/purchase-posting-source-identity.md)
 - [Purchase Posting Event Classification](../architecture/purchase-posting-event-classification.md)
+- [Purchase Posting Rules and Account Resolution](../architecture/purchase-posting-rules-and-account-resolution.md)
 
 ## Baseline and Release Target
 
@@ -170,7 +171,7 @@ Live transport is not implemented in Phase 23.
 | 3 | Purchase Posting Facts and Snapshots | Completed |
 | 4 | Source Identity and Reference Contracts | Completed |
 | 5 | Purchase Posting Event Classification | Completed |
-| 6 | Posting Rules and Account Resolution | Not started |
+| 6 | Posting Rules and Account Resolution | Completed |
 | 7 | Supplier Invoice Posting Rules | Not started |
 | 8 | Purchase Tax Posting | Not started |
 | 9 | Purchase Charges Posting | Not started |
@@ -535,3 +536,56 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/purchase-posting-event-classification.test.ts`
 - `docs/architecture/purchase-posting-event-classification.md`
+
+
+## Step 6 — Posting Rules and Account Resolution
+
+### Completed work
+
+- Added role-based Purchase account mapping; no Chart of Accounts ID is hard-coded in posting logic.
+- Frozen minimum roles: `inventory-asset`, `purchase-expense`, `accounts-payable`, `input-vat-recoverable`, `purchase-charge`, `grni`.
+- Added Purchase Posting Rule scope for Company, optional Branch, optional Event Kind and optional Line Kind.
+- Added deterministic rule selection with Branch > Event Kind > Line Kind specificity, then explicit priority.
+- Equal-precedence/equal-priority matches fail as ambiguous instead of silently selecting a rule.
+- Missing mappings fail explicitly; no fallback suspense/default account is injected.
+- Added Account Reader/Resolver contract.
+- Resolved accounts must exist, belong to the same Company, be active and have `postingAllowed=true`.
+- Kept debit/credit direction, monetary formulas and Journal Line generation out of Step 6.
+- Added focused tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Account roles are explicit and reusable.
+- [x] Account IDs are configuration results, not hard-coded constants.
+- [x] Company scope is mandatory.
+- [x] Branch/Event/Line scopes are supported.
+- [x] Rule selection is deterministic.
+- [x] Ambiguous mappings fail explicitly.
+- [x] Missing mappings fail explicitly.
+- [x] Cross-company/non-active/non-postable accounts are rejected.
+- [x] Step 6 does not calculate debit/credit amounts.
+- [x] Step 6 does not create Journal Lines.
+- [x] Dimensions remain deferred to Step 19.
+- [x] Persistence remains deferred to Steps 20–21.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/purchase-posting-rules.test.ts`.
+- No remote CI PASS is claimed because this branch has no GitHub Actions run.
+- Local package typecheck/test should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-posting-rules.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-posting-rules.test.ts`
+- `docs/architecture/purchase-posting-rules-and-account-resolution.md`
