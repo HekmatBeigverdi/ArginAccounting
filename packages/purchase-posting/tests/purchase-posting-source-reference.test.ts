@@ -8,7 +8,9 @@ import {
   assertPurchasePostingSourceMatchesFact,
   createPurchasePostingFact,
   createPurchasePostingSourceIdentity,
+  createPurchasePostingSourceIdentityFromFact,
   createPurchasePostingSourceLineReference,
+  createPurchasePostingSourceLineReferenceFromFact,
   createPurchasePostingSourceReference,
   createPurchasePostingTraceContext,
   purchasePostingSourceIdentityKey,
@@ -256,5 +258,32 @@ test("reports malformed trace identifiers as trace-context errors", () => {
     }),
     PURCHASE_POSTING_DOMAIN_ERROR_CODES.traceContextInvalid,
     "trace.correlationId",
+  );
+});
+
+
+test("derives source identity from the immutable Posting Fact without re-entry", () => {
+  const identity = createPurchasePostingSourceIdentityFromFact(fact());
+  assert.equal(identity.companyId, "company-001");
+  assert.equal(identity.branchId, "branch-001");
+  assert.equal(identity.sourceType, "supplier-invoice");
+  assert.equal(identity.sourceId, "purchase-doc-001");
+  assert.equal(identity.sourceVersion, 7);
+});
+
+test("derives and validates line references directly from the immutable Posting Fact", () => {
+  const reference = createPurchasePostingSourceLineReferenceFromFact(
+    fact(),
+    "purchase-line-001",
+  );
+  assert.equal(reference.sourceLineId, "purchase-line-001");
+
+  assertDomainError(
+    () => createPurchasePostingSourceLineReferenceFromFact(
+      fact(),
+      "missing-line",
+    ),
+    PURCHASE_POSTING_DOMAIN_ERROR_CODES.sourceReferenceMismatch,
+    "lineReference.sourceLineId",
   );
 });
