@@ -93,7 +93,7 @@ export interface PurchasePostingLineFactSnapshot {
   readonly item: PurchasePostingItemSnapshot;
   readonly baseQuantity: string;
   readonly amounts: PurchasePostingCommercialAmountsSnapshot;
-  readonly valuation: PurchasePostingValuationSnapshot | null;
+  readonly valuations: readonly PurchasePostingValuationSnapshot[];
 }
 
 export interface PurchasePostingFactSnapshot {
@@ -217,7 +217,7 @@ function quantity(value: string, field: string): string {
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.quantityInvalid, field);
   }
   const normalized = value.trim().replace(/^0+(?=\d)/u, "").replace(/\.0+$/u, "").replace(/(\.\d*?)0+$/u, "$1");
-  if (Number(normalized) <= 0) {
+  if (/^0(?:\.0*)?$/u.test(normalized)) {
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.quantityInvalid, field);
   }
   return normalized;
@@ -346,15 +346,29 @@ export function createPurchasePostingLineFactSnapshot(
   if (input.lineKind !== "stock-product" && item.stockTracking) {
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.snapshotInvalid, "line.item.stockTracking");
   }
-  const valuation = input.valuation === null ? null : createPurchasePostingValuationSnapshot(input.valuation);
-  if (valuation !== null) {
-    if (input.lineKind !== "stock-product") {
-      return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, "line.valuation");
-    }
-    if (valuation.productId !== item.itemId) {
-      return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, "line.valuation.productId");
-    }
+  if (!Array.isArray(input.valuations)) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, "line.valuations");
   }
+  if (input.lineKind !== "stock-product" && input.valuations.length > 0) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, "line.valuations");
+  }
+  const valuationEntryIds = new Set<string>();
+  const movementIds = new Set<string>();
+  const valuations = input.valuations.map((raw, index) => {
+    const valuation = createPurchasePostingValuationSnapshot(raw);
+    if (valuation.productId !== item.itemId) {
+      return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, `line.valuations[${index}].productId`);
+    }
+    if (valuationEntryIds.has(valuation.valuationEntryId)) {
+      return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, `line.valuations[${index}].valuationEntryId`);
+    }
+    if (movementIds.has(valuation.movementId)) {
+      return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, `line.valuations[${index}].movementId`);
+    }
+    valuationEntryIds.add(valuation.valuationEntryId);
+    movementIds.add(valuation.movementId);
+    return valuation;
+  });
   return Object.freeze({
     purchaseLineId: required(input.purchaseLineId, "line.purchaseLineId"),
     position: input.position,
@@ -362,7 +376,7 @@ export function createPurchasePostingLineFactSnapshot(
     item,
     baseQuantity: quantity(input.baseQuantity, "line.baseQuantity"),
     amounts: createPurchasePostingCommercialAmountsSnapshot(input.amounts, "line.amounts"),
-    valuation,
+    valuations: Object.freeze(valuations),
   });
 }
 
