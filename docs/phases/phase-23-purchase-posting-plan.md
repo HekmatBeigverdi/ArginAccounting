@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–3 are complete. Steps 4–30 are not started.
+Steps 1–4 are complete. Steps 5–30 are not started.
 
 ## Governance
 
@@ -24,6 +24,7 @@ Mandatory references:
 - [ADR-0023 — Purchase Posting Boundary](../adr/ADR-0023-purchase-posting-boundary.md)
 - [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md)
 - [Purchase Posting Facts and Snapshots](../architecture/purchase-posting-facts-and-snapshots.md)
+- [Purchase Posting Source Identity](../architecture/purchase-posting-source-identity.md)
 
 ## Baseline and Release Target
 
@@ -166,7 +167,7 @@ Live transport is not implemented in Phase 23.
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Purchase Posting Domain Model | Completed |
 | 3 | Purchase Posting Facts and Snapshots | Completed |
-| 4 | Source Identity and Reference Contracts | Not started |
+| 4 | Source Identity and Reference Contracts | Completed |
 | 5 | Purchase Posting Event Classification | Not started |
 | 6 | Posting Rules and Account Resolution | Not started |
 | 7 | Supplier Invoice Posting Rules | Not started |
@@ -388,3 +389,67 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/purchase-posting-facts.test.ts`
 - `docs/architecture/purchase-posting-facts-and-snapshots.md`
+
+
+## Step 4 — Source Identity and Reference Contracts
+
+### Completed work
+
+- Added immutable `PurchasePostingSourceIdentity` for durable authoritative Purchase source identity.
+- Frozen Phase 23 source system to `purchase`; arbitrary source-system values are not accepted by the Purchase Posting bounded context.
+- Source identity captures Company, Branch, source type, source ID, aggregate source version and optional independent source revision.
+- Added `PurchasePostingSourceLineReference` so accounting provenance can point to an exact durable Purchase line rather than array position/UI row/SQLite identity.
+- Added `PurchasePostingTraceContext` with independent `requestId`, `operationId`, `correlationId` and optional `causationId`.
+- Root operations may have null causation; self-causation is rejected.
+- Added composed `PurchasePostingSourceReference` that combines durable source identity with execution trace context without conflating the two concepts.
+- Added exact source-to-Fact validation for Company, Branch, Purchase document type, Purchase document ID and Purchase aggregate version.
+- Added exact line-reference validation against the immutable line set captured in Step 3.
+- Added deterministic `purchasePostingSourceIdentityKey` for canonical lookup/reference use.
+- Canonical key components are URI-escaped to prevent delimiter collisions for durable IDs containing characters such as `:`, `%` or `/`.
+- Explicitly documented that the canonical source key is not an idempotency key; posting purpose, payload fingerprint and replay policy remain Step 15.
+- Added structured Source Identity/Reference/Trace domain errors and public exports.
+- Added focused tests covering source versions/revisions, line references, Fact matching, trace chains, self-causation and canonical-key escaping.
+- Added canonical architecture documentation.
+
+### Exit criteria
+
+- [x] Durable source identity is independent of SQLite row IDs.
+- [x] Company and Branch are part of source identity.
+- [x] Source system/type/ID are explicit.
+- [x] Source aggregate version is mandatory.
+- [x] Optional independent source revision is explicit.
+- [x] Exact Purchase line references are durable.
+- [x] Source identity can be validated against a Step 3 Fact.
+- [x] Source line reference can be validated against the captured Fact line set.
+- [x] Request and operation identity are distinct from business source identity.
+- [x] Correlation and causation semantics are explicit.
+- [x] Root causation is supported.
+- [x] Self-causation is rejected.
+- [x] Canonical source key is deterministic and delimiter-safe.
+- [x] Canonical source key is not presented as the final idempotency key.
+- [x] Bridge schema/transport concerns remain deferred to Step 22.
+- [x] Posting event eligibility remains deferred to Step 5.
+
+### Validation evidence
+
+- Focused Step 4 tests were added in `packages/purchase-posting/tests/purchase-posting-source-reference.test.ts`.
+- Repository code review confirms Step 4 contracts are persistence-neutral and only depend on the Purchase Posting domain package.
+- The current branch has no GitHub Actions workflow run, therefore no remote CI PASS is claimed.
+- A fresh full package/monorepo runtime validation is not claimed in this record; owner acceptance should execute the local commands below.
+- Full monorepo validation remains a later formal phase gate.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-posting-source-reference.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-posting-source-reference.test.ts`
+- `docs/architecture/purchase-posting-source-identity.md`
