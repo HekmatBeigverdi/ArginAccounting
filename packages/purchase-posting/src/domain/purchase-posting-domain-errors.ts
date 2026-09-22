@@ -17,6 +17,10 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   amountMismatch: "purchase_posting.amount_mismatch",
   quantityInvalid: "purchase_posting.quantity_invalid",
   valuationInvalid: "purchase_posting.valuation_invalid",
+  sourceIdentityInvalid: "purchase_posting.source_identity_invalid",
+  sourceReferenceMismatch: "purchase_posting.source_reference_mismatch",
+  traceContextInvalid: "purchase_posting.trace_context_invalid",
+  selfCausation: "purchase_posting.self_causation",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
