@@ -22,6 +22,11 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   traceContextInvalid: "purchase_posting.trace_context_invalid",
   selfCausation: "purchase_posting.self_causation",
   eventClassificationInvalid: "purchase_posting.event_classification_invalid",
+  postingRuleInvalid: "purchase_posting.posting_rule_invalid",
+  postingRuleAmbiguous: "purchase_posting.posting_rule_ambiguous",
+  accountMappingMissing: "purchase_posting.account_mapping_missing",
+  accountInvalid: "purchase_posting.account_invalid",
+  accountNotPostable: "purchase_posting.account_not_postable",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
