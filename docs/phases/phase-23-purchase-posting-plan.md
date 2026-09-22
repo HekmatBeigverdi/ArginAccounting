@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–2 are complete. Steps 3–30 are not started.
+Steps 1–3 are complete. Steps 4–30 are not started.
 
 ## Governance
 
@@ -23,6 +23,7 @@ Mandatory references:
 - [Posting Engine](../accounting/posting-engine.md)
 - [ADR-0023 — Purchase Posting Boundary](../adr/ADR-0023-purchase-posting-boundary.md)
 - [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md)
+- [Purchase Posting Facts and Snapshots](../architecture/purchase-posting-facts-and-snapshots.md)
 
 ## Baseline and Release Target
 
@@ -164,7 +165,7 @@ Live transport is not implemented in Phase 23.
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
 | 2 | Purchase Posting Domain Model | Completed |
-| 3 | Purchase Posting Facts and Snapshots | Not started |
+| 3 | Purchase Posting Facts and Snapshots | Completed |
 | 4 | Source Identity and Reference Contracts | Not started |
 | 5 | Purchase Posting Event Classification | Not started |
 | 6 | Posting Rules and Account Resolution | Not started |
@@ -320,3 +321,70 @@ Observed in the available execution environment:
 - `packages/purchase-posting/tests/purchase-posting-domain-model.test.ts`
 - `docs/architecture/purchase-posting-domain-model.md`
 - `pnpm-lock.yaml`
+
+
+## Step 3 — Purchase Posting Facts and Snapshots
+
+### Completed work
+
+- Added immutable `PurchasePostingFactSnapshot` as the accounting-recognition input boundary.
+- Captured durable Company/Branch/Fiscal scope, Purchase document identity/version, document type/status, document number, business date and capture timestamp.
+- Added historical Supplier snapshot including Company scope and Iranian identity/tax fields required for traceability.
+- Added Product/Service line snapshots with stable Purchase line identity/position, line kind, base quantity and historical item identity.
+- Added immutable commercial amount snapshots for gross, discount, net-after-discount, charges, tax base, tax and grand total.
+- Snapshot validation verifies arithmetic integrity only; it does not re-run Purchase pricing or create a second editable price store.
+- Document totals must equal the exact aggregate of captured line totals.
+- Added optional multi-movement Inventory Valuation provenance through `valuations[]` for stock-product lines.
+- Valuation provenance captures Company, valuation entry, movement, Inventory document/line, Product, Warehouse, policy, FIFO/MWA method, strategy version, quantity, unit cost, total cost and valuation currency.
+- Multiple valuation movements are supported for one Purchase line; duplicate valuation-entry or movement identity within a line is rejected.
+- Service and non-stock lines cannot carry Inventory valuation snapshots.
+- Commercial and valuation currencies remain independent source facts; Step 3 does not invent FX/accounting conversion policy.
+- Supplier and Valuation Company scope must match the Posting Fact Company.
+- `purchase-order` facts can be captured without deciding accounting eligibility; event classification remains Step 5.
+- Added structured domain error codes and public exports.
+- Added focused Step 3 tests, including multi-movement valuation, commercial integrity, duplicate lines, scope mismatch, service/non-stock boundaries and currency independence.
+- Added canonical architecture documentation.
+
+### Exit criteria
+
+- [x] Posting Fact is immutable and persistence-neutral.
+- [x] Upstream commercial facts are copied as provenance, not re-entered.
+- [x] Supplier historical identity is preserved.
+- [x] Product/Service historical identity is preserved.
+- [x] Purchase document version is captured.
+- [x] Company/Branch/Fiscal scope is captured.
+- [x] Commercial amount integrity is validated without repricing.
+- [x] Document totals reconcile exactly to line snapshots.
+- [x] Stock lines support zero-to-many Valuation snapshots.
+- [x] One Purchase line may preserve multiple Inventory Movement valuations.
+- [x] Service/non-stock lines reject Inventory valuation provenance.
+- [x] Cross-company Supplier/Valuation provenance is rejected.
+- [x] Durable facts remain free of SQLite row identity.
+- [x] Purchase Order eligibility is deferred to Step 5.
+- [x] Source Reference contract is deferred to Step 4.
+- [x] Posting Rules and Journal generation remain deferred to later steps.
+
+### Validation evidence
+
+- Focused domain tests were added in `packages/purchase-posting/tests/purchase-posting-facts.test.ts`.
+- The current repository has no GitHub Actions run for `phase/23-purchase-posting`, so no remote CI PASS is claimed.
+- This execution environment cannot reach GitHub from its local shell, therefore a fresh local `pnpm` run could not be executed here.
+- The Step 3 code and tests were reviewed against the package's strict TypeScript configuration and existing Phase 20–22 public contracts.
+- The repository owner should run the focused package checks locally before accepting the step; commands are listed below.
+- Full monorepo validation remains the later formal phase quality gate.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-posting-facts.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-posting-facts.test.ts`
+- `docs/architecture/purchase-posting-facts-and-snapshots.md`
