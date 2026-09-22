@@ -44,6 +44,7 @@ The canonical Source Reference/Identity abstraction remains Step 4.
 
 The Supplier snapshot preserves the historical identity displayed/used when the accounting fact was captured:
 
+- Company ID (for scope-integrity verification);
 - Supplier ID;
 - code;
 - display name;
@@ -96,9 +97,10 @@ Document totals must equal the exact sum of captured line totals.
 
 A stock-product line may carry zero or more authoritative Phase 21 valuation snapshots because one Purchase line can be matched to multiple Inventory receipts/movements:
 
+- Company ID;
 - valuation entry ID;
 - Inventory movement ID;
-- receipt document/line;
+- Inventory document/line (receipt, issue or compensating movement source);
 - Product and Warehouse;
 - valuation policy ID;
 - FIFO or Moving Weighted Average method;
@@ -108,7 +110,7 @@ A stock-product line may carry zero or more authoritative Phase 21 valuation sna
 - unit cost;
 - total cost.
 
-Services and non-stock lines cannot carry Inventory valuation. Duplicate valuation-entry or Movement identity inside one Purchase line is rejected.
+Services and non-stock lines cannot carry Inventory valuation. Duplicate valuation-entry or Movement identity inside one Purchase line is rejected. Supplier and Valuation Company scope must match the Posting Fact Company.
 
 Commercial currency and valuation currency are deliberately not forced to match in Step 3. Future accounting/FX policy may need both values, and Step 3 must preserve source facts rather than invent conversion policy.
 
