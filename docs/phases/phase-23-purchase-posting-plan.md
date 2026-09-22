@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–4 are complete. Steps 5–30 are not started.
+Steps 1–5 are complete. Steps 6–30 are not started.
 
 ## Governance
 
@@ -25,6 +25,7 @@ Mandatory references:
 - [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md)
 - [Purchase Posting Facts and Snapshots](../architecture/purchase-posting-facts-and-snapshots.md)
 - [Purchase Posting Source Identity](../architecture/purchase-posting-source-identity.md)
+- [Purchase Posting Event Classification](../architecture/purchase-posting-event-classification.md)
 
 ## Baseline and Release Target
 
@@ -168,7 +169,7 @@ Live transport is not implemented in Phase 23.
 | 2 | Purchase Posting Domain Model | Completed |
 | 3 | Purchase Posting Facts and Snapshots | Completed |
 | 4 | Source Identity and Reference Contracts | Completed |
-| 5 | Purchase Posting Event Classification | Not started |
+| 5 | Purchase Posting Event Classification | Completed |
 | 6 | Posting Rules and Account Resolution | Not started |
 | 7 | Supplier Invoice Posting Rules | Not started |
 | 8 | Purchase Tax Posting | Not started |
@@ -455,3 +456,82 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/purchase-posting-source-reference.test.ts`
 - `docs/architecture/purchase-posting-source-identity.md`
+
+
+## Step 5 — Purchase Posting Event Classification
+
+### Completed work
+
+- Added deterministic event classification based only on immutable `documentType + sourceStatus`.
+- Frozen three dispositions: `posting`, `non-posting`, `ineligible`.
+- Frozen three accounting event kinds: `supplier-invoice-recognition`, `purchase-return-recognition`, `purchase-correction-recognition`.
+- Confirmed Supplier Invoice classifies as an independent posting event.
+- Purchase Order classifies as non-posting under the frozen Phase 23 baseline.
+- Supplier Invoice terminal `returned` / `corrected` states do not create second accounting events; their confirmed compensating Purchase documents own the new effects.
+- Confirmed Purchase Return classifies as an independent compensating posting event.
+- Confirmed Purchase Correction classifies as an independent compensating posting event.
+- Non-confirmed terminal states on compensating Return/Correction documents classify as ineligible.
+- Added reason codes so UI/Application/Audit can explain the classification without inferring meaning from booleans.
+- Added `classifyPurchasePostingFact` to classify the immutable Step 3 Fact directly.
+- Added `isPurchasePostingEventEligible` as a narrow convenience predicate; it does not replace the richer classification result.
+- Explicitly separated event classification from downstream readiness such as Inventory Valuation, account mappings and Fiscal locks.
+- Added a complete deterministic test over all 12 combinations of the Step 3 type/status matrix.
+- Added canonical architecture documentation.
+
+### Frozen matrix
+
+| Document type | Source status | Disposition | Event kind |
+| --- | --- | --- | --- |
+| purchase-order | confirmed | non-posting | none |
+| purchase-order | returned | non-posting | none |
+| purchase-order | corrected | non-posting | none |
+| supplier-invoice | confirmed | posting | supplier-invoice-recognition |
+| supplier-invoice | returned | non-posting | none |
+| supplier-invoice | corrected | non-posting | none |
+| purchase-return | confirmed | posting | purchase-return-recognition |
+| purchase-return | returned | ineligible | none |
+| purchase-return | corrected | ineligible | none |
+| purchase-correction | confirmed | posting | purchase-correction-recognition |
+| purchase-correction | returned | ineligible | none |
+| purchase-correction | corrected | ineligible | none |
+
+### Exit criteria
+
+- [x] Event classification is deterministic and persistence-neutral.
+- [x] Purchase Order is explicitly non-posting.
+- [x] Confirmed Supplier Invoice is explicitly posting.
+- [x] Original Supplier Invoice returned/corrected lifecycle states cannot generate duplicate accounting effects.
+- [x] Confirmed Purchase Return is independently posting.
+- [x] Confirmed Purchase Correction is independently posting.
+- [x] Invalid compensating-document terminal states are explicitly ineligible.
+- [x] Classification includes machine-readable reason codes.
+- [x] Classification can consume the immutable Step 3 Fact directly.
+- [x] Event classification does not resolve accounts.
+- [x] Event classification does not calculate debit/credit.
+- [x] Event classification does not require Valuation readiness.
+- [x] Event classification does not create Journal Vouchers.
+- [x] Full Step 3 type/status matrix has focused tests.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/purchase-posting-event-classification.test.ts`.
+- The test suite covers every combination of the frozen 4 document types and 3 Step 3 source statuses.
+- The repository branch currently has no GitHub Actions workflow run; no remote CI PASS is claimed.
+- Full package/monorepo runtime validation should be executed locally before owner acceptance.
+- Full monorepo validation remains a later formal Phase 23 quality gate.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-posting-event-classification.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-posting-event-classification.test.ts`
+- `docs/architecture/purchase-posting-event-classification.md`
