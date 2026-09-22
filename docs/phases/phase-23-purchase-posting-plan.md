@@ -2,7 +2,7 @@
 
 ## Status
 
-Step 1 is complete. Steps 2–30 are not started.
+Steps 1–2 are complete. Steps 3–30 are not started.
 
 ## Governance
 
@@ -22,6 +22,7 @@ Mandatory references:
 - [Accounting Engine](../accounting/accounting-engine.md)
 - [Posting Engine](../accounting/posting-engine.md)
 - [ADR-0023 — Purchase Posting Boundary](../adr/ADR-0023-purchase-posting-boundary.md)
+- [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md)
 
 ## Baseline and Release Target
 
@@ -162,7 +163,7 @@ Live transport is not implemented in Phase 23.
 | Step | Title | Status |
 | --- | --- | --- |
 | 1 | Baseline, Branch, Scope and Plan Freeze | Completed |
-| 2 | Purchase Posting Domain Model | Not started |
+| 2 | Purchase Posting Domain Model | Completed |
 | 3 | Purchase Posting Facts and Snapshots | Not started |
 | 4 | Source Identity and Reference Contracts | Not started |
 | 5 | Purchase Posting Event Classification | Not started |
@@ -266,3 +267,56 @@ Repository evidence:
 - Phase branch: `phase/23-purchase-posting`.
 
 Full monorepo validation remains a later phase gate and must be executed and recorded when code changes begin and again before release.
+
+
+## Step 2 — Purchase Posting Domain Model
+
+### Completed work
+
+- Introduced a dedicated `@argin/purchase-posting` bounded-context package instead of adding accounting ownership to `@argin/purchase`.
+- Added the persistence-neutral `PurchasePostingAggregate`.
+- Frozen the base status vocabulary: `draft`, `prepared`, `posted`, `reversed`.
+- Added durable `postingId`, Company and Branch identity, Journal linkage, aggregate version and canonical UTC timestamps.
+- New aggregates begin as `draft`, version `1`, with no Journal Voucher link.
+- Rehydration validates identity, status, version, timestamp chronology and Journal linkage invariants.
+- Draft/prepared state cannot carry a Journal Voucher; posted/reversed state must carry the Accounting-owned Journal Voucher identity.
+- Added structured Purchase Posting domain errors.
+- Added public package exports and a focused domain-model test suite.
+- Registered the new workspace package in `pnpm-lock.yaml`.
+- Added the canonical architecture document `docs/architecture/purchase-posting-domain-model.md`.
+- Kept source facts, source identity, posting-event classification, Posting Rules, accounting formulas, persistence and Bridge envelopes deferred to their frozen later steps.
+
+### Exit criteria
+
+- [x] Purchase Posting is isolated from Purchase commercial ownership.
+- [x] Domain model has durable identity independent of SQLite row IDs.
+- [x] Company/Branch scope is present at aggregate root.
+- [x] Base lifecycle vocabulary is explicit.
+- [x] Journal-link state invariants are explicit.
+- [x] Aggregate version is validated as a positive safe integer.
+- [x] Canonical UTC timestamp and chronology invariants are enforced.
+- [x] Aggregate construction/rehydration is persistence-neutral.
+- [x] Domain errors are structured and exported.
+- [x] Focused tests cover creation, rehydration and invalid-state paths.
+- [x] Workspace lock importer is registered.
+- [x] Step 3–22 responsibilities are not prematurely implemented.
+
+### Validation evidence
+
+Observed in the available execution environment:
+
+- Node.js `v22.16.0` focused runtime verification: **6 tests passed, 0 failed**.
+- TypeScript domain-source verification with `tsc 5.8.3`: **exit code 0** for the Step 2 source files.
+- A full package typecheck including Node test typings could not be executed in this environment because `@types/node` is not installed locally here. The repository package declares `@types/node ^20` and the workspace lock importer is registered for normal repository installation.
+- Full monorepo validation remains a later quality gate; no unobserved CI/full-build PASS is claimed.
+
+### Files introduced or changed
+
+- `packages/purchase-posting/package.json`
+- `packages/purchase-posting/tsconfig.json`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/domain/purchase-posting.ts`
+- `packages/purchase-posting/tests/purchase-posting-domain-model.test.ts`
+- `docs/architecture/purchase-posting-domain-model.md`
+- `pnpm-lock.yaml`
