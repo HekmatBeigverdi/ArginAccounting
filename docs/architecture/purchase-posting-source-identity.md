@@ -90,7 +90,7 @@ Step 4 exposes a deterministic textual key:
 purchase:{company}:{branch}:{sourceType}:{sourceId}:v{sourceVersion}:r{sourceRevision|-}
 ```
 
-This is a canonical lookup/reference representation only.
+This is a canonical lookup/reference representation only. String components are URI-escaped before joining so delimiter-bearing IDs cannot create ambiguous keys.
 
 It is **not** the Phase 23 idempotency key. Idempotency policy, posting purpose and payload fingerprint remain Step 15.
 
