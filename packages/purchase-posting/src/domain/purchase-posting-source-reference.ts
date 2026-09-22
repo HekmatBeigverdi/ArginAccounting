@@ -134,6 +134,23 @@ export function createPurchasePostingSourceIdentity(
   });
 }
 
+export function createPurchasePostingSourceIdentityFromFact(
+  fact: PurchasePostingFactSnapshot,
+  sourceRevision: number | null = null,
+): PurchasePostingSourceIdentity {
+  if (typeof fact !== "object" || fact === null || Array.isArray(fact)) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.sourceIdentityInvalid, "fact");
+  }
+  return createPurchasePostingSourceIdentity({
+    companyId: fact.companyId,
+    branchId: fact.branchId,
+    sourceType: fact.documentType,
+    sourceId: fact.purchaseDocumentId,
+    sourceVersion: fact.purchaseDocumentVersion,
+    sourceRevision,
+  });
+}
+
 export function createPurchasePostingSourceLineReference(
   input: CreatePurchasePostingSourceLineReferenceInput,
 ): PurchasePostingSourceLineReference {
@@ -142,6 +159,17 @@ export function createPurchasePostingSourceLineReference(
     source: createPurchasePostingSourceIdentity(input.source),
     sourceLineId: required(input.sourceLineId, "lineReference.sourceLineId"),
   });
+}
+
+export function createPurchasePostingSourceLineReferenceFromFact(
+  fact: PurchasePostingFactSnapshot,
+  sourceLineId: string,
+  sourceRevision: number | null = null,
+): PurchasePostingSourceLineReference {
+  const source = createPurchasePostingSourceIdentityFromFact(fact, sourceRevision);
+  const reference = createPurchasePostingSourceLineReference({ source, sourceLineId });
+  assertPurchasePostingLineReferenceMatchesFact(reference, fact);
+  return reference;
 }
 
 export function createPurchasePostingTraceContext(
