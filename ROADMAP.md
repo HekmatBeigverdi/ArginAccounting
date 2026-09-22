@@ -119,7 +119,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Preserve durable source identity, Audit, idempotency, optimistic concurrency and Argin Bridge ownership boundaries.
    - Prepared release target: `v0.22.0` — `ArginAccounting v0.22.0 — Purchase Workflow`.
 23. 🚧 Purchase Posting
-   - Step 1 completed: baseline, branch, scope, fixed 30-step plan and ADR-0023 are frozen on `phase/23-purchase-posting`.
+   - Steps 1–2 completed: baseline/plan/ADR are frozen and the `@argin/purchase-posting` domain foundation is implemented.
    - Consume Phase 22 Purchase facts and Phase 21 valuation outputs without creating a second purchase-price store.
    - Own supplier payable, purchase/VAT accounting effects, configured Inventory/GRNI treatment, landed-cost accounting, corrections/reversals and reconciliation.
    - Posting must preserve source integrity, balanced Journal output, idempotency, immutable reversal lineage and Argin Bridge-ready durable identity.
@@ -199,7 +199,7 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 23 — Purchase Posting & Accounting Integration is now the current implementation target. Step 1 is complete on `phase/23-purchase-posting`, based on `main@7f1b615e8e406befa0cf3967134e99d76b456a27`. Phase 22 semantic Tag/GitHub Release publication remains a separate repository-owner action.
+Phase 23 — Purchase Posting & Accounting Integration is now the current implementation target. Steps 1–2 are complete on `phase/23-purchase-posting`, based on `main@7f1b615e8e406befa0cf3967134e99d76b456a27`. Phase 22 semantic Tag/GitHub Release publication remains a separate repository-owner action.
 
 ## Latest Completed Inventory Milestone
 
