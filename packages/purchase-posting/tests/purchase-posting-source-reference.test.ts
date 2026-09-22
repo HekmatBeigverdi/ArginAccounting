@@ -231,3 +231,30 @@ test("rejects unsupported source systems and invalid versions", () => {
     "source.sourceVersion",
   );
 });
+
+
+test("canonical source key escapes delimiter-bearing durable identities", () => {
+  const identity = createPurchasePostingSourceIdentity({
+    companyId: "company:01",
+    branchId: "branch%01",
+    sourceType: "supplier-invoice",
+    sourceId: "invoice:2026/001",
+    sourceVersion: 2,
+  });
+  assert.equal(
+    purchasePostingSourceIdentityKey(identity),
+    "purchase:company%3A01:branch%2501:supplier-invoice:invoice%3A2026%2F001:v2:r-",
+  );
+});
+
+test("reports malformed trace identifiers as trace-context errors", () => {
+  assertDomainError(
+    () => createPurchasePostingTraceContext({
+      requestId: "request-001",
+      operationId: "operation-001",
+      correlationId: "x".repeat(129),
+    }),
+    PURCHASE_POSTING_DOMAIN_ERROR_CODES.traceContextInvalid,
+    "trace.correlationId",
+  );
+});
