@@ -6,6 +6,17 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   versionInvalid: "purchase_posting.version_invalid",
   statusInvalid: "purchase_posting.status_invalid",
   stateInvalid: "purchase_posting.state_invalid",
+  documentTypeInvalid: "purchase_posting.document_type_invalid",
+  sourceStatusInvalid: "purchase_posting.source_status_invalid",
+  snapshotInvalid: "purchase_posting.snapshot_invalid",
+  scopeMismatch: "purchase_posting.scope_mismatch",
+  duplicateLineId: "purchase_posting.duplicate_line_id",
+  duplicateLinePosition: "purchase_posting.duplicate_line_position",
+  moneyInvalid: "purchase_posting.money_invalid",
+  currencyInvalid: "purchase_posting.currency_invalid",
+  amountMismatch: "purchase_posting.amount_mismatch",
+  quantityInvalid: "purchase_posting.quantity_invalid",
+  valuationInvalid: "purchase_posting.valuation_invalid",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
