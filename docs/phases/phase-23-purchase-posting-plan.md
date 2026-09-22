@@ -9,6 +9,7 @@ Step 1 is complete. Steps 2–30 are not started.
 The 30 step titles, order, scope and ownership boundaries are frozen unless an explicitly approved Change Request is recorded in this canonical phase record. Owner acceptance and executable validation evidence remain separate.
 
 Mandatory references:
+
 - [Documentation Governance](../development/documentation-governance.md)
 - [Phase Definition of Done](../development/phase-definition-of-done.md)
 - [Roadmap](../../ROADMAP.md)
@@ -259,6 +260,7 @@ Live transport is not implemented in Phase 23.
 Step 1 is a governance/architecture bootstrap step. It intentionally introduces no runtime code and no database migration; therefore no runtime test result is claimed for this step.
 
 Repository evidence:
+
 - `main` baseline: `7f1b615e8e406befa0cf3967134e99d76b456a27`.
 - `phase/22-purchase-workflow` vs `main`: 0 commits ahead and 6 commits behind at Step 1 review.
 - Phase branch: `phase/23-purchase-posting`.
