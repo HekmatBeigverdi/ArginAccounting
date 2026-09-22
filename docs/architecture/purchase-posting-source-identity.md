@@ -49,6 +49,16 @@ For Phase 23, `sourceType` uses the frozen Purchase document vocabulary:
 
 `sourceRevision` is an explicit optional second axis for future source schemas/workflows where a business revision must be represented independently of aggregate concurrency version. A null revision means the upstream source currently exposes no separate revision.
 
+## Fact-Derived Factories
+
+Application code should normally derive Source Identity from the immutable Step 3 Fact rather than re-entering the same identifiers.
+
+`createPurchasePostingSourceIdentityFromFact` derives Company, Branch, source type, source ID and source version directly from `PurchasePostingFactSnapshot`.
+
+`createPurchasePostingSourceLineReferenceFromFact` derives the document identity and validates that the requested line ID actually exists in the captured Fact.
+
+This keeps the UI/Application layer from becoming a second source of Purchase identity data.
+
 ## Fact Matching
 
 A Source Identity matches a Purchase Posting Fact only when all of the following agree:
