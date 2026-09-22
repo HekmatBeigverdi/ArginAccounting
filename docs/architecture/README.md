@@ -11,6 +11,7 @@
 - [Purchase Posting Domain Model](purchase-posting-domain-model.md)
 - [Purchase Posting Facts and Snapshots](purchase-posting-facts-and-snapshots.md)
 - [Purchase Posting Source Identity](purchase-posting-source-identity.md)
+- [Purchase Posting Event Classification](purchase-posting-event-classification.md)
 - [ADR Registry](../adr/README.md)
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
