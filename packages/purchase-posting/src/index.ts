@@ -44,3 +44,24 @@ export type {
   PurchasePostingValuationMethod,
   PurchasePostingValuationSnapshot,
 } from "./domain/purchase-posting-facts.ts";
+
+export {
+  PURCHASE_POSTING_SOURCE_SYSTEM,
+  assertPurchasePostingLineReferenceMatchesFact,
+  assertPurchasePostingSourceMatchesFact,
+  createPurchasePostingSourceIdentity,
+  createPurchasePostingSourceLineReference,
+  createPurchasePostingSourceReference,
+  createPurchasePostingTraceContext,
+  purchasePostingSourceIdentityKey,
+} from "./domain/purchase-posting-source-reference.ts";
+export type {
+  CreatePurchasePostingSourceIdentityInput,
+  CreatePurchasePostingSourceLineReferenceInput,
+  CreatePurchasePostingSourceReferenceInput,
+  CreatePurchasePostingTraceContextInput,
+  PurchasePostingSourceIdentity,
+  PurchasePostingSourceLineReference,
+  PurchasePostingSourceReference,
+  PurchasePostingTraceContext,
+} from "./domain/purchase-posting-source-reference.ts";
