@@ -19,6 +19,7 @@ const amounts = {
 } as const;
 
 const supplier = {
+  companyId: "company-001",
   supplierId: "party-supplier-001",
   code: "SUP-001",
   displayName: "تأمین‌کننده نمونه",
@@ -38,10 +39,11 @@ const item = {
 };
 
 const valuation = {
+  companyId: "company-001",
   valuationEntryId: "valuation-entry-001",
   movementId: "movement-001",
-  receiptDocumentId: "inventory-receipt-001",
-  receiptLineId: "inventory-receipt-line-001",
+  inventoryDocumentId: "inventory-receipt-001",
+  inventoryLineId: "inventory-receipt-line-001",
   productId: "product-001",
   warehouseId: "warehouse-001",
   policyId: "valuation-policy-001",
@@ -256,11 +258,46 @@ test("preserves multiple valuation movements for one Purchase line", () => {
     lines: [{
       ...baseInput().lines[0]!,
       valuations: [
-        { ...valuation, valuationEntryId: "valuation-entry-a", movementId: "movement-a", receiptDocumentId: "receipt-a", receiptLineId: "receipt-line-a", quantity: "1", totalCost: 3_640 },
-        { ...valuation, valuationEntryId: "valuation-entry-b", movementId: "movement-b", receiptDocumentId: "receipt-b", receiptLineId: "receipt-line-b", quantity: "1.5", totalCost: 5_460 },
+        { ...valuation, valuationEntryId: "valuation-entry-a", movementId: "movement-a", inventoryDocumentId: "receipt-a", inventoryLineId: "receipt-line-a", quantity: "1", totalCost: 3_640 },
+        { ...valuation, valuationEntryId: "valuation-entry-b", movementId: "movement-b", inventoryDocumentId: "receipt-b", inventoryLineId: "receipt-line-b", quantity: "1.5", totalCost: 5_460 },
       ],
     }],
   });
   assert.equal(fact.lines[0]?.valuations.length, 2);
   assert.equal(fact.lines[0]?.valuations[1]?.movementId, "movement-b");
+});
+
+
+test("rejects cross-company Supplier or Valuation provenance", () => {
+  assertDomainError(
+    () => createPurchasePostingFact({
+      ...baseInput(),
+      supplier: { ...supplier, companyId: "other-company" },
+    }),
+    PURCHASE_POSTING_DOMAIN_ERROR_CODES.scopeMismatch,
+    "supplier.companyId",
+  );
+
+  assertDomainError(
+    () => createPurchasePostingFact({
+      ...baseInput(),
+      lines: [{
+        ...baseInput().lines[0]!,
+        valuations: [{ ...valuation, companyId: "other-company" }],
+      }],
+    }),
+    PURCHASE_POSTING_DOMAIN_ERROR_CODES.scopeMismatch,
+    "lines[0].valuations[0].companyId",
+  );
+});
+
+test("requires at least one immutable Purchase line in a Posting Fact", () => {
+  assertDomainError(
+    () => createPurchasePostingFact({
+      ...baseInput(),
+      lines: [],
+    }),
+    PURCHASE_POSTING_DOMAIN_ERROR_CODES.snapshotInvalid,
+    "lines",
+  );
 });
