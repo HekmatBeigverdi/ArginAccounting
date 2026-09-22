@@ -52,6 +52,7 @@ export interface PurchasePostingCommercialAmountsSnapshot {
 }
 
 export interface PurchasePostingSupplierSnapshot {
+  readonly companyId: string;
   readonly supplierId: string;
   readonly code: string;
   readonly displayName: string;
@@ -71,10 +72,11 @@ export interface PurchasePostingItemSnapshot {
 }
 
 export interface PurchasePostingValuationSnapshot {
+  readonly companyId: string;
   readonly valuationEntryId: string;
   readonly movementId: string;
-  readonly receiptDocumentId: string;
-  readonly receiptLineId: string;
+  readonly inventoryDocumentId: string;
+  readonly inventoryLineId: string;
   readonly productId: string;
   readonly warehouseId: string;
   readonly policyId: string;
@@ -224,7 +226,7 @@ function quantity(value: string, field: string): string {
 }
 
 function unitCost(value: string, field: string): string {
-  if (typeof value !== "string" || !/^-?\d+(?:\.\d+)?$/u.test(value.trim())) {
+  if (typeof value !== "string" || !/^\d+(?:\.\d+)?$/u.test(value.trim())) {
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, field);
   }
   return value.trim();
@@ -262,6 +264,7 @@ export function createPurchasePostingSupplierSnapshot(
 ): PurchasePostingSupplierSnapshot {
   assertObject(input, "supplier");
   return Object.freeze({
+    companyId: required(input.companyId, "supplier.companyId"),
     supplierId: required(input.supplierId, "supplier.supplierId"),
     code: required(input.code, "supplier.code"),
     displayName: required(input.displayName, "supplier.displayName"),
@@ -307,10 +310,11 @@ export function createPurchasePostingValuationSnapshot(
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.valuationInvalid, "valuation.method");
   }
   return Object.freeze({
+    companyId: required(input.companyId, "valuation.companyId"),
     valuationEntryId: required(input.valuationEntryId, "valuation.valuationEntryId"),
     movementId: required(input.movementId, "valuation.movementId"),
-    receiptDocumentId: required(input.receiptDocumentId, "valuation.receiptDocumentId"),
-    receiptLineId: required(input.receiptLineId, "valuation.receiptLineId"),
+    inventoryDocumentId: required(input.inventoryDocumentId, "valuation.inventoryDocumentId"),
+    inventoryLineId: required(input.inventoryLineId, "valuation.inventoryLineId"),
     productId: required(input.productId, "valuation.productId"),
     warehouseId: required(input.warehouseId, "valuation.warehouseId"),
     policyId: required(input.policyId, "valuation.policyId"),
@@ -458,9 +462,26 @@ export function createPurchasePostingFact(
     return line;
   }).sort((a, b) => a.position - b.position);
 
+  if (lines.length === 0) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.snapshotInvalid, "lines");
+  }
+
+  const companyId = required(input.companyId, "companyId");
+  const supplier = createPurchasePostingSupplierSnapshot(input.supplier);
+  if (supplier.companyId !== companyId) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.scopeMismatch, "supplier.companyId");
+  }
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    for (let valuationIndex = 0; valuationIndex < lines[lineIndex]!.valuations.length; valuationIndex += 1) {
+      if (lines[lineIndex]!.valuations[valuationIndex]!.companyId !== companyId) {
+        return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.scopeMismatch, `lines[${lineIndex}].valuations[${valuationIndex}].companyId`);
+      }
+    }
+  }
+
   const totals = createPurchasePostingCommercialAmountsSnapshot(input.totals, "totals");
   const summed = sumLineAmounts(lines);
-  if (lines.length > 0) {
+  {
     if (summed.currency !== totals.currency) {
       return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.currencyInvalid, "totals.currency");
     }
@@ -481,7 +502,7 @@ export function createPurchasePostingFact(
 
   return Object.freeze({
     factId: required(input.factId, "factId"),
-    companyId: required(input.companyId, "companyId"),
+    companyId,
     branchId: required(input.branchId, "branchId"),
     fiscalYearId: required(input.fiscalYearId, "fiscalYearId"),
     fiscalPeriodId: required(input.fiscalPeriodId, "fiscalPeriodId"),
@@ -491,7 +512,7 @@ export function createPurchasePostingFact(
     sourceStatus: input.sourceStatus,
     documentNumber: optionalText(input.documentNumber, "documentNumber"),
     businessDate: businessDate(input.businessDate),
-    supplier: createPurchasePostingSupplierSnapshot(input.supplier),
+    supplier,
     lines: Object.freeze(lines),
     totals,
     capturedAt: timestamp(input.capturedAt, "capturedAt"),
