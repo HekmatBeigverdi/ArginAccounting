@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–14 are complete. Steps 15–30 are not started.
+Steps 1–15 are complete. Steps 16–30 are not started.
 
 ## Governance
 
@@ -35,6 +35,7 @@ Mandatory references:
 - [Inventory and Valuation Integration](../architecture/purchase-posting-inventory-valuation-integration.md)
 - [Draft Journal Generation and Balancing](../architecture/purchase-posting-draft-journal-generation.md)
 - [Atomic Journal Posting](../architecture/purchase-posting-atomic-journal-posting.md)
+- [Idempotency and Replay Safety](../architecture/purchase-posting-idempotency-and-replay.md)
 
 ## Baseline and Release Target
 
@@ -188,7 +189,7 @@ Live transport is not implemented in Phase 23.
 | 12 | Inventory and Valuation Integration | Completed |
 | 13 | Draft Journal Generation and Balancing | Completed |
 | 14 | Atomic Journal Posting | Completed |
-| 15 | Idempotency and Replay Safety | Not started |
+| 15 | Idempotency and Replay Safety | Completed |
 | 16 | Version and Concurrency Control | Not started |
 | 17 | Controlled Posting Reversal | Not started |
 | 18 | Fiscal Scope and Period Locks | Not started |
@@ -1040,3 +1041,65 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/atomic-journal-posting.test.ts`
 - `docs/architecture/purchase-posting-atomic-journal-posting.md`
+
+
+## Step 15 — Idempotency and Replay Safety
+
+### Completed work
+
+- Added final Purchase Posting idempotency identity based on durable source identity + source version/revision + posting purpose.
+- Frozen posting purpose is `accounting-recognition`.
+- Added lowercase SHA-256 payload fingerprint contract (64 hexadecimal characters).
+- Request/transport IDs are explicitly not used as financial idempotency identity.
+- Added deterministic idempotency-key generation over the canonical Step 4 source identity.
+- Added immutable idempotency records containing source, purpose, payload fingerprint, Posting ID, Journal ID, committed Posting version and committed timestamp.
+- Exact replay returns the original prepared Posting and Journal with `replayed=true` and performs no duplicate Journal write.
+- Same source/version/revision/purpose with a different payload fingerprint fails with `idempotency_conflict`.
+- New source version/revision naturally creates a distinct posting identity.
+- First execution atomically writes Journal Draft + prepared Purchase Posting + Idempotency Record in one Unit of Work.
+- Replay lookup occurs inside the Unit of Work to avoid a check-then-write application gap.
+- Replay validates the stored outcome rather than trusting an orphaned idempotency row.
+- Missing/mismatched prepared Posting or Journal fails with `replay_outcome_invalid`.
+- SQLite unique constraints/persistence remain deferred to Steps 20–21.
+- Added focused first-run/replay/conflict/new-version tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Durable source/version/revision participates in idempotency identity.
+- [x] Posting purpose participates in idempotency identity.
+- [x] Deterministic payload fingerprint is required.
+- [x] Exact replay returns the original committed outcome.
+- [x] Exact replay performs no duplicate Journal write.
+- [x] Same identity with a different payload conflicts.
+- [x] New source version/revision is a distinct posting attempt.
+- [x] Request ID is not treated as financial idempotency identity.
+- [x] Journal + Posting + Idempotency Record commit in one Unit of Work.
+- [x] Replay verifies durable stored outcome integrity.
+- [x] SQLite row identity is excluded from replay identity.
+- [x] Database unique constraints remain Steps 20–21.
+- [x] General concurrency policy remains Step 16.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/replay-safe-posting.test.ts`.
+- Tests cover first execution, exact replay, fingerprint conflict and distinct source-version behavior.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local Accounting/Purchase Posting typecheck and Purchase Posting tests should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-posting-idempotency.ts`
+- `packages/purchase-posting/src/application/replay-safe-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/replay-safe-posting.test.ts`
+- `docs/architecture/purchase-posting-idempotency-and-replay.md`
