@@ -157,3 +157,15 @@ export type {
   PurchaseCorrectionPostingSide,
   PurchaseCorrectionSourceReference,
 } from "./domain/purchase-correction-posting.ts";
+
+export {
+  resolvePurchaseCorrectionInventoryValuation,
+  resolvePurchaseReturnInventoryValuation,
+  resolveSupplierInvoiceInventoryValuation,
+} from "./domain/inventory-valuation-integration.ts";
+export type {
+  PurchasePostingResolvedValuation,
+  ResolvedPurchaseCorrectionPostingPlan,
+  ResolvedPurchaseReturnPostingPlan,
+  ResolvedSupplierInvoicePostingPlan,
+} from "./domain/inventory-valuation-integration.ts";
