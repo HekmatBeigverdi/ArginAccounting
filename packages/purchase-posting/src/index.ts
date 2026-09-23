@@ -248,3 +248,16 @@ export type {
   PurchasePostingHistoricalLockReader,
   PurchasePostingHistoricalLockScope,
 } from "./domain/fiscal-scope-and-locks.ts";
+
+export {
+  PURCHASE_POSTING_DIMENSION_SOURCES,
+  collectPurchasePostingDimensionReferences,
+  resolvePurchasePostingDimensionAssignments,
+} from "./domain/purchase-posting-dimensions.ts";
+export type {
+  PurchasePostingDimensionContext,
+  PurchasePostingDimensionReader,
+  PurchasePostingDimensionReference,
+  PurchasePostingDimensionSource,
+  ResolvePurchasePostingDimensionsInput,
+} from "./domain/purchase-posting-dimensions.ts";
