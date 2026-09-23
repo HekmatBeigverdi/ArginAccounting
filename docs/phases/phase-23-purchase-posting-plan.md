@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–17 are complete. Steps 18–30 are not started.
+Steps 1–18 are complete. Steps 19–30 are not started.
 
 ## Governance
 
@@ -38,6 +38,7 @@ Mandatory references:
 - [Idempotency and Replay Safety](../architecture/purchase-posting-idempotency-and-replay.md)
 - [Version and Concurrency Control](../architecture/purchase-posting-version-and-concurrency.md)
 - [Controlled Posting Reversal](../architecture/purchase-posting-controlled-reversal.md)
+- [Fiscal Scope and Period Locks](../architecture/purchase-posting-fiscal-scope-and-locks.md)
 
 ## Baseline and Release Target
 
@@ -194,7 +195,7 @@ Live transport is not implemented in Phase 23.
 | 15 | Idempotency and Replay Safety | Completed |
 | 16 | Version and Concurrency Control | Completed |
 | 17 | Controlled Posting Reversal | Completed |
-| 18 | Fiscal Scope and Period Locks | Not started |
+| 18 | Fiscal Scope and Period Locks | Completed |
 | 19 | Branch and Accounting Dimensions | Not started |
 | 20 | Persistence and SQLite Migration | Not started |
 | 21 | Repository, Reader and Unit of Work | Not started |
@@ -1226,3 +1227,68 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/controlled-posting-reversal.test.ts`
 - `docs/architecture/purchase-posting-controlled-reversal.md`
+
+
+## Step 18 — Fiscal Scope and Period Locks
+
+### Completed work
+
+- Added a Purchase Posting fiscal gate using the same Fiscal Year / Fiscal Period semantics already used by Accounting.
+- New posting requires Company, Fiscal Year ID, Fiscal Period ID and operation date to match the resolved fiscal context.
+- Fiscal Year must be `open`; `draft`, `closing` and `closed` are rejected.
+- Fiscal Period must be `open`; both `locked` and `closed` are rejected.
+- Operation date must fall inside both the Fiscal Year and Fiscal Period date ranges.
+- Added Historical Lock enforcement for `all`, `accounting` and `purchases` scopes.
+- A Historical Lock blocks the operation when `operationDate <= lockedThroughDate`.
+- Atomic Posting and Replay-safe Posting now run the fiscal gate inside the same Unit of Work before first-execution persistence.
+- Exact idempotent replay is intentionally evaluated before the first-execution fiscal gate so a historical committed retry remains deterministic after later period closure.
+- Controlled Reversal validates the fiscal context of `reversalDate`, allowing reversal into a later valid open period without mutating the original period.
+- Reversal destination Fiscal Year/Period are resolved from the reversal date; new postings additionally require exact Journal Fiscal IDs.
+- Added explicit fiscal/lock error codes and focused tests for open/locked/closed/mismatch/date-range/Historical-Lock behavior.
+
+### Exit criteria
+
+- [x] Fiscal context must exist.
+- [x] Company scope must match.
+- [x] New posting Fiscal Year ID must match the resolved context.
+- [x] New posting Fiscal Period ID must match the resolved context.
+- [x] Fiscal Year must be open.
+- [x] Fiscal Period must be open.
+- [x] Posting date must be inside Fiscal Year and Period ranges.
+- [x] Historical `all` lock blocks posting.
+- [x] Historical `accounting` lock blocks posting.
+- [x] Historical `purchases` lock blocks posting.
+- [x] Reversal validates the destination reversal date context.
+- [x] Exact replay remains deterministic after later lock/closure.
+- [x] Fiscal gate is wired into atomic, replay-safe and reversal flows.
+- [x] SQLite adapter work remains Steps 20–21.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/fiscal-scope-and-locks.test.ts`.
+- Existing atomic/replay/reversal test sessions were updated with an open fiscal context and Historical Lock reader.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local Accounting/Purchase Posting typecheck and Purchase Posting tests should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/fiscal-scope-and-locks.ts`
+- `packages/purchase-posting/src/application/atomic-journal-posting.ts`
+- `packages/purchase-posting/src/application/replay-safe-posting.ts`
+- `packages/purchase-posting/src/application/controlled-posting-reversal.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/fiscal-scope-and-locks.test.ts`
+- `packages/purchase-posting/tests/atomic-journal-posting.test.ts`
+- `packages/purchase-posting/tests/replay-safe-posting.test.ts`
+- `packages/purchase-posting/tests/controlled-posting-reversal.test.ts`
+- `docs/architecture/purchase-posting-fiscal-scope-and-locks.md`
