@@ -16,6 +16,14 @@ import {
 import type {
   PurchasePostingDomainErrorCode,
 } from "../domain/purchase-posting-domain-errors.ts";
+import {
+  assertPurchasePostingFiscalScope,
+} from "../domain/fiscal-scope-and-locks.ts";
+import type {
+  PurchasePostingFiscalContext,
+  PurchasePostingHistoricalLock,
+  PurchasePostingHistoricalLockScope,
+} from "../domain/fiscal-scope-and-locks.ts";
 
 export interface PurchasePostingReversalRecord {
   readonly postingId: string;
@@ -30,6 +38,8 @@ export interface PurchasePostingReversalRecord {
 
 export interface PurchasePostingReversalSession {
   findPosting(postingId: string): Promise<PurchasePostingAggregate | null>;
+  resolveFiscalContext(companyId: string, operationDate: string): Promise<PurchasePostingFiscalContext | null>;
+  findActiveHistoricalLocks(companyId: string, branchId: string | null, scope: PurchasePostingHistoricalLockScope): Promise<readonly PurchasePostingHistoricalLock[]>;
   findReversalByRequestId(
     companyId: string,
     requestId: string,
@@ -177,6 +187,17 @@ export async function reversePurchasePostingControlled(
         "expectedPostingVersion",
       );
     }
+
+    await assertPurchasePostingFiscalScope({
+      companyId,
+      branchId: current.branchId,
+      fiscalYearId: null,
+      fiscalPeriodId: null,
+      operationDate: command.reversalDate,
+    }, {
+      fiscalContext: { resolve: session.resolveFiscalContext.bind(session) },
+      historicalLocks: { findActiveLocks: session.findActiveHistoricalLocks.bind(session) },
+    });
 
     const journalReversal = await session.reverseJournal({
       originalVoucherId: current.journalVoucherId,
