@@ -9,18 +9,8 @@ import {
   assertNewJournalDraftVersion,
   assertPurchasePostingConcurrency,
   createPurchasePosting,
-  createPurchasePostingSourceIdentity,
   rehydratePurchasePosting,
 } from "../src/index.ts";
-
-const source = createPurchasePostingSourceIdentity({
-  companyId: "company-001",
-  branchId: "branch-001",
-  sourceType: "supplier-invoice",
-  sourceId: "invoice-001",
-  sourceVersion: 3,
-  sourceRevision: 1,
-});
 
 test("accepts current draft Posting when optimistic version and scope match", () => {
   const current = createPurchasePosting({
@@ -32,8 +22,9 @@ test("accepts current draft Posting when optimistic version and scope match", ()
 
   assert.doesNotThrow(() => assertPurchasePostingConcurrency(current, {
     postingId: "posting-001",
+    companyId: "company-001",
+    branchId: "branch-001",
     expectedPostingVersion: 1,
-    source,
   }));
 });
 
