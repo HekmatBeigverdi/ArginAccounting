@@ -53,6 +53,10 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   idempotencyInvalid: "purchase_posting.idempotency_invalid",
   idempotencyConflict: "purchase_posting.idempotency_conflict",
   replayOutcomeInvalid: "purchase_posting.replay_outcome_invalid",
+  concurrencyConflict: "purchase_posting.concurrency_conflict",
+  concurrencyPostingMissing: "purchase_posting.concurrency_posting_missing",
+  concurrencyStateMismatch: "purchase_posting.concurrency_state_mismatch",
+  journalVersionConflict: "purchase_posting.journal_version_conflict",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
