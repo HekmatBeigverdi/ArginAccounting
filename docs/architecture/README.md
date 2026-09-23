@@ -21,6 +21,7 @@
 - [Inventory and Valuation Integration](purchase-posting-inventory-valuation-integration.md)
 - [Draft Journal Generation and Balancing](purchase-posting-draft-journal-generation.md)
 - [Atomic Journal Posting](purchase-posting-atomic-journal-posting.md)
+- [Idempotency and Replay Safety](purchase-posting-idempotency-and-replay.md)
 - [ADR Registry](../adr/README.md)
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
