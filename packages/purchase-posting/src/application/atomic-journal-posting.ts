@@ -13,8 +13,13 @@ import {
 import type {
   PurchasePostingDomainErrorCode,
 } from "../domain/purchase-posting-domain-errors.ts";
+import {
+  assertNewJournalDraftVersion,
+  assertPurchasePostingConcurrency,
+} from "../domain/posting-concurrency.ts";
 
 export interface PurchasePostingAtomicSession {
+  findPosting(postingId: string): Promise<PurchasePostingAggregate | null>;
   createJournalDraft(voucher: JournalVoucher): Promise<void>;
   savePreparedPosting(
     posting: PurchasePostingAggregate,
@@ -100,24 +105,13 @@ export async function commitPurchasePostingJournalDraftAtomically(
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.atomicPostingInvalid, "input");
   }
 
-  if (input.posting.version !== input.expectedPostingVersion) {
-    return fail(
-      PURCHASE_POSTING_DOMAIN_ERROR_CODES.versionInvalid,
-      "expectedPostingVersion",
-    );
-  }
-
   assertJournalDraft(input.posting, input.journal);
-
-  const prepared = preparePurchasePosting(input.posting, {
-    journalVoucherId: input.journal.id,
-    expectedVersion: input.expectedPostingVersion,
-    occurredAt: input.occurredAt,
-  });
+  assertNewJournalDraftVersion(input.journal);
 
   return unitOfWork.run(async (session) => {
     if (
       !session
+      || typeof session.findPosting !== "function"
       || typeof session.createJournalDraft !== "function"
       || typeof session.savePreparedPosting !== "function"
     ) {
@@ -126,6 +120,31 @@ export async function commitPurchasePostingJournalDraftAtomically(
         "unitOfWork.session",
       );
     }
+
+    const current = await session.findPosting(input.posting.postingId);
+    if (current === null) {
+      return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.concurrencyPostingMissing, "posting");
+    }
+
+    assertPurchasePostingConcurrency(current, {
+      postingId: input.posting.postingId,
+      expectedPostingVersion: input.expectedPostingVersion,
+      source: {
+        companyId: input.posting.companyId,
+        branchId: input.posting.branchId,
+        sourceSystem: "purchase",
+        sourceType: input.journal.source.sourceId === null ? "supplier-invoice" : "supplier-invoice",
+        sourceId: input.journal.source.sourceId ?? input.posting.postingId,
+        sourceVersion: 1,
+        sourceRevision: null,
+      },
+    });
+
+    const prepared = preparePurchasePosting(current, {
+      journalVoucherId: input.journal.id,
+      expectedVersion: input.expectedPostingVersion,
+      occurredAt: input.occurredAt,
+    });
 
     await session.createJournalDraft(input.journal);
     await session.savePreparedPosting(prepared, input.expectedPostingVersion);
