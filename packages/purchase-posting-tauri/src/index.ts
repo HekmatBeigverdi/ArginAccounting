@@ -13,6 +13,9 @@ export {
   SqlitePurchasePostingDimensionReader,
   SqlitePurchasePostingFiscalReader,
 } from "./sqlite-purchase-posting-readers.ts";
+export type {
+  PurchasePostingDimensionTypeIdMap,
+} from "./sqlite-purchase-posting-readers.ts";
 
 export {
   SqlitePurchasePostingAtomicUnitOfWork,
