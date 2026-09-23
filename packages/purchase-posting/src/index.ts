@@ -235,3 +235,16 @@ export type {
   ReversePurchasePostingCommand,
   ReversePurchasePostingResult,
 } from "./application/controlled-posting-reversal.ts";
+
+export {
+  assertPurchasePostingFiscalScope,
+} from "./domain/fiscal-scope-and-locks.ts";
+export type {
+  AssertPurchasePostingFiscalScopeInput,
+  PurchasePostingFiscalContext,
+  PurchasePostingFiscalContextReader,
+  PurchasePostingFiscalGateDependencies,
+  PurchasePostingHistoricalLock,
+  PurchasePostingHistoricalLockReader,
+  PurchasePostingHistoricalLockScope,
+} from "./domain/fiscal-scope-and-locks.ts";
