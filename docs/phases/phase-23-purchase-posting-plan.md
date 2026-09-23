@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–7 are complete. Steps 8–30 are not started.
+Steps 1–8 are complete. Steps 9–30 are not started.
 
 ## Governance
 
@@ -28,6 +28,7 @@ Mandatory references:
 - [Purchase Posting Event Classification](../architecture/purchase-posting-event-classification.md)
 - [Purchase Posting Rules and Account Resolution](../architecture/purchase-posting-rules-and-account-resolution.md)
 - [Supplier Invoice Posting Rules](../architecture/supplier-invoice-posting-rules.md)
+- [Purchase Tax Posting](../architecture/purchase-tax-posting.md)
 
 ## Baseline and Release Target
 
@@ -174,7 +175,7 @@ Live transport is not implemented in Phase 23.
 | 5 | Purchase Posting Event Classification | Completed |
 | 6 | Posting Rules and Account Resolution | Completed |
 | 7 | Supplier Invoice Posting Rules | Completed |
-| 8 | Purchase Tax Posting | Not started |
+| 8 | Purchase Tax Posting | Completed |
 | 9 | Purchase Charges Posting | Not started |
 | 10 | Purchase Return Posting | Not started |
 | 11 | Purchase Correction Posting | Not started |
@@ -642,3 +643,57 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/supplier-invoice-posting.test.ts`
 - `docs/architecture/supplier-invoice-posting-rules.md`
+
+
+## Step 8 — Purchase Tax Posting
+
+### Completed work
+
+- Added Company-scoped Purchase VAT recoverability policy: `recoverable` / `non-recoverable`.
+- Recoverable VAT posts as Debit to `input-vat-recoverable`.
+- Recoverable VAT remains excluded from Inventory cost and Purchase Expense principal.
+- Non-recoverable VAT on stock-product lines is classified as an Inventory capitalizable-cost adjustment and deferred to Step 12.
+- Non-recoverable VAT on service/non-stock lines is classified as Purchase Expense debit.
+- Tax amounts are consumed from immutable Purchase facts; Step 8 never recomputes tax rates or tax bases.
+- The sum of tax posting components must exactly reconcile to document `totals.taxAmount`.
+- Zero-tax invoices create no tax posting component.
+- Tax policy Company scope must match the Posting Fact Company.
+- Supplier payable remains the full Step 7 `grandTotal`; Step 8 only determines the tax debit destination.
+- No FIFO/MWA mutation or Journal Line creation is introduced.
+- Added focused tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Recoverable VAT destination is explicit.
+- [x] Recoverable VAT is excluded from normal stock cost/expense principal.
+- [x] Non-recoverable stock VAT is deferred as capitalizable cost to Step 12.
+- [x] Non-recoverable service/non-stock VAT increases Purchase Expense.
+- [x] Tax amount is taken from Purchase facts, not recalculated.
+- [x] Tax components reconcile to document tax total.
+- [x] Zero tax is handled without synthetic entries.
+- [x] Tax policy is Company-scoped.
+- [x] Supplier payable remains unchanged.
+- [x] FIFO/MWA remains Valuation-owned.
+- [x] Journal construction remains Step 13.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/purchase-tax-posting.test.ts`.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local package typecheck/test should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-tax-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-tax-posting.test.ts`
+- `docs/architecture/purchase-tax-posting.md`
