@@ -35,7 +35,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 
 21. [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md) — Steps 1–19 complete; code state promoted as the required Phase 22 baseline; its own final validation/release record remains separate
 22. [Phase 22 — Purchase Workflow](phase-22-purchase-workflow-plan.md) — Steps 1–23 complete; release preparation and promotion to `develop`/`main` complete; semantic `v0.22.0` publication pending
-23. [Phase 23 — Purchase Posting & Accounting Integration](phase-23-purchase-posting-plan.md) — Steps 1–13 complete; balanced Accounting Draft Journal generation implemented; next target is Step 14
+23. [Phase 23 — Purchase Posting & Accounting Integration](phase-23-purchase-posting-plan.md) — Steps 1–14 complete; atomic Journal/Posting commit boundary implemented; next target is Step 15
 
 ## Renumbering Rule
 
