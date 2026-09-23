@@ -99,3 +99,13 @@ export type {
   PurchasePostingAccountSnapshot,
   PurchasePostingRule,
 } from "./domain/purchase-posting-rules.ts";
+
+export {
+  createSupplierInvoicePostingPlan,
+} from "./domain/supplier-invoice-posting.ts";
+export type {
+  SupplierInvoiceAmountBasis,
+  SupplierInvoicePostingComponent,
+  SupplierInvoicePostingPlan,
+  SupplierInvoicePostingSide,
+} from "./domain/supplier-invoice-posting.ts";
