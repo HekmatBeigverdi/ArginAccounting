@@ -39,6 +39,10 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   purchaseCorrectionInvalid: "purchase_posting.purchase_correction_invalid",
   purchaseCorrectionReferenceInvalid: "purchase_posting.purchase_correction_reference_invalid",
   purchaseCorrectionAmountInvalid: "purchase_posting.purchase_correction_amount_invalid",
+  inventoryValuationMissing: "purchase_posting.inventory_valuation_missing",
+  inventoryValuationMismatch: "purchase_posting.inventory_valuation_mismatch",
+  inventoryValuationDirectionInvalid: "purchase_posting.inventory_valuation_direction_invalid",
+  inventoryValuationAmountInvalid: "purchase_posting.inventory_valuation_amount_invalid",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
