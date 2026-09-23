@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–11 are complete. Steps 12–30 are not started.
+Steps 1–12 are complete. Steps 13–30 are not started.
 
 ## Governance
 
@@ -32,6 +32,7 @@ Mandatory references:
 - [Purchase Charges Posting](../architecture/purchase-charges-posting.md)
 - [Purchase Return Posting](../architecture/purchase-return-posting.md)
 - [Purchase Correction Posting](../architecture/purchase-correction-posting.md)
+- [Inventory and Valuation Integration](../architecture/purchase-posting-inventory-valuation-integration.md)
 
 ## Baseline and Release Target
 
@@ -182,7 +183,7 @@ Live transport is not implemented in Phase 23.
 | 9 | Purchase Charges Posting | Completed |
 | 10 | Purchase Return Posting | Completed |
 | 11 | Purchase Correction Posting | Completed |
-| 12 | Inventory and Valuation Integration | Not started |
+| 12 | Inventory and Valuation Integration | Completed |
 | 13 | Draft Journal Generation and Balancing | Not started |
 | 14 | Atomic Journal Posting | Not started |
 | 15 | Idempotency and Replay Safety | Not started |
@@ -859,3 +860,57 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/purchase-correction-posting.test.ts`
 - `docs/architecture/purchase-correction-posting.md`
+
+
+## Step 12 — Inventory and Valuation Integration
+
+### Completed work
+
+- Added the authoritative monetary bridge from Phase 21 Inventory Valuation to Phase 23 Purchase Posting.
+- Supplier Invoice stock components resolve from the sum of linked authoritative inbound valuation entries.
+- Purchase Return stock components resolve from authoritative outbound valuation; signed negative valuation becomes a positive Inventory credit amount.
+- Purchase Correction commercial replacement resolves as corrected valuation minus original valuation.
+- Purchase Correction quantity increase consumes authoritative inbound follow-up valuation.
+- Purchase Correction quantity decrease consumes authoritative outbound compensating valuation.
+- FIFO and Moving Weighted Average are never recalculated inside Purchase Posting.
+- Missing valuation, Company/Product/Currency mismatch and invalid inbound/outbound sign direction fail explicitly.
+- Multiple valuation movements for one Purchase line aggregate deterministically.
+- Resolved posting retains valuation provenance: valuation entry IDs, movement IDs, policy IDs, methods, strategy versions, currency and signed total cost.
+- Deferred Step 12 components are converted to concrete amounts and no longer carry `deferredToStep=12`.
+- Added focused tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Stock Supplier Invoice amount comes only from authoritative valuation.
+- [x] Stock Purchase Return amount comes only from outbound FIFO/MWA valuation.
+- [x] Commercial correction uses valuation delta rather than Purchase-price delta.
+- [x] Quantity increase/decrease consumes follow-up/compensating valuation output.
+- [x] FIFO/MWA algorithms are not duplicated.
+- [x] Signed valuation direction is validated.
+- [x] Missing valuation fails explicitly.
+- [x] Company/Product/Currency mismatches fail explicitly.
+- [x] Multi-movement valuation aggregation is deterministic.
+- [x] Valuation provenance is retained for audit/replay/Bridge.
+- [x] Journal construction remains Step 13.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/inventory-valuation-integration.test.ts`.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local package typecheck/test should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/inventory-valuation-integration.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/inventory-valuation-integration.test.ts`
+- `docs/architecture/purchase-posting-inventory-valuation-integration.md`
