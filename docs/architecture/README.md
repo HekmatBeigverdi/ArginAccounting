@@ -24,6 +24,7 @@
 - [Idempotency and Replay Safety](purchase-posting-idempotency-and-replay.md)
 - [Version and Concurrency Control](purchase-posting-version-and-concurrency.md)
 - [Controlled Posting Reversal](purchase-posting-controlled-reversal.md)
+- [Fiscal Scope and Period Locks](purchase-posting-fiscal-scope-and-locks.md)
 - [ADR Registry](../adr/README.md)
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
