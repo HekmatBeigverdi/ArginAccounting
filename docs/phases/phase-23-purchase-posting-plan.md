@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–9 are complete. Steps 10–30 are not started.
+Steps 1–10 are complete. Steps 11–30 are not started.
 
 ## Governance
 
@@ -30,6 +30,7 @@ Mandatory references:
 - [Supplier Invoice Posting Rules](../architecture/supplier-invoice-posting-rules.md)
 - [Purchase Tax Posting](../architecture/purchase-tax-posting.md)
 - [Purchase Charges Posting](../architecture/purchase-charges-posting.md)
+- [Purchase Return Posting](../architecture/purchase-return-posting.md)
 
 ## Baseline and Release Target
 
@@ -178,7 +179,7 @@ Live transport is not implemented in Phase 23.
 | 7 | Supplier Invoice Posting Rules | Completed |
 | 8 | Purchase Tax Posting | Completed |
 | 9 | Purchase Charges Posting | Completed |
-| 10 | Purchase Return Posting | Not started |
+| 10 | Purchase Return Posting | Completed |
 | 11 | Purchase Correction Posting | Not started |
 | 12 | Inventory and Valuation Integration | Not started |
 | 13 | Draft Journal Generation and Balancing | Not started |
@@ -749,3 +750,56 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/purchase-charge-posting.test.ts`
 - `docs/architecture/purchase-charges-posting.md`
+
+
+## Step 10 — Purchase Return Posting
+
+### Completed work
+
+- Added confirmed Purchase Return posting semantics as a new compensating accounting event.
+- Supplier payable is debited for the Purchase Return `grandTotal`.
+- Stock Inventory is credited only from authoritative outbound Inventory Valuation; supplier price is never used as stock-return value.
+- Stock return valuation is explicitly deferred to Step 12.
+- Recoverable Input VAT is credited on return.
+- Non-recoverable stock VAT remains inside the capitalized Inventory amount and is reversed through outbound valuation rather than credited twice.
+- Non-recoverable service/non-stock VAT reverses Purchase Expense.
+- Service/non-stock principal credits Purchase Expense.
+- Service/non-stock Purchase charges credit the `purchase-charge` account role.
+- Added durable original Supplier Invoice reference to the return posting plan; self-reference is rejected.
+- Original Supplier Invoice/Cost Input is never rewritten.
+- Added focused tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Purchase Return is represented as an independent compensating posting event.
+- [x] Accounts Payable is debited by return grand total.
+- [x] Stock Inventory credit uses outbound FIFO/MWA valuation only.
+- [x] Original inbound Cost Input is not rewritten.
+- [x] Recoverable VAT reverses Input VAT.
+- [x] Non-recoverable stock VAT is not double-counted.
+- [x] Service/non-stock expense and charges are reversed.
+- [x] Original Supplier Invoice linkage is explicit.
+- [x] Self-reference is rejected.
+- [x] Journal construction remains deferred to Step 13.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/purchase-return-posting.test.ts`.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local package typecheck/test should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-return-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-return-posting.test.ts`
+- `docs/architecture/purchase-return-posting.md`
