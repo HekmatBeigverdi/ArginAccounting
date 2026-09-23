@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–12 are complete. Steps 13–30 are not started.
+Steps 1–13 are complete. Steps 14–30 are not started.
 
 ## Governance
 
@@ -33,6 +33,7 @@ Mandatory references:
 - [Purchase Return Posting](../architecture/purchase-return-posting.md)
 - [Purchase Correction Posting](../architecture/purchase-correction-posting.md)
 - [Inventory and Valuation Integration](../architecture/purchase-posting-inventory-valuation-integration.md)
+- [Draft Journal Generation and Balancing](../architecture/purchase-posting-draft-journal-generation.md)
 
 ## Baseline and Release Target
 
@@ -184,7 +185,7 @@ Live transport is not implemented in Phase 23.
 | 10 | Purchase Return Posting | Completed |
 | 11 | Purchase Correction Posting | Completed |
 | 12 | Inventory and Valuation Integration | Completed |
-| 13 | Draft Journal Generation and Balancing | Not started |
+| 13 | Draft Journal Generation and Balancing | Completed |
 | 14 | Atomic Journal Posting | Not started |
 | 15 | Idempotency and Replay Safety | Not started |
 | 16 | Version and Concurrency Control | Not started |
@@ -914,3 +915,68 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/inventory-valuation-integration.test.ts`
 - `docs/architecture/purchase-posting-inventory-valuation-integration.md`
+
+
+## Step 13 — Draft Journal Generation and Balancing
+
+### Completed work
+
+- Added the boundary that converts fully resolved Purchase Posting components into the canonical `@argin/accounting/journal` `JournalVoucher`.
+- Supplier Invoice draft composition now combines Step 7 principal/payable semantics with Step 8 tax, Step 9 charges and Step 12 stock valuation.
+- Raw deferred tax/charge placeholders from Step 7 are never emitted as Journal Lines.
+- Stock Purchase charges already included in authoritative Cost Input/Valuation are not posted twice.
+- Purchase Return and Purchase Correction resolved components can be converted through the same draft-journal boundary.
+- Every effective component resolves its Account through the Step 6 Posting Rule engine.
+- No account ID is hard-coded in draft generation.
+- Remaining `amount=null` or `deferredToStep` components fail before Accounting.
+- All component currencies must match the Purchase Fact currency.
+- Purchase Posting validates exact debit/credit equality before calling Accounting.
+- No suspense account or synthetic balancing line is allowed.
+- Accounting `createJournalVoucher` then applies its own canonical draft/balance/line invariants as a second validation boundary.
+- Journal source provenance carries Purchase document ID plus request/correlation/causation trace.
+- Caller supplies durable Journal Voucher/Line IDs and Number; Step 13 generates no random identity.
+- Accounting dimensions remain empty and are deferred to Step 19.
+- Added focused tests and architecture documentation.
+- Added explicit `@argin/accounting` workspace dependency and synchronized the lockfile importer.
+
+### Exit criteria
+
+- [x] Fully resolved Purchase Posting can produce the canonical Accounting draft voucher.
+- [x] Unresolved/deferred components are rejected.
+- [x] Account resolution uses Step 6 rules.
+- [x] No hard-coded Account IDs are introduced.
+- [x] Supplier Invoice stock charges are not double-posted.
+- [x] Debit and Credit totals must match before Accounting creation.
+- [x] No automatic balancing/suspense entry exists.
+- [x] Accounting performs a second balance/invariant validation.
+- [x] Source-document trace is preserved.
+- [x] Durable Journal Voucher/Line identities are caller supplied.
+- [x] Journal status is Draft only.
+- [x] No persistence or posting commit occurs in Step 13.
+- [x] Dimensions remain deferred to Step 19.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/draft-journal-generation.test.ts`.
+- The package now declares `@argin/accounting` as a workspace dependency and the lockfile importer is updated.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local package typecheck/test should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/draft-journal-generation.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/package.json`
+- `packages/purchase-posting/tests/draft-journal-generation.test.ts`
+- `pnpm-lock.yaml`
+- `docs/architecture/purchase-posting-draft-journal-generation.md`
