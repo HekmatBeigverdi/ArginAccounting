@@ -23,6 +23,9 @@ import {
   SqlitePurchasePostingDimensionReader,
   SqlitePurchasePostingFiscalReader,
 } from "./sqlite-purchase-posting-readers.ts";
+import type {
+  PurchasePostingDimensionTypeIdMap,
+} from "./sqlite-purchase-posting-readers.ts";
 
 export interface SqlitePurchasePostingContext {
   readonly postings: SqlitePurchasePostingRepository;
@@ -35,13 +38,16 @@ export interface SqlitePurchasePostingContext {
   readonly journals: SqliteJournalVoucherRepository;
 }
 
-const contextFor = (session: DatabaseSession): SqlitePurchasePostingContext => Object.freeze({
+const contextFor = (
+  session: DatabaseSession,
+  dimensionTypeIds: PurchasePostingDimensionTypeIdMap,
+): SqlitePurchasePostingContext => Object.freeze({
   postings: new SqlitePurchasePostingRepository(session),
   rules: new SqlitePurchasePostingRuleRepository(session),
   idempotency: new SqlitePurchasePostingIdempotencyRepository(session),
   reversals: new SqlitePurchasePostingReversalRepository(session),
   accounts: new SqlitePurchasePostingAccountReader(session),
-  dimensions: new SqlitePurchasePostingDimensionReader(session),
+  dimensions: new SqlitePurchasePostingDimensionReader(session, dimensionTypeIds),
   fiscal: new SqlitePurchasePostingFiscalReader(session),
   journals: new SqliteJournalVoucherRepository(session),
 });
@@ -49,7 +55,10 @@ const contextFor = (session: DatabaseSession): SqlitePurchasePostingContext => O
 export class SqlitePurchasePostingUnitOfWork {
   private readonly sessions = new WeakMap<SqlitePurchasePostingContext, DatabaseSession>();
 
-  constructor(private readonly database: DatabaseExecutor) {}
+  constructor(
+    private readonly database: DatabaseExecutor,
+    private readonly dimensionTypeIds: PurchasePostingDimensionTypeIdMap = Object.freeze({}),
+  ) {}
 
   sessionFor(context: SqlitePurchasePostingContext): DatabaseSession {
     const session = this.sessions.get(context);
@@ -59,7 +68,7 @@ export class SqlitePurchasePostingUnitOfWork {
 
   execute<T>(work: (context: SqlitePurchasePostingContext) => Promise<T>): Promise<T> {
     return this.database.transaction(async session => {
-      const context = contextFor(session);
+      const context = contextFor(session, this.dimensionTypeIds);
       this.sessions.set(context, session);
       try {
         return await work(context);
@@ -86,8 +95,11 @@ const atomicSession = (
 export class SqlitePurchasePostingAtomicUnitOfWork implements PurchasePostingAtomicUnitOfWork {
   private readonly base: SqlitePurchasePostingUnitOfWork;
 
-  constructor(database: DatabaseExecutor) {
-    this.base = new SqlitePurchasePostingUnitOfWork(database);
+  constructor(
+    database: DatabaseExecutor,
+    dimensionTypeIds: PurchasePostingDimensionTypeIdMap = Object.freeze({}),
+  ) {
+    this.base = new SqlitePurchasePostingUnitOfWork(database, dimensionTypeIds);
   }
 
   run<T>(work: (session: PurchasePostingAtomicSession) => Promise<T>): Promise<T> {
@@ -108,8 +120,11 @@ const replaySession = (
 export class SqlitePurchasePostingReplayUnitOfWork implements PurchasePostingReplayUnitOfWork {
   private readonly base: SqlitePurchasePostingUnitOfWork;
 
-  constructor(database: DatabaseExecutor) {
-    this.base = new SqlitePurchasePostingUnitOfWork(database);
+  constructor(
+    database: DatabaseExecutor,
+    dimensionTypeIds: PurchasePostingDimensionTypeIdMap = Object.freeze({}),
+  ) {
+    this.base = new SqlitePurchasePostingUnitOfWork(database, dimensionTypeIds);
   }
 
   run<T>(work: (session: PurchasePostingReplaySession) => Promise<T>): Promise<T> {
@@ -128,8 +143,9 @@ export class SqlitePurchasePostingReversalUnitOfWork implements PurchasePostingR
   constructor(
     database: DatabaseExecutor,
     private readonly reverseJournalInSession: PurchasePostingJournalReverser,
+    dimensionTypeIds: PurchasePostingDimensionTypeIdMap = Object.freeze({}),
   ) {
-    this.base = new SqlitePurchasePostingUnitOfWork(database);
+    this.base = new SqlitePurchasePostingUnitOfWork(database, dimensionTypeIds);
   }
 
   run<T>(work: (session: PurchasePostingReversalSession) => Promise<T>): Promise<T> {
