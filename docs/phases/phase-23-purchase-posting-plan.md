@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–20 are complete. Steps 21–30 are not started.
+Steps 1–21 are complete. Steps 22–30 are not started.
 
 ## Governance
 
@@ -41,6 +41,7 @@ Mandatory references:
 - [Fiscal Scope and Period Locks](../architecture/purchase-posting-fiscal-scope-and-locks.md)
 - [Branch and Accounting Dimensions](../architecture/purchase-posting-branch-and-dimensions.md)
 - [Purchase Posting SQLite Persistence](../architecture/purchase-posting-sqlite-persistence.md)
+- [Purchase Posting SQLite Repository, Readers and Unit of Work](../architecture/purchase-posting-sqlite-repository-uow.md)
 
 ## Baseline and Release Target
 
@@ -200,7 +201,7 @@ Live transport is not implemented in Phase 23.
 | 18 | Fiscal Scope and Period Locks | Completed |
 | 19 | Branch and Accounting Dimensions | Completed |
 | 20 | Persistence and SQLite Migration | Completed |
-| 21 | Repository, Reader and Unit of Work | Not started |
+| 21 | Repository, Reader and Unit of Work | Completed |
 | 22 | Argin Bridge Posting Contracts | Not started |
 | 23 | Permissions, Audit and Traceability | Not started |
 | 24 | Purchase-to-Ledger Reconciliation | Not started |
@@ -1407,4 +1408,59 @@ pnpm install --frozen-lockfile
 pnpm --filter @argin/desktop test
 pnpm --filter @argin/purchase-posting typecheck
 pnpm --filter @argin/purchase-posting test
+```
+
+
+## Step 21 — Repository, Reader and Unit of Work
+
+### Completed work
+
+- Added workspace adapter package `@argin/purchase-posting-tauri`.
+- Added `SqlitePurchasePostingRepository` with durable rehydration, insert and compare-and-swap update.
+- CAS uses Posting ID + Company + expected version; zero affected rows become `concurrency_conflict`.
+- Added `SqlitePurchasePostingRuleRepository` with deterministic active-rule reads and optimistic rule updates.
+- Added `SqlitePurchasePostingIdempotencyRepository` for exact replay evidence.
+- Added `SqlitePurchasePostingReversalRepository` for controlled reversal lineage.
+- Added minimal Account reader for Step 6 account resolution.
+- Added Fiscal context/Historical Lock reader for Step 18.
+- Added Accounting Dimension reader for Step 19.
+- Dimension business-source mapping is configurable by Dimension Type ID rather than relying on hidden hard-coded Dimension codes.
+- Added generic `SqlitePurchasePostingUnitOfWork` exposing all repositories/readers and the canonical Accounting Journal repository over one transaction-bound `DatabaseSession`.
+- Added Step 14 Atomic UoW adapter and Step 15 Replay-safe UoW adapter.
+- Added Step 17 Reversal UoW adapter with exact active-session handoff to a canonical Accounting Journal reverser, avoiding nested transactions.
+- Added focused repository/CAS/same-session/reversal-session tests.
+- Added workspace lockfile importer for the new adapter package.
+
+### Exit criteria
+
+- [x] Aggregate repository can rehydrate durable Purchase Posting state.
+- [x] Aggregate update uses expected-version CAS.
+- [x] Posting Rules are readable/persistable.
+- [x] Idempotency records are readable/appendable.
+- [x] Reversal lineage is readable/appendable.
+- [x] Account reader satisfies Step 6 resolution needs.
+- [x] Fiscal/Historical Lock reader satisfies Step 18.
+- [x] Dimension reader satisfies Step 19 without hard-coded Dimension conventions.
+- [x] Generic UoW binds all adapters to one transaction session.
+- [x] Atomic Posting uses one SQLite transaction.
+- [x] Replay-safe Posting uses one SQLite transaction.
+- [x] Reversal can invoke Accounting through the exact same transaction session.
+- [x] No SQLite row ID leaks into Domain/Application identity.
+- [x] Workspace lockfile includes the new adapter package.
+
+### Validation evidence
+
+- Added `packages/purchase-posting-tauri/tests/sqlite-purchase-posting.test.ts`.
+- Tests cover rehydration, CAS SQL/conflict, transaction-session affinity, replay access and reversal-session handoff.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting-tauri typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
 ```
