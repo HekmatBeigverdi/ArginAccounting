@@ -67,6 +67,9 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   fiscalPeriodNotOpen: "purchase_posting.fiscal_period_not_open",
   fiscalDateOutOfRange: "purchase_posting.fiscal_date_out_of_range",
   historicalLockBlocked: "purchase_posting.historical_lock_blocked",
+  dimensionResolutionInvalid: "purchase_posting.dimension_resolution_invalid",
+  dimensionRequiredMissing: "purchase_posting.dimension_required_missing",
+  dimensionValidationFailed: "purchase_posting.dimension_validation_failed",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
