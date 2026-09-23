@@ -143,3 +143,17 @@ export type {
   PurchaseReturnPostingSide,
   PurchaseReturnSourceReference,
 } from "./domain/purchase-return-posting.ts";
+
+export {
+  PURCHASE_CORRECTION_EFFECTS,
+  createPurchaseCorrectionPostingPlan,
+} from "./domain/purchase-correction-posting.ts";
+export type {
+  PurchaseCorrectionAmountBasis,
+  PurchaseCorrectionEffect,
+  PurchaseCorrectionLineLink,
+  PurchaseCorrectionPostingComponent,
+  PurchaseCorrectionPostingPlan,
+  PurchaseCorrectionPostingSide,
+  PurchaseCorrectionSourceReference,
+} from "./domain/purchase-correction-posting.ts";
