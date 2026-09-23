@@ -1,6 +1,7 @@
 export {
   PURCHASE_POSTING_STATUSES,
   createPurchasePosting,
+  preparePurchasePosting,
   rehydratePurchasePosting,
 } from "./domain/purchase-posting.ts";
 export type {
@@ -181,3 +182,13 @@ export type {
   PurchasePostingDraftComponent,
   PurchasePostingDraftJournalMetadata,
 } from "./domain/draft-journal-generation.ts";
+
+export {
+  commitPurchasePostingJournalDraftAtomically,
+} from "./application/atomic-journal-posting.ts";
+export type {
+  CommitPurchasePostingJournalDraftInput,
+  CommitPurchasePostingJournalDraftResult,
+  PurchasePostingAtomicSession,
+  PurchasePostingAtomicUnitOfWork,
+} from "./application/atomic-journal-posting.ts";
