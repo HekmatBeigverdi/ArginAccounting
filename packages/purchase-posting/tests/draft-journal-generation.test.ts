@@ -189,6 +189,7 @@ test("builds balanced Accounting draft journal from resolved Purchase components
   });
 
   assert.equal(draft.status, "draft");
+  assert.equal(draft.branchId, "branch-001");
   assert.equal(draft.totalDebit.amount, 10_010);
   assert.equal(draft.totalCredit.amount, 10_010);
   assert.equal(draft.lines.length, 3);
