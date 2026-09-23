@@ -39,6 +39,7 @@ tauri
 topbar
 transactionally
 typechecks
+unconfigured
 Unintegrated
 unpost
 unposted

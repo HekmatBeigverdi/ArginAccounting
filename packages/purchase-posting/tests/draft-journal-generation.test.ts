@@ -214,6 +214,7 @@ test("fails before Accounting when authoritative valuation leaves draft unbalanc
       components: components(fact),
       rules,
       accounts,
+      dimensions,
       trace: {
         requestId: "request-001",
         operationId: "operation-001",
@@ -244,6 +245,7 @@ test("requires one unique Journal Line id per effective component", async () => 
       components: components(fact),
       rules,
       accounts,
+      dimensions,
       trace: {
         requestId: "request-001",
         operationId: "operation-001",
