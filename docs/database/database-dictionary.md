@@ -35,6 +35,7 @@ For every table record:
 | Warehouses | `warehouses`, external refs, `warehouse_zones`, `warehouse_locations`, sync/idempotency tables | Phase 19 |
 | Inventory Documents | documents/lines/lifecycle, ordinary + compensation movement facts, opening facts, balance projections, business orders, idempotency | Phase 20 |
 | Purchase Workflow | purchase documents/lines/lifecycle, commercial facts, receipt-invoice matches, valuation Cost Inputs, idempotency | Phase 22 |
+| Purchase Posting | `purchase_postings`, `purchase_posting_rules`, `purchase_posting_idempotency`, `purchase_posting_reversals` | Phase 23 |
 
 ## Phase 10 — Chart of Accounts
 
@@ -345,3 +346,28 @@ Migration `0031` adds the complete captured Fiscal scope snapshot required to re
 ### Retention and sensitivity
 
 Lifecycle and match facts are append-only. Confirmed Purchase history is corrected through compensating return/correction documents rather than destructive rewrite. Purchase data is company-confidential commercial/financial data and follows the local database backup and protection policy.
+
+
+## Phase 23 — Purchase Posting
+
+Migration `0033_purchase_posting.sql` persists the Purchase accounting-recognition boundary without introducing SQLite row identities.
+
+### `purchase_postings`
+
+Company/Branch-scoped Purchase Posting aggregate state with Draft/Prepared/Posted/Reversed lifecycle, original Journal Voucher linkage, optimistic `version`, timestamps and Bridge sync metadata. Draft rows cannot have a Journal link; all later states require one. A Journal can belong to only one Purchase Posting.
+
+### `purchase_posting_rules`
+
+Versioned Purchase-specific account-resolution rules scoped by Company and optional Branch/event/line kind. Rules reference existing company-scoped Accounts and retain priority/active flags plus Bridge metadata. Ambiguity remains an Application invariant rather than being silently collapsed by the schema.
+
+### `purchase_posting_idempotency`
+
+Append-only Step 15 replay evidence keyed by the canonical idempotency key and uniquely constrained by durable source identity + source version/revision + posting purpose. Stores SHA-256 payload fingerprint and committed Posting/Journal outcome. UPDATE/DELETE are blocked by triggers.
+
+### `purchase_posting_reversals`
+
+Append-only Step 17 reversal lineage linking one Purchase Posting to its original and reversal Journal Vouchers with request/actor/time/reason and committed Posting version. Request identity is unique per Company and reversal Journal identity cannot be reused.
+
+### Migration
+
+- `apps/desktop/src-tauri/migrations/0033_purchase_posting.sql`
