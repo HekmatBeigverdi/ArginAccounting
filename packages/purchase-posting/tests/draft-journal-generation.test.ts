@@ -122,6 +122,22 @@ const rules = [
   }),
 ];
 
+
+const dimensions = {
+  async findPoliciesForAccount() {
+    return [];
+  },
+  async findTypesByCompanyId() {
+    return [];
+  },
+  async resolveMemberBySource() {
+    return null;
+  },
+  async findMembersByIds() {
+    return [];
+  },
+};
+
 const accounts = {
   async findById(companyId: string, accountId: string) {
     return {
@@ -157,6 +173,7 @@ test("builds balanced Accounting draft journal from resolved Purchase components
     components: components(fact),
     rules,
     accounts,
+    dimensions,
     trace: {
       requestId: "request-001",
       operationId: "operation-001",
