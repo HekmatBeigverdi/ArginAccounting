@@ -23,6 +23,7 @@
 - [Atomic Journal Posting](purchase-posting-atomic-journal-posting.md)
 - [Idempotency and Replay Safety](purchase-posting-idempotency-and-replay.md)
 - [Version and Concurrency Control](purchase-posting-version-and-concurrency.md)
+- [Controlled Posting Reversal](purchase-posting-controlled-reversal.md)
 - [ADR Registry](../adr/README.md)
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
