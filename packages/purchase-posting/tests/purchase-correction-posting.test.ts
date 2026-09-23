@@ -116,7 +116,7 @@ const links = {
       correctionPurchaseLineId: "corr-service",
       effect: "commercial-replacement" as const,
     },
-  ],
+  ] as const,
 };
 
 test("derives correction deltas from original and corrected authoritative facts", () => {
