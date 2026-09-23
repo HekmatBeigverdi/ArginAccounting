@@ -1,6 +1,14 @@
-import type {
-  JournalFiscalContext,
-} from "@argin/accounting/journal";
+export interface PurchasePostingFiscalContext {
+  readonly companyId: string;
+  readonly fiscalYearId: string;
+  readonly fiscalYearStartDate: string;
+  readonly fiscalYearEndDate: string;
+  readonly fiscalYearStatus: "draft" | "open" | "closing" | "closed";
+  readonly fiscalPeriodId: string;
+  readonly fiscalPeriodStartDate: string;
+  readonly fiscalPeriodEndDate: string;
+  readonly fiscalPeriodStatus: "open" | "locked" | "closed";
+}
 
 import {
   PURCHASE_POSTING_DOMAIN_ERROR_CODES,
@@ -24,7 +32,7 @@ export interface PurchasePostingFiscalContextReader {
   resolve(
     companyId: string,
     operationDate: string,
-  ): Promise<JournalFiscalContext | null>;
+  ): Promise<PurchasePostingFiscalContext | null>;
 }
 
 export interface PurchasePostingHistoricalLockReader {
@@ -43,8 +51,8 @@ export interface PurchasePostingFiscalGateDependencies {
 export interface AssertPurchasePostingFiscalScopeInput {
   readonly companyId: string;
   readonly branchId: string | null;
-  readonly fiscalYearId: string;
-  readonly fiscalPeriodId: string;
+  readonly fiscalYearId?: string | null;
+  readonly fiscalPeriodId?: string | null;
   readonly operationDate: string;
 }
 
@@ -59,7 +67,7 @@ function isIsoDate(value: string): boolean {
 export async function assertPurchasePostingFiscalScope(
   input: AssertPurchasePostingFiscalScopeInput,
   dependencies: PurchasePostingFiscalGateDependencies,
-): Promise<JournalFiscalContext> {
+): Promise<PurchasePostingFiscalContext> {
   if (!isIsoDate(input.operationDate)) {
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.fiscalDateOutOfRange, "operationDate");
   }
@@ -75,8 +83,8 @@ export async function assertPurchasePostingFiscalScope(
 
   if (
     context.companyId !== input.companyId
-    || context.fiscalYearId !== input.fiscalYearId
-    || context.fiscalPeriodId !== input.fiscalPeriodId
+    || (input.fiscalYearId != null && context.fiscalYearId !== input.fiscalYearId)
+    || (input.fiscalPeriodId != null && context.fiscalPeriodId !== input.fiscalPeriodId)
   ) {
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.fiscalScopeMismatch, "fiscalContext");
   }
