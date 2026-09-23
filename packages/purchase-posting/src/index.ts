@@ -132,3 +132,14 @@ export type {
   PurchaseChargePostingDestination,
   PurchaseChargePostingPlan,
 } from "./domain/purchase-charge-posting.ts";
+
+export {
+  createPurchaseReturnPostingPlan,
+} from "./domain/purchase-return-posting.ts";
+export type {
+  PurchaseReturnAmountBasis,
+  PurchaseReturnPostingComponent,
+  PurchaseReturnPostingPlan,
+  PurchaseReturnPostingSide,
+  PurchaseReturnSourceReference,
+} from "./domain/purchase-return-posting.ts";
