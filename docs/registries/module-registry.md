@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting` | Idempotency and replay safety implemented through Phase 23 Step 15 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
+| Purchase Posting | `@argin/purchase-posting` | Version and concurrency control implemented through Phase 23 Step 16 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -48,11 +48,11 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Purchase Posting — Phase 23 Current State
 
 - Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
-- Domain/Application: `packages/purchase-posting` owns Purchase posting semantics through Step 15, including canonical Journal generation, atomic persistence, durable idempotency identity and exact-replay/conflict semantics.
+- Domain/Application: `packages/purchase-posting` owns Purchase posting semantics through Step 16, including canonical Journal generation, atomic persistence, replay safety and in-transaction optimistic concurrency/CAS contracts.
 - Non-ownership: it does not own supplier commercial pricing, Inventory quantities, FIFO/MWA valuation state or Journal tables.
 - Persistence: none yet; SQLite schema/repository work remains Steps 20–21.
 - Bridge: durable source system/type/ID, source version/revision, Company/Branch, request/operation and correlation/causation metadata are established; the actual versioned Argin Bridge envelope remains Step 22.
-- Testing: Step 15 adds first-run, exact replay/no-duplicate-write, incompatible fingerprint conflict and new source-version idempotency coverage.
+- Testing: Step 16 adds stale-version/state detection, Journal version guards, in-transaction current-state loading and replay-before-version-validation coverage.
 
 ## Required Fields for Future Entries
 
