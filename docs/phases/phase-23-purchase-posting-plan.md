@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–18 are complete. Steps 19–30 are not started.
+Steps 1–19 are complete. Steps 20–30 are not started.
 
 ## Governance
 
@@ -39,6 +39,7 @@ Mandatory references:
 - [Version and Concurrency Control](../architecture/purchase-posting-version-and-concurrency.md)
 - [Controlled Posting Reversal](../architecture/purchase-posting-controlled-reversal.md)
 - [Fiscal Scope and Period Locks](../architecture/purchase-posting-fiscal-scope-and-locks.md)
+- [Branch and Accounting Dimensions](../architecture/purchase-posting-branch-and-dimensions.md)
 
 ## Baseline and Release Target
 
@@ -196,7 +197,7 @@ Live transport is not implemented in Phase 23.
 | 16 | Version and Concurrency Control | Completed |
 | 17 | Controlled Posting Reversal | Completed |
 | 18 | Fiscal Scope and Period Locks | Completed |
-| 19 | Branch and Accounting Dimensions | Not started |
+| 19 | Branch and Accounting Dimensions | Completed |
 | 20 | Persistence and SQLite Migration | Not started |
 | 21 | Repository, Reader and Unit of Work | Not started |
 | 22 | Argin Bridge Posting Contracts | Not started |
@@ -1292,3 +1293,66 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/tests/replay-safe-posting.test.ts`
 - `packages/purchase-posting/tests/controlled-posting-reversal.test.ts`
 - `docs/architecture/purchase-posting-fiscal-scope-and-locks.md`
+
+
+## Step 19 — Branch and Accounting Dimensions
+
+### Completed work
+
+- Preserved Purchase `branchId` as the canonical Journal Voucher Branch scope; no duplicate automatic Branch dimension was introduced.
+- Added semantic Purchase dimension sources for Party, Product, Warehouse, Cost Center and Project.
+- Business IDs are never written directly as Accounting Dimension Member IDs.
+- Added `PurchasePostingDimensionReader` resolver boundary from business references to existing Accounting Dimension Members.
+- Supplier/Party is available for both document-level and line-level posting components.
+- Product comes from the Purchase line item.
+- Warehouse comes only from authoritative valuation snapshots and is never invented for service/non-stock lines.
+- Cost Center and Project are accepted as optional posting context because the current Purchase Fact does not own those facts.
+- Account Dimension Policies drive assignment: Required/Optional may assign; Forbidden/unconfigured dimensions are not auto-injected.
+- Required dimensions that cannot resolve a valid Member fail before Journal creation.
+- Final assignments are validated by Accounting's existing `validateAccountingDimensionAssignments`.
+- Accounting-owned validation remains authoritative for type/member status, Company scope, validity dates, duplicates and multiple-member allowance.
+- Dimension assignments are normalized deterministically by Dimension Type and Member ID.
+- Draft Journal generation now resolves dimensions after Account resolution and writes them to canonical Journal Lines.
+- Added focused dimension-reference/policy/required/forbidden tests and a Branch scope assertion.
+
+### Exit criteria
+
+- [x] Branch remains a first-class Journal Voucher scope.
+- [x] Supplier can resolve to Party dimension.
+- [x] Product can resolve from a Purchase line.
+- [x] Warehouse can resolve from authoritative valuation facts.
+- [x] Cost Center and Project can be supplied through explicit posting context.
+- [x] Operational IDs are not directly treated as Accounting Member IDs.
+- [x] Account Dimension Policy controls whether dimensions are allowed/required.
+- [x] Forbidden/unconfigured dimensions are not automatically injected.
+- [x] Missing required dimension fails explicitly.
+- [x] Existing Accounting dimension validation is reused.
+- [x] Final assignments are deterministic.
+- [x] Draft Journal Lines carry resolved dimension assignments.
+- [x] Dimension master-data ownership remains Accounting/Phase 11.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/purchase-posting-dimensions.test.ts`.
+- Draft Journal tests now provide the Dimension Reader contract and verify the generated Journal retains `branchId`.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local Accounting/Purchase Posting typecheck and Purchase Posting tests should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-posting-dimensions.ts`
+- `packages/purchase-posting/src/domain/draft-journal-generation.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-posting-dimensions.test.ts`
+- `packages/purchase-posting/tests/draft-journal-generation.test.ts`
+- `docs/architecture/purchase-posting-branch-and-dimensions.md`
