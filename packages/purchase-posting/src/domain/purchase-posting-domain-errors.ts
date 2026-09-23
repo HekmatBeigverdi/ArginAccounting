@@ -33,6 +33,9 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   taxPolicyMissing: "purchase_posting.tax_policy_missing",
   taxPostingInvalid: "purchase_posting.tax_posting_invalid",
   chargePostingInvalid: "purchase_posting.charge_posting_invalid",
+  purchaseReturnInvalid: "purchase_posting.purchase_return_invalid",
+  purchaseReturnReferenceInvalid: "purchase_posting.purchase_return_reference_invalid",
+  purchaseReturnAmountInvalid: "purchase_posting.purchase_return_amount_invalid",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
