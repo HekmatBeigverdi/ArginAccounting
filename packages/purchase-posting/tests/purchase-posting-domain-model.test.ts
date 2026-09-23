@@ -74,21 +74,38 @@ test("rehydrates prepared and posted states without depending on SQLite identity
     companyId: "company-001",
     branchId: "branch-001",
     status: "prepared",
-    journalVoucherId: null,
+    journalVoucherId: "journal-voucher-9001",
     version: 3,
     createdAt,
     updatedAt: "2026-09-22T12:10:00.000Z",
   });
   assert.equal(prepared.status, "prepared");
+  assert.equal(prepared.journalVoucherId, "journal-voucher-9001");
 
   const posted = rehydratePurchasePosting({
     ...prepared,
     status: "posted",
-    journalVoucherId: "journal-voucher-9001",
     version: 4,
     updatedAt: "2026-09-22T12:15:00.000Z",
   });
   assert.equal(posted.journalVoucherId, "journal-voucher-9001");
+});
+
+test("rejects prepared posting without a Journal link", () => {
+  assertDomainError(
+    () => rehydratePurchasePosting({
+      postingId: "purchase-posting-prepared",
+      companyId: "company-001",
+      branchId: "branch-001",
+      status: "prepared",
+      journalVoucherId: null,
+      version: 2,
+      createdAt,
+      updatedAt: "2026-09-22T12:05:00.000Z",
+    }),
+    PURCHASE_POSTING_DOMAIN_ERROR_CODES.stateInvalid,
+    "journalVoucherId",
+  );
 });
 
 test("enforces journal linkage invariant for posting state", () => {
