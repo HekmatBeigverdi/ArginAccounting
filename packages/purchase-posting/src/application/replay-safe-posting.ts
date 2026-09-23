@@ -23,12 +23,17 @@ import {
   PURCHASE_POSTING_DOMAIN_ERROR_CODES,
   PurchasePostingDomainError,
 } from "../domain/purchase-posting-domain-errors.ts";
+import {
+  assertNewJournalDraftVersion,
+  assertPurchasePostingConcurrency,
+} from "../domain/posting-concurrency.ts";
 import type {
   PurchasePostingDomainErrorCode,
 } from "../domain/purchase-posting-domain-errors.ts";
 
 export interface PurchasePostingReplaySession {
   findIdempotencyRecord(idempotencyKey: string): Promise<PurchasePostingIdempotencyRecord | null>;
+  findPosting(postingId: string): Promise<PurchasePostingAggregate | null>;
   findPreparedPosting(postingId: string): Promise<PurchasePostingAggregate | null>;
   findJournalDraft(journalVoucherId: string): Promise<JournalVoucher | null>;
   createJournalDraft(voucher: JournalVoucher): Promise<void>;
@@ -119,6 +124,7 @@ export async function commitPurchasePostingReplaySafe(
   }
 
   assertDraftScope(input);
+  assertNewJournalDraftVersion(input.journal);
 
   const identity = createPurchasePostingIdempotencyIdentity({
     source: input.source,
@@ -137,11 +143,18 @@ export async function commitPurchasePostingReplaySafe(
       return replay(session, existing);
     }
 
-    if (input.posting.version !== input.expectedPostingVersion) {
-      return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.versionInvalid, "expectedPostingVersion");
+    const current = await session.findPosting(input.posting.postingId);
+    if (current === null) {
+      return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.concurrencyPostingMissing, "posting");
     }
 
-    const prepared = preparePurchasePosting(input.posting, {
+    assertPurchasePostingConcurrency(current, {
+      postingId: input.posting.postingId,
+      expectedPostingVersion: input.expectedPostingVersion,
+      source: identity.source,
+    });
+
+    const prepared = preparePurchasePosting(current, {
       journalVoucherId: input.journal.id,
       expectedVersion: input.expectedPostingVersion,
       occurredAt: input.occurredAt,
