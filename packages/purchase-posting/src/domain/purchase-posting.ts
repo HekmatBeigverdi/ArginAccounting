@@ -184,3 +184,45 @@ export function preparePurchasePosting(
     updatedAt,
   });
 }
+
+
+export function reversePurchasePosting(
+  posting: PurchasePostingAggregate,
+  input: {
+    readonly originalJournalVoucherId: string;
+    readonly expectedVersion: number;
+    readonly occurredAt: string;
+  },
+): PurchasePostingAggregate {
+  assertObject(posting, "posting");
+  assertObject(input, "reverse");
+
+  if (posting.status !== "posted") {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.stateInvalid, "status");
+  }
+  if (posting.version !== input.expectedVersion) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.versionInvalid, "expectedVersion");
+  }
+  if (posting.journalVoucherId !== identity(input.originalJournalVoucherId, "originalJournalVoucherId")) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.reversalJournalMismatch, "originalJournalVoucherId");
+  }
+  if (posting.version === Number.MAX_SAFE_INTEGER) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.versionInvalid, "version");
+  }
+
+  const updatedAt = timestamp(input.occurredAt, "occurredAt");
+  if (updatedAt < posting.updatedAt) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.timestampOrderInvalid, "occurredAt");
+  }
+
+  return normalize({
+    postingId: posting.postingId,
+    companyId: posting.companyId,
+    branchId: posting.branchId,
+    status: "reversed",
+    journalVoucherId: posting.journalVoucherId,
+    version: posting.version + 1,
+    createdAt: posting.createdAt,
+    updatedAt,
+  });
+}
