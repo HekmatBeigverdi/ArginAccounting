@@ -2,6 +2,7 @@ import {
   createJournalVoucher,
 } from "@argin/accounting/journal";
 import type {
+  CreateJournalVoucherInput,
   JournalVoucher,
 } from "@argin/accounting/journal";
 
@@ -315,7 +316,7 @@ export async function createPurchasePostingDraftJournal(
     fiscalYearId: input.fact.fiscalYearId,
     fiscalPeriodId: input.fact.fiscalPeriodId,
     description: input.journal.description ?? `Purchase posting: ${input.fact.purchaseDocumentId}`,
-    currency: input.fact.totals.currency,
+    currency: input.fact.totals.currency as NonNullable<CreateJournalVoucherInput["currency"]>,
     source: {
       type: "source_document",
       sourceId: input.fact.purchaseDocumentId,
