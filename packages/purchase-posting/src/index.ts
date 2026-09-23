@@ -109,3 +109,17 @@ export type {
   SupplierInvoicePostingPlan,
   SupplierInvoicePostingSide,
 } from "./domain/supplier-invoice-posting.ts";
+
+export {
+  PURCHASE_TAX_RECOVERABILITY,
+  createPurchaseTaxPolicy,
+  createPurchaseTaxPostingPlan,
+} from "./domain/purchase-tax-posting.ts";
+export type {
+  CreatePurchaseTaxPolicyInput,
+  PurchaseTaxPolicy,
+  PurchaseTaxPostingComponent,
+  PurchaseTaxPostingDestination,
+  PurchaseTaxPostingPlan,
+  PurchaseTaxRecoverability,
+} from "./domain/purchase-tax-posting.ts";
