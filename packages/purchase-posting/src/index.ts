@@ -215,3 +215,11 @@ export type {
   ReplaySafePurchasePostingInput,
   ReplaySafePurchasePostingResult,
 } from "./application/replay-safe-posting.ts";
+
+export {
+  assertNewJournalDraftVersion,
+  assertPurchasePostingConcurrency,
+} from "./domain/posting-concurrency.ts";
+export type {
+  PurchasePostingConcurrencyExpectation,
+} from "./domain/posting-concurrency.ts";
