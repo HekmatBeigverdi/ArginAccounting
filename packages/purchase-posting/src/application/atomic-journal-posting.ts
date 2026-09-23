@@ -14,12 +14,22 @@ import type {
   PurchasePostingDomainErrorCode,
 } from "../domain/purchase-posting-domain-errors.ts";
 import {
+  assertPurchasePostingFiscalScope,
+} from "../domain/fiscal-scope-and-locks.ts";
+import type {
+  PurchasePostingFiscalContext,
+  PurchasePostingHistoricalLock,
+  PurchasePostingHistoricalLockScope,
+} from "../domain/fiscal-scope-and-locks.ts";
+import {
   assertNewJournalDraftVersion,
   assertPurchasePostingConcurrency,
 } from "../domain/posting-concurrency.ts";
 
 export interface PurchasePostingAtomicSession {
   findPosting(postingId: string): Promise<PurchasePostingAggregate | null>;
+  resolveFiscalContext(companyId: string, operationDate: string): Promise<PurchasePostingFiscalContext | null>;
+  findActiveHistoricalLocks(companyId: string, branchId: string | null, scope: PurchasePostingHistoricalLockScope): Promise<readonly PurchasePostingHistoricalLock[]>;
   createJournalDraft(voucher: JournalVoucher): Promise<void>;
   savePreparedPosting(
     posting: PurchasePostingAggregate,
@@ -112,6 +122,8 @@ export async function commitPurchasePostingJournalDraftAtomically(
     if (
       !session
       || typeof session.findPosting !== "function"
+      || typeof session.resolveFiscalContext !== "function"
+      || typeof session.findActiveHistoricalLocks !== "function"
       || typeof session.createJournalDraft !== "function"
       || typeof session.savePreparedPosting !== "function"
     ) {
@@ -120,6 +132,17 @@ export async function commitPurchasePostingJournalDraftAtomically(
         "unitOfWork.session",
       );
     }
+
+    await assertPurchasePostingFiscalScope({
+      companyId: input.journal.companyId,
+      branchId: input.journal.branchId,
+      fiscalYearId: input.journal.fiscalYearId,
+      fiscalPeriodId: input.journal.fiscalPeriodId,
+      operationDate: input.journal.voucherDate,
+    }, {
+      fiscalContext: { resolve: session.resolveFiscalContext.bind(session) },
+      historicalLocks: { findActiveLocks: session.findActiveHistoricalLocks.bind(session) },
+    });
 
     const current = await session.findPosting(input.posting.postingId);
     if (current === null) {
