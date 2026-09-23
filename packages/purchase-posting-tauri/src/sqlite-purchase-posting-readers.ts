@@ -1,4 +1,4 @@
-import type { DatabaseSession, DatabaseValue } from "@argin/database";
+import type { DatabaseSession } from "@argin/database";
 import type {
   AccountDimensionPolicy,
   AccountingDimensionMember,
@@ -206,16 +206,14 @@ export class SqlitePurchasePostingFiscalReader {
   }
 }
 
-const DIMENSION_CODES: Readonly<Record<PurchasePostingDimensionSource, readonly string[]>> = Object.freeze({
-  party: Object.freeze(["PARTY"]),
-  product: Object.freeze(["PRODUCT"]),
-  warehouse: Object.freeze(["WAREHOUSE"]),
-  "cost-center": Object.freeze(["COST_CENTER", "COSTCENTER"]),
-  project: Object.freeze(["PROJECT"]),
-});
+export type PurchasePostingDimensionTypeIdMap =
+  Readonly<Partial<Record<PurchasePostingDimensionSource, string>>>;
 
 export class SqlitePurchasePostingDimensionReader implements PurchasePostingDimensionReader {
-  constructor(private readonly db: DatabaseSession) {}
+  constructor(
+    private readonly db: DatabaseSession,
+    private readonly dimensionTypeIds: PurchasePostingDimensionTypeIdMap = Object.freeze({}),
+  ) {}
 
   async findPoliciesForAccount(companyId: string, accountId: string): Promise<readonly AccountDimensionPolicy[]> {
     const rows = await this.db.query<PolicyRow>(
@@ -238,20 +236,15 @@ export class SqlitePurchasePostingDimensionReader implements PurchasePostingDime
     source: PurchasePostingDimensionSource,
     sourceReferenceId: string,
   ): Promise<AccountingDimensionMember | null> {
-    const codes = DIMENSION_CODES[source];
-    const placeholders = codes.map(() => "?").join(",");
-    const parameters: DatabaseValue[] = [companyId, sourceReferenceId, ...codes];
+    const dimensionTypeId = this.dimensionTypeIds[source];
+    if (!dimensionTypeId) return null;
     const row = await this.db.queryOne<MemberRow>(
-      `SELECT m.*
-         FROM accounting_dimension_members m
-         JOIN accounting_dimension_types t
-           ON t.company_id=m.company_id AND t.id=m.dimension_type_id
-        WHERE m.company_id=?
-          AND m.source_reference_id=?
-          AND upper(t.code) IN (${placeholders})
-        ORDER BY t.display_order,t.code,m.display_order,m.id
+      `SELECT *
+         FROM accounting_dimension_members
+        WHERE company_id=? AND dimension_type_id=? AND source_reference_id=?
+        ORDER BY display_order,code,id
         LIMIT 1`,
-      parameters,
+      [companyId, dimensionTypeId, sourceReferenceId],
     );
     return row ? mapMember(row) : null;
   }
