@@ -77,6 +77,9 @@ function transactionalUnitOfWork(input?: {
       };
 
       const session: PurchasePostingAtomicSession = {
+        async findPosting(id) {
+          return id === "posting-001" ? posting() : null;
+        },
         async createJournalDraft(voucher) {
           staged.journals.push(voucher.id);
           if (input?.failOnJournal) throw new Error("journal write failed");
