@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–15 are complete. Steps 16–30 are not started.
+Steps 1–16 are complete. Steps 17–30 are not started.
 
 ## Governance
 
@@ -36,6 +36,7 @@ Mandatory references:
 - [Draft Journal Generation and Balancing](../architecture/purchase-posting-draft-journal-generation.md)
 - [Atomic Journal Posting](../architecture/purchase-posting-atomic-journal-posting.md)
 - [Idempotency and Replay Safety](../architecture/purchase-posting-idempotency-and-replay.md)
+- [Version and Concurrency Control](../architecture/purchase-posting-version-and-concurrency.md)
 
 ## Baseline and Release Target
 
@@ -190,7 +191,7 @@ Live transport is not implemented in Phase 23.
 | 13 | Draft Journal Generation and Balancing | Completed |
 | 14 | Atomic Journal Posting | Completed |
 | 15 | Idempotency and Replay Safety | Completed |
-| 16 | Version and Concurrency Control | Not started |
+| 16 | Version and Concurrency Control | Completed |
 | 17 | Controlled Posting Reversal | Not started |
 | 18 | Fiscal Scope and Period Locks | Not started |
 | 19 | Branch and Accounting Dimensions | Not started |
@@ -1103,3 +1104,64 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/replay-safe-posting.test.ts`
 - `docs/architecture/purchase-posting-idempotency-and-replay.md`
+
+
+## Step 16 — Version and Concurrency Control
+
+### Completed work
+
+- Added explicit optimistic-concurrency guards for Purchase Posting mutations.
+- Caller snapshots are no longer trusted as final write authority.
+- Both atomic and replay-safe mutation paths now load the current Purchase Posting inside the same Unit of Work before transition.
+- Current Posting version must exactly match `expectedPostingVersion`; stale callers fail with `concurrency_conflict`.
+- Current Posting must still be Draft with no Journal link; otherwise the mutation fails with `concurrency_state_mismatch`.
+- Company, Branch and Posting ID scope are revalidated against the currently loaded aggregate.
+- New Purchase-generated Journal Drafts must start at `version=1` and `status=draft`.
+- Reused/already-mutated Journal objects fail with `journal_version_conflict`.
+- Exact idempotent replay remains intentionally checked before current-version validation, so a valid retry still returns the original committed outcome after aggregate advancement.
+- CAS persistence remains required: concrete adapters must save with `expectedVersion` and treat zero affected rows as concurrency conflict.
+- Added focused stale-version/state/journal-version tests and extended replay/atomic-path coverage.
+
+### Exit criteria
+
+- [x] Current aggregate is loaded inside the transaction before mutation.
+- [x] Expected version is compared to current version.
+- [x] Stale version fails explicitly.
+- [x] Stale lifecycle state fails explicitly.
+- [x] Scope is revalidated against the current aggregate.
+- [x] Caller snapshot cannot silently overwrite newer state.
+- [x] New Journal Draft must be version 1.
+- [x] Exact replay is evaluated before current-version validation.
+- [x] Atomic and replay-safe paths share the concurrency policy.
+- [x] CAS repository semantics are documented for Steps 20–21.
+- [x] SQLite row identity is not concurrency identity.
+- [x] Reversal-specific concurrency remains Step 17.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/posting-concurrency.test.ts`.
+- Existing atomic and replay-safe tests were updated to load current Posting state inside the transaction.
+- Replay coverage now includes a stale caller version that still succeeds as an exact replay.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local Accounting/Purchase Posting typecheck and Purchase Posting tests should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/posting-concurrency.ts`
+- `packages/purchase-posting/src/application/atomic-journal-posting.ts`
+- `packages/purchase-posting/src/application/replay-safe-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/posting-concurrency.test.ts`
+- `packages/purchase-posting/tests/atomic-journal-posting.test.ts`
+- `packages/purchase-posting/tests/replay-safe-posting.test.ts`
+- `docs/architecture/purchase-posting-version-and-concurrency.md`
