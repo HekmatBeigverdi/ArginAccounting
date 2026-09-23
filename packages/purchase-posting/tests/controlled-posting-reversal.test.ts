@@ -85,6 +85,22 @@ function store() {
         async findPosting(id) {
           return id === current.postingId ? current : null;
         },
+        async resolveFiscalContext() {
+          return {
+            companyId: "company-001",
+            fiscalYearId: "fy-1405",
+            fiscalYearStartDate: "2026-03-21",
+            fiscalYearEndDate: "2027-03-20",
+            fiscalYearStatus: "open" as const,
+            fiscalPeriodId: "fp-07",
+            fiscalPeriodStartDate: "2026-09-01",
+            fiscalPeriodEndDate: "2026-09-30",
+            fiscalPeriodStatus: "open" as const,
+          };
+        },
+        async findActiveHistoricalLocks() {
+          return [];
+        },
         async findReversalByRequestId(_companyId, requestId) {
           return record?.requestId === requestId ? record : null;
         },
@@ -205,6 +221,23 @@ test("non-posted Purchase Posting cannot be reversed", async () => {
             ...original,
             status: "prepared",
           });
+        },
+
+        async resolveFiscalContext() {
+          return {
+            companyId: "company-001",
+            fiscalYearId: "fy-1405",
+            fiscalYearStartDate: "2026-03-21",
+            fiscalYearEndDate: "2027-03-20",
+            fiscalYearStatus: "open" as const,
+            fiscalPeriodId: "fp-07",
+            fiscalPeriodStartDate: "2026-09-01",
+            fiscalPeriodEndDate: "2026-09-30",
+            fiscalPeriodStatus: "open" as const,
+          };
+        },
+        async findActiveHistoricalLocks() {
+          return [];
         },
         async findReversalByRequestId() { return null; },
         async reverseJournal() { return journalReversal(); },
