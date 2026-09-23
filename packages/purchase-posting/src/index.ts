@@ -3,6 +3,7 @@ export {
   createPurchasePosting,
   preparePurchasePosting,
   rehydratePurchasePosting,
+  reversePurchasePosting,
 } from "./domain/purchase-posting.ts";
 export type {
   CreatePurchasePostingInput,
@@ -223,3 +224,14 @@ export {
 export type {
   PurchasePostingConcurrencyExpectation,
 } from "./domain/posting-concurrency.ts";
+
+export {
+  reversePurchasePostingControlled,
+} from "./application/controlled-posting-reversal.ts";
+export type {
+  PurchasePostingReversalRecord,
+  PurchasePostingReversalSession,
+  PurchasePostingReversalUnitOfWork,
+  ReversePurchasePostingCommand,
+  ReversePurchasePostingResult,
+} from "./application/controlled-posting-reversal.ts";
