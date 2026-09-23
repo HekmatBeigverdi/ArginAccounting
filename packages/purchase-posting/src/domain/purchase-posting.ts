@@ -87,10 +87,10 @@ function assertStateInvariant(
   journalVoucherId: string | null,
 ): void {
   const hasJournal = journalVoucherId !== null;
-  if ((postingStatus === "draft" || postingStatus === "prepared") && hasJournal) {
+  if (postingStatus === "draft" && hasJournal) {
     fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.stateInvalid, "journalVoucherId");
   }
-  if ((postingStatus === "posted" || postingStatus === "reversed") && !hasJournal) {
+  if ((postingStatus === "prepared" || postingStatus === "posted" || postingStatus === "reversed") && !hasJournal) {
     fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.stateInvalid, "journalVoucherId");
   }
 }
@@ -144,4 +144,43 @@ export function rehydratePurchasePosting(
   input: RehydratePurchasePostingInput,
 ): PurchasePostingAggregate {
   return normalize(input);
+}
+
+
+export function preparePurchasePosting(
+  posting: PurchasePostingAggregate,
+  input: {
+    readonly journalVoucherId: string;
+    readonly expectedVersion: number;
+    readonly occurredAt: string;
+  },
+): PurchasePostingAggregate {
+  assertObject(posting, "posting");
+  assertObject(input, "prepare");
+
+  if (posting.status !== "draft") {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.stateInvalid, "status");
+  }
+  if (posting.version !== input.expectedVersion) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.versionInvalid, "expectedVersion");
+  }
+  if (posting.version === Number.MAX_SAFE_INTEGER) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.versionInvalid, "version");
+  }
+
+  const updatedAt = timestamp(input.occurredAt, "occurredAt");
+  if (updatedAt < posting.updatedAt) {
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.timestampOrderInvalid, "occurredAt");
+  }
+
+  return normalize({
+    postingId: posting.postingId,
+    companyId: posting.companyId,
+    branchId: posting.branchId,
+    status: "prepared",
+    journalVoucherId: identity(input.journalVoucherId, "journalVoucherId"),
+    version: posting.version + 1,
+    createdAt: posting.createdAt,
+    updatedAt,
+  });
 }
