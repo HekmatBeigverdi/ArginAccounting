@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–16 are complete. Steps 17–30 are not started.
+Steps 1–17 are complete. Steps 18–30 are not started.
 
 ## Governance
 
@@ -37,6 +37,7 @@ Mandatory references:
 - [Atomic Journal Posting](../architecture/purchase-posting-atomic-journal-posting.md)
 - [Idempotency and Replay Safety](../architecture/purchase-posting-idempotency-and-replay.md)
 - [Version and Concurrency Control](../architecture/purchase-posting-version-and-concurrency.md)
+- [Controlled Posting Reversal](../architecture/purchase-posting-controlled-reversal.md)
 
 ## Baseline and Release Target
 
@@ -192,7 +193,7 @@ Live transport is not implemented in Phase 23.
 | 14 | Atomic Journal Posting | Completed |
 | 15 | Idempotency and Replay Safety | Completed |
 | 16 | Version and Concurrency Control | Completed |
-| 17 | Controlled Posting Reversal | Not started |
+| 17 | Controlled Posting Reversal | Completed |
 | 18 | Fiscal Scope and Period Locks | Not started |
 | 19 | Branch and Accounting Dimensions | Not started |
 | 20 | Persistence and SQLite Migration | Not started |
@@ -1165,3 +1166,63 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/tests/atomic-journal-posting.test.ts`
 - `packages/purchase-posting/tests/replay-safe-posting.test.ts`
 - `docs/architecture/purchase-posting-version-and-concurrency.md`
+
+
+## Step 17 — Controlled Posting Reversal
+
+### Completed work
+
+- Added a controlled Purchase Posting reversal flow that reuses the canonical Accounting Journal reversal contract instead of duplicating reversal logic.
+- Posted Purchase/Journal history remains immutable; reversal is represented by a new posted Reversal Journal plus a Purchase Posting `posted → reversed` transition.
+- Added `reversePurchasePosting` domain transition with expected-version, linked-original-Journal and timestamp validation.
+- The original `journalVoucherId` remains on the aggregate as the Journal that originally recognized the Purchase; the reversal Journal ID is stored in a separate immutable reversal record.
+- Added `PurchasePostingReversalRecord` with Posting ID, original Journal ID, reversal Journal ID, request ID, actor, time, reason and committed Posting version.
+- Reversal requires the current Purchase Posting to be posted, Company-owned, version-current and linked to the Journal being reversed.
+- Accounting Journal reversal outcome is validated: original Journal must be reversed, reversal Journal must be posted, and lineage IDs must match the Purchase Posting link.
+- Purchase Posting and Journal each retain their own optimistic concurrency versions.
+- Exact reversal replay by request ID returns the existing outcome and does not save the Purchase Posting again.
+- Reusing a reversal request ID for a different Posting fails with `reversal_conflict`.
+- The Unit of Work contract requires coordinated Journal reversal + Purchase Posting state transition + reversal lineage persistence.
+- Concrete SQLite transaction coordination remains deferred to Steps 20–21.
+- Added focused reversal/state/replay/concurrency tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Original posted Journal is never edited to erase history.
+- [x] Reversal creates a distinct Accounting Reversal Journal.
+- [x] Purchase Posting transitions from Posted to Reversed.
+- [x] Original Journal link remains stable on the aggregate.
+- [x] Reversal Journal link is stored separately as lineage.
+- [x] Accounting-owned reversal validation is reused.
+- [x] Purchase and Journal optimistic versions are both required.
+- [x] Journal reversal outcome is checked against the linked Purchase Posting Journal.
+- [x] Exact reversal replay is supported.
+- [x] Request-ID reuse across different Postings conflicts.
+- [x] Reversal coordination is expressed as one Unit-of-Work boundary.
+- [x] SQLite persistence remains Steps 20–21.
+- [x] Fiscal lock policy remains Step 18.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/controlled-posting-reversal.test.ts`.
+- Tests cover first reversal, original/reversal lineage, exact replay, request conflict, stale Posting version and non-posted state rejection.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local Accounting/Purchase Posting typecheck and Purchase Posting tests should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/application/controlled-posting-reversal.ts`
+- `packages/purchase-posting/src/domain/purchase-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/controlled-posting-reversal.test.ts`
+- `docs/architecture/purchase-posting-controlled-reversal.md`
