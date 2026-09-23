@@ -123,3 +123,12 @@ export type {
   PurchaseTaxPostingPlan,
   PurchaseTaxRecoverability,
 } from "./domain/purchase-tax-posting.ts";
+
+export {
+  createPurchaseChargePostingPlan,
+} from "./domain/purchase-charge-posting.ts";
+export type {
+  PurchaseChargePostingComponent,
+  PurchaseChargePostingDestination,
+  PurchaseChargePostingPlan,
+} from "./domain/purchase-charge-posting.ts";
