@@ -27,6 +27,8 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   accountMappingMissing: "purchase_posting.account_mapping_missing",
   accountInvalid: "purchase_posting.account_invalid",
   accountNotPostable: "purchase_posting.account_not_postable",
+  supplierInvoiceInvalid: "purchase_posting.supplier_invoice_invalid",
+  supplierInvoiceAmountInvalid: "purchase_posting.supplier_invoice_amount_invalid",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
