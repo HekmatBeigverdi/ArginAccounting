@@ -736,6 +736,31 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  packages/purchase-posting-tauri:
+    dependencies:
+      '@argin/accounting':
+        specifier: workspace:*
+        version: link:../accounting
+      '@argin/accounting-tauri':
+        specifier: workspace:*
+        version: link:../accounting-tauri
+      '@argin/database':
+        specifier: workspace:*
+        version: link:../database
+      '@argin/purchase-posting':
+        specifier: workspace:*
+        version: link:../purchase-posting
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   packages/security:
     devDependencies:
       rimraf:
