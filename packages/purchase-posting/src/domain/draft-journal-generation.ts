@@ -5,6 +5,9 @@ import type {
   CreateJournalVoucherInput,
   JournalVoucher,
 } from "@argin/accounting/journal";
+import type {
+  AccountingDimensionAssignment,
+} from "@argin/accounting";
 
 import {
   PURCHASE_POSTING_DOMAIN_ERROR_CODES,
@@ -40,6 +43,13 @@ import type {
 import type {
   PurchaseChargePostingPlan,
 } from "./purchase-charge-posting.ts";
+import {
+  resolvePurchasePostingDimensionAssignments,
+} from "./purchase-posting-dimensions.ts";
+import type {
+  PurchasePostingDimensionContext,
+  PurchasePostingDimensionReader,
+} from "./purchase-posting-dimensions.ts";
 
 export interface PurchasePostingDraftComponent {
   readonly componentId: string;
@@ -65,6 +75,8 @@ export interface CreatePurchasePostingDraftJournalInput {
   readonly components: readonly PurchasePostingDraftComponent[];
   readonly rules: readonly PurchasePostingRule[];
   readonly accounts: PurchasePostingAccountReader;
+  readonly dimensions: PurchasePostingDimensionReader;
+  readonly dimensionContext?: PurchasePostingDimensionContext | null;
   readonly trace: PurchasePostingTraceContext;
   readonly journal: PurchasePostingDraftJournalMetadata;
 }
@@ -295,6 +307,14 @@ export async function createPurchasePostingDraftJournal(
       input.accounts,
     );
 
+    const dimensionAssignments: readonly AccountingDimensionAssignment[] =
+      await resolvePurchasePostingDimensionAssignments({
+        fact: input.fact,
+        sourceLineId: item.sourceLineId,
+        accountId: resolution.account.accountId,
+        dimensionContext: input.dimensionContext ?? null,
+      }, input.dimensions);
+
     lines.push({
       id: input.journal.lineIds[index]!,
       order: index + 1,
@@ -302,7 +322,7 @@ export async function createPurchasePostingDraftJournal(
       description: item.componentId,
       debit: item.side === "debit" ? item.amount : 0,
       credit: item.side === "credit" ? item.amount : 0,
-      dimensionAssignments: [],
+      dimensionAssignments,
     });
   }
 
