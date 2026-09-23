@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting` | Draft Journal generation and balancing implemented through Phase 23 Step 13 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
+| Purchase Posting | `@argin/purchase-posting` | Atomic Journal posting transaction boundary implemented through Phase 23 Step 14 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -48,11 +48,11 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Purchase Posting — Phase 23 Current State
 
 - Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
-- Domain: `packages/purchase-posting` owns Purchase posting semantics through Step 13, including authoritative valuation resolution and canonical Accounting Draft Journal generation/balance validation.
+- Domain/Application: `packages/purchase-posting` owns Purchase posting semantics through Step 14, including canonical Accounting Draft Journal generation and an atomic Unit-of-Work boundary that persists Journal + prepared Posting linkage together.
 - Non-ownership: it does not own supplier commercial pricing, Inventory quantities, FIFO/MWA valuation state or Journal tables.
 - Persistence: none yet; SQLite schema/repository work remains Steps 20–21.
 - Bridge: durable source system/type/ID, source version/revision, Company/Branch, request/operation and correlation/causation metadata are established; the actual versioned Argin Bridge envelope remains Step 22.
-- Testing: Step 13 adds Supplier Invoice draft composition, Accounting Journal integration, account resolution, stock-charge double-count protection, line identity and pre-Accounting balance-gate coverage.
+- Testing: Step 14 adds staged transactional commit/rollback coverage, optimistic version checks, scope validation and prepared Posting linkage invariants.
 
 ## Required Fields for Future Entries
 
