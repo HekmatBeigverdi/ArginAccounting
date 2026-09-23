@@ -195,7 +195,7 @@ test("rejects optimistic version mismatch before persistence", async () => {
     }, state.unitOfWork),
     (error: unknown) => {
       assert.ok(error instanceof PurchasePostingDomainError);
-      assert.equal(error.code, PURCHASE_POSTING_DOMAIN_ERROR_CODES.versionInvalid);
+      assert.equal(error.code, PURCHASE_POSTING_DOMAIN_ERROR_CODES.concurrencyConflict);
       return true;
     },
   );
