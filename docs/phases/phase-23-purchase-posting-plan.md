@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–6 are complete. Steps 7–30 are not started.
+Steps 1–7 are complete. Steps 8–30 are not started.
 
 ## Governance
 
@@ -27,6 +27,7 @@ Mandatory references:
 - [Purchase Posting Source Identity](../architecture/purchase-posting-source-identity.md)
 - [Purchase Posting Event Classification](../architecture/purchase-posting-event-classification.md)
 - [Purchase Posting Rules and Account Resolution](../architecture/purchase-posting-rules-and-account-resolution.md)
+- [Supplier Invoice Posting Rules](../architecture/supplier-invoice-posting-rules.md)
 
 ## Baseline and Release Target
 
@@ -172,7 +173,7 @@ Live transport is not implemented in Phase 23.
 | 4 | Source Identity and Reference Contracts | Completed |
 | 5 | Purchase Posting Event Classification | Completed |
 | 6 | Posting Rules and Account Resolution | Completed |
-| 7 | Supplier Invoice Posting Rules | Not started |
+| 7 | Supplier Invoice Posting Rules | Completed |
 | 8 | Purchase Tax Posting | Not started |
 | 9 | Purchase Charges Posting | Not started |
 | 10 | Purchase Return Posting | Not started |
@@ -589,3 +590,55 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/purchase-posting-rules.test.ts`
 - `docs/architecture/purchase-posting-rules-and-account-resolution.md`
+
+
+## Step 7 — Supplier Invoice Posting Rules
+
+### Completed work
+
+- Added deterministic Supplier Invoice posting semantics for confirmed Supplier Invoice Facts.
+- Supplier payable is credited for the authoritative Purchase `grandTotal`.
+- Service and non-stock product principal is debited to `purchase-expense` using Purchase `netAfterDiscount`.
+- Stock-product principal is assigned to the `inventory-asset` debit role, but its monetary amount is explicitly deferred to authoritative Inventory Valuation in Step 12.
+- Purchase VAT facts are preserved as debit components and explicitly deferred to Step 8.
+- Purchase charge facts are preserved as debit components and explicitly deferred to Step 9.
+- Added a commercial control check: principal + charges + tax = grand total.
+- The step does not create Journal Lines, resolve final VAT/charge policy, or infer stock cost from supplier price.
+- GRNI/Inventory timing remains deferred to Step 12.
+- Added focused tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Confirmed Supplier Invoice is the only accepted source event.
+- [x] Supplier payable credit uses Purchase grand total.
+- [x] Service/non-stock principal uses Purchase net-after-discount.
+- [x] Stock-product amount is not inferred from commercial price.
+- [x] Stock-product amount is deferred to authoritative valuation.
+- [x] VAT is preserved but deferred to Step 8.
+- [x] Charges are preserved but deferred to Step 9.
+- [x] Commercial control equation is validated.
+- [x] No Journal Voucher/Journal Line is created in Step 7.
+- [x] No FIFO/MWA recomputation is introduced.
+- [x] GRNI timing remains deferred to Step 12.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/supplier-invoice-posting.test.ts`.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local package typecheck/test should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/supplier-invoice-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/supplier-invoice-posting.test.ts`
+- `docs/architecture/supplier-invoice-posting-rules.md`
