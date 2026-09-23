@@ -78,6 +78,14 @@ function memoryUnitOfWork() {
         async findIdempotencyRecord(key) {
           return stagedRecords.get(key) ?? null;
         },
+        async findPosting(id) {
+          return stagedPostings.get(id) ?? (id === "posting-001" ? posting() : id === "posting-002" ? createPurchasePosting({
+            postingId: "posting-002",
+            companyId: "company-001",
+            branchId: "branch-001",
+            createdAt: "2026-09-23T10:00:00.000Z",
+          }) : null);
+        },
         async findPreparedPosting(id) {
           return stagedPostings.get(id) ?? null;
         },
@@ -206,4 +214,37 @@ test("new source version creates a distinct idempotency identity", async () => {
   assert.equal(result.replayed, false);
   assert.equal(store.records.size, 2);
   assert.equal(store.journalWrites, 2);
+});
+
+
+test("stale expected Posting version conflicts before any write", async () => {
+  const store = memoryUnitOfWork();
+
+  await assert.rejects(
+    () => commitPurchasePostingReplaySafe({
+      ...input(),
+      expectedPostingVersion: 2,
+    }, store.unitOfWork),
+    (error: unknown) => {
+      assert.ok(error instanceof PurchasePostingDomainError);
+      assert.equal(error.code, PURCHASE_POSTING_DOMAIN_ERROR_CODES.concurrencyConflict);
+      return true;
+    },
+  );
+
+  assert.equal(store.records.size, 0);
+  assert.equal(store.journalWrites, 0);
+});
+
+test("exact replay succeeds even after caller expected version becomes stale", async () => {
+  const store = memoryUnitOfWork();
+  await commitPurchasePostingReplaySafe(input(), store.unitOfWork);
+
+  const replayed = await commitPurchasePostingReplaySafe({
+    ...input(),
+    expectedPostingVersion: 999,
+  }, store.unitOfWork);
+
+  assert.equal(replayed.replayed, true);
+  assert.equal(store.journalWrites, 1);
 });
