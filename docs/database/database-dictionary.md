@@ -371,3 +371,12 @@ Append-only Step 17 reversal lineage linking one Purchase Posting to its origina
 ### Migration
 
 - `apps/desktop/src-tauri/migrations/0033_purchase_posting.sql`
+
+
+### Phase 23 SQLite Application Adapter
+
+`@argin/purchase-posting-tauri` provides concrete repositories for Purchase Posting aggregates, Posting Rules, idempotency evidence and reversal lineage plus Account/Fiscal/Dimension readers.
+
+`SqlitePurchasePostingUnitOfWork` binds all repositories/readers and the Accounting Journal repository to one transaction-scoped `DatabaseSession`. Atomic Posting and Replay adapters use that same session. Reversal composition receives the exact active session so canonical Accounting reversal can participate without opening a nested transaction.
+
+Purchase Posting aggregate/rule updates use expected-version compare-and-swap. Durable Domain identity remains TEXT-based and independent of SQLite row identity.
