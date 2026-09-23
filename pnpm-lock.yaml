@@ -721,6 +721,10 @@ importers:
         version: 5.9.3
 
   packages/purchase-posting:
+    dependencies:
+      '@argin/accounting':
+        specifier: workspace:*
+        version: link:../accounting
     devDependencies:
       '@types/node':
         specifier: ^20
