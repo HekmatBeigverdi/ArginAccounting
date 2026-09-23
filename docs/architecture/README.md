@@ -19,6 +19,7 @@
 - [Purchase Return Posting](purchase-return-posting.md)
 - [Purchase Correction Posting](purchase-correction-posting.md)
 - [Inventory and Valuation Integration](purchase-posting-inventory-valuation-integration.md)
+- [Draft Journal Generation and Balancing](purchase-posting-draft-journal-generation.md)
 - [ADR Registry](../adr/README.md)
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
