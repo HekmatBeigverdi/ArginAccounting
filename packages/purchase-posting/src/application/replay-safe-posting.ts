@@ -150,8 +150,9 @@ export async function commitPurchasePostingReplaySafe(
 
     assertPurchasePostingConcurrency(current, {
       postingId: input.posting.postingId,
+      companyId: identity.source.companyId,
+      branchId: identity.source.branchId,
       expectedPostingVersion: input.expectedPostingVersion,
-      source: identity.source,
     });
 
     const prepared = preparePurchasePosting(current, {
