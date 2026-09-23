@@ -17,6 +17,7 @@
 - [Purchase Tax Posting](purchase-tax-posting.md)
 - [Purchase Charges Posting](purchase-charges-posting.md)
 - [Purchase Return Posting](purchase-return-posting.md)
+- [Purchase Correction Posting](purchase-correction-posting.md)
 - [ADR Registry](../adr/README.md)
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
