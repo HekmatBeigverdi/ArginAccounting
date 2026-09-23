@@ -43,6 +43,10 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   inventoryValuationMismatch: "purchase_posting.inventory_valuation_mismatch",
   inventoryValuationDirectionInvalid: "purchase_posting.inventory_valuation_direction_invalid",
   inventoryValuationAmountInvalid: "purchase_posting.inventory_valuation_amount_invalid",
+  draftJournalInvalid: "purchase_posting.draft_journal_invalid",
+  draftJournalComponentUnresolved: "purchase_posting.draft_journal_component_unresolved",
+  draftJournalUnbalanced: "purchase_posting.draft_journal_unbalanced",
+  draftJournalLineIdsInvalid: "purchase_posting.draft_journal_line_ids_invalid",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
