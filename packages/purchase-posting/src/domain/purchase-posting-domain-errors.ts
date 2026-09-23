@@ -61,6 +61,12 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   reversalJournalMismatch: "purchase_posting.reversal_journal_mismatch",
   reversalConflict: "purchase_posting.reversal_conflict",
   reversalOutcomeInvalid: "purchase_posting.reversal_outcome_invalid",
+  fiscalContextMissing: "purchase_posting.fiscal_context_missing",
+  fiscalScopeMismatch: "purchase_posting.fiscal_scope_mismatch",
+  fiscalYearNotOpen: "purchase_posting.fiscal_year_not_open",
+  fiscalPeriodNotOpen: "purchase_posting.fiscal_period_not_open",
+  fiscalDateOutOfRange: "purchase_posting.fiscal_date_out_of_range",
+  historicalLockBlocked: "purchase_posting.historical_lock_blocked",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
