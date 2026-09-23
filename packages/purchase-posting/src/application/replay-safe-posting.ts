@@ -30,9 +30,19 @@ import {
 import type {
   PurchasePostingDomainErrorCode,
 } from "../domain/purchase-posting-domain-errors.ts";
+import {
+  assertPurchasePostingFiscalScope,
+} from "../domain/fiscal-scope-and-locks.ts";
+import type {
+  PurchasePostingFiscalContext,
+  PurchasePostingHistoricalLock,
+  PurchasePostingHistoricalLockScope,
+} from "../domain/fiscal-scope-and-locks.ts";
 
 export interface PurchasePostingReplaySession {
   findIdempotencyRecord(idempotencyKey: string): Promise<PurchasePostingIdempotencyRecord | null>;
+  resolveFiscalContext(companyId: string, operationDate: string): Promise<PurchasePostingFiscalContext | null>;
+  findActiveHistoricalLocks(companyId: string, branchId: string | null, scope: PurchasePostingHistoricalLockScope): Promise<readonly PurchasePostingHistoricalLock[]>;
   findPosting(postingId: string): Promise<PurchasePostingAggregate | null>;
   findPreparedPosting(postingId: string): Promise<PurchasePostingAggregate | null>;
   findJournalDraft(journalVoucherId: string): Promise<JournalVoucher | null>;
@@ -142,6 +152,17 @@ export async function commitPurchasePostingReplaySafe(
       assertPurchasePostingReplayCompatible(existing, identity);
       return replay(session, existing);
     }
+
+    await assertPurchasePostingFiscalScope({
+      companyId: input.journal.companyId,
+      branchId: input.journal.branchId,
+      fiscalYearId: input.journal.fiscalYearId,
+      fiscalPeriodId: input.journal.fiscalPeriodId,
+      operationDate: input.journal.voucherDate,
+    }, {
+      fiscalContext: { resolve: session.resolveFiscalContext.bind(session) },
+      historicalLocks: { findActiveLocks: session.findActiveHistoricalLocks.bind(session) },
+    });
 
     const current = await session.findPosting(input.posting.postingId);
     if (current === null) {
