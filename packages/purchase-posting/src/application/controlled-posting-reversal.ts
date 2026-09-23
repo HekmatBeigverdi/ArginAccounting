@@ -149,10 +149,10 @@ export async function reversePurchasePostingControlled(
         occurredAt: command.occurredAt,
         reversalDate: command.reversalDate,
         requestId,
-        correlationId: command.correlationId,
-        causationId: command.causationId,
+        correlationId: command.correlationId ?? null,
+        causationId: command.causationId ?? null,
         reason,
-        replacementVoucherId: command.replacementVoucherId,
+        replacementVoucherId: command.replacementVoucherId ?? null,
       });
       assertJournalOutcome(posting, replayedJournal);
 
@@ -186,10 +186,10 @@ export async function reversePurchasePostingControlled(
       occurredAt: command.occurredAt,
       reversalDate: command.reversalDate,
       requestId,
-      correlationId: command.correlationId,
-      causationId: command.causationId,
+      correlationId: command.correlationId ?? null,
+      causationId: command.causationId ?? null,
       reason,
-      replacementVoucherId: command.replacementVoucherId,
+      replacementVoucherId: command.replacementVoucherId ?? null,
     });
     assertJournalOutcome(current, journalReversal);
 
