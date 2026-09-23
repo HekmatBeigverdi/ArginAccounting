@@ -47,6 +47,9 @@ export const PURCHASE_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   draftJournalComponentUnresolved: "purchase_posting.draft_journal_component_unresolved",
   draftJournalUnbalanced: "purchase_posting.draft_journal_unbalanced",
   draftJournalLineIdsInvalid: "purchase_posting.draft_journal_line_ids_invalid",
+  atomicPostingInvalid: "purchase_posting.atomic_posting_invalid",
+  atomicPostingScopeMismatch: "purchase_posting.atomic_posting_scope_mismatch",
+  atomicPostingJournalInvalid: "purchase_posting.atomic_posting_journal_invalid",
 } as const);
 
 export type PurchasePostingDomainErrorCode =
