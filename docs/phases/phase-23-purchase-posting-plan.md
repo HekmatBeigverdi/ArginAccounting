@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–10 are complete. Steps 11–30 are not started.
+Steps 1–11 are complete. Steps 12–30 are not started.
 
 ## Governance
 
@@ -31,6 +31,7 @@ Mandatory references:
 - [Purchase Tax Posting](../architecture/purchase-tax-posting.md)
 - [Purchase Charges Posting](../architecture/purchase-charges-posting.md)
 - [Purchase Return Posting](../architecture/purchase-return-posting.md)
+- [Purchase Correction Posting](../architecture/purchase-correction-posting.md)
 
 ## Baseline and Release Target
 
@@ -180,7 +181,7 @@ Live transport is not implemented in Phase 23.
 | 8 | Purchase Tax Posting | Completed |
 | 9 | Purchase Charges Posting | Completed |
 | 10 | Purchase Return Posting | Completed |
-| 11 | Purchase Correction Posting | Not started |
+| 11 | Purchase Correction Posting | Completed |
 | 12 | Inventory and Valuation Integration | Not started |
 | 13 | Draft Journal Generation and Balancing | Not started |
 | 14 | Atomic Journal Posting | Not started |
@@ -803,3 +804,58 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/purchase-return-posting.test.ts`
 - `docs/architecture/purchase-return-posting.md`
+
+
+## Step 11 — Purchase Correction Posting
+
+### Completed work
+
+- Added confirmed Purchase Correction posting semantics based on immutable original-vs-corrected Fact comparison.
+- Correction deltas are derived deterministically; users/UI do not re-enter posting deltas.
+- Supported correction effects are `commercial-replacement`, `quantity-decrease`, and `quantity-increase`.
+- Supplier payable delta is derived from corrected `grandTotal - original grandTotal`; positive deltas credit AP and negative deltas debit AP.
+- Service/non-stock principal, charge and tax deltas are posted directly to their Step 7–9 roles.
+- Recoverable VAT delta uses `input-vat-recoverable`.
+- Non-recoverable service/non-stock VAT delta uses `purchase-expense`.
+- Stock cost/quantity corrections produce `inventory-valuation-delta` components deferred to Step 12; Purchase price is not used as authoritative Inventory correction value.
+- Explicit durable original Supplier Invoice and original/correction line links are required.
+- Same Company, Branch, Supplier, Currency, Product/Service identity and line kind are enforced.
+- Duplicate line links and self/mismatched source references are rejected.
+- Original Purchase/Inventory/Journal facts remain immutable.
+- Added focused tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Correction posting is a new accounting delta, not mutation.
+- [x] Deltas are derived from authoritative original/corrected facts.
+- [x] Supplier payable direction follows grand-total delta.
+- [x] Service/non-stock commercial deltas post directly.
+- [x] Recoverable VAT delta is explicit.
+- [x] Stock corrections remain valuation-owned.
+- [x] Quantity increase/decrease is deferred to Step 12 valuation integration.
+- [x] Original Supplier Invoice linkage is explicit.
+- [x] Line mappings are durable and unique.
+- [x] Cross-scope/product/type mismatches are rejected.
+- [x] Journal construction remains Step 13.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/purchase-correction-posting.test.ts`.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local package typecheck/test should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-correction-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-correction-posting.test.ts`
+- `docs/architecture/purchase-correction-posting.md`
