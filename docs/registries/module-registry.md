@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting` | Purchase Return posting semantics implemented through Phase 23 Step 10 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
+| Purchase Posting | `@argin/purchase-posting` | Purchase Correction posting semantics implemented through Phase 23 Step 11 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -48,11 +48,11 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Purchase Posting — Phase 23 Current State
 
 - Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
-- Domain: `packages/purchase-posting` owns the aggregate/fact/source/event foundations, account resolution, Supplier Invoice/VAT/Charge semantics, and Step 10 compensating Purchase Return posting.
+- Domain: `packages/purchase-posting` owns the aggregate/fact/source/event foundations, account resolution, Supplier Invoice/VAT/Charge/Return semantics, and Step 11 Purchase Correction delta posting.
 - Non-ownership: it does not own supplier commercial pricing, Inventory quantities, FIFO/MWA valuation state or Journal tables.
 - Persistence: none yet; SQLite schema/repository work remains Steps 20–21.
 - Bridge: durable source system/type/ID, source version/revision, Company/Branch, request/operation and correlation/causation metadata are established; the actual versioned Argin Bridge envelope remains Step 22.
-- Testing: Step 10 adds supplier-payable reversal, outbound Inventory valuation deferral, VAT reversal, expense/charge reversal and source-link validation coverage.
+- Testing: Step 11 adds original-vs-corrected delta derivation, payable direction, service/VAT delta posting, stock valuation deferral and source/line-link validation coverage.
 
 ## Required Fields for Future Entries
 
