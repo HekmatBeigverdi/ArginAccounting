@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–8 are complete. Steps 9–30 are not started.
+Steps 1–9 are complete. Steps 10–30 are not started.
 
 ## Governance
 
@@ -29,6 +29,7 @@ Mandatory references:
 - [Purchase Posting Rules and Account Resolution](../architecture/purchase-posting-rules-and-account-resolution.md)
 - [Supplier Invoice Posting Rules](../architecture/supplier-invoice-posting-rules.md)
 - [Purchase Tax Posting](../architecture/purchase-tax-posting.md)
+- [Purchase Charges Posting](../architecture/purchase-charges-posting.md)
 
 ## Baseline and Release Target
 
@@ -176,7 +177,7 @@ Live transport is not implemented in Phase 23.
 | 6 | Posting Rules and Account Resolution | Completed |
 | 7 | Supplier Invoice Posting Rules | Completed |
 | 8 | Purchase Tax Posting | Completed |
-| 9 | Purchase Charges Posting | Not started |
+| 9 | Purchase Charges Posting | Completed |
 | 10 | Purchase Return Posting | Not started |
 | 11 | Purchase Correction Posting | Not started |
 | 12 | Inventory and Valuation Integration | Not started |
@@ -697,3 +698,54 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/src/index.ts`
 - `packages/purchase-posting/tests/purchase-tax-posting.test.ts`
 - `docs/architecture/purchase-tax-posting.md`
+
+
+## Step 9 — Purchase Charges Posting
+
+### Completed work
+
+- Added Purchase charge posting semantics for confirmed Supplier Invoice Facts.
+- Preserved the Phase 22 cost boundary where stock-line `chargeAmount` is already included in `taxBaseAmount` and therefore in the authoritative Purchase Cost Input.
+- Stock charges are classified as Inventory capitalizable cost and explicitly deferred to Step 12 instead of being debited a second time.
+- Service/non-stock charges are classified as debit to the `purchase-charge` account role.
+- Charge amounts are consumed from immutable Purchase facts; Step 9 does not recalculate or invent charge values.
+- The sum of charge components must exactly reconcile to `fact.totals.chargeAmount`.
+- Zero-charge invoices create no synthetic charge posting component.
+- External landed-cost facts are not invented or merged into Purchase commercial facts.
+- No FIFO/MWA mutation or Journal Line construction is introduced.
+- Added focused tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Stock Purchase charges are not double-counted.
+- [x] Stock charge remains inside authoritative Purchase Cost Input.
+- [x] Stock charge accounting destination is Inventory Asset through Step 12 valuation integration.
+- [x] Service/non-stock charge destination is Purchase Charge Expense.
+- [x] Charge amount comes from immutable Purchase facts.
+- [x] Charge components reconcile exactly to document charge total.
+- [x] Zero charge creates no synthetic component.
+- [x] External landed cost is not invented.
+- [x] FIFO/MWA remains Valuation-owned.
+- [x] Journal construction remains Step 13.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/purchase-charge-posting.test.ts`.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local package typecheck/test should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/domain/purchase-charge-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/purchase-charge-posting.test.ts`
+- `docs/architecture/purchase-charges-posting.md`
