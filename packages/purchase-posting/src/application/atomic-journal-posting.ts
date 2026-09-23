@@ -128,16 +128,9 @@ export async function commitPurchasePostingJournalDraftAtomically(
 
     assertPurchasePostingConcurrency(current, {
       postingId: input.posting.postingId,
+      companyId: input.posting.companyId,
+      branchId: input.posting.branchId,
       expectedPostingVersion: input.expectedPostingVersion,
-      source: {
-        companyId: input.posting.companyId,
-        branchId: input.posting.branchId,
-        sourceSystem: "purchase",
-        sourceType: input.journal.source.sourceId === null ? "supplier-invoice" : "supplier-invoice",
-        sourceId: input.journal.source.sourceId ?? input.posting.postingId,
-        sourceVersion: 1,
-        sourceRevision: null,
-      },
     });
 
     const prepared = preparePurchasePosting(current, {
