@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting` | Supplier Invoice posting semantics implemented through Phase 23 Step 7 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
+| Purchase Posting | `@argin/purchase-posting` | Purchase tax posting semantics implemented through Phase 23 Step 8 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -48,11 +48,11 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Purchase Posting — Phase 23 Current State
 
 - Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
-- Domain: `packages/purchase-posting` owns the aggregate/fact/source/event foundations, Step 6 role-based account resolution, and Step 7 Supplier Invoice posting semantics.
+- Domain: `packages/purchase-posting` owns the aggregate/fact/source/event foundations, account resolution, Supplier Invoice posting semantics, and Step 8 Purchase VAT recoverability/routing.
 - Non-ownership: it does not own supplier commercial pricing, Inventory quantities, FIFO/MWA valuation state or Journal tables.
 - Persistence: none yet; SQLite schema/repository work remains Steps 20–21.
 - Bridge: durable source system/type/ID, source version/revision, Company/Branch, request/operation and correlation/causation metadata are established; the actual versioned Argin Bridge envelope remains Step 22.
-- Testing: Step 7 adds focused Supplier Invoice principal/payable semantics, stock-valuation deferral and VAT/charge deferral coverage.
+- Testing: Step 8 adds recoverable/non-recoverable VAT routing, Company-scope, zero-tax and tax-total reconciliation coverage.
 
 ## Required Fields for Future Entries
 
