@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–13 are complete. Steps 14–30 are not started.
+Steps 1–14 are complete. Steps 15–30 are not started.
 
 ## Governance
 
@@ -34,6 +34,7 @@ Mandatory references:
 - [Purchase Correction Posting](../architecture/purchase-correction-posting.md)
 - [Inventory and Valuation Integration](../architecture/purchase-posting-inventory-valuation-integration.md)
 - [Draft Journal Generation and Balancing](../architecture/purchase-posting-draft-journal-generation.md)
+- [Atomic Journal Posting](../architecture/purchase-posting-atomic-journal-posting.md)
 
 ## Baseline and Release Target
 
@@ -186,7 +187,7 @@ Live transport is not implemented in Phase 23.
 | 11 | Purchase Correction Posting | Completed |
 | 12 | Inventory and Valuation Integration | Completed |
 | 13 | Draft Journal Generation and Balancing | Completed |
-| 14 | Atomic Journal Posting | Not started |
+| 14 | Atomic Journal Posting | Completed |
 | 15 | Idempotency and Replay Safety | Not started |
 | 16 | Version and Concurrency Control | Not started |
 | 17 | Controlled Posting Reversal | Not started |
@@ -980,3 +981,62 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/tests/draft-journal-generation.test.ts`
 - `pnpm-lock.yaml`
 - `docs/architecture/purchase-posting-draft-journal-generation.md`
+
+
+## Step 14 — Atomic Journal Posting
+
+### Completed work
+
+- Added the application transaction boundary that commits the Accounting Draft Journal and Purchase Posting linkage as one indivisible operation.
+- Clarified lifecycle semantics: Step 14 does not bypass Accounting approval/final posting; the Journal remains `draft`.
+- Added `preparePurchasePosting` domain transition from `draft` to `prepared`.
+- A prepared Purchase Posting now requires a durable `journalVoucherId`.
+- The prepare transition enforces optimistic `expectedVersion`, canonical timestamp order and version increment.
+- Added persistence-neutral `PurchasePostingAtomicUnitOfWork` and transaction-bound session contracts.
+- Atomic session exposes only the two writes required here: `createJournalDraft` and `savePreparedPosting`.
+- Pre-transaction validation enforces Draft Journal status, Company/Branch scope, source-document provenance and double-entry balance.
+- Journal write failure prevents Purchase Posting persistence.
+- Purchase Posting write failure rolls back the staged Journal write.
+- No inner-write failure may be swallowed and followed by a partial commit.
+- Concrete SQLite transaction/repository implementation remains intentionally deferred to Steps 20–21.
+- Added focused rollback/atomicity tests and architecture documentation.
+
+### Exit criteria
+
+- [x] Accounting Journal draft and Purchase Posting link share one Unit of Work.
+- [x] Purchase Posting moves from Draft to Prepared only with a durable Journal ID.
+- [x] Prepared/Posted/Reversed aggregate states require Journal linkage.
+- [x] Journal remains Draft; Accounting lifecycle is not bypassed.
+- [x] Cross-Company/Branch Journal linkage fails before persistence.
+- [x] Unbalanced/non-source-document Journal fails before persistence.
+- [x] Optimistic Posting version is checked.
+- [x] Journal write failure produces no partial Posting commit.
+- [x] Posting write failure produces no orphan Journal commit.
+- [x] Storage contract is persistence-neutral and Bridge-compatible.
+- [x] SQLite adapter work remains Steps 20–21.
+- [x] Idempotency/replay remains Step 15.
+
+### Validation evidence
+
+- Focused tests were added in `packages/purchase-posting/tests/atomic-journal-posting.test.ts`.
+- Tests use a transaction-like staged Unit of Work to prove commit-on-success and rollback-on-failure semantics.
+- No remote CI PASS is claimed because the branch currently has no GitHub Actions run.
+- Local package/accounting typecheck and Purchase Posting tests should be executed before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
+
+### Files introduced or changed
+
+- `packages/purchase-posting/src/application/atomic-journal-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting.ts`
+- `packages/purchase-posting/src/domain/purchase-posting-domain-errors.ts`
+- `packages/purchase-posting/src/index.ts`
+- `packages/purchase-posting/tests/atomic-journal-posting.test.ts`
+- `docs/architecture/purchase-posting-atomic-journal-posting.md`
