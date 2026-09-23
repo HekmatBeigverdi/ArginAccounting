@@ -17,5 +17,8 @@
     "@types/node": "^20",
     "rimraf": "^6.0.0",
     "typescript": "^5.9.0"
+  },
+  "dependencies": {
+    "@argin/accounting": "workspace:*"
   }
 }
