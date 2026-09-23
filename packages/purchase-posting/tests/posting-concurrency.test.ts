@@ -53,7 +53,8 @@ test("rejects stale expected version", () => {
     () => assertPurchasePostingConcurrency(current, {
       postingId: "posting-001",
       expectedPostingVersion: 1,
-      source,
+      companyId: "company-001",
+      branchId: "branch-001",
     }),
     (error: unknown) => {
       assert.ok(error instanceof PurchasePostingDomainError);
@@ -79,7 +80,8 @@ test("rejects prepared Posting as stale mutation target", () => {
     () => assertPurchasePostingConcurrency(current, {
       postingId: "posting-001",
       expectedPostingVersion: 2,
-      source,
+      companyId: "company-001",
+      branchId: "branch-001",
     }),
     (error: unknown) => {
       assert.ok(error instanceof PurchasePostingDomainError);
