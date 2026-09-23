@@ -192,3 +192,26 @@ export type {
   PurchasePostingAtomicSession,
   PurchasePostingAtomicUnitOfWork,
 } from "./application/atomic-journal-posting.ts";
+
+export {
+  PURCHASE_POSTING_PURPOSES,
+  assertPurchasePostingReplayCompatible,
+  createPurchasePostingIdempotencyIdentity,
+  createPurchasePostingIdempotencyKey,
+  createPurchasePostingIdempotencyRecord,
+} from "./domain/purchase-posting-idempotency.ts";
+export type {
+  PurchasePostingIdempotencyIdentity,
+  PurchasePostingIdempotencyRecord,
+  PurchasePostingPurpose,
+} from "./domain/purchase-posting-idempotency.ts";
+
+export {
+  commitPurchasePostingReplaySafe,
+} from "./application/replay-safe-posting.ts";
+export type {
+  PurchasePostingReplaySession,
+  PurchasePostingReplayUnitOfWork,
+  ReplaySafePurchasePostingInput,
+  ReplaySafePurchasePostingResult,
+} from "./application/replay-safe-posting.ts";
