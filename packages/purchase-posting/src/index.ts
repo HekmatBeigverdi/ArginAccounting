@@ -169,3 +169,15 @@ export type {
   ResolvedPurchaseReturnPostingPlan,
   ResolvedSupplierInvoicePostingPlan,
 } from "./domain/inventory-valuation-integration.ts";
+
+export {
+  createPurchaseCorrectionDraftComponents,
+  createPurchasePostingDraftJournal,
+  createPurchaseReturnDraftComponents,
+  createSupplierInvoiceDraftComponents,
+} from "./domain/draft-journal-generation.ts";
+export type {
+  CreatePurchasePostingDraftJournalInput,
+  PurchasePostingDraftComponent,
+  PurchasePostingDraftJournalMetadata,
+} from "./domain/draft-journal-generation.ts";
