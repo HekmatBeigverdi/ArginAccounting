@@ -6,17 +6,11 @@ import {
 } from "./purchase-posting-domain-errors.ts";
 import type { PurchasePostingDomainErrorCode } from "./purchase-posting-domain-errors.ts";
 import type { PurchasePostingAggregate } from "./purchase-posting.ts";
-import {
-  createPurchasePostingSourceIdentity,
-} from "./purchase-posting-source-reference.ts";
-import type {
-  PurchasePostingSourceIdentity,
-} from "./purchase-posting-source-reference.ts";
-
 export interface PurchasePostingConcurrencyExpectation {
   readonly postingId: string;
+  readonly companyId: string;
+  readonly branchId: string;
   readonly expectedPostingVersion: number;
-  readonly source: PurchasePostingSourceIdentity;
 }
 
 const fail = (code: PurchasePostingDomainErrorCode, field: string): never => {
@@ -37,12 +31,11 @@ export function assertPurchasePostingConcurrency(
     return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.concurrencyStateMismatch, "posting.status");
   }
 
-  const source = createPurchasePostingSourceIdentity(expectation.source);
   if (
-    current.companyId !== source.companyId
-    || current.branchId !== source.branchId
+    current.companyId !== expectation.companyId
+    || current.branchId !== expectation.branchId
   ) {
-    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.concurrencyStateMismatch, "source.scope");
+    return fail(PURCHASE_POSTING_DOMAIN_ERROR_CODES.concurrencyStateMismatch, "posting.scope");
   }
 }
 
