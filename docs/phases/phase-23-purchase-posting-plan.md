@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–19 are complete. Steps 20–30 are not started.
+Steps 1–20 are complete. Steps 21–30 are not started.
 
 ## Governance
 
@@ -40,6 +40,7 @@ Mandatory references:
 - [Controlled Posting Reversal](../architecture/purchase-posting-controlled-reversal.md)
 - [Fiscal Scope and Period Locks](../architecture/purchase-posting-fiscal-scope-and-locks.md)
 - [Branch and Accounting Dimensions](../architecture/purchase-posting-branch-and-dimensions.md)
+- [Purchase Posting SQLite Persistence](../architecture/purchase-posting-sqlite-persistence.md)
 
 ## Baseline and Release Target
 
@@ -198,7 +199,7 @@ Live transport is not implemented in Phase 23.
 | 17 | Controlled Posting Reversal | Completed |
 | 18 | Fiscal Scope and Period Locks | Completed |
 | 19 | Branch and Accounting Dimensions | Completed |
-| 20 | Persistence and SQLite Migration | Not started |
+| 20 | Persistence and SQLite Migration | Completed |
 | 21 | Repository, Reader and Unit of Work | Not started |
 | 22 | Argin Bridge Posting Contracts | Not started |
 | 23 | Permissions, Audit and Traceability | Not started |
@@ -1356,3 +1357,54 @@ pnpm --filter @argin/purchase-posting test
 - `packages/purchase-posting/tests/purchase-posting-dimensions.test.ts`
 - `packages/purchase-posting/tests/draft-journal-generation.test.ts`
 - `docs/architecture/purchase-posting-branch-and-dimensions.md`
+
+
+## Step 20 — Persistence and SQLite Migration
+
+### Completed work
+
+- Added Desktop SQLite migration `0033_purchase_posting.sql` and registered it as migration version 33.
+- Added durable `purchase_postings` aggregate persistence with Company/Branch scope, lifecycle status, original Journal linkage, optimistic version and Bridge sync metadata.
+- Added unique Journal-to-Purchase-Posting linkage so one Accounting Journal cannot be owned by multiple Purchase Postings.
+- Added `purchase_posting_rules` persistence for the minimum Purchase-specific account-resolution rules from Step 6.
+- Added durable priority/active/version and Bridge metadata for Posting Rules.
+- Added append-only `purchase_posting_idempotency` with canonical source identity/version/revision/purpose, SHA-256 fingerprint and committed Posting/Journal outcome.
+- Added unique source-identity + purpose replay boundary, including deterministic NULL-revision normalization.
+- Added append-only `purchase_posting_reversals` with original/reversal Journal lineage and Company-scoped request uniqueness.
+- Added UPDATE/DELETE blocking triggers for idempotency and reversal evidence.
+- Added indexes for posting status, Journal lookup, rule resolution, source replay, reversal trace and incremental Bridge scans.
+- Added real SQLite migration execution coverage against a minimal prerequisite schema.
+- Updated the canonical Database Dictionary and architecture documentation.
+- Concrete repositories, readers and Unit of Work remain Step 21.
+
+### Exit criteria
+
+- [x] Migration 33 is registered in Desktop.
+- [x] Purchase Posting aggregate has durable SQLite persistence.
+- [x] Posting Rules have durable SQLite persistence.
+- [x] Idempotency outcome is durable and append-only.
+- [x] Reversal lineage is durable and append-only.
+- [x] Journal linkage is relational and Company-consistent.
+- [x] Version columns support later CAS repositories.
+- [x] Durable identity does not depend on SQLite row IDs.
+- [x] Bridge sync metadata exists on mutable Posting/Rule state.
+- [x] Source replay has a unique durable identity boundary.
+- [x] Reversal request identity is Company-unique.
+- [x] Query/replay/Bridge indexes are present.
+- [x] Migration contract includes real SQLite execution.
+- [x] Repository/UoW implementation remains Step 21.
+
+### Validation evidence
+
+- Added `apps/desktop/tests/purchase-posting-migration.test.ts`.
+- The test suite verifies registration, tables, append-only triggers, indexes/fingerprint constraints and real SQLite execution.
+- No local or CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+```
