@@ -23,6 +23,9 @@ import {
   SqlitePurchasePostingDimensionReader,
   SqlitePurchasePostingFiscalReader,
 } from "./sqlite-purchase-posting-readers.ts";
+import {
+  SqlitePurchasePostingReconciliationReader,
+} from "./sqlite-purchase-posting-reconciliation-reader.ts";
 import type {
   PurchasePostingDimensionTypeIdMap,
 } from "./sqlite-purchase-posting-readers.ts";
@@ -36,6 +39,7 @@ export interface SqlitePurchasePostingContext {
   readonly dimensions: SqlitePurchasePostingDimensionReader;
   readonly fiscal: SqlitePurchasePostingFiscalReader;
   readonly journals: SqliteJournalVoucherRepository;
+  readonly reconciliation: SqlitePurchasePostingReconciliationReader;
 }
 
 const contextFor = (
@@ -50,6 +54,7 @@ const contextFor = (
   dimensions: new SqlitePurchasePostingDimensionReader(session, dimensionTypeIds),
   fiscal: new SqlitePurchasePostingFiscalReader(session),
   journals: new SqliteJournalVoucherRepository(session),
+  reconciliation: new SqlitePurchasePostingReconciliationReader(session),
 });
 
 export class SqlitePurchasePostingUnitOfWork {
