@@ -1,16 +1,24 @@
 import {
   createPurchasePostingIdempotencyKey,
+  type PurchasePostingPurpose,
+} from "../../domain/purchase-posting-idempotency.ts";
+import {
   createPurchasePostingSourceIdentity,
   createPurchasePostingTraceContext,
-  createPurchasePostingRule,
-  rehydratePurchasePosting,
-  type PurchasePostingAggregate,
-  type PurchasePostingPurpose,
-  type PurchasePostingReversalRecord,
-  type PurchasePostingRule,
   type PurchasePostingSourceIdentity,
   type PurchasePostingTraceContext,
-} from "../../index.ts";
+} from "../../domain/purchase-posting-source-reference.ts";
+import {
+  createPurchasePostingRule,
+  type PurchasePostingRule,
+} from "../../domain/purchase-posting-rules.ts";
+import {
+  rehydratePurchasePosting,
+  type PurchasePostingAggregate,
+} from "../../domain/purchase-posting.ts";
+import type {
+  PurchasePostingReversalRecord,
+} from "../controlled-posting-reversal.ts";
 
 export const PURCHASE_POSTING_SYNC_CONTRACT_VERSION = 1 as const;
 export const PURCHASE_POSTING_SYNC_SCHEMA_VERSION = 1 as const;
