@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createJournalVoucher } from "@argin/accounting/journal";
+
 import {
   SecuredPurchasePostingService,
   PurchasePostingSecurityError,
-  createJournalVoucher,
   createPurchasePosting,
   createPurchasePostingSourceIdentity,
   createPurchasePostingTraceContext,
