@@ -83,7 +83,7 @@ implements PurchasePostingReconciliationReader {
     );
     if (row) return this.hydrate(row);
 
-    const reversal = posting === null ? null : await this.db.queryOne<{ posting_id: string }>(
+    const reversal = await this.db.queryOne<{ posting_id: string }>(
       `SELECT posting_id
          FROM purchase_posting_reversals
         WHERE company_id=? AND reversal_journal_voucher_id=?`,
