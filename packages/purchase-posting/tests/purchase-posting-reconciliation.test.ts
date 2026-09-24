@@ -62,7 +62,7 @@ test("healthy Purchase Posting and Journal reconcile with no issues", () => {
   const issues = evaluatePurchasePostingReconciliation({
     source,
     posting: preparedPosting(),
-    journal: Object.freeze({ ...journal(), status: "reversed" as const }),
+    journal: journal(),
     reversal: null,
     reversalJournal: null,
   });
@@ -124,7 +124,7 @@ test("reversed Posting requires durable reversal lineage and reversal Journal", 
   assert.deepEqual(evaluatePurchasePostingReconciliation({
     source,
     posting: reversed,
-    journal: journal(),
+    journal: Object.freeze({ ...journal(), status: "reversed" as const }),
     reversal: null,
     reversalJournal: null,
   }), ["reversal-lineage-missing"]);
