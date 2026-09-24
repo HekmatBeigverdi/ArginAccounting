@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–21 are complete. Steps 22–30 are not started.
+Steps 1–22 are complete. Steps 23–30 are not started.
 
 ## Governance
 
@@ -42,6 +42,7 @@ Mandatory references:
 - [Branch and Accounting Dimensions](../architecture/purchase-posting-branch-and-dimensions.md)
 - [Purchase Posting SQLite Persistence](../architecture/purchase-posting-sqlite-persistence.md)
 - [Purchase Posting SQLite Repository, Readers and Unit of Work](../architecture/purchase-posting-sqlite-repository-uow.md)
+- [Purchase Posting Argin Bridge Contract](../architecture/purchase-posting-argin-bridge-contract.md)
 
 ## Baseline and Release Target
 
@@ -202,7 +203,7 @@ Live transport is not implemented in Phase 23.
 | 19 | Branch and Accounting Dimensions | Completed |
 | 20 | Persistence and SQLite Migration | Completed |
 | 21 | Repository, Reader and Unit of Work | Completed |
-| 22 | Argin Bridge Posting Contracts | Not started |
+| 22 | Argin Bridge Posting Contracts | Completed |
 | 23 | Permissions, Audit and Traceability | Not started |
 | 24 | Purchase-to-Ledger Reconciliation | Not started |
 | 25 | Posting UI and Trace Viewer | Not started |
@@ -1459,6 +1460,61 @@ pnpm --filter @argin/purchase-posting test
 ```bash
 pnpm install --frozen-lockfile
 pnpm --filter @argin/accounting-tauri typecheck
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
+```
+
+
+## Step 22 — Argin Bridge Posting Contracts
+
+### Completed work
+
+- Added versioned wire-neutral Purchase Posting synchronization contract with `contractVersion=1` and `schemaVersion=1`.
+- Added authoritative envelope families for Purchase Posting state, Purchase Posting Rules and immutable Purchase Posting Reversal lineage.
+- Posting envelopes preserve durable Company/Branch/Posting IDs and the complete Step 4 Purchase source identity including source type, ID, version and nullable revision.
+- Posting purpose and the exact Step 15 idempotency key are preserved; Bridge does not invent a second financial idempotency identity.
+- Added mandatory request/operation/correlation/causation trace metadata using the existing Purchase Posting trace rules.
+- Added canonical SHA-256 payload fingerprint requirement.
+- Added `occurredAt`, `effectiveAt` and `changedAt` UTC metadata with ordering validation.
+- Added origin source-system/source-instance and nullable server-revision metadata.
+- Journal Vouchers remain Accounting-owned; Bridge envelopes reference Journal IDs only through durable dependencies rather than duplicating Journal payloads.
+- Posting Rule envelopes carry local version/timestamps and Account/optional Branch dependencies.
+- Reversal envelopes are immutable revision-1 evidence with original/reversal Journal dependencies.
+- No tombstone envelope is defined for financial Posting/Reversal history.
+- Frozen conflict semantics prohibit timestamp-based last-write-wins over financial history and prevent serverRevision from replacing local optimistic versions.
+- No transport, outbox, remote apply, PostgreSQL or .NET implementation was introduced.
+- No additional SQLite migration is required because Steps 20–21 already reserved the required durable sync metadata.
+
+### Exit criteria
+
+- [x] Contract version is explicit.
+- [x] Schema version is explicit.
+- [x] Posting source type/ID/version/revision are durable wire facts.
+- [x] Company/Branch/Posting IDs are durable wire identities.
+- [x] Request/operation/correlation/causation metadata are explicit.
+- [x] Payload fingerprint is canonical SHA-256.
+- [x] occurredAt/effectiveAt/changedAt are explicit canonical timestamps.
+- [x] Step 15 idempotency key is reused rather than reinvented.
+- [x] Journal payload ownership remains Accounting.
+- [x] Journal/Purchase/Account/Branch dependencies are explicit.
+- [x] Posting Rule synchronization is versioned.
+- [x] Reversal lineage is immutable revision 1.
+- [x] Financial history has no tombstone contract.
+- [x] Transport/infrastructure remains out of scope.
+- [x] SQLite row identity is absent from the wire contract.
+
+### Validation evidence
+
+- Added `packages/purchase-posting/tests/purchase-posting-sync-contract.test.ts`.
+- Tests cover Posting, Rule and Reversal envelopes, version metadata, dependencies, source revisions, fingerprint validation and trace self-causation rejection.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
 pnpm --filter @argin/purchase-posting typecheck
 pnpm --filter @argin/purchase-posting test
 pnpm --filter @argin/purchase-posting-tauri typecheck
