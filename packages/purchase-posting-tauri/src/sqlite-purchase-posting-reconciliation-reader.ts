@@ -9,7 +9,6 @@ import {
 } from "@argin/purchase-posting";
 import {
   SqlitePurchasePostingRepository,
-  SqlitePurchasePostingReversalRepository,
 } from "./sqlite-purchase-posting-repositories.ts";
 
 type SourceRow = {
@@ -84,7 +83,7 @@ implements PurchasePostingReconciliationReader {
     );
     if (row) return this.hydrate(row);
 
-    const reversal = await this.db.queryOne<{ posting_id: string }>(
+    const reversal = posting === null ? null : await this.db.queryOne<{ posting_id: string }>(
       `SELECT posting_id
          FROM purchase_posting_reversals
         WHERE company_id=? AND reversal_journal_voucher_id=?`,
@@ -125,13 +124,10 @@ implements PurchasePostingReconciliationReader {
     });
 
     const postings = new SqlitePurchasePostingRepository(this.db);
-    const reversals = new SqlitePurchasePostingReversalRepository(this.db);
     const journals = new SqliteJournalVoucherRepository(this.db);
 
     const posting = await postings.findById(row.posting_id);
     const journal = await journals.findById(row.journal_voucher_id);
-    if (posting === null || journal === null) return null;
-
     const reversal = await this.db.queryOne<{
       request_id: string;
       original_journal_voucher_id: string;
