@@ -89,6 +89,9 @@ export function evaluatePurchasePostingReconciliation(input: {
   if (
     (posting.status === "draft" && posting.journalVoucherId !== null)
     || (posting.status !== "draft" && posting.journalVoucherId !== journal.id)
+    || (posting.status === "prepared" && journal.status !== "draft")
+    || (posting.status === "posted" && journal.status !== "posted")
+    || (posting.status === "reversed" && journal.status !== "reversed")
   ) {
     issues.push("posting-state-mismatch");
   }
@@ -105,6 +108,7 @@ export function evaluatePurchasePostingReconciliation(input: {
       } else if (
         reversalJournal.id !== reversal.reversalJournalVoucherId
         || reversalJournal.companyId !== posting.companyId
+        || reversalJournal.status !== "posted"
         || reversalJournal.totalDebit.amount !== reversalJournal.totalCredit.amount
       ) {
         issues.push("reversal-journal-invalid");
