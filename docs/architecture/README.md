@@ -33,3 +33,5 @@
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
 - [Purchase Posting Permissions, Audit and Traceability](../security/purchase-posting-security-audit-traceability.md)
+
+- [Purchase-to-Ledger Reconciliation](purchase-posting-reconciliation.md)
