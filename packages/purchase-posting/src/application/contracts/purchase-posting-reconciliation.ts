@@ -22,8 +22,8 @@ export type PurchasePostingReconciliationIssue =
 export interface PurchasePostingReconciliationSnapshot {
   readonly companyId: string;
   readonly source: Readonly<PurchasePostingSourceIdentity>;
-  readonly posting: Readonly<PurchasePostingAggregate>;
-  readonly journal: Readonly<JournalVoucher>;
+  readonly posting: Readonly<PurchasePostingAggregate> | null;
+  readonly journal: Readonly<JournalVoucher> | null;
   readonly reversal: Readonly<PurchasePostingReversalRecord> | null;
   readonly reversalJournal: Readonly<JournalVoucher> | null;
   readonly issues: readonly PurchasePostingReconciliationIssue[];
@@ -55,13 +55,17 @@ export interface PurchasePostingReconciliationReader {
 
 export function evaluatePurchasePostingReconciliation(input: {
   readonly source: PurchasePostingSourceIdentity;
-  readonly posting: PurchasePostingAggregate;
-  readonly journal: JournalVoucher;
+  readonly posting: PurchasePostingAggregate | null;
+  readonly journal: JournalVoucher | null;
   readonly reversal: PurchasePostingReversalRecord | null;
   readonly reversalJournal: JournalVoucher | null;
 }): readonly PurchasePostingReconciliationIssue[] {
   const issues: PurchasePostingReconciliationIssue[] = [];
   const { source, posting, journal, reversal, reversalJournal } = input;
+
+  if (posting === null) issues.push("posting-missing");
+  if (journal === null) issues.push("journal-missing");
+  if (posting === null || journal === null) return Object.freeze([...new Set(issues)]);
 
   if (posting.companyId !== source.companyId || journal.companyId !== source.companyId) {
     issues.push("company-mismatch");
