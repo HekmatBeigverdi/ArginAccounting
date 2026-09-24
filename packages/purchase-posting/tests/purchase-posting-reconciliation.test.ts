@@ -62,7 +62,7 @@ test("healthy Purchase Posting and Journal reconcile with no issues", () => {
   const issues = evaluatePurchasePostingReconciliation({
     source,
     posting: preparedPosting(),
-    journal: journal(),
+    journal: Object.freeze({ ...journal(), status: "reversed" as const }),
     reversal: null,
     reversalJournal: null,
   });
