@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri` | Repository, Reader and Unit of Work implemented through Phase 23 Step 21 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
+| Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri` | Argin Bridge Posting Contracts implemented through Phase 23 Step 22 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -48,11 +48,11 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Purchase Posting — Phase 23 Current State
 
 - Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
-- Domain/Application: `packages/purchase-posting` owns persistence-neutral semantics; `packages/purchase-posting-tauri` now owns concrete SQLite repositories/readers and transaction adapters through Step 21.
+- Domain/Application: `packages/purchase-posting` now owns versioned wire-neutral Posting/Rule/Reversal Bridge contracts through Step 22; `packages/purchase-posting-tauri` remains the SQLite adapter boundary.
 - Non-ownership: it does not own supplier commercial pricing, Inventory quantities, FIFO/MWA valuation state or Journal tables.
 - Persistence: Desktop migration `0033_purchase_posting.sql` plus `@argin/purchase-posting-tauri` provide aggregate/rule/replay/reversal repositories, Fiscal/Account/Dimension readers and same-session Atomic/Replay/Reversal UoW adapters.
-- Bridge: durable source system/type/ID, source version/revision, Company/Branch, request/operation and correlation/causation metadata are established; the actual versioned Argin Bridge envelope remains Step 22.
-- Testing: Step 21 adds aggregate rehydration, CAS conflict, one-session UoW, replay access and Accounting-reversal session-affinity coverage.
+- Bridge: Step 22 freezes contract/schema version 1 envelopes for Posting state, Posting Rules and immutable Reversal lineage, preserving durable source/version/revision, trace, fingerprint, idempotency and dependency metadata without implementing transport.
+- Testing: Step 22 adds Posting/Rule/Reversal Bridge envelope, source revision, dependency, fingerprint, timestamp and trace validation coverage.
 
 ## Required Fields for Future Entries
 
