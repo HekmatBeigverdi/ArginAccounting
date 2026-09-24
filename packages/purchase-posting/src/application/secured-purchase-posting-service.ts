@@ -17,7 +17,6 @@ import {
   type PurchasePostingTraceContext,
 } from "../domain/purchase-posting-source-reference.ts";
 import {
-  purchasePostingCorrelationId,
   purchasePostingPermissions,
   type PurchasePostingAuditAction,
   type PurchasePostingAuditSink,
@@ -134,8 +133,8 @@ export class SecuredPurchasePostingService {
       trace,
       result.posting,
       input.command.source,
-      input.command.posting.status,
-      input.command.posting.version,
+      persisted.status,
+      persisted.version,
       null,
       null,
       {
@@ -281,6 +280,28 @@ export class SecuredPurchasePostingService {
     return result;
   }
 
+  async viewPosting(
+    security: PurchasePostingSecurityContext,
+    query: PurchasePostingTraceQuery,
+  ): Promise<PurchasePostingAggregate> {
+    const trace = normalizedTrace(query.trace);
+    const persisted = await this.requirePosting(query.postingId, query.companyId);
+    if (persisted.branchId !== query.branchId) {
+      throw new PurchasePostingSecurityError(
+        "PURCHASE_POSTING_SCOPE_MISMATCH",
+        "branchId",
+      );
+    }
+    await this.require(
+      security,
+      persisted.companyId,
+      persisted.branchId,
+      trace,
+      purchasePostingPermissions.view,
+    );
+    return persisted;
+  }
+
   async viewTrace(
     security: PurchasePostingSecurityContext,
     query: PurchasePostingTraceQuery,
@@ -369,7 +390,7 @@ export class SecuredPurchasePostingService {
         branchId,
         requestId: trace.requestId,
         operationId: trace.operationId,
-        correlationId: purchasePostingCorrelationId(security, trace.requestId),
+        correlationId: trace.correlationId,
       }, permission);
     } catch (error) {
       if (error instanceof PurchasePostingSecurityError) throw error;
