@@ -204,7 +204,7 @@ const metadata = (input: PurchasePostingSyncMetadataInput): PurchasePostingSyncM
       requestId: input.requestId,
       operationId: input.operationId,
       correlationId: input.correlationId,
-      causationId: input.causationId,
+      ...(input.causationId === undefined ? {} : { causationId: input.causationId }),
     });
   } catch {
     return fail("purchase-posting.sync.trace-invalid");
