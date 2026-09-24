@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–22 are complete. Steps 23–30 are not started.
+Steps 1–23 are complete. Steps 24–30 are not started.
 
 ## Governance
 
@@ -43,6 +43,7 @@ Mandatory references:
 - [Purchase Posting SQLite Persistence](../architecture/purchase-posting-sqlite-persistence.md)
 - [Purchase Posting SQLite Repository, Readers and Unit of Work](../architecture/purchase-posting-sqlite-repository-uow.md)
 - [Purchase Posting Argin Bridge Contract](../architecture/purchase-posting-argin-bridge-contract.md)
+- [Purchase Posting Permissions, Audit and Traceability](../security/purchase-posting-security-audit-traceability.md)
 
 ## Baseline and Release Target
 
@@ -204,7 +205,7 @@ Live transport is not implemented in Phase 23.
 | 20 | Persistence and SQLite Migration | Completed |
 | 21 | Repository, Reader and Unit of Work | Completed |
 | 22 | Argin Bridge Posting Contracts | Completed |
-| 23 | Permissions, Audit and Traceability | Not started |
+| 23 | Permissions, Audit and Traceability | Completed |
 | 24 | Purchase-to-Ledger Reconciliation | Not started |
 | 25 | Posting UI and Trace Viewer | Not started |
 | 26 | Domain and Application Tests | Not started |
@@ -1515,6 +1516,68 @@ pnpm --filter @argin/purchase-posting-tauri test
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
+```
+
+
+## Step 23 — Permissions, Audit and Traceability
+
+### Completed work
+
+- Added independent Purchase Posting permissions for view, execute, controlled reversal, Posting Rule management and trace viewing.
+- Registered all five permissions in the shared Security default-permission catalog under module `purchases`.
+- Added persistence-neutral Purchase Posting authorization, Audit and trace contracts.
+- Added `SecuredPurchasePostingService` as the Application security boundary.
+- Posting/Reversal/View/Trace authorization reloads the persisted Purchase Posting and uses its actual Company/Branch scope.
+- Caller-provided scope cannot override persisted Posting scope.
+- Posting execution requires `purchases.posting.execute`; Reversal requires `purchases.posting.reverse`.
+- Posting Rule mutation requires `purchases.posting.rules.manage`.
+- Trace view requires `purchases.posting.trace.view`; ordinary Posting view has its own `purchases.posting.view` permission.
+- Posting trace must match the Accounting Draft Journal source request/correlation/causation metadata before the operation is authorized.
+- Reversal request ID must match the secured trace request ID.
+- Added append-only shared-Audit event contract containing actor, Company/Branch, Posting/Journal/Reversal IDs, source identity, request/operation/correlation/causation, before/after status/version and durable operation metadata.
+- Added deterministic Audit identity helper `purchase-posting:{action}:{operationId}:{targetId}`.
+- Explicit replay/reversal-replay Audit actions preserve operational trace without duplicating accounting side effects.
+- Preserved Accounting permission ownership: Purchase Posting execute does not grant Journal approval/final-post rights.
+- Added `PurchasePostingTraceReader` contract and trace snapshot shape for Step 24 reconciliation / Step 25 Trace Viewer without prematurely implementing those later steps.
+- Added focused security/audit tests and Security catalog coverage.
+
+### Exit criteria
+
+- [x] Purchase Posting permissions are independently assignable.
+- [x] Permissions are registered in the shared Security catalog.
+- [x] Application boundary enforces permission before mutation.
+- [x] Authorization uses persisted Company/Branch scope.
+- [x] Caller scope cannot override persisted Posting scope.
+- [x] Posting and Reversal have separate permissions.
+- [x] Posting Rule management has a separate permission.
+- [x] Posting view and Trace view have separate permissions.
+- [x] Accounting Journal approval/final-post permission ownership remains Accounting.
+- [x] Posting trace must match Journal source trace.
+- [x] Reversal trace request identity is checked.
+- [x] Successful operations emit shared Audit events.
+- [x] Audit event carries durable source/Posting/Journal/Reversal identities.
+- [x] Audit identity is deterministic across retries.
+- [x] Replay is auditable without duplicate accounting writes.
+- [x] No new Audit or Approval store is introduced.
+- [x] Trace Reader contract is frozen for Steps 24–25.
+
+### Validation evidence
+
+- Added `packages/purchase-posting/tests/purchase-posting-security.test.ts`.
+- Added `packages/security/tests/purchase-posting-permissions.test.ts`.
+- Focused coverage verifies persisted scope authorization, trace mismatch rejection, deterministic Audit identity and permission catalog registration.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/security typecheck
+pnpm --filter @argin/security test
 pnpm --filter @argin/purchase-posting typecheck
 pnpm --filter @argin/purchase-posting test
 pnpm --filter @argin/purchase-posting-tauri typecheck
