@@ -27,3 +27,7 @@ export type {
   PurchasePostingJournalReverser,
   SqlitePurchasePostingContext,
 } from "./sqlite-purchase-posting-unit-of-work.ts";
+
+export {
+  SqlitePurchasePostingReconciliationReader,
+} from "./sqlite-purchase-posting-reconciliation-reader.ts";
