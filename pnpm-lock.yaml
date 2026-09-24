@@ -763,6 +763,9 @@ importers:
 
   packages/security:
     devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
       rimraf:
         specifier: ^6.0.0
         version: 6.1.3
