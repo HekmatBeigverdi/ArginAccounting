@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–23 are complete. Steps 24–30 are not started.
+Steps 1–24 are complete. Steps 25–30 are not started.
 
 ## Governance
 
@@ -44,6 +44,7 @@ Mandatory references:
 - [Purchase Posting SQLite Repository, Readers and Unit of Work](../architecture/purchase-posting-sqlite-repository-uow.md)
 - [Purchase Posting Argin Bridge Contract](../architecture/purchase-posting-argin-bridge-contract.md)
 - [Purchase Posting Permissions, Audit and Traceability](../security/purchase-posting-security-audit-traceability.md)
+- [Purchase-to-Ledger Reconciliation](../architecture/purchase-posting-reconciliation.md)
 
 ## Baseline and Release Target
 
@@ -206,7 +207,7 @@ Live transport is not implemented in Phase 23.
 | 21 | Repository, Reader and Unit of Work | Completed |
 | 22 | Argin Bridge Posting Contracts | Completed |
 | 23 | Permissions, Audit and Traceability | Completed |
-| 24 | Purchase-to-Ledger Reconciliation | Not started |
+| 24 | Purchase-to-Ledger Reconciliation | Completed |
 | 25 | Posting UI and Trace Viewer | Not started |
 | 26 | Domain and Application Tests | Not started |
 | 27 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Not started |
@@ -1578,6 +1579,63 @@ pnpm --filter @argin/purchase-posting-tauri test
 pnpm install --frozen-lockfile
 pnpm --filter @argin/security typecheck
 pnpm --filter @argin/security test
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
+```
+
+
+## Step 24 — Purchase-to-Ledger Reconciliation
+
+### Completed work
+
+- Added persistence-neutral Purchase-to-Ledger reconciliation contracts and deterministic issue vocabulary.
+- Added forward lookup from durable Purchase source type/ID to all matching Purchase Posting outcomes by source version/revision.
+- Added reverse lookup from Purchase Posting ID, Accounting Journal Voucher ID and Journal Line ID back to the durable Purchase source.
+- Reversal Journal IDs are also reverse-resolvable through immutable reversal lineage.
+- Reconciliation snapshots include Purchase source identity, Purchase Posting, full canonical Accounting Journal/Lines, optional Reversal lineage/Journal, issues and a final reconciled flag.
+- Missing Posting or Journal links are surfaced as explicit diagnostic issues instead of being silently discarded.
+- Added Company, Branch and Journal source-link integrity checks.
+- Added Journal balance verification without recomputing commercial or inventory valuation facts.
+- Added lifecycle alignment checks: Prepared↔Draft Journal, Posted↔Posted Journal and Reversed↔Reversed original Journal + Posted reversal Journal.
+- Added Reversal lineage/original/reversal Journal integrity checks.
+- Added concrete `SqlitePurchasePostingReconciliationReader`.
+- Exposed the reconciliation reader through `@argin/purchase-posting-tauri` and the shared SQLite Purchase Posting UoW context.
+- No new projection table or migration was introduced; reconciliation is rebuilt directly from authoritative persistence.
+
+### Exit criteria
+
+- [x] Purchase Source -> Posting -> Journal -> Lines forward trace exists.
+- [x] Posting -> Purchase Source reverse trace exists.
+- [x] Journal Voucher -> Purchase Source reverse trace exists.
+- [x] Journal Line -> Purchase Source reverse trace exists.
+- [x] Reversal Journal -> original Purchase Posting trace exists.
+- [x] Missing Posting/Journal links are explicit issues.
+- [x] Company and Branch integrity are checked.
+- [x] Journal source identity is checked.
+- [x] Journal balance is checked.
+- [x] Posting/Journal lifecycle alignment is checked.
+- [x] Reversed Posting requires reversal lineage.
+- [x] Reversal Journal identity/status/balance are checked.
+- [x] No commercial pricing or FIFO/MWA recomputation is introduced.
+- [x] Reconciliation remains read-only/rebuildable.
+- [x] SQLite reader uses authoritative existing tables.
+- [x] No synchronization authority is transferred to reconciliation.
+
+### Validation evidence
+
+- Added `packages/purchase-posting/tests/purchase-posting-reconciliation.test.ts`.
+- Added `packages/purchase-posting-tauri/tests/sqlite-purchase-posting-reconciliation.test.ts`.
+- Tests cover evaluator integrity plus source, Journal Line and Reversal Journal reverse lookup contracts.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting-tauri typecheck
 pnpm --filter @argin/purchase-posting typecheck
 pnpm --filter @argin/purchase-posting test
 pnpm --filter @argin/purchase-posting-tauri typecheck
