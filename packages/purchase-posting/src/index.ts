@@ -322,3 +322,13 @@ export type {
 export {
   purchasePostingAuditIdentity,
 } from "./application/purchase-posting-audit.ts";
+
+export {
+  PURCHASE_POSTING_RECONCILIATION_ISSUES,
+  evaluatePurchasePostingReconciliation,
+} from "./application/contracts/purchase-posting-reconciliation.ts";
+export type {
+  PurchasePostingReconciliationIssue,
+  PurchasePostingReconciliationReader,
+  PurchasePostingReconciliationSnapshot,
+} from "./application/contracts/purchase-posting-reconciliation.ts";
