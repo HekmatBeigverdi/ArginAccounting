@@ -28,6 +28,7 @@
 - [Branch and Accounting Dimensions](purchase-posting-branch-and-dimensions.md)
 - [Purchase Posting SQLite Persistence](purchase-posting-sqlite-persistence.md)
 - [Purchase Posting SQLite Repository, Readers and Unit of Work](purchase-posting-sqlite-repository-uow.md)
+- [Purchase Posting Argin Bridge Contract](purchase-posting-argin-bridge-contract.md)
 - [ADR Registry](../adr/README.md)
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
