@@ -32,3 +32,4 @@
 - [ADR Registry](../adr/README.md)
 
 Architecture documents describe the current design. ADRs preserve why major decisions were made.
+- [Purchase Posting Permissions, Audit and Traceability](../security/purchase-posting-security-audit-traceability.md)
