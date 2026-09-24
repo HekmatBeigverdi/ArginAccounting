@@ -261,3 +261,28 @@ export type {
   PurchasePostingDimensionSource,
   ResolvePurchasePostingDimensionsInput,
 } from "./domain/purchase-posting-dimensions.ts";
+
+export {
+  PURCHASE_POSTING_SYNC_CONTRACT_VERSION,
+  PURCHASE_POSTING_SYNC_SCHEMA_VERSION,
+  PURCHASE_POSTING_SYNC_ENTITIES,
+  PurchasePostingSyncContractError,
+  createPurchasePostingStateSyncEnvelope,
+  createPurchasePostingRuleSyncEnvelope,
+  createPurchasePostingReversalSyncEnvelope,
+} from "./application/contracts/purchase-posting-sync.ts";
+export type {
+  CreatePurchasePostingReversalSyncInput,
+  CreatePurchasePostingRuleSyncInput,
+  CreatePurchasePostingStateSyncInput,
+  PurchasePostingReversalSyncEnvelope,
+  PurchasePostingRuleSyncEnvelope,
+  PurchasePostingRuleSyncSnapshot,
+  PurchasePostingStateSyncEnvelope,
+  PurchasePostingSyncContractErrorCode,
+  PurchasePostingSyncDependency,
+  PurchasePostingSyncEntity,
+  PurchasePostingSyncMetadata,
+  PurchasePostingSyncMetadataInput,
+  PurchasePostingSyncOrigin,
+} from "./application/contracts/purchase-posting-sync.ts";
