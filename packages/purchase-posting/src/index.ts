@@ -286,3 +286,39 @@ export type {
   PurchasePostingSyncMetadataInput,
   PurchasePostingSyncOrigin,
 } from "./application/contracts/purchase-posting-sync.ts";
+
+export {
+  purchasePostingPermissions,
+  purchasePostingCorrelationId,
+} from "./application/contracts/purchase-posting-security.ts";
+export type {
+  PurchasePostingAuditAction,
+  PurchasePostingAuditEvent,
+  PurchasePostingAuditSink,
+  PurchasePostingAuthorizationContext,
+  PurchasePostingAuthorizationPolicy,
+  PurchasePostingPermission,
+  PurchasePostingRuleAuditSnapshot,
+  PurchasePostingSecurityContext,
+  PurchasePostingTraceReader,
+  PurchasePostingTraceSnapshot,
+} from "./application/contracts/purchase-posting-security.ts";
+
+export {
+  SecuredPurchasePostingService,
+  PurchasePostingSecurityError,
+} from "./application/secured-purchase-posting-service.ts";
+export type {
+  PurchasePostingRuleMutationContext,
+  PurchasePostingRuleMutationInput,
+  PurchasePostingScopeReader,
+  PurchasePostingSecurityErrorCode,
+  PurchasePostingTraceQuery,
+  SecuredPurchasePostingInput,
+  SecuredPurchasePostingReversalInput,
+  SecuredPurchasePostingServiceDependencies,
+} from "./application/secured-purchase-posting-service.ts";
+
+export {
+  purchasePostingAuditIdentity,
+} from "./application/purchase-posting-audit.ts";
