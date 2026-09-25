@@ -22,9 +22,11 @@ const purchase = await import("@argin/purchase");
 const { SqlitePurchaseDocumentRepository } = await import("@argin/purchase-tauri");
 const inventory = await import("@argin/inventory");
 const { SqliteInventoryDocumentRepository, SqliteInventoryUnitOfWork } = await import("@argin/inventory-tauri");
+const { recordAuditEntry } = await import("@argin/audit");
+const { DatabaseExecutorAdapter, SqliteAuditRepository, SqliteAuditUnitOfWork } = await import("@argin/audit-tauri");
 hooks.deregister();
 
-function fixture(permissions = ["system.full-access"]) {
+function fixture(permissions = ["system.full-access"], auditErrors?: "string" | "error") {
   const sqlite = new DatabaseSync(":memory:");
   const migrations = new URL("../src-tauri/migrations/", import.meta.url);
   for (const file of readdirSync(migrations).filter(file => file.endsWith(".sql")).sort()) {
@@ -52,8 +54,14 @@ function fixture(permissions = ["system.full-access"]) {
   const parameters = (values: readonly DatabaseValue[]) => values.map(value => typeof value === "boolean" ? Number(value) : value);
   const session: DatabaseSession = {
     async execute(sql, values = []) {
-      const result = sqlite.prepare(sql).run(...parameters(values));
-      return { rowsAffected: Number(result.changes) };
+      try {
+        const result = sqlite.prepare(sql).run(...parameters(values));
+        return { rowsAffected: Number(result.changes) };
+      } catch (error) {
+        // Rust's atomic SQLite commands reject with strings across the Tauri bridge.
+        if (auditErrors === "string" && error instanceof Error) throw error.message;
+        throw error;
+      }
     },
     async query<T>(sql: string, values: readonly DatabaseValue[] = []) {
       return sqlite.prepare(sql).all(...parameters(values)) as T[];
@@ -81,10 +89,20 @@ function fixture(permissions = ["system.full-access"]) {
     },
     async close() { sqlite.close(); },
   };
+  const auditDatabase = new DatabaseExecutorAdapter(database);
+  const auditContext = {
+    authorizer: { async hasPermission() { return true; } },
+    idGenerator: { generate: () => crypto.randomUUID() },
+    clock: { now: () => new Date().toISOString() },
+    unitOfWork: new SqliteAuditUnitOfWork(auditDatabase),
+    auditRepository: new SqliteAuditRepository(auditDatabase),
+  };
   const services = createPurchaseWorkspaceServices({
     database,
     actor: { id: "user", displayName: "User", permissions, branchIds: ["branch"] },
-    audit: { async recordAuditEntry() {} } as unknown as AuditServices,
+    audit: { recordAuditEntry: auditErrors
+      ? (input: Parameters<AuditServices["recordAuditEntry"]>[0]) => recordAuditEntry(auditContext, input)
+      : async () => {} } as unknown as AuditServices,
   });
   const input = {
     companyId: "company", branchId: "branch", fiscalYearId: "year", supplierId: "supplier",
@@ -327,6 +345,34 @@ test("confirmed invoice receipt can be matched and costed, including legacy rece
   assert.equal(f.sqlite.prepare("SELECT total_cost FROM purchase_valuation_cost_inputs").get()?.total_cost, 25000000);
   assert.equal(f.sqlite.prepare("SELECT total_cost FROM inventory_valuation_cost_inputs").get()?.total_cost, 25000000);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM inventory_stock_movements").get()?.n, 1);
+});
+
+for (const auditErrors of ["string", "error"] as const) {
+  test(`receipt cost replay succeeds with persistent audit and ${auditErrors} SQLite errors`, async t => {
+    const f = fixture(["system.full-access"], auditErrors);
+    t.after(() => f.sqlite.close());
+    const { invoice } = await confirmedInvoiceReceipt(f);
+    await f.services.resolveReceiptCost(invoice);
+    const revision = f.sqlite.prepare("SELECT revision FROM inventory_valuation_stream_versions").get()?.revision;
+    await f.services.resolveReceiptCost(invoice);
+    assert.equal(f.sqlite.prepare("SELECT count(*) n FROM audit_entries WHERE message='purchase.cost.resolve'").get()?.n, 1);
+    assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 1);
+    assert.equal(f.sqlite.prepare("SELECT count(*) n FROM inventory_valuation_cost_inputs").get()?.n, 1);
+    assert.equal(f.sqlite.prepare("SELECT total_cost FROM inventory_valuation_cost_inputs").get()?.total_cost, 25000000);
+    assert.equal(f.sqlite.prepare("SELECT revision FROM inventory_valuation_stream_versions").get()?.revision, revision);
+  });
+}
+
+test("receipt cost replay still reports unrelated audit write failures", async t => {
+  const f = fixture(["system.full-access"], "string");
+  t.after(() => f.sqlite.close());
+  const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.resolveReceiptCost(invoice);
+  f.sqlite.exec(`CREATE TRIGGER fail_cost_audit BEFORE INSERT ON audit_entries
+    WHEN NEW.message='purchase.cost.resolve'
+    BEGIN SELECT RAISE(ABORT, 'audit storage unavailable'); END;`);
+  await assert.rejects(() => f.services.resolveReceiptCost(invoice),
+    (error: unknown) => error === "audit storage unavailable");
 });
 
 test("receipt cost resolution checks permissions before creating match or cost facts", async t => {

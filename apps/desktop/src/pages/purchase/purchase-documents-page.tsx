@@ -200,6 +200,7 @@ function errorMessage(error: unknown): string {
     return "عملیات خرید معتبر نیست؛ " + error.field;
   }
   if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim()) return error;
   return "عملیات با خطا مواجه شد.";
 }
 

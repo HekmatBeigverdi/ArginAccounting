@@ -283,7 +283,8 @@ export function createPurchaseWorkspaceServices(input: {
           metadata: { requestId: event.requestId, operationId: event.operationId, purchaseAction: event.action, ...event.metadata },
         });
       } catch (error) {
-        if (!(error instanceof Error) || !/already|duplicate|unique/i.test(error.message)) throw error;
+        const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+        if (!/\bUNIQUE constraint failed: audit_entries\.id\s*$/i.test(message)) throw error;
       }
     },
   };
