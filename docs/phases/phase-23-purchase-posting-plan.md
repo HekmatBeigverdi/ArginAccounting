@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–24 are complete. Steps 25–30 are not started.
+Steps 1–25 are complete. Steps 26–30 are not started.
 
 ## Governance
 
@@ -45,6 +45,7 @@ Mandatory references:
 - [Purchase Posting Argin Bridge Contract](../architecture/purchase-posting-argin-bridge-contract.md)
 - [Purchase Posting Permissions, Audit and Traceability](../security/purchase-posting-security-audit-traceability.md)
 - [Purchase-to-Ledger Reconciliation](../architecture/purchase-posting-reconciliation.md)
+- [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
 
@@ -208,7 +209,7 @@ Live transport is not implemented in Phase 23.
 | 22 | Argin Bridge Posting Contracts | Completed |
 | 23 | Permissions, Audit and Traceability | Completed |
 | 24 | Purchase-to-Ledger Reconciliation | Completed |
-| 25 | Posting UI and Trace Viewer | Not started |
+| 25 | Posting UI and Trace Viewer | Completed |
 | 26 | Domain and Application Tests | Not started |
 | 27 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Not started |
 | 28 | Bridge, Replay, Rollback and Failure Tests | Not started |
@@ -1640,4 +1641,64 @@ pnpm --filter @argin/purchase-posting typecheck
 pnpm --filter @argin/purchase-posting test
 pnpm --filter @argin/purchase-posting-tauri typecheck
 pnpm --filter @argin/purchase-posting-tauri test
+```
+
+
+## Step 25 — Posting UI and Trace Viewer
+
+### Completed work
+
+- Added a Purchase Posting panel directly into the existing Purchase Documents workspace.
+- The panel is sourced only from Step 24 reconciliation data; no duplicate UI projection table was introduced.
+- Added Desktop composition service `createPurchasePostingWorkspaceServices` backed by `SqlitePurchasePostingReconciliationReader`.
+- Added independent permission checks for Posting view, Trace view, execute eligibility and controlled reversal eligibility.
+- Branch access is filtered against the signed-in actor's allowed Branch IDs.
+- The panel displays Posting status, Accounting Journal number/status, balanced Journal amount and reconciliation health.
+- Multiple source versions/revisions can be selected when more than one Posting outcome exists.
+- Added expandable source → Posting → Journal → optional Reversal Journal trace.
+- Added canonical Accounting Journal Line display with Account ID, Debit and Credit.
+- Added Persian reconciliation diagnostics for all Step 24 issue codes.
+- Added explicit no-Posting states for Purchase Order, non-confirmed documents and permission-limited confirmed documents.
+- No Purchase price, discount, charge, tax, FIFO/MWA or Account-selection inputs were introduced in the Posting UI.
+- React does not build Journal Lines or recalculate commercial/valuation facts.
+- Desktop dependencies now include `@argin/purchase-posting` and `@argin/purchase-posting-tauri`.
+- Added responsive panel styling and Desktop contract tests.
+- Posting mutation remains behind the secured Application boundary; the UI does not create a parallel posting engine from raw form values.
+
+### Exit criteria
+
+- [x] Purchase workspace exposes Posting status without duplicate data entry.
+- [x] Purchase Source ID/type drive the Posting lookup.
+- [x] Posting status and Journal lifecycle are visible.
+- [x] Journal balance amount is visible.
+- [x] Reconciliation health/issues are visible.
+- [x] Source → Posting → Journal trace is visible.
+- [x] Reversal Journal lineage is visible when present.
+- [x] Canonical Journal Lines are visible.
+- [x] Multiple source versions/revisions are distinguishable.
+- [x] Purchase Order non-posting state is explained.
+- [x] Non-confirmed Posting ineligibility is explained.
+- [x] Posting view and Trace permissions remain independent.
+- [x] Branch scope is enforced before read exposure.
+- [x] No UI-owned pricing/tax/valuation recalculation is introduced.
+- [x] No duplicate commercial/account-entry form is introduced.
+- [x] No new SQLite projection/migration is required.
+
+### Validation evidence
+
+- Added `apps/desktop/tests/purchase-posting-ui.test.ts`.
+- Contract tests verify panel embedding, selected Purchase source binding, trace/reconciliation UI, Journal Line rendering, permission separation and absence of commercial re-entry fields.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
 ```
