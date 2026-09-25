@@ -1,0 +1,74 @@
+
+.purchase-posting-panel {
+  margin-top: 1rem;
+  border: 1px solid var(--border-color, #d7dbe2);
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--surface-color, #fff);
+}
+.purchase-posting-panel__header,
+.purchase-posting-panel__summary {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.purchase-posting-panel__header h3 { margin: 0 0 .25rem; }
+.purchase-posting-panel__header p { margin: 0; opacity: .72; }
+.purchase-posting-panel__summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+.purchase-posting-panel__summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  padding: .75rem;
+  border-radius: 10px;
+  background: var(--surface-muted, #f7f8fa);
+}
+.purchase-posting-panel__summary span,
+.purchase-posting-panel__summary small { opacity: .7; }
+.purchase-posting-panel__empty,
+.purchase-posting-panel__error {
+  margin-top: 1rem;
+  padding: .8rem;
+  border-radius: 10px;
+}
+.purchase-posting-panel__empty {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  background: var(--surface-muted, #f7f8fa);
+}
+.purchase-posting-panel__error,
+.purchase-posting-panel__issues { color: var(--danger-color, #9b1c1c); }
+.purchase-posting-panel__selector {
+  display: flex;
+  gap: .5rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.purchase-posting-trace { margin-top: 1rem; }
+.purchase-posting-trace ol {
+  display: grid;
+  gap: .5rem;
+  padding: 0;
+  list-style: none;
+}
+.purchase-posting-trace li {
+  display: grid;
+  grid-template-columns: 10rem 1fr auto;
+  gap: .75rem;
+  align-items: center;
+  padding: .6rem .75rem;
+  border-right: 3px solid var(--border-color, #d7dbe2);
+}
+.purchase-posting-trace__lines { overflow-x: auto; margin-top: .75rem; }
+.purchase-posting-trace__lines table { width: 100%; border-collapse: collapse; }
+.purchase-posting-trace__lines th,
+.purchase-posting-trace__lines td { padding: .55rem; border-bottom: 1px solid var(--border-color, #e2e5ea); text-align: right; }
+@media (max-width: 900px) {
+  .purchase-posting-panel__summary { grid-template-columns: 1fr 1fr; }
+}
