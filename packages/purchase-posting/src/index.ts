@@ -71,6 +71,26 @@ export type {
 } from "./domain/purchase-posting-source-reference.ts";
 
 export {
+  PURCHASE_ACCOUNTING_ELIGIBILITY_REASON_CODES,
+  PURCHASE_ACCOUNTING_ELIGIBILITY_STATUSES,
+  PURCHASE_FULFILLMENT_STATES,
+  PURCHASE_POSTING_MODES,
+  createPurchaseFulfillmentAccountingPolicy,
+  evaluateSupplierInvoiceAccountingEligibility,
+} from "./domain/purchase-fulfillment-accounting-policy.ts";
+export type {
+  EvaluateSupplierInvoiceAccountingEligibilityInput,
+  PurchaseAccountingEligibilityLineResult,
+  PurchaseAccountingEligibilityReasonCode,
+  PurchaseAccountingEligibilityResult,
+  PurchaseAccountingEligibilityStatus,
+  PurchaseFulfillmentAccountingPolicy,
+  PurchaseFulfillmentLineState,
+  PurchaseFulfillmentState,
+  PurchasePostingMode,
+} from "./domain/purchase-fulfillment-accounting-policy.ts";
+
+export {
   PURCHASE_POSTING_EVENT_DISPOSITIONS,
   PURCHASE_POSTING_EVENT_KINDS,
   PURCHASE_POSTING_EVENT_REASON_CODES,
