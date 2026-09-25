@@ -27,7 +27,10 @@ import {
 import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
 import { emptyLine, latinDigits, purchaseLineDrafts, purchaseLineInput, type LineDraft } from "./purchase-draft-form";
+import { PurchasePostingPanel } from "./purchase-posting-panel";
+import { createPurchasePostingWorkspaceServices, type PurchasePostingWorkspaceServices } from "../../composition/purchase-posting/create-purchase-posting-workspace-services";
 import "./purchase-documents-page.css";
+import "./purchase-posting-panel.css";
 
 const TYPE_LABELS: Record<PurchaseDocumentType, string> = {
   "purchase-order": "سفارش خرید",
@@ -207,6 +210,7 @@ export function PurchaseDocumentsPage() {
   const [services, setServices] = useState<PurchaseWorkspaceServices | null>(
     null,
   );
+  const [postingServices, setPostingServices] = useState<PurchasePostingWorkspaceServices | null>(null);
   const [documents, setDocuments] = useState<
     readonly PurchaseDocumentSnapshot[]
   >([]);
@@ -266,6 +270,13 @@ export function PurchaseDocumentsPage() {
             audit,
           }),
         );
+        setPostingServices(createPurchasePostingWorkspaceServices({
+          database,
+          actor: {
+            permissions: session.user.permissions,
+            branchIds: session.user.branchIds,
+          },
+        }));
       })
       .catch((e) => !cancelled && setError(errorMessage(e)));
     return () => {
@@ -912,6 +923,14 @@ export function PurchaseDocumentsPage() {
                       </tbody>
                     </table>
                   </div>
+                  <PurchasePostingPanel
+                    services={postingServices}
+                    companyId={detail.document.companyId}
+                    branchId={detail.document.scope.branchId}
+                    sourceType={detail.document.documentType}
+                    sourceId={detail.document.documentId}
+                    sourceStatus={detail.document.status}
+                  />
                   <details className="purchase-history">
                     <summary>تاریخچه گردش</summary>
                     <ol>
