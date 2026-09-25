@@ -11,7 +11,6 @@ import {
   type ReversePurchasePostingResult,
 } from "./controlled-posting-reversal.ts";
 import type { PurchasePostingAggregate } from "../domain/purchase-posting.ts";
-import type { PurchasePostingRule } from "../domain/purchase-posting-rules.ts";
 import {
   createPurchasePostingTraceContext,
   type PurchasePostingTraceContext,

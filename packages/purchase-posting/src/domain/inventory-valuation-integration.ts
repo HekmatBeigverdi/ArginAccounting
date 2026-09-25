@@ -6,7 +6,6 @@ import type { PurchasePostingDomainErrorCode } from "./purchase-posting-domain-e
 import type {
   PurchasePostingFactSnapshot,
   PurchasePostingLineFactSnapshot,
-  PurchasePostingValuationSnapshot,
 } from "./purchase-posting-facts.ts";
 import type {
   SupplierInvoicePostingComponent,

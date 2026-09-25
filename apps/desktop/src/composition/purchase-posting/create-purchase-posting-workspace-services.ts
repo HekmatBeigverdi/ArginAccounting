@@ -50,7 +50,7 @@ export function createPurchasePostingWorkspaceServices(input: {
     }
   };
 
-  return Object.freeze({
+  return Object.freeze<PurchasePostingWorkspaceServices>({
     canView: can(purchasePostingPermissions.view),
     canTrace: can(purchasePostingPermissions.viewTrace),
     canExecute: can(purchasePostingPermissions.execute),
