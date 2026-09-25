@@ -35,3 +35,5 @@ Architecture documents describe the current design. ADRs preserve why major deci
 - [Purchase Posting Permissions, Audit and Traceability](../security/purchase-posting-security-audit-traceability.md)
 
 - [Purchase-to-Ledger Reconciliation](purchase-posting-reconciliation.md)
+
+- [Purchase Posting UI and Trace Viewer](purchase-posting-ui-and-trace-viewer.md)
