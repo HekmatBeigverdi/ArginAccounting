@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri` | Purchase-to-Ledger Reconciliation implemented through Phase 23 Step 24 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
+| Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri` | Posting UI and Trace Viewer implemented through Phase 23 Step 25 | 23 | [Purchase Posting Domain Model](../architecture/purchase-posting-domain-model.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -48,13 +48,14 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Purchase Posting — Phase 23 Current State
 
 - Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
-- Domain/Application: `packages/purchase-posting` now owns read-only Purchase-to-Ledger reconciliation contracts/evaluation through Step 24; `packages/purchase-posting-tauri` provides the concrete bidirectional SQLite reconciliation reader.
+- Domain/Application: Purchase Posting/reconciliation remain Domain/Application-owned; Step 25 adds Desktop presentation/composition over the existing reconciliation reader without moving business rules into React.
 - Non-ownership: it does not own supplier commercial pricing, Inventory quantities, FIFO/MWA valuation state or Journal tables.
 - Persistence: Desktop migration `0033_purchase_posting.sql` plus `@argin/purchase-posting-tauri` provide aggregate/rule/replay/reversal repositories, Fiscal/Account/Dimension readers and same-session Atomic/Replay/Reversal UoW adapters.
 - Bridge: Step 22 freezes contract/schema version 1 envelopes for Posting state, Posting Rules and immutable Reversal lineage, preserving durable source/version/revision, trace, fingerprint, idempotency and dependency metadata without implementing transport.
 - Security: Step 23 adds independent Purchase Posting permissions, persisted Company/Branch authorization, deterministic shared-Audit identity and source→Posting→Journal→Reversal trace contracts.
 - Reconciliation: Step 24 supports Source/Posting/Journal/Journal-Line/Reversal bidirectional trace with structural, scope, source, balance and lifecycle diagnostics.
-- Testing: Step 24 adds reconciliation evaluator and SQLite reverse-lookup coverage.
+- UI: Step 25 embeds Posting status, reconciliation diagnostics and source→Posting→Journal→Reversal trace in the Purchase Documents workspace without commercial/accounting re-entry.
+- Testing: Step 25 adds Desktop UI contract coverage for source binding, permission separation, trace/Journal-Line presentation and no duplicate commercial inputs.
 
 ## Required Fields for Future Entries
 
