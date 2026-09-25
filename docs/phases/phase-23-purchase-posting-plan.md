@@ -2,11 +2,11 @@
 
 ## Status
 
-Steps 1–25 are complete. Steps 26–30 are not started.
+Steps 1–26 are complete. Steps 27–36 are not started.
 
 ## Governance
 
-The 30 step titles, order, scope and ownership boundaries are frozen unless an explicitly approved Change Request is recorded in this canonical phase record. Owner acceptance and executable validation evidence remain separate.
+The 36 step titles, order, scope and ownership boundaries are frozen under approved Change Request CR-23-01. Any further change requires another explicitly approved Change Request in this canonical phase record. Owner acceptance and executable validation evidence remain separate.
 
 Mandatory references:
 
@@ -45,6 +45,7 @@ Mandatory references:
 - [Purchase Posting Argin Bridge Contract](../architecture/purchase-posting-argin-bridge-contract.md)
 - [Purchase Posting Permissions, Audit and Traceability](../security/purchase-posting-security-audit-traceability.md)
 - [Purchase-to-Ledger Reconciliation](../architecture/purchase-posting-reconciliation.md)
+- [Purchase Fulfillment and Accounting Policy](../architecture/purchase-fulfillment-accounting-policy.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -181,6 +182,28 @@ Bridge design requirements:
 
 Live transport is not implemented in Phase 23.
 
+## Approved Change Request — CR-23-01 — Complete Purchase Fulfillment-to-Ledger Workflow
+
+**Approved:** 2026-09-25
+
+### Reason
+
+UI acceptance testing after Step 25 exposed a real orchestration gap: a confirmed Supplier Invoice could be correctly identified as posting-capable, while the user still had no complete ERP workflow connecting stock fulfillment, matching and Purchase Posting to an Accounting Journal without manual re-entry.
+
+The phase is therefore extended before its test/documentation/release gates so that final validation covers the completed workflow rather than the earlier partial workflow.
+
+### Approved plan change
+
+- Insert six implementation/hardening steps after Step 25.
+- Move the former Steps 26–30 test/documentation/release gates to Steps 32–36 unchanged in responsibility.
+- Preserve all completed Steps 1–25 and their evidence.
+- Keep Inventory quantity authority in Inventory, valuation authority in Inventory Valuation, commercial authority in Purchase and Journal authority in Accounting.
+- Keep Purchase Order non-posting.
+- Require stock-product fulfillment/matching before final Supplier Invoice accounting eligibility.
+- Do not require an Inventory receipt for service/non-stock lines.
+- Support company-level automatic posting or accountant approval; accountant approval triggers the Posting engine and never requires manual re-entry of Journal lines.
+- Keep the design Argin Bridge-ready and replay-safe.
+
 ## Step Status
 
 | Step | Title | Status |
@@ -210,11 +233,17 @@ Live transport is not implemented in Phase 23.
 | 23 | Permissions, Audit and Traceability | Completed |
 | 24 | Purchase-to-Ledger Reconciliation | Completed |
 | 25 | Posting UI and Trace Viewer | Completed |
-| 26 | Domain and Application Tests | Not started |
-| 27 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Not started |
-| 28 | Bridge, Replay, Rollback and Failure Tests | Not started |
-| 29 | Documentation, Step Status and Phase Evidence | Not started |
-| 30 | Release, Merge and Phase Closure | Not started |
+| 26 | Purchase Fulfillment & Accounting Policy | Completed |
+| 27 | Invoice-to-Goods-Receipt Workflow | Not started |
+| 28 | Purchase Matching Engine | Not started |
+| 29 | Automatic Purchase Posting Orchestrator | Not started |
+| 30 | Purchase Accounting Workspace UX | Not started |
+| 31 | Purchase Workflow Hardening | Not started |
+| 32 | Domain and Application Tests | Not started |
+| 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Not started |
+| 34 | Bridge, Replay, Rollback and Failure Tests | Not started |
+| 35 | Documentation, Step Status and Phase Evidence | Not started |
+| 36 | Release, Merge and Phase Closure | Not started |
 
 ## Fixed Execution Sequence
 
@@ -243,11 +272,17 @@ Live transport is not implemented in Phase 23.
 23. Permissions, Audit and Traceability
 24. Purchase-to-Ledger Reconciliation
 25. Posting UI and Trace Viewer
-26. Domain and Application Tests
-27. End-to-End SQLite/Purchase/Valuation/Posting Tests
-28. Bridge, Replay, Rollback and Failure Tests
-29. Documentation, Step Status and Phase Evidence
-30. Release, Merge and Phase Closure
+26. Purchase Fulfillment & Accounting Policy
+27. Invoice-to-Goods-Receipt Workflow
+28. Purchase Matching Engine
+29. Automatic Purchase Posting Orchestrator
+30. Purchase Accounting Workspace UX
+31. Purchase Workflow Hardening
+32. Domain and Application Tests
+33. End-to-End SQLite/Purchase/Valuation/Posting Tests
+34. Bridge, Replay, Rollback and Failure Tests
+35. Documentation, Step Status and Phase Evidence
+36. Release, Merge and Phase Closure
 
 ## Step 1 — Baseline, Branch, Scope and Plan Freeze
 
@@ -1701,4 +1736,53 @@ pnpm --filter @argin/purchase-posting-tauri test
 pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 pnpm --filter @argin/desktop build
+```
+
+## Step 26 — Purchase Fulfillment & Accounting Policy
+
+### Completed work
+
+- Recorded CR-23-01 and expanded Phase 23 from 30 to 36 steps so the new fulfillment/matching/orchestration work is completed before final test, documentation and release gates.
+- Added the canonical [Purchase Fulfillment and Accounting Policy](../architecture/purchase-fulfillment-accounting-policy.md).
+- Frozen company posting modes as `automatic` and `accountant-approval`.
+- Frozen stock-line accounting eligibility as `full-receipt-before-posting`.
+- Frozen service and non-stock lines as not requiring Inventory receipt fulfillment.
+- Added deterministic Supplier Invoice accounting-eligibility evaluation to `@argin/purchase-posting`.
+- Added explicit eligibility states: `blocked`, `ready-for-automatic-posting`, and `awaiting-accountant-approval`.
+- Added explicit reason codes for non-confirmed source, missing stock receipt, partial stock receipt and completed fulfillment.
+- Preserved Step 5 accounting-event classification; Step 26 adds the orchestration gate instead of rewriting historical event semantics.
+- Preserved module authority boundaries: Purchase commercial facts, Inventory quantity, Valuation cost, Purchase Posting orchestration and Accounting Journal ownership remain separate.
+- Preserved the Argin Bridge rule that derived eligibility is rebuildable and not an independent synchronization authority.
+- Added focused domain tests for stock, service, non-stock, mixed invoices, posting modes and inconsistent fulfillment declarations.
+
+### Exit criteria
+
+- [x] The Phase 23 extension is recorded as an approved Change Request.
+- [x] Final test/documentation/release gates now follow the newly inserted implementation steps.
+- [x] Stock products require complete authoritative receipt fulfillment before Supplier Invoice Posting eligibility.
+- [x] Partial receipt remains operationally valid but blocks final Supplier Invoice Posting eligibility.
+- [x] Service and non-stock lines do not require Inventory receipt.
+- [x] Mixed invoices evaluate stock fulfillment without inventing receipt requirements for service/non-stock lines.
+- [x] Automatic and accountant-approval posting modes are explicit domain policy.
+- [x] Accountant approval means approval to run Posting, not manual Journal entry.
+- [x] Purchase/Inventory/Valuation/Accounting ownership boundaries remain unchanged.
+- [x] The policy is persistence-neutral and Bridge-ready.
+- [x] Step 26 domain behavior has focused executable tests.
+
+### Validation evidence
+
+- Added `packages/purchase-posting/src/domain/purchase-fulfillment-accounting-policy.ts`.
+- Added `packages/purchase-posting/tests/purchase-fulfillment-accounting-policy.test.ts`.
+- Exported the new public policy contracts from `packages/purchase-posting/src/index.ts`.
+- Added `docs/architecture/purchase-fulfillment-accounting-policy.md`.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+pnpm install --frozen-lockfile
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
 ```
