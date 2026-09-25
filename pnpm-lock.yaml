@@ -238,6 +238,12 @@ importers:
       '@argin/purchase-tauri':
         specifier: workspace:*
         version: link:../../packages/purchase-tauri
+      '@argin/purchase-posting':
+        specifier: workspace:*
+        version: link:../../packages/purchase-posting
+      '@argin/purchase-posting-tauri':
+        specifier: workspace:*
+        version: link:../../packages/purchase-posting-tauri
       '@argin/security':
         specifier: workspace:*
         version: link:../../packages/security
