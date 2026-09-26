@@ -744,7 +744,8 @@ export function PurchaseDocumentsPage() {
                       </span>
                     )}
                     {selected?.documentType === "supplier-invoice" && selected.status === "confirmed" &&
-                      detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
+                      detail.inventoryReceipts.length === 1 &&
+                      detail.inventoryReceipts[0]?.status === "confirmed" &&
                       can(purchasePermissions.manageMatching) && can(purchasePermissions.resolveCost) && (
                         <button disabled={saving} onClick={() => void resolveReceiptCost()}>
                           تطبیق و ثبت هزینه رسید
@@ -869,6 +870,35 @@ export function PurchaseDocumentsPage() {
                       </strong>
                     </div>
                   </div>
+                  {detail.document.documentType === "supplier-invoice" &&
+                    detail.receiptFulfillment.length > 0 && (
+                    <section className="purchase-receipt-progress" aria-label="وضعیت دریافت انبار">
+                      <header>
+                        <strong>وضعیت دریافت انبار</strong>
+                        <span>
+                          {detail.receiptFulfillment.every(line => line.remainingBaseQuantity === "0")
+                            ? "تخصیص کامل"
+                            : "در انتظار تکمیل دریافت"}
+                        </span>
+                      </header>
+                      {detail.receiptFulfillment.map(line => (
+                        <div className="purchase-receipt-progress__line" key={line.purchaseLineId}>
+                          <span>{line.itemDisplayName}</span>
+                          <span dir="ltr">فاکتور: {line.invoicedBaseQuantity}</span>
+                          <span dir="ltr">تخصیص‌یافته: {line.allocatedBaseQuantity}</span>
+                          <strong dir="ltr">باقیمانده: {line.remainingBaseQuantity} {line.baseUnitTitle}</strong>
+                        </div>
+                      ))}
+                      {detail.inventoryReceipts.length > 0 && (
+                        <small>
+                          رسیدهای مرتبط: {detail.inventoryReceipts.map(receipt =>
+                            (receipt.documentNumber ?? "بدون شماره") + " (" +
+                            (RECEIPT_STATUS_LABELS[receipt.status] ?? receipt.status) + ")"
+                          ).join("، ")}
+                        </small>
+                      )}
+                    </section>
+                  )}
                   <div className="purchase-lines-wrap">
                     <table className="purchase-lines">
                       <thead>
