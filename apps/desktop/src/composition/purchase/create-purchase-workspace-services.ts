@@ -772,65 +772,88 @@ export function createPurchaseWorkspaceServices(input: {
       return refreshed.matching;
     },
     async resolveReceiptCost(document) {
-      const current = await uow.execute(context => context.documents.findById(document.companyId, document.documentId));
-      if (!current) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+      const currentDetail = await this.get(document.companyId, document.documentId);
+      if (!currentDetail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+      const current = currentDetail.document;
       await authorization.require({ branchId: current.scope.branchId }, "purchases.matching.manage");
       await authorization.require({ branchId: current.scope.branchId }, "purchases.cost-resolution.manage");
       if (current.documentType !== "supplier-invoice" || current.status !== "confirmed") {
-        throw new Error("تطبیق خودکار فقط برای فاکتور تأمین‌کننده قطعی مجاز است.");
+        throw new Error("ثبت مبنای هزینه فقط برای فاکتور تأمین‌کننده قطعی مجاز است.");
       }
-      const linked = await findReceipt(current);
-      const receipt = linked && await inventoryDocuments.findById(current.companyId, linked.documentId);
-      if (!receipt || receipt.documentType !== "receipt" || receipt.status !== "confirmed" ||
-          receipt.scope?.branchId !== current.scope.branchId) {
-        throw new Error("رسید مرتبط باید در همان شعبه قطعی شده باشد.");
+      if (currentDetail.matching?.status !== "matched") {
+        throw new Error("ابتدا تطبیق خرید را کامل کنید.");
       }
-      const movements = await database.query<{ movement_id: string; line_id: string }>(
-        "SELECT movement_id,line_id FROM inventory_stock_movements WHERE company_id=? AND document_id=? AND reversal_of_movement_id IS NULL",
-        [current.companyId, receipt.documentId]);
-      if (!movements.length) throw new Error("گردش قطعی موجودی برای این رسید یافت نشد.");
-      // Preflight every movement so a pre-existing manual basis is never overwritten.
-      for (const movement of movements) {
+
+      const confirmedReceipts: InventoryDocumentSnapshot[] = [];
+      for (const receiptRef of currentDetail.inventoryReceipts) {
+        const receipt = await inventoryDocuments.findById(current.companyId, receiptRef.documentId);
+        if (!receipt || receipt.documentType !== "receipt" || receipt.status !== "confirmed" ||
+            receipt.scope?.branchId !== current.scope.branchId) continue;
+        confirmedReceipts.push(receipt);
+      }
+      if (!confirmedReceipts.length) {
+        throw new Error("رسید قطعی مرتبط در همان شعبه یافت نشد.");
+      }
+
+      const allMovements: Array<{ receipt: InventoryDocumentSnapshot; movement_id: string; line_id: string }> = [];
+      for (const receipt of confirmedReceipts) {
+        const movements = await database.query<{ movement_id: string; line_id: string }>(
+          "SELECT movement_id,line_id FROM inventory_stock_movements WHERE company_id=? AND document_id=? AND reversal_of_movement_id IS NULL",
+          [current.companyId, receipt.documentId],
+        );
+        for (const movement of movements) allMovements.push({ receipt, ...movement });
+      }
+      if (!allMovements.length) throw new Error("گردش قطعی موجودی برای رسیدهای مرتبط یافت نشد.");
+
+      for (const movement of allMovements) {
         const cost = await database.queryOne<{ basis_line_id: string }>(
           "SELECT basis_line_id FROM inventory_valuation_cost_inputs WHERE company_id=? AND movement_id=?",
-          [current.companyId, movement.movement_id]);
+          [current.companyId, movement.movement_id],
+        );
         if (cost && cost.basis_line_id !== `purchase-cost:${movement.movement_id}`) {
-          throw new Error("برای این رسید قبلاً مبنای هزینه دیگری ثبت شده است؛ اصلاح هزینه باید از مسیر ارزش‌گذاری انجام شود.");
+          throw new Error("برای یکی از رسیدها قبلاً مبنای هزینه دیگری ثبت شده است؛ اصلاح هزینه باید از مسیر ارزش‌گذاری انجام شود.");
+        }
+        const line = movement.receipt.lines.find(item => item.lineId === movement.line_id);
+        const source = line?.sourceReference;
+        if (!line?.operation || source?.sourceSystem !== "purchase" ||
+            source.documentId !== current.documentId || !source.lineId) {
+          throw new Error("ارتباط ردیف رسید با ردیف فاکتور مشخص نیست.");
+        }
+        const existing = await uow.execute(context =>
+          context.matches.listByReceiptLine(current.companyId, movement.receipt.documentId, line.lineId));
+        const coverage = calculatePurchaseMatchingStatus(
+          line.operation.quantity.baseQuantity,
+          existing.map(match => match.matchedBaseQuantity),
+        );
+        if (coverage.status !== "fully-matched" ||
+            existing.some(match =>
+              match.invoiceDocumentId !== current.documentId ||
+              match.invoiceLineId !== source.lineId)) {
+          throw new Error("یکی از رسیدهای قطعی هنوز به‌طور کامل با فاکتور تطبیق نشده است.");
         }
       }
-      for (const movement of movements) {
-        const line = receipt.lines.find(item => item.lineId === movement.line_id);
-        const source = line?.sourceReference;
-        if (!line?.operation || source?.sourceSystem !== "purchase" || source.documentId !== current.documentId || !source.lineId) {
-          throw new Error("ارتباط ردیف رسید با ردیف فاکتور مشخص نیست؛ تطبیق خودکار امکان‌پذیر نیست.");
-        }
-        const existing = await uow.execute(context => context.matches.listByReceiptLine(current.companyId, receipt.documentId, line.lineId));
-        const coverage = calculatePurchaseMatchingStatus(line.operation.quantity.baseQuantity, existing.map(match => match.matchedBaseQuantity));
-        if (coverage.status === "partially-matched" || existing.some(match => match.invoiceDocumentId !== current.documentId || match.invoiceLineId !== source.lineId)) {
-          throw new Error("این رسید قبلاً تطبیق متفاوت یا جزئی دارد؛ تطبیق موجود باید بررسی شود.");
-        }
-        const context = (key: string) => ({
-          companyId: current.companyId, branchId: current.scope.branchId,
-          requestId: key, operationId: key, payloadFingerprint: key,
-          actorUserId: actor.id, occurredAt: now(),
-        });
-        if (coverage.status === "unmatched") {
-          const matchId = `source-match:${current.documentId}:${line.lineId}`;
-          await secured.matchReceiptInvoice(security, {
-            context: context(matchId),
-            match: { matchId, companyId: current.companyId,
-              invoiceDocumentId: current.documentId, invoiceLineId: source.lineId,
-              receiptDocumentId: receipt.documentId, receiptLineId: line.lineId,
-              productId: line.productId, matchedBaseQuantity: line.operation.quantity.baseQuantity },
-          });
-        }
-        const costInputId = `purchase-cost:${movement.movement_id}`;
+
+      for (const movement of allMovements) {
+        const key = `purchase-cost:${movement.movement_id}`;
         const result = await secured.resolveMovementCost(security, {
-          context: context(costInputId), movementId: movement.movement_id, costInputId,
+          context: {
+            companyId: current.companyId,
+            branchId: current.scope.branchId,
+            requestId: key,
+            operationId: key,
+            payloadFingerprint: key,
+            actorUserId: actor.id,
+            occurredAt: now(),
+          },
+          movementId: movement.movement_id,
+          costInputId: key,
         });
-        if (result.status !== "resolved") throw new Error("تطبیق انجام شد اما مبنای هزینه فاکتور هنوز کامل نیست.");
+        if (result.status !== "resolved") {
+          throw new Error("مبنای هزینه یکی از دریافت‌های تطبیق‌شده هنوز قابل حل نیست.");
+        }
       }
     },
+
     async stageInventoryReceipt(document, warehouseId, quantitiesByLine) {
       await authorization.require({ branchId: document.scope.branchId }, "purchases.receipts.stage");
       const detail = await this.get(document.companyId, document.documentId);
