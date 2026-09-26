@@ -106,3 +106,24 @@ test("Purchase workspace exposes linked return and correction document workflows
   assert.match(composition, /returnPurchase/u);
   assert.match(composition, /correct/u);
 });
+
+
+test("Phase 23 Step 27 supports invoice-to-receipt no-reentry and partial fulfillment UX", async () => {
+  const [page, composition, migration] = await Promise.all([
+    read("src/pages/purchase/purchase-documents-page.tsx"),
+    read("src/composition/purchase/create-purchase-workspace-services.ts"),
+    read("src-tauri/migrations/0034_purchase_partial_receipts.sql"),
+  ]);
+
+  assert.match(page, /ایجاد رسید انبار از فاکتور/u);
+  assert.match(page, /ایجاد رسید برای باقیمانده/u);
+  assert.match(page, /قبلاً تخصیص‌یافته/u);
+  assert.match(page, /باقیمانده/u);
+  assert.match(page, /receiptQuantities/u);
+  assert.match(composition, /inventoryDocuments\.listBySource/u);
+  assert.match(composition, /remainingBaseQuantity/u);
+  assert.match(composition, /quantitiesByLine/u);
+  assert.match(migration, /DROP INDEX IF EXISTS uq_inventory_documents_source/u);
+  assert.match(migration, /CREATE INDEX IF NOT EXISTS ix_inventory_documents_source/u);
+  assert.doesNotMatch(page, /حساب بدهکار|حساب بستانکار/u);
+});
