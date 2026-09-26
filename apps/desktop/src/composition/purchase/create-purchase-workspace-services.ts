@@ -22,6 +22,9 @@ import {
   calculatePurchaseDocumentTotals,
   calculatePurchaseMatchingStatus,
   calculatePurchaseLineTotals,
+  createPurchaseMatchingPolicy,
+  evaluatePurchaseMatching,
+  type PurchaseMatchingEvaluation,
   createPurchaseApplicationServices,
   createPurchaseCommercialTerms,
   createPurchaseItemSnapshot,
@@ -76,6 +79,7 @@ export interface PurchaseWorkspaceDetail {
   readonly inventoryReceipt: Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version"> | null;
   readonly inventoryReceipts: readonly Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version">[];
   readonly receiptFulfillment: readonly PurchaseReceiptFulfillmentLine[];
+  readonly matching: PurchaseMatchingEvaluation | null;
 }
 
 export interface PurchaseWorkspaceDraftInput {
@@ -91,6 +95,7 @@ export interface PurchaseWorkspaceDraftInput {
 }
 
 export interface PurchaseWorkspaceServices {
+  matchConfirmedReceipts(document: PurchaseDocumentSnapshot): Promise<PurchaseMatchingEvaluation>;
   resolveReceiptCost(document: PurchaseDocumentSnapshot): Promise<void>;
   readonly can: (permission: PurchasePermission | string) => boolean;
   list(companyId: string, branchId: string, search: string): Promise<readonly PurchaseDocumentSnapshot[]>;
@@ -456,6 +461,91 @@ export function createPurchaseWorkspaceServices(input: {
     };
   };
 
+  async function evaluateMatching(detail: PurchaseWorkspaceDetail): Promise<PurchaseMatchingEvaluation | null> {
+    const invoice = detail.document;
+    if (invoice.documentType !== "supplier-invoice" || invoice.status !== "confirmed") return null;
+
+    const invoiceLines = [];
+    for (const line of invoice.lines.filter(item => item.lineKind === "stock-product")) {
+      const fact = detail.commercialFacts.find(item => item.purchaseLineId === line.lineId);
+      if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
+      invoiceLines.push({
+        invoiceLineId: line.lineId,
+        productId: line.itemId,
+        baseQuantity: fact.commercialTerms.quantity.baseQuantity,
+        unitPriceAmount: fact.commercialTerms.unitPrice.amount,
+        orderLineId:
+          line.sourceReference?.sourceSystem === "purchase"
+            ? line.sourceReference.sourceLineId
+            : null,
+      });
+    }
+    if (!invoiceLines.length) return null;
+
+    const receiptLines = [];
+    for (const receiptRef of detail.inventoryReceipts) {
+      const receipt = await inventoryDocuments.findById(invoice.companyId, receiptRef.documentId);
+      if (!receipt || receipt.status !== "confirmed") continue;
+      for (const line of receipt.lines) {
+        if (!line.operation ||
+            line.sourceReference?.sourceSystem !== "purchase" ||
+            line.sourceReference.documentId !== invoice.documentId ||
+            !line.sourceReference.lineId) continue;
+        receiptLines.push({
+          receiptDocumentId: receipt.documentId,
+          receiptLineId: line.lineId,
+          sourceInvoiceLineId: line.sourceReference.lineId,
+          productId: line.productId,
+          baseQuantity: line.operation.quantity.baseQuantity,
+        });
+      }
+    }
+
+    const existingMatches = [];
+    for (const line of invoiceLines) {
+      existingMatches.push(...await uow.execute(context =>
+        context.matches.listByInvoiceLine(invoice.companyId, invoice.documentId, line.invoiceLineId)));
+    }
+
+    let orderLines: Array<{
+      orderLineId: string;
+      productId: string;
+      baseQuantity: string;
+      unitPriceAmount: number;
+    }> | undefined;
+    const orderId =
+      invoice.sourceReference?.sourceSystem === "purchase"
+        ? invoice.sourceReference.sourceDocumentId
+        : null;
+    if (orderId) {
+      const order = await uow.execute(context => context.documents.findById(invoice.companyId, orderId));
+      if (order?.documentType === "purchase-order" && order.status === "confirmed") {
+        const orderFacts = await uow.execute(context => context.commercialFacts.listByDocument(invoice.companyId, order.documentId));
+        orderLines = order.lines
+          .filter(line => line.lineKind === "stock-product")
+          .flatMap(line => {
+            const fact = orderFacts.find(item => item.purchaseLineId === line.lineId);
+            return fact ? [{
+              orderLineId: line.lineId,
+              productId: line.itemId,
+              baseQuantity: fact.commercialTerms.quantity.baseQuantity,
+              unitPriceAmount: fact.commercialTerms.unitPrice.amount,
+            }] : [];
+          });
+      }
+    }
+
+    return evaluatePurchaseMatching({
+      invoiceLines,
+      receiptLines,
+      existingMatches,
+      orderLines,
+      // Step 28 freezes exact quantity and zero price variance by default.
+      // A configurable company tolerance can replace this value in the settings step.
+      policy: createPurchaseMatchingPolicy(0),
+    });
+  }
+
   async function prepareDraft(args: PurchaseWorkspaceDraftInput, previous?: PurchaseWorkspaceDetail) {
     if (!args.lines.length) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "lines");
     const year = await fiscalYears.findById(args.fiscalYearId);
@@ -576,7 +666,7 @@ export function createPurchaseWorkspaceServices(input: {
             remainingBaseQuantity: quantitySubtract(invoiced, allocated),
           });
         });
-      return {
+      const baseDetail: PurchaseWorkspaceDetail = {
         document, commercialFacts: facts, lineTotals: Object.freeze(lineTotals),
         totals: calculatePurchaseDocumentTotals(Object.values(lineTotals)),
         inventoryReceipt: activeReceipts[0] ?? null,
@@ -587,6 +677,11 @@ export function createPurchaseWorkspaceServices(input: {
           version: receipt.version,
         }))),
         receiptFulfillment: Object.freeze(receiptFulfillment),
+        matching: null,
+      };
+      return {
+        ...baseDetail,
+        matching: await evaluateMatching(baseDetail),
       };
     },
     selectSuppliers: (companyId, search) => parties.select({
@@ -639,6 +734,43 @@ export function createPurchaseWorkspaceServices(input: {
       ...lifecycleCommand(document, "correct", reason),
       relatedDocumentId,
     }),
+    async matchConfirmedReceipts(document) {
+      const current = await this.get(document.companyId, document.documentId);
+      if (!current) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+      await authorization.require({ branchId: current.document.scope.branchId }, "purchases.matching.manage");
+      if (current.document.documentType !== "supplier-invoice" || current.document.status !== "confirmed") {
+        throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "matchingSource");
+      }
+      const evaluation = current.matching;
+      if (!evaluation) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "matching");
+      for (const proposal of evaluation.proposals) {
+        const key = `auto-match:${current.document.documentId}:${proposal.receiptDocumentId}:${proposal.receiptLineId}`;
+        await secured.matchReceiptInvoice(security, {
+          context: {
+            companyId: current.document.companyId,
+            branchId: current.document.scope.branchId,
+            requestId: key,
+            operationId: key,
+            payloadFingerprint: fingerprint(proposal),
+            actorUserId: actor.id,
+            occurredAt: now(),
+          },
+          match: {
+            matchId: key,
+            companyId: current.document.companyId,
+            invoiceDocumentId: current.document.documentId,
+            invoiceLineId: proposal.invoiceLineId,
+            receiptDocumentId: proposal.receiptDocumentId,
+            receiptLineId: proposal.receiptLineId,
+            productId: proposal.productId,
+            matchedBaseQuantity: proposal.matchedBaseQuantity,
+          },
+        });
+      }
+      const refreshed = await this.get(document.companyId, document.documentId);
+      if (!refreshed?.matching) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "matching");
+      return refreshed.matching;
+    },
     async resolveReceiptCost(document) {
       const current = await uow.execute(context => context.documents.findById(document.companyId, document.documentId));
       if (!current) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
