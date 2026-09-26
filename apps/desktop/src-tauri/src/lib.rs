@@ -63,6 +63,7 @@ fn database_migrations() -> Vec<Migration> {
         Migration { version: 31, description: "purchase_scope_snapshot", sql: include_str!("../migrations/0031_purchase_scope_snapshot.sql"), kind: MigrationKind::Up },
         Migration { version: 32, description: "purchase_replay_safety", sql: include_str!("../migrations/0032_purchase_replay_safety.sql"), kind: MigrationKind::Up },
         Migration { version: 33, description: "purchase_posting", sql: include_str!("../migrations/0033_purchase_posting.sql"), kind: MigrationKind::Up },
+        Migration { version: 34, description: "purchase_partial_receipts", sql: include_str!("../migrations/0034_purchase_partial_receipts.sql"), kind: MigrationKind::Up },
     ]
 }
 
