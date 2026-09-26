@@ -196,6 +196,58 @@
   border-radius: 8px;
   background: #f8fafc;
 }
+
+.purchase-receipt-progress {
+  display: grid;
+  gap: var(--ui-density-gap);
+  margin-bottom: var(--ui-density-section-gap);
+  padding: var(--ui-density-panel-padding);
+  border: 1px solid #d9e2f2;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+.purchase-receipt-progress > header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ui-density-gap);
+}
+.purchase-receipt-progress__line,
+.purchase-receipt-lines__header,
+.purchase-receipt-lines__row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.5fr) repeat(4, minmax(110px, .8fr));
+  gap: var(--ui-density-gap);
+  align-items: center;
+}
+.purchase-receipt-progress__line {
+  min-height: var(--ui-density-row-height);
+  padding: var(--ui-density-cell-y) 0;
+  border-top: 1px solid #e8eef7;
+}
+.purchase-receipt-progress small { color: #667085; }
+.purchase-receipt-lines {
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+.purchase-receipt-lines__header,
+.purchase-receipt-lines__row {
+  min-width: 720px;
+  padding: var(--ui-density-cell-y) var(--ui-density-cell-x);
+}
+.purchase-receipt-lines__header {
+  background: #f8fafc;
+  color: #475467;
+  font-size: .78rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.purchase-receipt-lines__row + .purchase-receipt-lines__row {
+  border-top: 1px solid #edf0f4;
+}
+.purchase-receipt-lines__row input {
+  min-width: 110px;
+}
+
 @media (max-width: 1050px) {
   .purchase-workspace__grid { grid-template-columns: 1fr; }
   .purchase-list { max-height: 340px; }
