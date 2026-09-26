@@ -127,3 +127,24 @@ test("Phase 23 Step 27 supports invoice-to-receipt no-reentry and partial fulfil
   assert.match(migration, /CREATE INDEX IF NOT EXISTS ix_inventory_documents_source/u);
   assert.doesNotMatch(page, /حساب بدهکار|حساب بستانکار/u);
 });
+
+
+test("Phase 23 Step 28 exposes multi-receipt Purchase Matching Engine and matching workspace", async () => {
+  const [page, composition] = await Promise.all([
+    read("src/pages/purchase/purchase-documents-page.tsx"),
+    read("src/composition/purchase/create-purchase-workspace-services.ts"),
+  ]);
+
+  assert.match(page, /تطبیق رسیدهای قطعی/u);
+  assert.match(page, /تطبیق دوطرفه/u);
+  assert.match(page, /تطبیق سه‌طرفه/u);
+  assert.match(page, /تطبیق‌شده/u);
+  assert.match(page, /دارای اختلاف/u);
+  assert.match(composition, /evaluatePurchaseMatching/u);
+  assert.match(composition, /createPurchaseMatchingPolicy/u);
+  assert.match(composition, /matchConfirmedReceipts/u);
+  assert.match(composition, /listByInvoiceLine/u);
+  assert.match(composition, /auto-match:/u);
+  assert.match(composition, /orderPriceVarianceBasisPoints|priceWithinTolerance/u);
+  assert.doesNotMatch(page, /حساب بدهکار|حساب بستانکار/u);
+});
