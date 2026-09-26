@@ -623,6 +623,28 @@ export function PurchaseDocumentsPage() {
     }
   };
 
+  const matchConfirmedReceipts = async () => {
+    if (!services || !selected) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await services.matchConfirmedReceipts(selected);
+      await openDocument(selected.documentId);
+      setMessage(
+        result.status === "matched"
+          ? "تطبیق خرید کامل شد."
+          : result.status === "variance"
+            ? "تطبیق انجام شد اما اختلاف سفارش/فاکتور نیاز به بررسی دارد."
+            : "رسیدهای قطعی موجود تطبیق شدند؛ هنوز بخشی از مقدار فاکتور دریافت نشده است.",
+      );
+    } catch (error) {
+      setError(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const resolveReceiptCost = async () => {
     if (!services || !selected) return;
     setSaving(true);
@@ -743,12 +765,24 @@ export function PurchaseDocumentsPage() {
                           : "تحویل/تخصیص جزئی"}
                       </span>
                     )}
-                    {selected?.documentType === "supplier-invoice" && selected.status === "confirmed" &&
+                    {selected?.documentType === "supplier-invoice" &&
+                      selected.status === "confirmed" &&
+                      detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
+                      detail.matching &&
+                      detail.matching.status !== "matched" &&
+                      can(purchasePermissions.manageMatching) && (
+                        <button disabled={saving} onClick={() => void matchConfirmedReceipts()}>
+                          تطبیق رسیدهای قطعی
+                        </button>
+                      )}
+                    {selected?.documentType === "supplier-invoice" &&
+                      selected.status === "confirmed" &&
+                      detail.matching?.status === "matched" &&
                       detail.inventoryReceipts.length === 1 &&
                       detail.inventoryReceipts[0]?.status === "confirmed" &&
-                      can(purchasePermissions.manageMatching) && can(purchasePermissions.resolveCost) && (
+                      can(purchasePermissions.resolveCost) && (
                         <button disabled={saving} onClick={() => void resolveReceiptCost()}>
-                          تطبیق و ثبت هزینه رسید
+                          ثبت مبنای هزینه رسید
                         </button>
                       )}
                     {selected?.status === "draft" && can(purchasePermissions.edit) && (
@@ -959,6 +993,46 @@ export function PurchaseDocumentsPage() {
                       </tbody>
                     </table>
                   </div>
+                  {detail.document.documentType === "supplier-invoice" && detail.matching && (
+                    <section className="purchase-matching" aria-label="تطبیق خرید">
+                      <header>
+                        <div>
+                          <strong>تطبیق خرید</strong>
+                          <small>
+                            {detail.matching.mode === "three-way"
+                              ? "تطبیق سه‌طرفه: سفارش خرید + رسید انبار + فاکتور"
+                              : "تطبیق دوطرفه: رسید انبار + فاکتور"}
+                          </small>
+                        </div>
+                        <span className="status">
+                          {detail.matching.status === "matched"
+                            ? "تطبیق کامل"
+                            : detail.matching.status === "partially-matched"
+                              ? "تطبیق جزئی"
+                              : detail.matching.status === "variance"
+                                ? "دارای اختلاف"
+                                : "بدون تطبیق"}
+                        </span>
+                      </header>
+                      {detail.matching.lines.map(line => (
+                        <div className="purchase-matching__line" key={line.invoiceLineId}>
+                          <span>{detail.document.lines.find(item => item.lineId === line.invoiceLineId)?.itemSnapshot.displayName ?? line.productId}</span>
+                          <span dir="ltr">فاکتور: {line.invoiceBaseQuantity}</span>
+                          <span dir="ltr">تطبیق‌شده: {line.matchedBaseQuantity}</span>
+                          <strong dir="ltr">باقیمانده: {line.remainingBaseQuantity}</strong>
+                          {detail.matching?.mode === "three-way" && (
+                            <span>
+                              {line.orderQuantityVariance
+                                ? "اختلاف مقدار سفارش"
+                                : !line.priceWithinTolerance
+                                  ? "اختلاف قیمت خارج از تلرانس"
+                                  : "سفارش منطبق"}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </section>
+                  )}
                   <PurchasePostingPanel
                     services={postingServices}
                     companyId={detail.document.companyId}
