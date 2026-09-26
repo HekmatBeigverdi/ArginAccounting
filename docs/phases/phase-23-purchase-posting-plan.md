@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–27 are complete. Steps 28–36 are not started.
+Steps 1–28 are complete. Steps 29–36 are not started.
 
 ## Governance
 
@@ -47,6 +47,7 @@ Mandatory references:
 - [Purchase-to-Ledger Reconciliation](../architecture/purchase-posting-reconciliation.md)
 - [Purchase Fulfillment and Accounting Policy](../architecture/purchase-fulfillment-accounting-policy.md)
 - [Invoice-to-Goods-Receipt Workflow](../architecture/purchase-invoice-to-goods-receipt-workflow.md)
+- [Purchase Matching Engine](../architecture/purchase-matching-engine.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -236,7 +237,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 25 | Posting UI and Trace Viewer | Completed |
 | 26 | Purchase Fulfillment & Accounting Policy | Completed |
 | 27 | Invoice-to-Goods-Receipt Workflow | Completed |
-| 28 | Purchase Matching Engine | Not started |
+| 28 | Purchase Matching Engine | Completed |
 | 29 | Automatic Purchase Posting Orchestrator | Not started |
 | 30 | Purchase Accounting Workspace UX | Not started |
 | 31 | Purchase Workflow Hardening | Not started |
@@ -1853,4 +1854,71 @@ pnpm --filter @argin/desktop test
 pnpm --filter @argin/desktop build
 
 cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+```
+
+## Step 28 — Purchase Matching Engine
+
+### Completed work
+
+- Added the canonical [Purchase Matching Engine](../architecture/purchase-matching-engine.md).
+- Added deterministic two-way matching for confirmed Supplier Invoice ↔ confirmed Inventory receipts.
+- Added three-way matching capability when the Supplier Invoice carries durable Purchase Order source references.
+- Added per-line and overall matching states: `unmatched`, `partially-matched`, `matched`, and `variance`.
+- Added deterministic matching proposals across multiple confirmed partial receipts.
+- Existing immutable receipt/invoice match facts are respected; only uncovered receipt quantity is proposed.
+- Added exact quantity control and price-variance evaluation in basis points.
+- Frozen Step 28 desktop baseline at exact quantity and zero price tolerance; the policy contract supports later company-level tolerance configuration.
+- Quantity/product mismatch and over-match protection remain enforced by existing Purchase matching invariants.
+- Added a secured desktop action that persists proposed matches through `SecuredPurchaseService.matchReceiptInvoice`; UI does not write matching tables directly.
+- Added matching summary to the Purchase workspace showing mode, invoice quantity, matched quantity, remaining quantity and PO variance state.
+- Added the user action **تطبیق رسیدهای قطعی** for authorized users.
+- Extended Purchase-derived valuation cost resolution so a fully matched Supplier Invoice can resolve all confirmed partial receipts, not only one receipt.
+- Kept Journal creation outside Step 28; matching completion becomes an input to Step 29 Posting orchestration.
+- Preserved Argin Bridge durable match identity and rebuildable matching projections.
+- Added focused domain tests and Desktop contract coverage.
+
+### Exit criteria
+
+- [x] Two-way Invoice ↔ Receipt matching is deterministic.
+- [x] Multiple confirmed partial receipts can satisfy one invoice line.
+- [x] Existing immutable matches are replay-safe inputs and are not duplicated.
+- [x] Remaining quantity is calculated exactly in base quantity.
+- [x] Three-way PO ↔ Receipt ↔ Invoice evaluation is supported when durable PO references exist.
+- [x] PO quantity variance is surfaced.
+- [x] PO/Invoice price variance is calculated in basis points.
+- [x] Out-of-policy variance prevents a fully eligible match result.
+- [x] Match persistence goes through secured Purchase Application boundaries.
+- [x] Purchase workspace exposes matching mode/status and line-level evidence.
+- [x] No duplicate commercial or accounting data entry is introduced.
+- [x] Multi-receipt valuation cost resolution requires complete receipt-line matching.
+- [x] Step 29 remains the owner of Journal Posting orchestration.
+- [x] Matching summaries remain derived/rebuildable for Argin Bridge.
+
+### Validation evidence
+
+- Added `packages/purchase/src/domain/purchase-matching-engine.ts`.
+- Added `packages/purchase/tests/purchase-matching-engine.test.ts`.
+- Exported matching contracts through `packages/purchase/src/index.ts`.
+- Extended `apps/desktop/src/composition/purchase/create-purchase-workspace-services.ts`.
+- Updated `apps/desktop/src/pages/purchase/purchase-documents-page.tsx`.
+- Updated `apps/desktop/src/pages/purchase/purchase-documents-page.css`.
+- Extended `apps/desktop/tests/purchase-workspace-contract.test.ts`.
+- Added `docs/architecture/purchase-matching-engine.md`.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+
+pnpm install --frozen-lockfile
+
+pnpm --filter @argin/purchase typecheck
+pnpm --filter @argin/purchase test
+pnpm --filter @argin/purchase-tauri typecheck
+pnpm --filter @argin/purchase-tauri test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
 ```
