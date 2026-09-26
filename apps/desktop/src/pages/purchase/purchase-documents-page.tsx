@@ -778,11 +778,10 @@ export function PurchaseDocumentsPage() {
                     {selected?.documentType === "supplier-invoice" &&
                       selected.status === "confirmed" &&
                       detail.matching?.status === "matched" &&
-                      detail.inventoryReceipts.length === 1 &&
-                      detail.inventoryReceipts[0]?.status === "confirmed" &&
+                      detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
                       can(purchasePermissions.resolveCost) && (
                         <button disabled={saving} onClick={() => void resolveReceiptCost()}>
-                          ثبت مبنای هزینه رسید
+                          ثبت مبنای هزینه دریافت‌های تطبیق‌شده
                         </button>
                       )}
                     {selected?.status === "draft" && can(purchasePermissions.edit) && (
