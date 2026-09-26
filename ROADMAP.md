@@ -120,7 +120,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Prepared release target: `v0.22.0` — `ArginAccounting v0.22.0 — Purchase Workflow`.
 23. 🚧 Purchase Posting
    - CR-23-01 expands Phase 23 to 36 steps so fulfillment, matching and posting orchestration are completed before final validation/release.
-   - Steps 1–26 completed: Purchase workspace exposes Posting status/trace and the fulfillment-accounting policy now gates stock Supplier Invoices on complete receipt while allowing service/non-stock lines without Inventory receipt.
+   - Steps 1–27 completed: Purchase workspace exposes Posting status/trace; stock Supplier Invoices can now create one or more Inventory receipt drafts directly from the invoice with no commercial re-entry, partial-receipt quantities, and remaining-quantity visibility.
    - Consume Phase 22 Purchase facts and Phase 21 valuation outputs without creating a second purchase-price store.
    - Own supplier payable, purchase/VAT accounting effects, configured Inventory/GRNI treatment, landed-cost accounting, corrections/reversals and reconciliation.
    - Posting must preserve source integrity, balanced Journal output, idempotency, immutable reversal lineage and Argin Bridge-ready durable identity.
@@ -200,7 +200,7 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 23 — Purchase Posting & Accounting Integration is now the current implementation target. CR-23-01 expands the phase to 36 steps; Steps 1–26 are complete on `phase/23-purchase-posting`, based on `main@7f1b615e8e406befa0cf3967134e99d76b456a27`. Step 27 is the next target. Phase 22 semantic Tag/GitHub Release publication remains a separate repository-owner action.
+Phase 23 — Purchase Posting & Accounting Integration is now the current implementation target. CR-23-01 expands the phase to 36 steps; Steps 1–27 are complete on `phase/23-purchase-posting`, based on `main@7f1b615e8e406befa0cf3967134e99d76b456a27`. Step 28 is the next target. Phase 22 semantic Tag/GitHub Release publication remains a separate repository-owner action.
 
 ## Latest Completed Inventory Milestone
 
