@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–26 are complete. Steps 27–36 are not started.
+Steps 1–27 are complete. Steps 28–36 are not started.
 
 ## Governance
 
@@ -46,6 +46,7 @@ Mandatory references:
 - [Purchase Posting Permissions, Audit and Traceability](../security/purchase-posting-security-audit-traceability.md)
 - [Purchase-to-Ledger Reconciliation](../architecture/purchase-posting-reconciliation.md)
 - [Purchase Fulfillment and Accounting Policy](../architecture/purchase-fulfillment-accounting-policy.md)
+- [Invoice-to-Goods-Receipt Workflow](../architecture/purchase-invoice-to-goods-receipt-workflow.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -234,7 +235,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 24 | Purchase-to-Ledger Reconciliation | Completed |
 | 25 | Posting UI and Trace Viewer | Completed |
 | 26 | Purchase Fulfillment & Accounting Policy | Completed |
-| 27 | Invoice-to-Goods-Receipt Workflow | Not started |
+| 27 | Invoice-to-Goods-Receipt Workflow | Completed |
 | 28 | Purchase Matching Engine | Not started |
 | 29 | Automatic Purchase Posting Orchestrator | Not started |
 | 30 | Purchase Accounting Workspace UX | Not started |
@@ -1785,4 +1786,71 @@ git pull origin phase/23-purchase-posting
 pnpm install --frozen-lockfile
 pnpm --filter @argin/purchase-posting typecheck
 pnpm --filter @argin/purchase-posting test
+```
+
+## Step 27 — Invoice-to-Goods-Receipt Workflow
+
+### Completed work
+
+- Added the canonical [Invoice-to-Goods-Receipt Workflow](../architecture/purchase-invoice-to-goods-receipt-workflow.md).
+- Reworked the Purchase workspace action from a one-shot full receipt into a source-driven Supplier Invoice receipt workflow.
+- Confirmed Supplier Invoices can now create an Inventory receipt draft without re-entering supplier, product, unit, price, discount, charge, VAT or accounting values.
+- Added per-stock-line fulfillment summary with invoiced, already allocated and remaining base quantity.
+- Added editable "this receipt" quantity so partial physical deliveries can be captured directly from the invoice.
+- Added the follow-up action "Create receipt for remaining quantity" when a partial receipt already exists.
+- Multiple active Inventory receipt documents can now reference the same Purchase source document while retaining exact source-line references.
+- Added SQLite migration `0034_purchase_partial_receipts.sql` to replace the old unique source-document index with a non-unique trace lookup index.
+- Registered migration 34 in the Tauri desktop migration sequence.
+- Added `SqliteInventoryDocumentRepository.listBySource` while retaining `findBySource` compatibility.
+- Purchase desktop composition now derives remaining quantity from active linked receipt documents; cancelled/reversed receipts do not consume remaining quantity.
+- Receipt staging rejects a requested line quantity above the currently remaining source quantity.
+- Purchase UI now exposes receipt count, fulfillment progress and linked receipt statuses.
+- Kept Inventory as the sole stock-quantity authority; Purchase continues to stage through the Inventory application boundary.
+- Kept multi-receipt matching and matching automation in Step 28 rather than duplicating those rules inside Step 27.
+- Added desktop contract coverage for partial receipt UX and the migration contract.
+
+### Exit criteria
+
+- [x] A confirmed Supplier Invoice can initiate Goods Receipt creation from its own UI.
+- [x] Purchase facts prefill the receipt workflow; commercial data is not re-entered.
+- [x] User selects destination warehouse and actual received quantity only.
+- [x] Partial receipt quantities are supported.
+- [x] Multiple receipts can reference one Supplier Invoice.
+- [x] Remaining quantity is visible per stock line.
+- [x] Over-allocation above remaining quantity is rejected by desktop composition.
+- [x] Cancelled/reversed receipts do not consume remaining quantity.
+- [x] Service/non-stock lines are excluded from Inventory receipt allocation.
+- [x] Source document and source line traceability is preserved.
+- [x] Inventory remains the owner of receipt documents and stock movements.
+- [x] No manual accounting fields are added to the receipt flow.
+- [x] SQLite migration is versioned and registered.
+- [x] Step 28 matching responsibility remains explicit and separate.
+
+### Validation evidence
+
+- Added `docs/architecture/purchase-invoice-to-goods-receipt-workflow.md`.
+- Added `apps/desktop/src-tauri/migrations/0034_purchase_partial_receipts.sql`.
+- Registered migration 34 in `apps/desktop/src-tauri/src/lib.rs`.
+- Extended `SqliteInventoryDocumentRepository` with multi-source receipt listing.
+- Extended Purchase workspace composition with `inventoryReceipts` and `receiptFulfillment`.
+- Updated Purchase UI with partial receipt quantities and fulfillment progress.
+- Extended `apps/desktop/tests/purchase-workspace-contract.test.ts`.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+
+pnpm install --frozen-lockfile
+
+pnpm --filter @argin/inventory-tauri typecheck
+pnpm --filter @argin/purchase typecheck
+pnpm --filter @argin/purchase test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
+
+cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
 ```
