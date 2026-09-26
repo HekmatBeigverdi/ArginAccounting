@@ -708,7 +708,7 @@ export function createPurchaseWorkspaceServices(input: {
         throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptSource");
       }
       const allocations = detail.receiptFulfillment.flatMap(line => {
-        const requested = quantitiesByLine[line.purchaseLineId]?.trim() ?? "0";
+        const requested = quantitiesByLine[line.purchaseLineId]?.trim() || "0";
         if (!quantityIsPositive(requested)) return [];
         if (!quantityLte(requested, line.remainingBaseQuantity)) {
           throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptQuantity");
