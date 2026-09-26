@@ -234,6 +234,7 @@ export function PurchaseDocumentsPage() {
   >(null);
   const [relatedDocumentId, setRelatedDocumentId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
+  const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
   const [warehouses, setWarehouses] = useState<readonly WarehouseListItemDto[]>(
     [],
   );
@@ -582,9 +583,9 @@ export function PurchaseDocumentsPage() {
       const fresh = await services.get(selected.companyId, selected.documentId);
       if (!fresh) throw new Error("سند خرید یافت نشد.");
       setDetail(fresh);
-      if (fresh.inventoryReceipt) {
-        setMessage("رسید انبار این سند قبلاً ایجاد شده است؛ وضعیت رسید: " +
-          RECEIPT_STATUS_LABELS[fresh.inventoryReceipt.status]);
+      const remaining = fresh.receiptFulfillment.filter(line => line.remainingBaseQuantity !== "0");
+      if (!remaining.length) {
+        setMessage("تمام مقدار کالاهای انباری این فاکتور قبلاً به رسید انبار تخصیص یافته است.");
         return;
       }
       setWarehouses(
@@ -594,6 +595,9 @@ export function PurchaseDocumentsPage() {
         ),
       );
       setWarehouseId("");
+      setReceiptQuantities(Object.fromEntries(
+        remaining.map(line => [line.purchaseLineId, line.remainingBaseQuantity]),
+      ));
       setReceiptOpen(true);
     } catch (error) { setError(errorMessage(error)); }
   };
@@ -606,6 +610,7 @@ export function PurchaseDocumentsPage() {
       const result = await services.stageInventoryReceipt(
         selected,
         warehouseId,
+        receiptQuantities,
       );
       setReceiptOpen(false);
       await openDocument(selected.documentId);
@@ -729,14 +734,17 @@ export function PurchaseDocumentsPage() {
                     </span>
                   </header>
                   <div className="purchase-detail__actions">
-                    {detail.inventoryReceipt && (
-                      <span className={"status status--" + detail.inventoryReceipt.status} role="status">
-                        رسید انبار {detail.inventoryReceipt.documentNumber ?? "بدون شماره"}
-                        {" — "}{RECEIPT_STATUS_LABELS[detail.inventoryReceipt.status]}
+                    {detail.inventoryReceipts.length > 0 && (
+                      <span className="status" role="status">
+                        {detail.inventoryReceipts.length} رسید مرتبط
+                        {" — "}
+                        {detail.receiptFulfillment.every(line => line.remainingBaseQuantity === "0")
+                          ? "تخصیص کامل"
+                          : "تحویل/تخصیص جزئی"}
                       </span>
                     )}
                     {selected?.documentType === "supplier-invoice" && selected.status === "confirmed" &&
-                      detail.inventoryReceipt?.status === "confirmed" &&
+                      detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
                       can(purchasePermissions.manageMatching) && can(purchasePermissions.resolveCost) && (
                         <button disabled={saving} onClick={() => void resolveReceiptCost()}>
                           تطبیق و ثبت هزینه رسید
@@ -793,16 +801,13 @@ export function PurchaseDocumentsPage() {
                         </button>
                       )}
                     {selected?.status === "confirmed" &&
-                      !detail.inventoryReceipt &&
-                      ["purchase-order", "supplier-invoice"].includes(
-                        selected.documentType,
-                      ) &&
-                      selected.lines.some(
-                        (x) => x.lineKind === "stock-product",
-                      ) &&
+                      selected.documentType === "supplier-invoice" &&
+                      detail.receiptFulfillment.some(line => line.remainingBaseQuantity !== "0") &&
                       can("purchases.receipts.stage") && (
                         <button onClick={() => void openReceipt()}>
-                          ایجاد پیش‌نویس رسید انبار
+                          {detail.inventoryReceipts.length === 0
+                            ? "ایجاد رسید انبار از فاکتور"
+                            : "ایجاد رسید برای باقیمانده"}
                         </button>
                       )}
                     {selected?.status === "confirmed" &&
@@ -1383,13 +1388,13 @@ export function PurchaseDocumentsPage() {
           </div>
         )}
 
-        {receiptOpen && selected && (
+        {receiptOpen && selected && detail && (
           <div className="purchase-modal" role="presentation">
             <form onSubmit={stageReceipt} role="dialog" aria-modal="true">
-              <h2>ایجاد پیش‌نویس رسید انبار</h2>
+              <h2>ایجاد رسید انبار از فاکتور</h2>
               <p>
-                تمام ردیف‌های کالای انباری این سند با مقدار پایه در یک رسید
-                پیش‌نویس قرار می‌گیرند.
+                اطلاعات کالا از فاکتور منتقل شده است. فقط انبار و مقدار واقعی این دریافت را کنترل کنید؛
+                می‌توانید دریافت جزئی ثبت کنید و برای باقیمانده بعداً رسید دیگری بسازید.
               </p>
               <label>
                 انبار مقصد
@@ -1406,6 +1411,36 @@ export function PurchaseDocumentsPage() {
                   ))}
                 </select>
               </label>
+              <div className="purchase-receipt-lines">
+                <div className="purchase-receipt-lines__header">
+                  <span>کالا</span>
+                  <span>فاکتور</span>
+                  <span>قبلاً تخصیص‌یافته</span>
+                  <span>باقیمانده</span>
+                  <span>این دریافت</span>
+                </div>
+                {detail.receiptFulfillment
+                  .filter(line => line.remainingBaseQuantity !== "0")
+                  .map(line => (
+                    <div className="purchase-receipt-lines__row" key={line.purchaseLineId}>
+                      <strong>{line.itemDisplayName}</strong>
+                      <span dir="ltr">{line.invoicedBaseQuantity} {line.baseUnitTitle}</span>
+                      <span dir="ltr">{line.allocatedBaseQuantity}</span>
+                      <span dir="ltr">{line.remainingBaseQuantity}</span>
+                      <input
+                        dir="ltr"
+                        inputMode="decimal"
+                        required
+                        value={receiptQuantities[line.purchaseLineId] ?? ""}
+                        onChange={(e) => setReceiptQuantities(current => ({
+                          ...current,
+                          [line.purchaseLineId]: latinDigits(e.target.value),
+                        }))}
+                        aria-label={"مقدار دریافت " + line.itemDisplayName}
+                      />
+                    </div>
+                  ))}
+              </div>
               <footer>
                 <button type="button" onClick={() => setReceiptOpen(false)}>
                   انصراف
