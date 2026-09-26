@@ -8,7 +8,6 @@ import {
 } from "@argin/fiscal-tauri";
 import {
   InventoryDraftService,
-  InventoryApplicationError,
   createInventoryDocumentLine,
   createInventoryLineOperation,
   type InventorySourceDocumentPort,
@@ -245,9 +244,6 @@ export function createPurchaseWorkspaceServices(input: {
   );
   const findReceipt = async (document: PurchaseDocumentSnapshot) =>
     (await findReceipts(document)).find(receipt => receipt.status !== "cancelled" && receipt.status !== "reversed") ?? null;
-  const receiptResult = (receipt: InventoryDocumentSnapshot) => ({
-    inventoryDocumentId: receipt.documentId, status: receipt.status, version: receipt.version,
-  });
   const parties = new SqlitePartyReader(database);
   const products = new SqliteProductReader(database);
   const productSelector = new SqliteProductSelectorReader(database);
@@ -553,7 +549,7 @@ export function createPurchaseWorkspaceServices(input: {
       const allocatedByLine = new Map<string, string>();
       for (const receipt of activeReceipts) {
         for (const line of receipt.lines) {
-          const sourceLineId = line.sourceReference?.sourceLineId ?? line.sourceReference?.lineId ?? null;
+          const sourceLineId = line.sourceReference?.lineId ?? null;
           if (!sourceLineId || !line.operation) continue;
           allocatedByLine.set(
             sourceLineId,
