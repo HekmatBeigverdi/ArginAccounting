@@ -61,6 +61,25 @@ export type { CreatePurchaseDocumentScopeInput, PurchaseDocumentScope, PurchaseF
 export { calculatePurchaseDocumentTotals, calculatePurchaseLineTotals } from "./domain/purchase-pricing.ts";
 export type { PurchaseDocumentTotals, PurchaseLineTotals } from "./domain/purchase-pricing.ts";
 
+export {
+  PURCHASE_MATCHING_ENGINE_STATUSES,
+  PURCHASE_MATCHING_MODES,
+  createPurchaseMatchingPolicy,
+  evaluatePurchaseMatching,
+} from "./domain/purchase-matching-engine.ts";
+export type {
+  EvaluatePurchaseMatchingInput,
+  PurchaseMatchingEvaluation,
+  PurchaseMatchingInvoiceLine,
+  PurchaseMatchingLineResult,
+  PurchaseMatchingMode,
+  PurchaseMatchingOrderLine,
+  PurchaseMatchingPolicy,
+  PurchaseMatchingProposal,
+  PurchaseMatchingReceiptLine,
+  PurchaseMatchingEngineStatus,
+} from "./domain/purchase-matching-engine.ts";
+
 export { createPurchaseReceiptInvoiceMatch, summarizePurchaseInvoiceLineMatching } from "./domain/purchase-receipt-invoice-matching.ts";
 export type {
   CreatePurchaseReceiptInvoiceMatchInput, PurchaseInvoiceLineMatchingSummary, PurchaseInvoiceMatchingLineReference,
