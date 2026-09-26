@@ -59,12 +59,24 @@ export interface PurchaseWorkspaceLineInput {
   readonly description: string | null;
 }
 
+export interface PurchaseReceiptFulfillmentLine {
+  readonly purchaseLineId: string;
+  readonly itemDisplayName: string;
+  readonly baseUnitTitle: string;
+  readonly invoicedBaseQuantity: string;
+  readonly allocatedBaseQuantity: string;
+  readonly remainingBaseQuantity: string;
+}
+
 export interface PurchaseWorkspaceDetail {
   readonly document: PurchaseDocumentSnapshot;
   readonly commercialFacts: readonly PurchaseCommercialFactSnapshot[];
   readonly lineTotals: Readonly<Record<string, PurchaseLineTotals>>;
   readonly totals: ReturnType<typeof calculatePurchaseDocumentTotals>;
+  /** Compatibility pointer for older UI paths; first active linked receipt, if any. */
   readonly inventoryReceipt: Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version"> | null;
+  readonly inventoryReceipts: readonly Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version">[];
+  readonly receiptFulfillment: readonly PurchaseReceiptFulfillmentLine[];
 }
 
 export interface PurchaseWorkspaceDraftInput {
@@ -97,12 +109,49 @@ export interface PurchaseWorkspaceServices {
   reopen(document: PurchaseDocumentSnapshot, reason: string): Promise<PurchaseDocumentSnapshot>;
   returnPurchase(document: PurchaseDocumentSnapshot, relatedDocumentId: string, reason: string): Promise<PurchaseDocumentSnapshot>;
   correct(document: PurchaseDocumentSnapshot, relatedDocumentId: string, reason: string): Promise<PurchaseDocumentSnapshot>;
-  stageInventoryReceipt(document: PurchaseDocumentSnapshot, warehouseId: string): Promise<{ inventoryDocumentId: string; status: string; version: number }>;
+  stageInventoryReceipt(
+    document: PurchaseDocumentSnapshot,
+    warehouseId: string,
+    quantitiesByLine: Readonly<Record<string, string>>,
+  ): Promise<{ inventoryDocumentId: string; status: string; version: number }>;
 }
 
 const now = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
 const fingerprint = (value: unknown) => JSON.stringify(value);
+
+type QuantityDecimal = { coefficient: bigint; scale: number };
+const parseQuantity = (value: string): QuantityDecimal => {
+  const normalized = value.trim();
+  if (!/^\d+(?:\.\d+)?$/u.test(normalized)) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "quantity");
+  const [whole = "0", fraction = ""] = normalized.split(".");
+  return { coefficient: BigInt(whole + fraction), scale: fraction.length };
+};
+const quantityScale = (value: QuantityDecimal, scale: number) =>
+  value.coefficient * 10n ** BigInt(scale - value.scale);
+const quantitySubtract = (left: string, right: string): string => {
+  const a = parseQuantity(left), b = parseQuantity(right);
+  const scale = Math.max(a.scale, b.scale);
+  const result = quantityScale(a, scale) - quantityScale(b, scale);
+  if (result < 0n) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptQuantity");
+  const digits = result.toString().padStart(scale + 1, "0");
+  if (scale === 0) return digits;
+  return (digits.slice(0, -scale) + "." + digits.slice(-scale)).replace(/\.0+$/u, "").replace(/(\.\d*?)0+$/u, "$1");
+};
+const quantityAdd = (left: string, right: string): string => {
+  const a = parseQuantity(left), b = parseQuantity(right);
+  const scale = Math.max(a.scale, b.scale);
+  const result = quantityScale(a, scale) + quantityScale(b, scale);
+  const digits = result.toString().padStart(scale + 1, "0");
+  if (scale === 0) return digits;
+  return (digits.slice(0, -scale) + "." + digits.slice(-scale)).replace(/\.0+$/u, "").replace(/(\.\d*?)0+$/u, "$1");
+};
+const quantityIsPositive = (value: string) => parseQuantity(value).coefficient > 0n;
+const quantityLte = (left: string, right: string) => {
+  const a = parseQuantity(left), b = parseQuantity(right);
+  const scale = Math.max(a.scale, b.scale);
+  return quantityScale(a, scale) <= quantityScale(b, scale);
+};
 
 function prefix(type: PurchaseDocumentType): string {
   if (type === "purchase-order") return "PO-";
@@ -191,9 +240,11 @@ export function createPurchaseWorkspaceServices(input: {
   const inventoryUow = new SqliteInventoryUnitOfWork(database);
   const inventoryDrafts = new InventoryDraftService(inventoryUow);
   const inventoryDocuments = new SqliteInventoryDocumentRepository(database);
-  const findReceipt = (document: PurchaseDocumentSnapshot) => inventoryDocuments.findBySource(
+  const findReceipts = (document: PurchaseDocumentSnapshot) => inventoryDocuments.listBySource(
     document.companyId, "purchase", document.documentType, document.documentId,
   );
+  const findReceipt = async (document: PurchaseDocumentSnapshot) =>
+    (await findReceipts(document)).find(receipt => receipt.status !== "cancelled" && receipt.status !== "reversed") ?? null;
   const receiptResult = (receipt: InventoryDocumentSnapshot) => ({
     inventoryDocumentId: receipt.documentId, status: receipt.status, version: receipt.version,
   });
@@ -497,10 +548,49 @@ export function createPurchaseWorkspaceServices(input: {
       const facts = await uow.execute(context => context.commercialFacts.listByDocument(companyId, documentId));
       const lineTotals: Record<string, PurchaseLineTotals> = {};
       for (const fact of facts) lineTotals[fact.purchaseLineId] = calculatePurchaseLineTotals(fact.commercialTerms);
+      const linkedReceipts = await findReceipts(document);
+      const activeReceipts = linkedReceipts.filter(receipt => receipt.status !== "cancelled" && receipt.status !== "reversed");
+      const allocatedByLine = new Map<string, string>();
+      for (const receipt of activeReceipts) {
+        for (const line of receipt.lines) {
+          const sourceLineId = line.sourceReference?.sourceLineId ?? line.sourceReference?.lineId ?? null;
+          if (!sourceLineId || !line.operation) continue;
+          allocatedByLine.set(
+            sourceLineId,
+            quantityAdd(allocatedByLine.get(sourceLineId) ?? "0", line.operation.quantity.baseQuantity),
+          );
+        }
+      }
+      const receiptFulfillment = document.lines
+        .filter(line => line.lineKind === "stock-product")
+        .map(line => {
+          const fact = facts.find(item => item.purchaseLineId === line.lineId);
+          if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
+          const invoiced = fact.commercialTerms.quantity.baseQuantity;
+          const allocated = allocatedByLine.get(line.lineId) ?? "0";
+          if (!quantityLte(allocated, invoiced)) {
+            throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "receiptQuantity");
+          }
+          return Object.freeze({
+            purchaseLineId: line.lineId,
+            itemDisplayName: line.itemSnapshot.displayName,
+            baseUnitTitle: fact.commercialTerms.quantity.baseUnit.title,
+            invoicedBaseQuantity: invoiced,
+            allocatedBaseQuantity: allocated,
+            remainingBaseQuantity: quantitySubtract(invoiced, allocated),
+          });
+        });
       return {
         document, commercialFacts: facts, lineTotals: Object.freeze(lineTotals),
         totals: calculatePurchaseDocumentTotals(Object.values(lineTotals)),
-        inventoryReceipt: await findReceipt(document),
+        inventoryReceipt: activeReceipts[0] ?? null,
+        inventoryReceipts: Object.freeze(activeReceipts.map(receipt => Object.freeze({
+          documentId: receipt.documentId,
+          documentNumber: receipt.documentNumber,
+          status: receipt.status,
+          version: receipt.version,
+        }))),
+        receiptFulfillment: Object.freeze(receiptFulfillment),
       };
     },
     selectSuppliers: (companyId, search) => parties.select({
@@ -613,22 +703,25 @@ export function createPurchaseWorkspaceServices(input: {
         if (result.status !== "resolved") throw new Error("تطبیق انجام شد اما مبنای هزینه فاکتور هنوز کامل نیست.");
       }
     },
-    async stageInventoryReceipt(document, warehouseId) {
+    async stageInventoryReceipt(document, warehouseId, quantitiesByLine) {
       await authorization.require({ branchId: document.scope.branchId }, "purchases.receipts.stage");
       const detail = await this.get(document.companyId, document.documentId);
       if (!detail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
-      if (detail.inventoryReceipt) return {
-        inventoryDocumentId: detail.inventoryReceipt.documentId,
-        status: detail.inventoryReceipt.status, version: detail.inventoryReceipt.version,
-      };
       document = detail.document;
-      const allocations = document.lines.filter(line => line.lineKind === "stock-product").map(line => {
-        const fact = detail.commercialFacts.find(item => item.purchaseLineId === line.lineId);
-        if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
-        return {
-          purchaseLineId: line.lineId, baseQuantity: fact.commercialTerms.quantity.baseQuantity,
+      if (document.documentType !== "supplier-invoice" || document.status !== "confirmed") {
+        throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptSource");
+      }
+      const allocations = detail.receiptFulfillment.flatMap(line => {
+        const requested = quantitiesByLine[line.purchaseLineId]?.trim() ?? "0";
+        if (!quantityIsPositive(requested)) return [];
+        if (!quantityLte(requested, line.remainingBaseQuantity)) {
+          throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptQuantity");
+        }
+        return [{
+          purchaseLineId: line.purchaseLineId,
+          baseQuantity: requested,
           warehouse: { warehouseId, zoneId: null, locationId: null },
-        };
+        }];
       });
       if (!allocations.length) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "allocations");
       const rid = newId();
@@ -644,11 +737,6 @@ export function createPurchaseWorkspaceServices(input: {
           allocations, payloadFingerprint: fp,
         });
       } catch (error) {
-        if (error instanceof InventoryApplicationError && error.code === "inventory.application.source-document-duplicate") {
-          // Another request may have created the same source receipt after our read.
-          const existing = await findReceipt(detail.document);
-          if (existing) return receiptResult(existing);
-        }
         throw error;
       }
     },
