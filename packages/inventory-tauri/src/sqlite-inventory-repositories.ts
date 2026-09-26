@@ -196,13 +196,19 @@ const appendMissingLifecycle = async (db: DatabaseSession, document: InventoryDo
 export class SqliteInventoryDocumentRepository implements InventoryDocumentRepository {
   constructor(private readonly db: DatabaseSession) {}
 
-  async findBySource(companyId: string, sourceSystem: string, sourceDocumentType: string, sourceDocumentId: string): Promise<InventoryDocumentSnapshot | null> {
-    const row = await this.db.queryOne<DocumentRow>(
+  async listBySource(companyId: string, sourceSystem: string, sourceDocumentType: string, sourceDocumentId: string): Promise<readonly InventoryDocumentSnapshot[]> {
+    const rows = await this.db.query<DocumentRow>(
       `SELECT * FROM inventory_documents WHERE company_id=? AND source_system=?
-        AND source_document_type=? AND source_document_id=? AND deleted_at IS NULL`,
+        AND source_document_type=? AND source_document_id=? AND deleted_at IS NULL
+       ORDER BY created_at,id`,
       [companyId, sourceSystem, sourceDocumentType, sourceDocumentId],
     );
-    return row ? hydrateDocument(this.db, row) : null;
+    return Object.freeze(await Promise.all(rows.map(row => hydrateDocument(this.db, row))));
+  }
+
+  async findBySource(companyId: string, sourceSystem: string, sourceDocumentType: string, sourceDocumentId: string): Promise<InventoryDocumentSnapshot | null> {
+    const rows = await this.listBySource(companyId, sourceSystem, sourceDocumentType, sourceDocumentId);
+    return rows[0] ?? null;
   }
 
   async findById(companyId: string, documentId: string): Promise<InventoryDocumentSnapshot | null> {
