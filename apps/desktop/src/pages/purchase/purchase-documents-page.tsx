@@ -235,6 +235,7 @@ export function PurchaseDocumentsPage() {
   const [relatedDocumentId, setRelatedDocumentId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
+  const [receiptSubmissionId, setReceiptSubmissionId] = useState("");
   const [warehouses, setWarehouses] = useState<readonly WarehouseListItemDto[]>(
     [],
   );
@@ -497,7 +498,7 @@ export function PurchaseDocumentsPage() {
     action: "submit" | "approve" | "confirm" | "cancel" | "reopen",
     actionReason?: string | null,
   ) => {
-    if (!services || !selected) return;
+    if (!services || !selected || saving) return;
     setSaving(true);
     setError("");
     setMessage("");
@@ -620,12 +621,13 @@ export function PurchaseDocumentsPage() {
       setReceiptQuantities(Object.fromEntries(
         remaining.map(line => [line.purchaseLineId, line.remainingBaseQuantity]),
       ));
+      setReceiptSubmissionId(crypto.randomUUID());
       setReceiptOpen(true);
     } catch (error) { setError(errorMessage(error)); }
   };
   const stageReceipt = async (event: FormEvent) => {
     event.preventDefault();
-    if (!services || !selected || !warehouseId) return;
+    if (!services || !selected || !warehouseId || !receiptSubmissionId || saving) return;
     setSaving(true);
     setError("");
     try {
@@ -633,8 +635,10 @@ export function PurchaseDocumentsPage() {
         selected,
         warehouseId,
         receiptQuantities,
+        receiptSubmissionId,
       );
       setReceiptOpen(false);
+      setReceiptSubmissionId("");
       await openDocument(selected.documentId);
       setMessage("رسید انبار این سند ثبت شده است؛ وضعیت: " +
         (RECEIPT_STATUS_LABELS[result.status] ?? result.status));
