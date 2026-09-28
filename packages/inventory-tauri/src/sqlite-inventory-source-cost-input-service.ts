@@ -34,6 +34,63 @@ export class SqliteInventorySourceCostInputService {
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1)`,
         [basis.basisLineId,companyId,basis.movementId,basis.productId,basis.warehouseId,basis.quantity,
           basis.currency,basis.baseCost,basis.landedCost,basis.totalCost,basis.unitCost,JSON.stringify(basis.allocations)]);
+
+      const policy = await session.queryOne<{
+        policy_id: string;
+        method: "fifo" | "moving_average";
+        strategy_version: number;
+        currency: string;
+      }>(`SELECT policy_id,method,strategy_version,currency
+           FROM inventory_valuation_policies
+          WHERE company_id=? AND effective_from<=?
+          ORDER BY effective_from DESC,revision DESC
+          LIMIT 1`, [companyId, movement.businessDate]);
+
+      if (policy) {
+        const valuationEntryId = `valuation:${basis.movementId}`;
+        const valuedAt = new Date().toISOString();
+        await session.execute(
+          `INSERT INTO inventory_valuation_entries(
+            valuation_entry_id,company_id,product_id,movement_id,document_id,line_id,
+            reversal_of_movement_id,transfer_id,kind,method,strategy_version,currency,
+            warehouse_id,zone_id,location_id,business_date,business_order,quantity,
+            unit_cost,total_cost,cost_state,unresolved_reason,valued_at,revision
+          ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)
+          ON CONFLICT(company_id,movement_id) DO UPDATE SET
+            method=excluded.method,
+            strategy_version=excluded.strategy_version,
+            currency=excluded.currency,
+            quantity=excluded.quantity,
+            unit_cost=excluded.unit_cost,
+            total_cost=excluded.total_cost,
+            cost_state='resolved',
+            unresolved_reason=NULL,
+            valued_at=excluded.valued_at,
+            revision=inventory_valuation_entries.revision+1`,
+          [valuationEntryId,companyId,basis.productId,basis.movementId,movement.documentId,movement.lineId,
+            movement.reversalOfMovementId ?? null,movement.transferId ?? null,"inbound",policy.method,
+            policy.strategy_version,policy.currency,basis.warehouseId,movement.stockKey.zoneId,
+            movement.stockKey.locationId,movement.businessDate,movement.businessOrder,basis.quantity,
+            basis.unitCost,basis.totalCost,"resolved",null,valuedAt],
+        );
+
+        if (policy.method === "fifo") {
+          await session.execute(
+            `INSERT INTO inventory_valuation_cost_layers(
+              cost_layer_id,company_id,product_id,source_movement_id,source_valuation_entry_id,
+              method,strategy_version,currency,warehouse_id,zone_id,location_id,
+              opened_business_date,opened_business_order,original_quantity,remaining_quantity,
+              unit_cost,original_cost,remaining_cost,revision
+            ) VALUES(?,?,?,?,?,'fifo',?,?,?,?,?,?,?,?,?,?,?,?,1)
+            ON CONFLICT(cost_layer_id) DO NOTHING`,
+            [`fifo-layer:${basis.movementId}`,companyId,basis.productId,basis.movementId,valuationEntryId,
+              policy.strategy_version,policy.currency,basis.warehouseId,movement.stockKey.zoneId,
+              movement.stockKey.locationId,movement.businessDate,movement.businessOrder,basis.quantity,
+              basis.quantity,basis.unitCost,basis.totalCost,basis.totalCost],
+          );
+        }
+      }
+
       await session.execute(`INSERT INTO inventory_valuation_stream_versions(company_id,stream_key,revision)
         VALUES (?,?,1) ON CONFLICT(company_id,stream_key) DO UPDATE SET revision=revision+1`,
         [companyId, `valuation:${companyId}:${basis.productId}`]);
