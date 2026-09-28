@@ -689,7 +689,7 @@ test("Step 33 E2E persists Purchase -> Receipt -> Matching -> Valuation -> Posti
      WHERE voucher_id=?
      ORDER BY line_order
   `).all(journalRow.id) as Array<{ account_id: string; debit: number; credit: number }>;
-  assert.deepEqual(journalLines, [
+  assert.deepEqual(journalLines.map(line => ({ ...line })), [
     { account_id: "inventory-account", debit: 25_000_000, credit: 0 },
     { account_id: "payable-account", debit: 0, credit: 25_000_000 },
   ]);
