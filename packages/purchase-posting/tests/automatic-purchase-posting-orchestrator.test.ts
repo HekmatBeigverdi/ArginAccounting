@@ -82,7 +82,12 @@ test("orchestrator defers accountant-approval mode without creating a Journal", 
     posting: { async loadOrCreate() { touched = true; return createPurchasePosting({ postingId: "p1", companyId: "c1", branchId: "b1", createdAt: "2026-09-28T08:00:00.000Z" }); } },
     rules: { async listActive() { return []; } },
     accounts: { async findById() { return null; } },
-    dimensions: { async findDimensionTypeId() { return null; }, async findBranchMemberId() { return null; }, async findPartyMemberId() { return null; } },
+    dimensions: {
+      async findPoliciesForAccount() { return []; },
+      async findTypesByCompanyId() { return []; },
+      async resolveMemberBySource() { return null; },
+      async findMembersByIds() { return []; },
+    },
     unitOfWork: { async run() { throw new Error("must not run"); } },
   });
 
@@ -125,7 +130,12 @@ test("orchestrator creates a replay-safe Journal when automatic eligibility is r
       { ruleId: "r-ap", companyId: "c1", branchId: null, eventKind: null, lineKind: null, accountRole: "accounts-payable", accountId: "payable", priority: 1, active: true },
     ]; } },
     accounts: { async findById(_companyId, accountId) { return accounts.get(accountId) ?? null; } },
-    dimensions: { async findDimensionTypeId() { return null; }, async findBranchMemberId() { return null; }, async findPartyMemberId() { return null; } },
+    dimensions: {
+      async findPoliciesForAccount() { return []; },
+      async findTypesByCompanyId() { return []; },
+      async resolveMemberBySource() { return null; },
+      async findMembersByIds() { return []; },
+    },
     unitOfWork: {
       async run(work) {
         return work({
