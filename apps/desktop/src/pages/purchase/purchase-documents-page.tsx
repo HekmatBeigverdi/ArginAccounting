@@ -650,7 +650,7 @@ export function PurchaseDocumentsPage() {
   };
 
   const matchConfirmedReceipts = async () => {
-    if (!services || !selected) return;
+    if (!services || !selected || saving) return;
     setSaving(true);
     setError("");
     setMessage("");
@@ -686,7 +686,7 @@ export function PurchaseDocumentsPage() {
   };
 
   const resolveReceiptCost = async () => {
-    if (!services || !selected) return;
+    if (!services || !selected || saving) return;
     setSaving(true);
     setError("");
     setMessage("");
