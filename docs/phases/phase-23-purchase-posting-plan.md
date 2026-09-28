@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–31 are complete. Steps 32–36 are not started.
+Steps 1–32 are complete. Steps 33–36 are not started.
 
 ## Governance
 
@@ -51,6 +51,7 @@ Mandatory references:
 - [Automatic Purchase Posting Orchestrator](../architecture/automatic-purchase-posting-orchestrator.md)
 - [Purchase Accounting Workspace UX](../architecture/purchase-accounting-workspace-ux.md)
 - [Purchase Workflow Hardening](../architecture/purchase-workflow-hardening.md)
+- [Purchase Domain and Application Test Matrix](../architecture/purchase-domain-application-test-matrix.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -244,7 +245,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 29 | Automatic Purchase Posting Orchestrator | Completed |
 | 30 | Purchase Accounting Workspace UX | Completed |
 | 31 | Purchase Workflow Hardening | Completed |
-| 32 | Domain and Application Tests | Not started |
+| 32 | Domain and Application Tests | Completed |
 | 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Not started |
 | 34 | Bridge, Replay, Rollback and Failure Tests | Not started |
 | 35 | Documentation, Step Status and Phase Evidence | Not started |
@@ -2132,4 +2133,65 @@ pnpm --filter @argin/purchase-posting-tauri test
 pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 pnpm --filter @argin/desktop build
+```
+
+## Step 32 — Domain and Application Tests
+
+### Completed work
+
+- Added the canonical [Purchase Domain and Application Test Matrix](../architecture/purchase-domain-application-test-matrix.md).
+- Expanded Purchase Matching Engine domain coverage for deterministic receipt ordering, duplicate invoice-line IDs, product mismatch, over-matching, exact quantity variance, basis-point tolerance boundaries, invalid tolerance and fractional quantities.
+- Expanded Purchase Posting domain/application coverage for duplicate fulfillment identity, blocked stock fulfillment, accountant-approval deferral, automatic/approval eligibility mismatch, non-confirmed source blocking and immutable policy results.
+- Retained and explicitly grouped the existing replay-safe Posting tests covering exact replay, incompatible fingerprint conflict, source-version separation and optimistic concurrency.
+- Retained and explicitly grouped atomic Journal/Posting rollback tests covering Journal write failure, Posting write failure, scope mismatch and version mismatch.
+- Updated Desktop/Application Purchase integration tests to the hardened Step 31 Receipt submission contract.
+- Added an explicit integration regression proving that the same Receipt submission ID returns one Inventory draft while a new submission ID can create the next legitimate partial Receipt.
+- Confirmed the test ownership boundary: Step 32 covers Domain/Application decisions; Step 33 owns full SQLite end-to-end Purchase→Inventory→Valuation→Posting→Accounting acceptance.
+- Kept Step 34 as the dedicated Bridge/replay/rollback/failure-injection gate.
+- No production business rule was weakened to make a test pass; tests assert current authoritative contracts.
+- Preserved Argin Bridge semantics: deterministic derived decisions are rebuildable while durable IDs/version/idempotency facts remain synchronization authority.
+
+### Exit criteria
+
+- [x] Fulfillment/accounting eligibility has positive, negative, mixed-line and duplicate-identity tests.
+- [x] Two-way and three-way Matching have deterministic multi-receipt tests.
+- [x] Matching rejects product mismatch, over-match and duplicate invoice-line identities.
+- [x] Matching price tolerance is tested at the exact boundary and just outside it.
+- [x] Fractional base quantities are tested without float-based drift.
+- [x] Posting orchestration is proven to stop before side effects when eligibility blocks.
+- [x] Accountant-approval mode is proven not to create a Journal prematurely.
+- [x] Automatic/approval contract mismatch fails closed.
+- [x] Replay-safe Posting has exact replay/fingerprint/version regression coverage.
+- [x] Atomic Journal/Posting rollback behavior remains covered.
+- [x] Hardened Receipt submission identity is exercised by Application integration tests.
+- [x] Intentional next partial Receipt remains possible with a new submission identity.
+- [x] Step 32 scope does not duplicate Step 33 E2E or Step 34 Bridge/failure ownership.
+
+### Validation evidence
+
+- Added `packages/purchase/tests/phase23-domain-application-regression.test.ts`.
+- Added `packages/purchase-posting/tests/phase23-domain-application-regression.test.ts`.
+- Updated `apps/desktop/tests/purchase-create-integration.test.ts` for hardened Receipt submissions and replay regression.
+- Existing `packages/purchase/tests/purchase-replay-safety.test.ts` remains part of the Application replay matrix.
+- Existing `packages/purchase-posting/tests/replay-safe-posting.test.ts` remains part of the Posting replay matrix.
+- Existing `packages/purchase-posting/tests/atomic-journal-posting.test.ts` remains part of the atomic persistence matrix.
+- Added `docs/architecture/purchase-domain-application-test-matrix.md`.
+- No local/CI PASS is claimed from this session; execute the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+
+pnpm install --frozen-lockfile
+
+pnpm --filter @argin/purchase typecheck
+pnpm --filter @argin/purchase test
+
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
 ```
