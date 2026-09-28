@@ -16,7 +16,7 @@ test("Posting panel exposes status, reconciliation, trace and Journal Lines with
 
   for (const text of [
     "ثبت حسابداری خرید",
-    "کنترل تطبیق",
+    "سلامت زنجیره",
     "نمایش مسیر ردیابی",
     "ردیف‌های سند حسابداری",
     "هنوز ثبت حسابداری ایجاد نشده است",
@@ -25,6 +25,8 @@ test("Posting panel exposes status, reconciliation, trace and Journal Lines with
   }
 
   assert.doesNotMatch(panel, /unitPrice|discountAmount|chargeAmount|taxAmount\s*:/u);
+  assert.match(panel, /selected\.reconciled/u);
+  assert.match(panel, /selected\.issues\.map/u);
   assert.match(panel, /selected\.journal\.lines\.map/u);
 });
 
