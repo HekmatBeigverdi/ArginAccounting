@@ -120,7 +120,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Prepared release target: `v0.22.0` — `ArginAccounting v0.22.0 — Purchase Workflow`.
 23. 🚧 Purchase Posting
    - CR-23-01 expands Phase 23 to 36 steps so fulfillment, matching and posting orchestration are completed before final validation/release.
-   - Steps 1–33 completed: SQLite E2E acceptance now verifies Supplier Invoice → Receipt → Matching → Purchase Cost → Inventory Valuation → Purchase Posting → balanced Accounting Journal, including replay-safe source-cost valuation projection.
+   - Steps 1–34 completed: Bridge/replay/failure acceptance now verifies wire-stable Posting contracts, localVersion/serverRevision separation, Inventory monetary rollback, Posting transaction rollback/recovery, exact replay and append-only idempotency evidence.
    - Consume Phase 22 Purchase facts and Phase 21 valuation outputs without creating a second purchase-price store.
    - Own supplier payable, purchase/VAT accounting effects, configured Inventory/GRNI treatment, landed-cost accounting, corrections/reversals and reconciliation.
    - Posting must preserve source integrity, balanced Journal output, idempotency, immutable reversal lineage and Argin Bridge-ready durable identity.
@@ -200,7 +200,7 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 23 — Purchase Posting & Accounting Integration is now the current implementation target. CR-23-01 expands the phase to 36 steps; Steps 1–33 are complete on `phase/23-purchase-posting`, based on `main@7f1b615e8e406befa0cf3967134e99d76b456a27`. Step 34 is the next target. Phase 22 semantic Tag/GitHub Release publication remains a separate repository-owner action.
+Phase 23 — Purchase Posting & Accounting Integration is now the current implementation target. CR-23-01 expands the phase to 36 steps; Steps 1–34 are complete on `phase/23-purchase-posting`, based on `main@7f1b615e8e406befa0cf3967134e99d76b456a27`. Step 35 is the next target. Phase 22 semantic Tag/GitHub Release publication remains a separate repository-owner action.
 
 ## Latest Completed Inventory Milestone
 
