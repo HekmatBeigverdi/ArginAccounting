@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–29 are complete. Steps 30–36 are not started.
+Steps 1–30 are complete. Steps 31–36 are not started.
 
 ## Governance
 
@@ -49,6 +49,7 @@ Mandatory references:
 - [Invoice-to-Goods-Receipt Workflow](../architecture/purchase-invoice-to-goods-receipt-workflow.md)
 - [Purchase Matching Engine](../architecture/purchase-matching-engine.md)
 - [Automatic Purchase Posting Orchestrator](../architecture/automatic-purchase-posting-orchestrator.md)
+- [Purchase Accounting Workspace UX](../architecture/purchase-accounting-workspace-ux.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -240,7 +241,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 27 | Invoice-to-Goods-Receipt Workflow | Completed |
 | 28 | Purchase Matching Engine | Completed |
 | 29 | Automatic Purchase Posting Orchestrator | Completed |
-| 30 | Purchase Accounting Workspace UX | Not started |
+| 30 | Purchase Accounting Workspace UX | Completed |
 | 31 | Purchase Workflow Hardening | Not started |
 | 32 | Domain and Application Tests | Not started |
 | 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Not started |
@@ -1989,6 +1990,71 @@ pnpm --filter @argin/purchase-posting-tauri typecheck
 pnpm --filter @argin/purchase-posting-tauri test
 pnpm --filter @argin/purchase typecheck
 pnpm --filter @argin/purchase test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
+```
+
+## Step 30 — Purchase Accounting Workspace UX
+
+### Completed work
+
+- Added the canonical [Purchase Accounting Workspace UX](../architecture/purchase-accounting-workspace-ux.md).
+- Reworked the Purchase Posting panel into an integrated five-stage Purchase-to-Accounting workspace.
+- Added visible stages for Supplier Invoice confirmation, Inventory receipt fulfillment, Purchase matching, Purchase Posting, and Accounting Journal.
+- Added explicit **not required** behavior for Inventory receipt/matching when the Supplier Invoice has no stock lines.
+- Added a contextual **اقدام بعدی** panel that explains the next operational action without exposing accounting internals.
+- Added an actionable failure surface explaining that a confirmed Purchase document remains valid when downstream Posting fails.
+- Kept the explicit **ایجاد ثبت حسابداری** recovery/retry action for authorized users.
+- Added Journal summary cards for Posting status/source version, Journal number/lifecycle, debit-credit balance, and Purchase→Posting→Journal reconciliation health.
+- Added account code/name display for Journal lines while retaining durable account IDs as the authoritative identity.
+- Added company-scoped account-label lookup through the Posting workspace service; no direct UI database mutation was introduced.
+- Passed receipt fulfillment and matching state from the Purchase workspace into the Posting UX instead of recomputing commercial facts in React.
+- Added responsive layout for desktop/tablet/narrow screens.
+- Preserved independent view/trace/execute/reverse authorization boundaries.
+- Preserved the no-re-entry rule: no price, tax, Debit/Credit, or account mapping input is added to the Purchase screen.
+- Added Desktop contract coverage for the new workflow, next-action UX, account labels, and responsive styling.
+- Preserved Argin Bridge authority boundaries: all workspace stages and labels are rebuildable projections.
+
+### Exit criteria
+
+- [x] Supplier Invoice users can see the complete Purchase-to-Accounting path in one workspace.
+- [x] Current and pending workflow stages are understandable without technical Posting knowledge.
+- [x] Service/non-stock invoices clearly show that warehouse fulfillment is not required.
+- [x] Stock invoices clearly expose receipt and matching readiness.
+- [x] Matching variance is visually distinguished from an ordinary pending state.
+- [x] The UI presents one contextual next action.
+- [x] Posting failure does not imply that the Purchase document was rolled back.
+- [x] Authorized users retain a safe Posting retry action.
+- [x] Journal status and balance are visible after creation.
+- [x] Journal account code/name are readable rather than exposing only opaque IDs.
+- [x] Purchase→Posting→Journal trace remains available.
+- [x] Responsive behavior supports narrow screens.
+- [x] No duplicate commercial/accounting entry path is introduced.
+- [x] Permission and Argin Bridge boundaries remain intact.
+
+### Validation evidence
+
+- Added `docs/architecture/purchase-accounting-workspace-ux.md`.
+- Updated `apps/desktop/src/pages/purchase/purchase-posting-panel.tsx`.
+- Updated `apps/desktop/src/pages/purchase/purchase-posting-panel.css`.
+- Updated `apps/desktop/src/pages/purchase/purchase-documents-page.tsx`.
+- Extended `apps/desktop/src/composition/purchase-posting/create-purchase-posting-workspace-services.ts` with company-scoped account labels.
+- Extended `apps/desktop/tests/purchase-posting-ui.test.ts`.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+
+pnpm install --frozen-lockfile
+
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
 pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 pnpm --filter @argin/desktop build
