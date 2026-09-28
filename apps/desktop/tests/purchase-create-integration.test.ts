@@ -507,3 +507,57 @@ test("cost resolution uses the persisted invoice branch rather than a caller-sup
   await assert.rejects(() => restricted.resolveReceiptCost({ ...invoice, scope: { ...invoice.scope, branchId: "other" } }), /PURCHASE_APP_UNAUTHORIZED/);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 0);
 });
+
+
+test("Step 32 receipt submission replay returns one Inventory draft while a new submission permits the next partial receipt", async (t) => {
+  const { sqlite, database, services, input } = fixture();
+  t.after(() => sqlite.close());
+
+  let document = await services.create(input);
+  const action = { occurredAt: document.createdAt, actorUserId: "user" };
+  document = purchase.confirmPurchaseDocument(
+    purchase.approvePurchaseDocument(
+      purchase.submitPurchaseDocument(document, action),
+      action,
+    ),
+    action,
+  );
+  await new SqlitePurchaseDocumentRepository(database).update(document, 1);
+  sqlite.exec(`INSERT INTO warehouses
+    (id,company_id,code,title,kind,organizational_scope,created_at,updated_at)
+    VALUES ('warehouse-step32','company','W32','Warehouse 32','general','company','2026-09-28','2026-09-28');`);
+
+  const quantities = { [document.lines[0]!.lineId]: "1" };
+  const first = await services.stageInventoryReceipt(
+    document,
+    "warehouse-step32",
+    quantities,
+    "submission-same",
+  );
+  const replay = await services.stageInventoryReceipt(
+    document,
+    "warehouse-step32",
+    quantities,
+    "submission-same",
+  );
+
+  assert.deepEqual(replay, first);
+  assert.equal(
+    sqlite.prepare("SELECT count(*) AS n FROM inventory_documents WHERE company_id='company' AND source_document_id=?")
+      .get(document.documentId)?.n,
+    1,
+  );
+
+  const second = await services.stageInventoryReceipt(
+    document,
+    "warehouse-step32",
+    quantities,
+    "submission-next",
+  );
+  assert.notEqual(second.inventoryDocumentId, first.inventoryDocumentId);
+
+  const detail = await services.get("company", document.documentId);
+  assert.equal(detail?.receiptFulfillment[0]?.allocatedBaseQuantity, "2");
+  assert.equal(detail?.receiptFulfillment[0]?.remainingBaseQuantity, "0");
+  assert.equal(detail?.inventoryReceipts.length, 2);
+});
