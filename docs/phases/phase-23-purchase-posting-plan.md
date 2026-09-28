@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–33 are complete. Steps 34–36 are not started.
+Steps 1–34 are complete. Steps 35–36 are not started.
 
 ## Governance
 
@@ -53,6 +53,7 @@ Mandatory references:
 - [Purchase Workflow Hardening](../architecture/purchase-workflow-hardening.md)
 - [Purchase Domain and Application Test Matrix](../architecture/purchase-domain-application-test-matrix.md)
 - [Purchase End-to-End SQLite Acceptance Matrix](../testing/phase-23-purchase-e2e-sqlite-tests.md)
+- [Phase 23 Bridge, Replay, Rollback and Failure Acceptance](../testing/phase-23-bridge-replay-rollback-failure-tests.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -248,7 +249,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 31 | Purchase Workflow Hardening | Completed |
 | 32 | Domain and Application Tests | Completed |
 | 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Completed |
-| 34 | Bridge, Replay, Rollback and Failure Tests | Not started |
+| 34 | Bridge, Replay, Rollback and Failure Tests | Completed |
 | 35 | Documentation, Step Status and Phase Evidence | Not started |
 | 36 | Release, Merge and Phase Closure | Not started |
 
@@ -2239,6 +2240,82 @@ pnpm --filter @argin/desktop test
 - Updated `packages/inventory-tauri/src/sqlite-inventory-source-cost-input-service.ts`.
 - Added `packages/inventory-tauri/tests/purchase-source-cost-e2e.test.ts`.
 - Added `docs/testing/phase-23-purchase-e2e-sqlite-tests.md`.
+- No local/CI PASS is claimed from this session; execute the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+
+pnpm install --frozen-lockfile
+
+pnpm --filter @argin/inventory-tauri typecheck
+pnpm --filter @argin/inventory-tauri test
+
+pnpm --filter @argin/purchase typecheck
+pnpm --filter @argin/purchase test
+pnpm --filter @argin/purchase-tauri typecheck
+pnpm --filter @argin/purchase-tauri test
+
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
+
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
+```
+
+## Step 34 — Bridge, Replay, Rollback and Failure Tests
+
+### Completed work
+
+- Added the canonical [Phase 23 Bridge, Replay, Rollback and Failure Acceptance](../testing/phase-23-bridge-replay-rollback-failure-tests.md).
+- Extended Purchase Posting Bridge contract tests with JSON wire round-trip coverage for durable Posting/source/Journal identities.
+- Added explicit regression proving `serverRevision` remains distinct from local optimistic `localVersion` and cannot replace CAS semantics.
+- Added Bridge rejection coverage for cross-Company Purchase source/snapshot mismatch.
+- Added reversal chronology rejection coverage when `changedAt` precedes the immutable reversal timestamp.
+- Added explicit financial no-tombstone coverage: Posting and Reversal sync contracts remain `upsert` facts and expose no deletion marker.
+- Added Inventory Purchase-source-cost failure injection at FIFO projection time and verified full transaction rollback of Cost Input, Valuation Entry, FIFO Layer and stream revision.
+- Verified retry after removing the injected Inventory failure creates one consistent monetary projection.
+- Added full Desktop/SQLite Posting failure injection at the final idempotency-record write.
+- Verified the failed Posting attempt leaves only the deterministic non-economic Draft Posting aggregate; Journal, prepared state and Posting idempotency all roll back.
+- Verified retry after the failure reuses the Draft Posting, creates exactly one Accounting Journal, prepares Posting exactly once and persists exactly one idempotency record.
+- Verified a subsequent identical execution returns exact replay and does not duplicate the Journal.
+- Added runtime SQLite assertions that Purchase Posting idempotency evidence is append-only: UPDATE and DELETE are rejected by migration triggers.
+- Reaffirmed existing CAS coverage: Purchase Posting repository uses expected-version compare-and-swap and maps stale writes to `purchase_posting.concurrency_conflict`.
+- Reaffirmed incompatible fingerprint/source replay remains fail-closed.
+- Kept live Argin Bridge transport, server apply/acknowledgement and distributed conflict UI outside Phase 23 and owned by Phase 45.
+
+### Exit criteria
+
+- [x] Purchase Posting Bridge envelope survives wire serialization without durable-identity loss.
+- [x] Local version and server revision remain separate concepts.
+- [x] Cross-scope Bridge envelopes fail closed.
+- [x] Reversal chronology is validated.
+- [x] Financial Posting/Reversal contracts expose no tombstone/LWW delete semantic.
+- [x] Purchase-source Inventory valuation rollback is atomic under injected failure.
+- [x] Inventory valuation retry after failure produces one consistent projection.
+- [x] Posting transaction rollback removes Journal/prepared/idempotency effects under injected failure.
+- [x] Deterministic Draft Posting can be safely reused after failed economic commit.
+- [x] Posting retry completes exactly once.
+- [x] Exact replay creates no duplicate Journal.
+- [x] Posting idempotency evidence is append-only at SQLite boundary.
+- [x] Stale optimistic versions remain protected by CAS.
+- [x] Incompatible replay/fingerprint remains a conflict.
+- [x] Phase 45 live synchronization scope is not pulled into Phase 23.
+
+### Validation evidence
+
+- Extended `packages/purchase-posting/tests/purchase-posting-sync-contract.test.ts`.
+- Extended `packages/inventory-tauri/tests/purchase-source-cost-e2e.test.ts`.
+- Extended `apps/desktop/tests/purchase-create-integration.test.ts`.
+- Existing `packages/purchase-posting/tests/replay-safe-posting.test.ts` remains replay/fingerprint evidence.
+- Existing `packages/purchase-posting/tests/atomic-journal-posting.test.ts` remains atomic Journal/Posting rollback evidence.
+- Existing `packages/purchase-posting-tauri/tests/sqlite-purchase-posting.test.ts` remains repository CAS/UoW evidence.
+- Added `docs/testing/phase-23-bridge-replay-rollback-failure-tests.md`.
 - No local/CI PASS is claimed from this session; execute the commands below before owner acceptance.
 
 ### Local verification commands
