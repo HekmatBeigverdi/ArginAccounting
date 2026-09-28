@@ -502,11 +502,12 @@ export function PurchaseDocumentsPage() {
     setError("");
     setMessage("");
     try {
+      let confirmedDocument: PurchaseDocumentSnapshot | null = null;
       if (action === "submit") await services.submit(selected, actionReason);
       else if (action === "approve")
         await services.approve(selected, actionReason);
       else if (action === "confirm")
-        await services.confirm(selected, actionReason);
+        confirmedDocument = await services.confirm(selected, actionReason);
       else if (action === "cancel")
         await services.cancel(selected, actionReason);
       else
@@ -516,7 +517,28 @@ export function PurchaseDocumentsPage() {
         );
       setReasonOpen(null);
       setReason("");
-      setMessage("وضعیت سند با موفقیت به‌روزرسانی شد.");
+      let postingError = "";
+      if (
+        confirmedDocument?.documentType === "supplier-invoice" &&
+        !confirmedDocument.lines.some(line => line.lineKind === "stock-product") &&
+        postingServices?.canExecute
+      ) {
+        try {
+          await postingServices.executeSupplierInvoice({
+            companyId: confirmedDocument.companyId,
+            branchId: confirmedDocument.scope.branchId,
+            sourceId: confirmedDocument.documentId,
+          });
+        } catch (cause) {
+          postingError = cause instanceof Error ? cause.message : "ایجاد خودکار ثبت حسابداری ناموفق بود.";
+        }
+      }
+      setMessage(
+        postingError
+          ? "سند قطعی شد، اما ثبت حسابداری خودکار نیاز به بررسی دارد."
+          : "وضعیت سند با موفقیت به‌روزرسانی شد.",
+      );
+      if (postingError) setError(postingError);
       await reload();
       await openDocument(selected.documentId);
     } catch (e) {
@@ -630,10 +652,24 @@ export function PurchaseDocumentsPage() {
     setMessage("");
     try {
       const result = await services.matchConfirmedReceipts(selected);
+      let postingCreated = false;
+      if (result.status === "matched") {
+        await services.resolveReceiptCost(selected);
+        if (postingServices?.canExecute) {
+          await postingServices.executeSupplierInvoice({
+            companyId: selected.companyId,
+            branchId: selected.scope.branchId,
+            sourceId: selected.documentId,
+          });
+          postingCreated = true;
+        }
+      }
       await openDocument(selected.documentId);
       setMessage(
         result.status === "matched"
-          ? "تطبیق خرید کامل شد."
+          ? postingCreated
+            ? "تطبیق خرید کامل شد، مبنای هزینه ثبت شد و سند حسابداری خرید ایجاد شد."
+            : "تطبیق خرید کامل شد و مبنای هزینه ثبت شد."
           : result.status === "variance"
             ? "تطبیق انجام شد اما اختلاف سفارش/فاکتور نیاز به بررسی دارد."
             : "رسیدهای قطعی موجود تطبیق شدند؛ هنوز بخشی از مقدار فاکتور دریافت نشده است.",
