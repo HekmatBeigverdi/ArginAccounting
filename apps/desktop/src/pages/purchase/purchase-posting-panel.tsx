@@ -60,12 +60,18 @@ export function PurchasePostingPanel(props: {
   readonly sourceType: PurchasePostingSourceDocumentType;
   readonly sourceId: string;
   readonly sourceStatus: string;
+  readonly stockLineCount?: number;
+  readonly receiptFulfilled?: boolean;
+  readonly matchingStatus?: "unmatched" | "partially-matched" | "matched" | "variance" | null;
 }) {
   const [rows, setRows] = useState<readonly PurchasePostingReconciliationSnapshot[]>([]);
   const [selectedPostingId, setSelectedPostingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [error, setError] = useState("");
+  const [accountLabels, setAccountLabels] = useState<
+    Readonly<Record<string, { readonly code: string; readonly name: string }>>
+  >({});
 
   const reload = useCallback(async () => {
     if (!props.services?.canView) return;
@@ -118,6 +124,39 @@ export function PurchasePostingPanel(props: {
     [rows, selectedPostingId],
   );
 
+  useEffect(() => {
+    const journal = selected?.journal;
+    if (!journal || !props.services) {
+      setAccountLabels({});
+      return;
+    }
+    const ids = [...new Set(journal.lines.map(line => line.accountId))];
+    void props.services.describeAccounts(props.companyId, ids)
+      .then(setAccountLabels)
+      .catch(() => setAccountLabels({}));
+  }, [selected?.journal, props.services, props.companyId]);
+
+  const hasStock = (props.stockLineCount ?? 0) > 0;
+  const documentConfirmed = props.sourceStatus === "confirmed";
+  const receiptComplete = !hasStock || props.receiptFulfilled === true;
+  const matchingComplete = !hasStock || props.matchingStatus === "matched";
+  const postingCreated = Boolean(selected?.posting);
+  const journalCreated = Boolean(selected?.journal);
+
+  const nextAction = !documentConfirmed
+    ? "ابتدا فاکتور تأمین‌کننده را قطعی کنید."
+    : !receiptComplete
+      ? "دریافت کالای انباری کامل نیست؛ رسید انبار باقیمانده را ثبت و قطعی کنید."
+      : props.matchingStatus === "variance"
+        ? "تطبیق خرید دارای اختلاف است؛ اختلاف مقدار/قیمت را بررسی کنید."
+        : !matchingComplete
+          ? "رسیدهای قطعی را با فاکتور تطبیق دهید."
+          : !postingCreated
+            ? "شرایط عملیاتی کامل است؛ ثبت حسابداری را ایجاد یا دوباره تلاش کنید."
+            : selected?.journal?.status === "draft"
+              ? "سند حسابداری ایجاد شده و برای ادامه چرخه حسابداری آماده است."
+              : "زنجیره خرید تا حسابداری ایجاد شده است.";
+
   if (!props.services?.canView) {
     return null;
   }
@@ -134,7 +173,45 @@ export function PurchasePostingPanel(props: {
         </button>
       </header>
 
-      {error && <div className="purchase-posting-panel__error">{error}</div>}
+      {props.sourceType === "supplier-invoice" && (
+        <div className="purchase-accounting-flow" aria-label="مسیر خرید تا حسابداری">
+          <div className={"purchase-accounting-flow__step " + (documentConfirmed ? "is-done" : "is-pending")}>
+            <span>۱</span>
+            <div><strong>فاکتور</strong><small>{documentConfirmed ? "قطعی" : "در انتظار قطعی‌شدن"}</small></div>
+          </div>
+          <div className={"purchase-accounting-flow__step " + (receiptComplete ? "is-done" : "is-pending")}>
+            <span>۲</span>
+            <div><strong>دریافت انبار</strong><small>{hasStock ? (receiptComplete ? "تکمیل" : "ناقص") : "نیاز ندارد"}</small></div>
+          </div>
+          <div className={"purchase-accounting-flow__step " + (matchingComplete ? "is-done" : props.matchingStatus === "variance" ? "is-warning" : "is-pending")}>
+            <span>۳</span>
+            <div><strong>تطبیق خرید</strong><small>{hasStock ? (props.matchingStatus === "matched" ? "کامل" : props.matchingStatus === "variance" ? "دارای اختلاف" : "در انتظار") : "نیاز ندارد"}</small></div>
+          </div>
+          <div className={"purchase-accounting-flow__step " + (postingCreated ? "is-done" : "is-pending")}>
+            <span>۴</span>
+            <div><strong>ثبت خرید</strong><small>{postingCreated ? STATUS[selected?.posting?.status ?? ""] ?? selected?.posting?.status : "ایجاد نشده"}</small></div>
+          </div>
+          <div className={"purchase-accounting-flow__step " + (journalCreated ? "is-done" : "is-pending")}>
+            <span>۵</span>
+            <div><strong>سند حسابداری</strong><small>{journalCreated ? JOURNAL_STATUS[selected?.journal?.status ?? ""] ?? selected?.journal?.status : "ایجاد نشده"}</small></div>
+          </div>
+        </div>
+      )}
+
+      {props.sourceType === "supplier-invoice" && (
+        <div className="purchase-accounting-next-action">
+          <span>اقدام بعدی</span>
+          <strong>{nextAction}</strong>
+        </div>
+      )}
+
+      {error && (
+        <div className="purchase-posting-panel__error" role="alert">
+          <strong>ثبت حسابداری تکمیل نشد</strong>
+          <span>{error}</span>
+          <small>فاکتور خرید قطعی باقی می‌ماند؛ پس از اصلاح علت، دوباره «ایجاد ثبت حسابداری» را اجرا کنید.</small>
+        </div>
+      )}
 
       {!loading && rows.length === 0 && (
         <div className="purchase-posting-panel__empty">
@@ -179,8 +256,9 @@ export function PurchasePostingPanel(props: {
         <>
           <div className="purchase-posting-panel__summary">
             <div>
-              <span>وضعیت ثبت</span>
+              <span>وضعیت ثبت خرید</span>
               <strong>{selected.posting ? STATUS[selected.posting.status] ?? selected.posting.status : "یافت نشد"}</strong>
+              <small>نسخه منبع {selected.source.sourceVersion}</small>
             </div>
             <div>
               <span>سند حسابداری</span>
@@ -188,16 +266,18 @@ export function PurchasePostingPanel(props: {
               {selected.journal && <small>{JOURNAL_STATUS[selected.journal.status] ?? selected.journal.status}</small>}
             </div>
             <div>
-              <span>تراز سند</span>
+              <span>جمع بدهکار / بستانکار</span>
               <strong>
                 {selected.journal
                   ? `${selected.journal.totalDebit.amount.toLocaleString("fa-IR")} ریال`
                   : "—"}
               </strong>
+              {selected.journal && <small>سند تراز است: {selected.journal.totalDebit.amount === selected.journal.totalCredit.amount ? "بله" : "خیر"}</small>}
             </div>
             <div>
-              <span>کنترل تطبیق</span>
+              <span>سلامت زنجیره</span>
               <strong>{selected.reconciled ? "سالم" : "نیازمند بررسی"}</strong>
+              <small>Purchase → Posting → Journal</small>
             </div>
           </div>
 
@@ -251,7 +331,12 @@ export function PurchasePostingPanel(props: {
                       {selected.journal.lines.map(line => (
                         <tr key={line.id}>
                           <td>{line.order}</td>
-                          <td><bdi>{line.accountId}</bdi></td>
+                          <td>
+                            <strong>{accountLabels[line.accountId]?.name ?? "حساب"}</strong>
+                            <small>
+                              <bdi>{accountLabels[line.accountId]?.code ?? line.accountId}</bdi>
+                            </small>
+                          </td>
                           <td>{line.debit.amount.toLocaleString("fa-IR")}</td>
                           <td>{line.credit.amount.toLocaleString("fa-IR")}</td>
                         </tr>
