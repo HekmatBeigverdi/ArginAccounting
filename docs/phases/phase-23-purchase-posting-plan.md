@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–32 are complete. Steps 33–36 are not started.
+Steps 1–33 are complete. Steps 34–36 are not started.
 
 ## Governance
 
@@ -52,6 +52,7 @@ Mandatory references:
 - [Purchase Accounting Workspace UX](../architecture/purchase-accounting-workspace-ux.md)
 - [Purchase Workflow Hardening](../architecture/purchase-workflow-hardening.md)
 - [Purchase Domain and Application Test Matrix](../architecture/purchase-domain-application-test-matrix.md)
+- [Purchase End-to-End SQLite Acceptance Matrix](../testing/phase-23-purchase-e2e-sqlite-tests.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -246,7 +247,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 30 | Purchase Accounting Workspace UX | Completed |
 | 31 | Purchase Workflow Hardening | Completed |
 | 32 | Domain and Application Tests | Completed |
-| 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Not started |
+| 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Completed |
 | 34 | Bridge, Replay, Rollback and Failure Tests | Not started |
 | 35 | Documentation, Step Status and Phase Evidence | Not started |
 | 36 | Release, Merge and Phase Closure | Not started |
@@ -2194,4 +2195,74 @@ pnpm --filter @argin/purchase-posting test
 
 pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
+```
+
+## Step 33 — End-to-End SQLite/Purchase/Valuation/Posting Tests
+
+### Completed work
+
+- Added the canonical [Purchase End-to-End SQLite Acceptance Matrix](../testing/phase-23-purchase-e2e-sqlite-tests.md).
+- Added a full Desktop/SQLite acceptance scenario spanning confirmed Supplier Invoice → Goods Receipt → Stock Movement → Matching → Purchase Cost Resolution → Inventory Valuation → Purchase Posting → Accounting Journal.
+- The E2E scenario verifies the persisted Purchase source, matched receipt lineage, resolved Inventory valuation, prepared Purchase Posting, draft Accounting Journal, balanced debit/credit totals and healthy Purchase→Posting→Journal reconciliation.
+- Added rule-backed accounting verification using explicit Inventory Asset and Accounts Payable accounts; the test asserts the actual persisted Journal lines and amounts.
+- Added exact Posting replay verification proving the same Supplier Invoice source version returns the committed Journal and leaves only one Journal/idempotency record.
+- Step 33 testing exposed a real integration gap: Purchase source Cost Input was persisted but the Inventory source-cost adapter did not materialize the resolved valuation projection required by Purchase Posting.
+- Fixed `SqliteInventorySourceCostInputService` so authoritative Purchase source costs create/resolve Inventory valuation entries under the effective company valuation policy and create FIFO cost layers when FIFO is active.
+- Hardened that projection for replay: an exact existing Purchase Cost Input no longer prevents repair of a missing legacy valuation entry; exact complete replay does not advance the valuation stream revision.
+- Conflicting existing resolved valuation facts fail closed instead of being silently overwritten.
+- Added focused Inventory SQLite integration tests for source Purchase Cost Input → resolved valuation/FIFO layer and legacy missing-projection repair.
+- Preserved module authority: Purchase supplies authoritative commercial/matching Cost Input facts, Inventory owns valuation entries/layers, Purchase Posting consumes resolved valuation, and Accounting owns the Journal.
+- Step 34 remains the owner of Bridge synchronization and deliberate failure/rollback/CAS injection beyond this local SQLite E2E acceptance.
+
+### Exit criteria
+
+- [x] Confirmed stock Supplier Invoice is exercised against real SQLite migrations.
+- [x] Linked Inventory Receipt and stock movement are part of the E2E chain.
+- [x] Receipt/Invoice matching reaches a durable fully matched state.
+- [x] Purchase-derived Cost Input reaches Inventory valuation.
+- [x] Effective FIFO policy creates a resolved valuation entry and FIFO layer.
+- [x] Purchase Posting consumes persisted resolved Inventory valuation.
+- [x] Posting Rules resolve real persisted Inventory/AP accounts.
+- [x] Purchase Posting becomes `prepared`.
+- [x] Accounting Journal is persisted as a balanced `draft`.
+- [x] Persisted Journal lines and account IDs are asserted.
+- [x] Purchase→Posting→Journal reconciliation is asserted healthy.
+- [x] Exact Posting replay does not create a duplicate Journal.
+- [x] Purchase source-cost valuation projection is replay-safe.
+- [x] Existing exact Cost Input can repair a missing legacy valuation projection.
+- [x] Conflicting valuation facts fail closed.
+- [x] Module ownership and Argin Bridge authority boundaries remain intact.
+
+### Validation evidence
+
+- Added full E2E coverage to `apps/desktop/tests/purchase-create-integration.test.ts`.
+- Updated `packages/inventory-tauri/src/sqlite-inventory-source-cost-input-service.ts`.
+- Added `packages/inventory-tauri/tests/purchase-source-cost-e2e.test.ts`.
+- Added `docs/testing/phase-23-purchase-e2e-sqlite-tests.md`.
+- No local/CI PASS is claimed from this session; execute the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+
+pnpm install --frozen-lockfile
+
+pnpm --filter @argin/inventory-tauri typecheck
+pnpm --filter @argin/inventory-tauri test
+
+pnpm --filter @argin/purchase typecheck
+pnpm --filter @argin/purchase test
+pnpm --filter @argin/purchase-tauri typecheck
+pnpm --filter @argin/purchase-tauri test
+
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
+
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
 ```
