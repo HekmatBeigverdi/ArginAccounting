@@ -377,8 +377,7 @@ export function createPurchasePostingWorkspaceServices(input: {
         journal: {
           voucherId,
           voucherNumber: `PUR-${document.document_number ?? sourceId}-V${document.version}`,
-          lineIds: Array.from({ length: Math.max(2, fact.lines.length * 4 + 1) }, (_, index) =>
-            `${voucherId}:line:${index + 1}`),
+          lineIds: [],
           createdAt: capturedAt,
           reference: document.document_number,
           description: `ثبت حسابداری خودکار خرید ${document.document_number ?? sourceId}`,
