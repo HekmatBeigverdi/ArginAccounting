@@ -135,10 +135,10 @@ test("purchase receipt staging tracks partial drafts and confirmed receipts with
   const partial = await services.get("company", document.documentId);
   assert.equal(partial?.receiptFulfillment[0]?.allocatedBaseQuantity, "1");
   assert.equal(partial?.receiptFulfillment[0]?.remainingBaseQuantity, "1");
-  const second = await services.stageInventoryReceipt(document, "warehouse", quantities);
+  const second = await services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-auto-1");
   assert.equal(second.status, "draft");
   assert.notEqual(second.inventoryDocumentId, first.inventoryDocumentId);
-  await assert.rejects(services.stageInventoryReceipt(document, "warehouse", quantities),
+  await assert.rejects(services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-auto-2"),
     (error: unknown) => error instanceof Error && "field" in error && error.field === "receiptQuantity");
   const repository = new SqliteInventoryDocumentRepository(database);
   let receipt = await repository.findById("company", first.inventoryDocumentId);
@@ -158,7 +158,7 @@ test("purchase receipt staging tracks partial drafts and confirmed receipts with
   assert.equal(detail?.inventoryReceipts.find(item => item.documentId === second.inventoryDocumentId)?.status, "draft");
   assert.equal(detail?.receiptFulfillment[0]?.allocatedBaseQuantity, "2");
   assert.equal(detail?.receiptFulfillment[0]?.remainingBaseQuantity, "0");
-  await assert.rejects(services.stageInventoryReceipt(document, "warehouse", quantities),
+  await assert.rejects(services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-auto-3"),
     (error: unknown) => error instanceof Error && "field" in error && error.field === "receiptQuantity");
   assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 2);
   await assert.rejects(new inventory.InventoryDraftService(new SqliteInventoryUnitOfWork(database)).create({
