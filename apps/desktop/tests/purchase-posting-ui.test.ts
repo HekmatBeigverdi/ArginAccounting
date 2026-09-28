@@ -44,3 +44,24 @@ test("Desktop declares Purchase Posting application and SQLite adapter dependenc
   assert.equal(pkg.dependencies?.["@argin/purchase-posting"], "workspace:*");
   assert.equal(pkg.dependencies?.["@argin/purchase-posting-tauri"], "workspace:*");
 });
+
+
+test("Phase 23 Step 29 exposes automatic Purchase Posting execution and recovery action", async () => {
+  const [panel, service, purchasePage] = await Promise.all([
+    read("../src/pages/purchase/purchase-posting-panel.tsx"),
+    read("../src/composition/purchase-posting/create-purchase-posting-workspace-services.ts"),
+    read("../src/pages/purchase/purchase-documents-page.tsx"),
+  ]);
+
+  assert.match(panel, /ایجاد ثبت حسابداری/u);
+  assert.match(panel, /executeSupplierInvoice/u);
+  assert.match(service, /orchestrateSupplierInvoicePosting/u);
+  assert.match(service, /createPurchasePostingFact/u);
+  assert.match(service, /createPurchaseFulfillmentAccountingPolicy\("automatic"\)/u);
+  assert.match(service, /SqlitePurchasePostingReplayUnitOfWork/u);
+  assert.match(service, /SHA-256/u);
+  assert.match(service, /purchase_posting_rules|listActive/u);
+  assert.match(purchasePage, /سند حسابداری خرید ایجاد شد/u);
+  assert.match(purchasePage, /postingServices\.executeSupplierInvoice/u);
+  assert.doesNotMatch(panel, /accountId\s*[:=].*input|unitPrice|discountAmount/u);
+});
