@@ -723,3 +723,122 @@ test("Step 33 E2E persists Purchase -> Receipt -> Matching -> Valuation -> Posti
     1,
   );
 });
+
+
+test("Step 34 Posting failure injection rolls back Journal/prepared state and retry completes exactly once", async (t) => {
+  const f = fixture();
+  t.after(() => f.sqlite.close());
+
+  f.sqlite.exec(`
+    INSERT INTO inventory_valuation_policies(
+      policy_id,company_id,method,strategy_version,currency,effective_from,
+      previous_policy_id,change_reason,revision
+    ) VALUES (
+      'policy-step34','company','fifo',1,'IRR','2026-01-01',
+      NULL,'Phase 23 Step 34 failure acceptance',1
+    );
+  `);
+
+  const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.matchConfirmedReceipts(invoice);
+  await f.services.resolveReceiptCost(invoice);
+
+  f.sqlite.exec(`
+    INSERT INTO accounts
+      (id,company_id,parent_id,level,code,name,nature,normal_balance,statement_type,
+       balance_sheet_section,posting_allowed,created_at,updated_at)
+    VALUES
+      ('asset34-g','company',NULL,'group','3','دارایی تست ۳۴','debit','debit','balance_sheet','assets',0,'2026-09-29','2026-09-29'),
+      ('asset34-gen','company','asset34-g','general','31','دارایی جاری تست ۳۴','debit','debit','balance_sheet','assets',0,'2026-09-29','2026-09-29'),
+      ('inventory34','company','asset34-gen','subsidiary','310001','موجودی تست ۳۴','debit','debit','balance_sheet','assets',1,'2026-09-29','2026-09-29'),
+      ('liab34-g','company',NULL,'group','4','بدهی تست ۳۴','credit','credit','balance_sheet','liabilities',0,'2026-09-29','2026-09-29'),
+      ('liab34-gen','company','liab34-g','general','41','بدهی جاری تست ۳۴','credit','credit','balance_sheet','liabilities',0,'2026-09-29','2026-09-29'),
+      ('payable34','company','liab34-gen','subsidiary','410001','پرداختنی تست ۳۴','credit','credit','balance_sheet','liabilities',1,'2026-09-29','2026-09-29');
+
+    INSERT INTO purchase_posting_rules
+      (rule_id,company_id,branch_id,event_kind,line_kind,account_role,account_id,
+       priority,active,version,created_at,updated_at)
+    VALUES
+      ('rule34-inventory','company',NULL,'supplier-invoice-recognition','stock-product',
+       'inventory-asset','inventory34',100,1,1,'2026-09-29','2026-09-29'),
+      ('rule34-payable','company',NULL,'supplier-invoice-recognition',NULL,
+       'accounts-payable','payable34',100,1,1,'2026-09-29','2026-09-29');
+
+    CREATE TRIGGER phase23_fail_posting_idempotency
+    BEFORE INSERT ON purchase_posting_idempotency
+    BEGIN
+      SELECT RAISE(ABORT,'forced posting idempotency failure');
+    END;
+  `);
+
+  const postingServices = createPurchasePostingWorkspaceServices({
+    database: f.database,
+    actor: { permissions: ["system.full-access"], branchIds: ["branch"] },
+  });
+
+  await assert.rejects(
+    () => postingServices.executeSupplierInvoice({
+      companyId: "company",
+      branchId: "branch",
+      sourceId: invoice.documentId,
+    }),
+    /forced posting idempotency failure/u,
+  );
+
+  const failedPosting = f.sqlite.prepare(`
+    SELECT status,version,journal_voucher_id
+      FROM purchase_postings
+     WHERE company_id='company'
+  `).get() as { status: string; version: number; journal_voucher_id: string | null };
+
+  // Aggregate creation precedes the replay-safe commit; the economic effect must roll back.
+  assert.deepEqual({ ...failedPosting }, {
+    status: "draft",
+    version: 1,
+    journal_voucher_id: null,
+  });
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM journal_vouchers WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    0,
+  );
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM purchase_posting_idempotency WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    0,
+  );
+
+  f.sqlite.exec("DROP TRIGGER phase23_fail_posting_idempotency");
+
+  const recovered = await postingServices.executeSupplierInvoice({
+    companyId: "company",
+    branchId: "branch",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(recovered.status, "journal-created");
+  assert.equal(recovered.replayed, false);
+
+  const replay = await postingServices.executeSupplierInvoice({
+    companyId: "company",
+    branchId: "branch",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(replay.replayed, true);
+  assert.equal(replay.journal?.id, recovered.journal?.id);
+
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM purchase_postings WHERE company_id='company'")
+      .get()?.n,
+    1,
+  );
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM journal_vouchers WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    1,
+  );
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM purchase_posting_idempotency WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    1,
+  );
+});
