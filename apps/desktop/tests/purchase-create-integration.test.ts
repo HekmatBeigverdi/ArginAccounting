@@ -684,8 +684,8 @@ test("Step 33 E2E persists Purchase -> Receipt -> Matching -> Valuation -> Posti
   assert.equal(journalRow.source_id, invoice.documentId);
 
   const journalLines = f.sqlite.prepare(`
-    SELECT account_id,debit,credit
-      FROM journal_voucher_lines
+    SELECT account_id,debit_amount AS debit,credit_amount AS credit
+      FROM journal_lines
      WHERE voucher_id=?
      ORDER BY line_order
   `).all(journalRow.id) as Array<{ account_id: string; debit: number; credit: number }>;
