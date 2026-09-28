@@ -18,6 +18,7 @@ const hooks = registerHooks({
   },
 });
 const { createPurchaseWorkspaceServices } = await import("../src/composition/purchase/create-purchase-workspace-services.ts");
+const { createPurchasePostingWorkspaceServices } = await import("../src/composition/purchase-posting/create-purchase-posting-workspace-services.ts");
 const purchase = await import("@argin/purchase");
 const { SqlitePurchaseDocumentRepository } = await import("@argin/purchase-tauri");
 const inventory = await import("@argin/inventory");
@@ -563,4 +564,162 @@ test("Step 32 receipt submission replay returns one Inventory draft while a new 
   assert.equal(detail?.receiptFulfillment[0]?.allocatedBaseQuantity, "2");
   assert.equal(detail?.receiptFulfillment[0]?.remainingBaseQuantity, "0");
   assert.equal(detail?.inventoryReceipts.length, 2);
+});
+
+
+test("Step 33 E2E persists Purchase -> Receipt -> Matching -> Valuation -> Posting -> Accounting Journal in SQLite", async (t) => {
+  const f = fixture();
+  t.after(() => f.sqlite.close());
+
+  // Company valuation policy is authoritative before Purchase cost reaches Inventory valuation.
+  f.sqlite.exec(`
+    INSERT INTO inventory_valuation_policies(
+      policy_id,company_id,method,strategy_version,currency,effective_from,
+      previous_policy_id,change_reason,revision
+    ) VALUES (
+      'policy-step33','company','fifo',1,'IRR','2026-01-01',
+      NULL,'Phase 23 Step 33 E2E',1
+    );
+  `);
+
+  const { invoice, receipt } = await confirmedInvoiceReceipt(f);
+
+  // The stock invoice cannot reach accounting before durable matching/valuation.
+  const postingServices = createPurchasePostingWorkspaceServices({
+    database: f.database,
+    actor: { permissions: ["system.full-access"], branchIds: ["branch"] },
+  });
+  await assert.rejects(
+    () => postingServices.executeSupplierInvoice({
+      companyId: "company",
+      branchId: "branch",
+      sourceId: invoice.documentId,
+    }),
+    /رسید قطعی|دریافت کالای انباری/u,
+  );
+
+  const matching = await f.services.matchConfirmedReceipts(invoice);
+  assert.equal(matching.status, "matched");
+  await f.services.resolveReceiptCost(invoice);
+
+  const valuation = f.sqlite.prepare(`
+    SELECT valuation_entry_id,movement_id,document_id,line_id,method,currency,
+           quantity,unit_cost,total_cost,cost_state
+      FROM inventory_valuation_entries
+     WHERE company_id='company' AND movement_id='movement'
+  `).get() as {
+    valuation_entry_id: string;
+    movement_id: string;
+    document_id: string;
+    line_id: string;
+    method: string;
+    currency: string;
+    quantity: string;
+    unit_cost: string;
+    total_cost: number;
+    cost_state: string;
+  };
+  assert.equal(valuation.document_id, receipt.documentId);
+  assert.equal(valuation.line_id, receipt.lines[0]!.lineId);
+  assert.equal(valuation.method, "fifo");
+  assert.equal(valuation.currency, "IRR");
+  assert.equal(valuation.quantity, "15");
+  assert.equal(valuation.total_cost, 25_000_000);
+  assert.equal(valuation.cost_state, "resolved");
+
+  // Minimal posting-enabled chart/rules for the stock invoice.
+  f.sqlite.exec(`
+    INSERT INTO accounts
+      (id,company_id,parent_id,level,code,name,nature,normal_balance,statement_type,
+       balance_sheet_section,posting_allowed,created_at,updated_at)
+    VALUES
+      ('asset-g','company',NULL,'group','1','دارایی‌ها','debit','debit','balance_sheet','assets',0,'2026-09-28','2026-09-28'),
+      ('asset-gen','company','asset-g','general','11','دارایی جاری','debit','debit','balance_sheet','assets',0,'2026-09-28','2026-09-28'),
+      ('inventory-account','company','asset-gen','subsidiary','110001','موجودی کالا','debit','debit','balance_sheet','assets',1,'2026-09-28','2026-09-28'),
+      ('liability-g','company',NULL,'group','2','بدهی‌ها','credit','credit','balance_sheet','liabilities',0,'2026-09-28','2026-09-28'),
+      ('liability-gen','company','liability-g','general','21','بدهی جاری','credit','credit','balance_sheet','liabilities',0,'2026-09-28','2026-09-28'),
+      ('payable-account','company','liability-gen','subsidiary','210001','حساب‌های پرداختنی','credit','credit','balance_sheet','liabilities',1,'2026-09-28','2026-09-28');
+
+    INSERT INTO purchase_posting_rules
+      (rule_id,company_id,branch_id,event_kind,line_kind,account_role,account_id,
+       priority,active,version,created_at,updated_at)
+    VALUES
+      ('rule-inventory','company',NULL,'supplier-invoice-recognition','stock-product',
+       'inventory-asset','inventory-account',100,1,1,'2026-09-28','2026-09-28'),
+      ('rule-payable','company',NULL,'supplier-invoice-recognition',NULL,
+       'accounts-payable','payable-account',100,1,1,'2026-09-28','2026-09-28');
+  `);
+
+  const posted = await postingServices.executeSupplierInvoice({
+    companyId: "company",
+    branchId: "branch",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(posted.status, "journal-created");
+  assert.equal(posted.posting?.status, "prepared");
+  assert.equal(posted.journal?.status, "draft");
+  assert.equal(posted.journal?.totalDebit.amount, 25_000_000);
+  assert.equal(posted.journal?.totalCredit.amount, 25_000_000);
+
+  const postingRow = f.sqlite.prepare(`
+    SELECT status,journal_voucher_id,version
+      FROM purchase_postings
+     WHERE company_id='company'
+  `).get() as { status: string; journal_voucher_id: string; version: number };
+  assert.equal(postingRow.status, "prepared");
+  assert.equal(postingRow.version, 2);
+
+  const journalRow = f.sqlite.prepare(`
+    SELECT id,status,total_debit,total_credit,source_type,source_id
+      FROM journal_vouchers
+     WHERE company_id='company' AND id=?
+  `).get(postingRow.journal_voucher_id) as {
+    id: string; status: string; total_debit: number; total_credit: number;
+    source_type: string; source_id: string;
+  };
+  assert.equal(journalRow.status, "draft");
+  assert.equal(journalRow.total_debit, 25_000_000);
+  assert.equal(journalRow.total_credit, 25_000_000);
+  assert.equal(journalRow.source_type, "source_document");
+  assert.equal(journalRow.source_id, invoice.documentId);
+
+  const journalLines = f.sqlite.prepare(`
+    SELECT account_id,debit,credit
+      FROM journal_voucher_lines
+     WHERE voucher_id=?
+     ORDER BY line_order
+  `).all(journalRow.id) as Array<{ account_id: string; debit: number; credit: number }>;
+  assert.deepEqual(journalLines, [
+    { account_id: "inventory-account", debit: 25_000_000, credit: 0 },
+    { account_id: "payable-account", debit: 0, credit: 25_000_000 },
+  ]);
+
+  const trace = await postingServices.findBySource({
+    companyId: "company",
+    branchId: "branch",
+    sourceType: "supplier-invoice",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(trace.length, 1);
+  assert.equal(trace[0]?.reconciled, true);
+  assert.equal(trace[0]?.journal?.id, journalRow.id);
+
+  // Replay must return the committed result and never create another Journal.
+  const replay = await postingServices.executeSupplierInvoice({
+    companyId: "company",
+    branchId: "branch",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(replay.replayed, true);
+  assert.equal(replay.journal?.id, journalRow.id);
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM journal_vouchers WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    1,
+  );
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM purchase_posting_idempotency WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    1,
+  );
 });
