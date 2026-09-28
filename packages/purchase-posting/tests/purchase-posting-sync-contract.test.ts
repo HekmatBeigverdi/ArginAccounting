@@ -180,3 +180,115 @@ test("Bridge contract rejects invalid fingerprint and self-causation", () => {
     },
   );
 });
+
+
+test("Step 34 Bridge envelope survives JSON round-trip without losing financial identity", () => {
+  const envelope = createPurchasePostingStateSyncEnvelope({
+    ...metadata,
+    serverRevision: 42,
+    source,
+    postingPurpose: "accounting-recognition",
+    snapshot: preparedPosting(),
+  });
+
+  const wire = JSON.parse(JSON.stringify(envelope)) as typeof envelope;
+
+  assert.equal(wire.contractVersion, 1);
+  assert.equal(wire.schemaVersion, 1);
+  assert.equal(wire.entity, "purchase-posting");
+  assert.equal(wire.changeKind, "upsert");
+  assert.equal(wire.postingId, "posting-001");
+  assert.equal(wire.localVersion, 2);
+  assert.equal(wire.serverRevision, 42);
+  assert.equal(wire.source.sourceId, "invoice-001");
+  assert.equal(wire.source.sourceVersion, 7);
+  assert.equal(wire.source.sourceRevision, 2);
+  assert.equal(wire.snapshot.journalVoucherId, "journal-001");
+  assert.deepEqual(wire.dependencies, envelope.dependencies);
+});
+
+test("Step 34 server revision never replaces local optimistic version", () => {
+  const envelope = createPurchasePostingStateSyncEnvelope({
+    ...metadata,
+    serverRevision: 999,
+    source,
+    postingPurpose: "accounting-recognition",
+    snapshot: preparedPosting(),
+  });
+
+  assert.equal(envelope.localVersion, 2);
+  assert.equal(envelope.serverRevision, 999);
+  assert.notEqual(envelope.localVersion, envelope.serverRevision);
+});
+
+test("Step 34 financial Posting contract exposes upsert only and no tombstone state", () => {
+  const postingEnvelope = createPurchasePostingStateSyncEnvelope({
+    ...metadata,
+    source,
+    postingPurpose: "accounting-recognition",
+    snapshot: preparedPosting(),
+  });
+  const reversalEnvelope = createPurchasePostingReversalSyncEnvelope({
+    ...metadata,
+    companyId: "company-001",
+    snapshot: {
+      postingId: "posting-001",
+      originalJournalVoucherId: "journal-001",
+      reversalJournalVoucherId: "journal-reversal-001",
+      requestId: "reversal-request-001",
+      reversedBy: "user-001",
+      reversedAt: "2026-09-24T06:05:00.000Z",
+      reason: "Controlled correction",
+      committedPostingVersion: 5,
+    },
+  });
+
+  assert.equal(postingEnvelope.changeKind, "upsert");
+  assert.equal(reversalEnvelope.changeKind, "upsert");
+  assert.equal("deletedAt" in postingEnvelope, false);
+  assert.equal("deletedAt" in reversalEnvelope, false);
+});
+
+test("Step 34 Bridge rejects cross-scope Purchase source for Posting snapshot", () => {
+  assert.throws(
+    () => createPurchasePostingStateSyncEnvelope({
+      ...metadata,
+      source: createPurchasePostingSourceIdentity({
+        ...source,
+        companyId: "company-other",
+      }),
+      postingPurpose: "accounting-recognition",
+      snapshot: preparedPosting(),
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof PurchasePostingSyncContractError);
+      assert.equal(error.code, "purchase-posting.sync.snapshot-mismatch");
+      return true;
+    },
+  );
+});
+
+test("Step 34 reversal changedAt must cover immutable reversal chronology", () => {
+  assert.throws(
+    () => createPurchasePostingReversalSyncEnvelope({
+      ...metadata,
+      changedAt: "2026-09-24T06:04:59.000Z",
+      companyId: "company-001",
+      snapshot: {
+        postingId: "posting-001",
+        originalJournalVoucherId: "journal-001",
+        reversalJournalVoucherId: "journal-reversal-001",
+        requestId: "reversal-request-001",
+        reversedBy: "user-001",
+        reversedAt: "2026-09-24T06:05:00.000Z",
+        reason: "Controlled correction",
+        committedPostingVersion: 5,
+      },
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof PurchasePostingSyncContractError);
+      assert.equal(error.code, "purchase-posting.sync.timestamp-invalid");
+      return true;
+    },
+  );
+});
