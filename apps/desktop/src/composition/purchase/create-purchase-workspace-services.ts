@@ -42,6 +42,11 @@ import type { ProductDto, ProductSelectorItemDto } from "@argin/product";
 import { SqliteWarehouseReader } from "@argin/warehouse-tauri";
 import type { WarehouseListItemDto } from "@argin/warehouse";
 import type { AuditServices } from "../audit/create-audit-services";
+import {
+  oncePerPurchaseSubmission,
+  purchaseWorkflowKey,
+  withPurchaseWorkflowLock,
+} from "../purchase-workflow-hardening";
 
 export interface PurchaseDesktopActor {
   readonly id: string;
@@ -117,6 +122,7 @@ export interface PurchaseWorkspaceServices {
     document: PurchaseDocumentSnapshot,
     warehouseId: string,
     quantitiesByLine: Readonly<Record<string, string>>,
+    submissionId: string,
   ): Promise<{ inventoryDocumentId: string; status: string; version: number }>;
 }
 
@@ -733,6 +739,9 @@ export function createPurchaseWorkspaceServices(input: {
       relatedDocumentId,
     }),
     async matchConfirmedReceipts(document) {
+      return withPurchaseWorkflowLock(
+        purchaseWorkflowKey(document.companyId, document.documentId),
+        async () => {
       const current = await this.get(document.companyId, document.documentId);
       if (!current) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
       await authorization.require({ branchId: current.document.scope.branchId }, "purchases.matching.manage");
@@ -768,8 +777,13 @@ export function createPurchaseWorkspaceServices(input: {
       const refreshed = await this.get(document.companyId, document.documentId);
       if (!refreshed?.matching) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "matching");
       return refreshed.matching;
+        },
+      );
     },
     async resolveReceiptCost(document) {
+      return withPurchaseWorkflowLock(
+        purchaseWorkflowKey(document.companyId, document.documentId),
+        async () => {
       const currentDetail = await this.get(document.companyId, document.documentId);
       if (!currentDetail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
       const current = currentDetail.document;
@@ -850,44 +864,70 @@ export function createPurchaseWorkspaceServices(input: {
           throw new Error("مبنای هزینه یکی از دریافت‌های تطبیق‌شده هنوز قابل حل نیست.");
         }
       }
+        },
+      );
     },
 
-    async stageInventoryReceipt(document, warehouseId, quantitiesByLine) {
-      await authorization.require({ branchId: document.scope.branchId }, "purchases.receipts.stage");
-      const detail = await this.get(document.companyId, document.documentId);
-      if (!detail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
-      document = detail.document;
-      if (document.documentType !== "supplier-invoice" || document.status !== "confirmed") {
-        throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptSource");
-      }
-      const allocations = detail.receiptFulfillment.flatMap(line => {
-        const requested = quantitiesByLine[line.purchaseLineId]?.trim() || "0";
-        if (!quantityIsPositive(requested)) return [];
-        if (!quantityLte(requested, line.remainingBaseQuantity)) {
-          throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptQuantity");
-        }
-        return [{
-          purchaseLineId: line.purchaseLineId,
-          baseQuantity: requested,
-          warehouse: { warehouseId, zoneId: null, locationId: null },
-        }];
-      });
-      if (!allocations.length) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "allocations");
-      const rid = newId();
-      const fp = fingerprint([document.documentId, warehouseId, allocations]);
-      try {
-        return await secured.stageInventoryReceipt(security, {
-          context: {
-            companyId: document.companyId, branchId: document.scope.branchId,
-            requestId: rid, operationId: newId(), payloadFingerprint: fp,
-            actorUserId: actor.id, occurredAt: now(),
-          },
-          purchaseDocumentId: document.documentId, inventoryDocumentId: newId(),
-          allocations, payloadFingerprint: fp,
-        });
-      } catch (error) {
-        throw error;
-      }
+    async stageInventoryReceipt(document, warehouseId, quantitiesByLine, submissionId) {
+      const workflowKey = purchaseWorkflowKey(document.companyId, document.documentId);
+      const submissionKey = `purchase-receipt:${workflowKey}:${submissionId}`;
+      return oncePerPurchaseSubmission(submissionKey, () =>
+        withPurchaseWorkflowLock(workflowKey, async () => {
+          await authorization.require({ branchId: document.scope.branchId }, "purchases.receipts.stage");
+          const detail = await this.get(document.companyId, document.documentId);
+          if (!detail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+          const current = detail.document;
+          if (current.version !== document.version) {
+            throw new PurchaseApplicationError("PURCHASE_APP_VERSION_CONFLICT", "version");
+          }
+          if (current.documentType !== "supplier-invoice" || current.status !== "confirmed") {
+            throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptSource");
+          }
+
+          const allocations = detail.receiptFulfillment.flatMap(line => {
+            const requested = quantitiesByLine[line.purchaseLineId]?.trim() || "0";
+            if (!quantityIsPositive(requested)) return [];
+            if (!quantityLte(requested, line.remainingBaseQuantity)) {
+              throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptQuantity");
+            }
+            return [{
+              purchaseLineId: line.purchaseLineId,
+              baseQuantity: requested,
+              warehouse: { warehouseId, zoneId: null, locationId: null },
+            }];
+          });
+          if (!allocations.length) {
+            throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "allocations");
+          }
+
+          const fp = fingerprint([
+            current.documentId,
+            current.version,
+            warehouseId,
+            allocations,
+            submissionId,
+          ]);
+          const requestId = `purchase-receipt:${current.documentId}:v${current.version}:${submissionId}`;
+          const inventoryDocumentId =
+            `purchase-receipt:${current.documentId}:v${current.version}:${submissionId}`;
+
+          return secured.stageInventoryReceipt(security, {
+            context: {
+              companyId: current.companyId,
+              branchId: current.scope.branchId,
+              requestId,
+              operationId: requestId + ":operation",
+              payloadFingerprint: fp,
+              actorUserId: actor.id,
+              occurredAt: now(),
+            },
+            purchaseDocumentId: current.documentId,
+            inventoryDocumentId,
+            allocations,
+            payloadFingerprint: fp,
+          });
+        }),
+      );
     },
   };
 }
