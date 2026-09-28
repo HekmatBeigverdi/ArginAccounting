@@ -147,3 +147,75 @@ test("Phase 23 Step 33 source-cost replay repairs a legacy missing valuation pro
     await executor.close();
   }
 });
+
+
+test("Phase 23 Step 34 source-cost projection rolls back atomically and retries cleanly after failure injection", async () => {
+  const db = await openTestSqlite();
+  const executor = new NodeSqliteExecutor(db);
+  try {
+    await applyMigrations(db, 29, 27);
+    installValuationFixtureSchema(db);
+    seedInbound(db, "company-failure", "movement-failure", "4");
+    seedFifoPolicy(db, "company-failure");
+
+    db.exec(`
+      CREATE TRIGGER phase23_fail_fifo_projection
+      BEFORE INSERT ON inventory_valuation_cost_layers
+      BEGIN
+        SELECT RAISE(ABORT,'forced fifo projection failure');
+      END;
+    `);
+
+    const service = new SqliteInventorySourceCostInputService(executor);
+    const basis = {
+      basisLineId: "purchase-cost:movement-failure",
+      movementId: "movement-failure",
+      productId: "p1",
+      warehouseId: "w1",
+      quantity: "4",
+      currency: "IRR" as const,
+      baseCost: 400,
+      landedCost: 0,
+      totalCost: 400,
+      unitCost: "100",
+      allocations: [],
+    };
+
+    await assert.rejects(
+      () => service.accept("company-failure", basis),
+      /forced fifo projection failure/u,
+    );
+
+    for (const table of [
+      "inventory_valuation_cost_inputs",
+      "inventory_valuation_entries",
+      "inventory_valuation_cost_layers",
+      "inventory_valuation_stream_versions",
+    ]) {
+      const row = db.prepare(`SELECT count(*) AS n FROM ${table} WHERE company_id=?`)
+        .get("company-failure") as { n: number };
+      assert.equal(row.n, 0, `${table} must roll back`);
+    }
+
+    db.exec("DROP TRIGGER phase23_fail_fifo_projection");
+    await service.accept("company-failure", basis);
+
+    assert.equal(
+      (db.prepare("SELECT count(*) AS n FROM inventory_valuation_cost_inputs WHERE company_id=?")
+        .get("company-failure") as { n: number }).n,
+      1,
+    );
+    assert.equal(
+      (db.prepare("SELECT count(*) AS n FROM inventory_valuation_entries WHERE company_id=?")
+        .get("company-failure") as { n: number }).n,
+      1,
+    );
+    assert.equal(
+      (db.prepare("SELECT count(*) AS n FROM inventory_valuation_cost_layers WHERE company_id=?")
+        .get("company-failure") as { n: number }).n,
+      1,
+    );
+  } finally {
+    await executor.close();
+  }
+});
