@@ -1075,6 +1075,12 @@ export function PurchaseDocumentsPage() {
                     sourceType={detail.document.documentType}
                     sourceId={detail.document.documentId}
                     sourceStatus={detail.document.status}
+                    stockLineCount={detail.document.lines.filter(line => line.lineKind === "stock-product").length}
+                    receiptFulfilled={
+                      detail.receiptFulfillment.length === 0 ||
+                      detail.receiptFulfillment.every(line => line.remainingBaseQuantity === "0")
+                    }
+                    matchingStatus={detail.matching?.status ?? null}
                   />
                   <details className="purchase-history">
                     <summary>تاریخچه گردش</summary>
