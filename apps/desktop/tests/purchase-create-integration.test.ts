@@ -126,11 +126,11 @@ test("purchase receipt staging tracks partial drafts and confirmed receipts with
     VALUES ('warehouse', 'company', 'W1', 'Warehouse', 'general', 'company', '2026-09-19T00:00:00Z', '2026-09-19T00:00:00Z');`);
   const quantities = { [document.lines[0]!.lineId]: "1" };
   for (const emptyQuantities of [{}, { [document.lines[0]!.lineId]: "   " }]) {
-    await assert.rejects(services.stageInventoryReceipt(document, "warehouse", emptyQuantities),
+    await assert.rejects(services.stageInventoryReceipt(document, "warehouse", emptyQuantities, "empty-" + Object.keys(emptyQuantities).length),
       (error: unknown) => error instanceof Error && "field" in error && error.field === "allocations");
   }
   assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 0);
-  const first = await services.stageInventoryReceipt(document, "warehouse", quantities);
+  const first = await services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-1");
   assert.equal(first.status, "draft");
   const partial = await services.get("company", document.documentId);
   assert.equal(partial?.receiptFulfillment[0]?.allocatedBaseQuantity, "1");
@@ -330,7 +330,7 @@ async function confirmedInvoiceReceipt(f: ReturnType<typeof fixture>) {
   await new SqlitePurchaseDocumentRepository(f.database).update(invoice, 1);
   f.sqlite.exec(`INSERT INTO warehouses (id,company_id,code,title,kind,organizational_scope,created_at,updated_at)
     VALUES ('warehouse','company','W1','Warehouse','general','company','2026-09-19','2026-09-19');`);
-  const staged = await f.services.stageInventoryReceipt(invoice, "warehouse", { [invoice.lines[0]!.lineId]: "15" });
+  const staged = await f.services.stageInventoryReceipt(invoice, "warehouse", { [invoice.lines[0]!.lineId]: "15" }, "confirmed-receipt");
   const repository = new SqliteInventoryDocumentRepository(f.database);
   let receipt = (await repository.findById("company", staged.inventoryDocumentId))!;
   receipt = inventory.rehydrateInventoryDocument({ ...receipt, documentNumber: "000008" });
