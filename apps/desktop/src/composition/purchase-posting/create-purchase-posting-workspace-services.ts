@@ -348,12 +348,17 @@ export function createPurchasePostingWorkspaceServices(input: {
       );
       const dimensionTypeId = (code: string) =>
         dimensionTypes.find(value => value.code.toUpperCase() === code)?.id;
+      const partyDimensionId = dimensionTypeId("PARTY");
+      const productDimensionId = dimensionTypeId("PRODUCT");
+      const warehouseDimensionId = dimensionTypeId("WAREHOUSE");
+      const costCenterDimensionId = dimensionTypeId("COST_CENTER");
+      const projectDimensionId = dimensionTypeId("PROJECT");
       const scopedPostingUow = new SqlitePurchasePostingUnitOfWork(input.database, Object.freeze({
-        party: dimensionTypeId("PARTY"),
-        product: dimensionTypeId("PRODUCT"),
-        warehouse: dimensionTypeId("WAREHOUSE"),
-        "cost-center": dimensionTypeId("COST_CENTER"),
-        project: dimensionTypeId("PROJECT"),
+        ...(partyDimensionId ? { party: partyDimensionId } : {}),
+        ...(productDimensionId ? { product: productDimensionId } : {}),
+        ...(warehouseDimensionId ? { warehouse: warehouseDimensionId } : {}),
+        ...(costCenterDimensionId ? { "cost-center": costCenterDimensionId } : {}),
+        ...(projectDimensionId ? { project: projectDimensionId } : {}),
       }));
 
       const source = createPurchasePostingSourceIdentityFromFact(fact);
