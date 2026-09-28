@@ -841,4 +841,13 @@ test("Step 34 Posting failure injection rolls back Journal/prepared state and re
       .get(invoice.documentId)?.n,
     1,
   );
+
+  assert.throws(
+    () => f.sqlite.exec("UPDATE purchase_posting_idempotency SET committed_posting_version=99"),
+    /append-only/u,
+  );
+  assert.throws(
+    () => f.sqlite.exec("DELETE FROM purchase_posting_idempotency"),
+    /append-only/u,
+  );
 });
