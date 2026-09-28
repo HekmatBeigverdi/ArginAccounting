@@ -65,3 +65,39 @@ test("Phase 23 Step 29 exposes automatic Purchase Posting execution and recovery
   assert.match(purchasePage, /postingServices\.executeSupplierInvoice/u);
   assert.doesNotMatch(panel, /accountId\s*[:=].*input|unitPrice|discountAmount/u);
 });
+
+
+test("Phase 23 Step 30 presents an integrated Purchase Accounting workspace", async () => {
+  const [panel, service, page, css] = await Promise.all([
+    read("../src/pages/purchase/purchase-posting-panel.tsx"),
+    read("../src/composition/purchase-posting/create-purchase-posting-workspace-services.ts"),
+    read("../src/pages/purchase/purchase-documents-page.tsx"),
+    read("../src/pages/purchase/purchase-posting-panel.css"),
+  ]);
+
+  for (const text of [
+    "مسیر خرید تا حسابداری",
+    "دریافت انبار",
+    "تطبیق خرید",
+    "ثبت خرید",
+    "سند حسابداری",
+    "اقدام بعدی",
+    "سلامت زنجیره",
+    "جمع بدهکار / بستانکار",
+  ]) {
+    assert.match(panel, new RegExp(text, "u"));
+  }
+
+  assert.match(panel, /receiptFulfilled/u);
+  assert.match(panel, /matchingStatus/u);
+  assert.match(panel, /describeAccounts/u);
+  assert.match(panel, /accountLabels\[line\.accountId\]\?\.name/u);
+  assert.match(service, /SELECT id,code,name/u);
+  assert.match(service, /describeAccounts/u);
+  assert.match(page, /stockLineCount=/u);
+  assert.match(page, /receiptFulfilled=/u);
+  assert.match(page, /matchingStatus=/u);
+  assert.match(css, /purchase-accounting-flow/u);
+  assert.match(css, /purchase-accounting-next-action/u);
+  assert.doesNotMatch(panel, /ورود حساب بدهکار|ورود حساب بستانکار/u);
+});
