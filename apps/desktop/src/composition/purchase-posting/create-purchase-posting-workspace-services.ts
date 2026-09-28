@@ -50,6 +50,10 @@ export interface PurchasePostingWorkspaceServices {
     readonly branchId: string;
     readonly sourceId: string;
   }): Promise<SupplierInvoicePostingOrchestrationResult>;
+  describeAccounts(
+    companyId: string,
+    accountIds: readonly string[],
+  ): Promise<Readonly<Record<string, { readonly code: string; readonly name: string }>>>;
 }
 
 
@@ -152,6 +156,25 @@ export function createPurchasePostingWorkspaceServices(input: {
       if (row) requireBranch(row.source.branchId);
       return row;
     },
+    async describeAccounts(companyId, accountIds) {
+      if (!can(purchasePostingPermissions.view)) {
+        throw new Error("برای مشاهده حساب‌های سند خرید مجوز ندارید.");
+      }
+      const ids = [...new Set(accountIds.filter(value => value.trim().length > 0))];
+      if (!ids.length) return Object.freeze({});
+      const placeholders = ids.map(() => "?").join(",");
+      const rows = await input.database.query<{ id: string; code: string; name: string }>(
+        `SELECT id,code,name
+           FROM accounts
+          WHERE company_id=? AND id IN (${placeholders})
+          ORDER BY code,id`,
+        [companyId, ...ids],
+      );
+      return Object.freeze(Object.fromEntries(
+        rows.map(row => [row.id, Object.freeze({ code: row.code, name: row.name })]),
+      ));
+    },
+
     async executeSupplierInvoice({ companyId, branchId, sourceId }) {
       if (!can(purchasePostingPermissions.execute)) {
         throw new Error("برای ایجاد ثبت حسابداری خرید مجوز ندارید.");
