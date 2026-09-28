@@ -145,6 +145,6 @@ test("Phase 23 Step 28 exposes multi-receipt Purchase Matching Engine and matchi
   assert.match(composition, /matchConfirmedReceipts/u);
   assert.match(composition, /listByInvoiceLine/u);
   assert.match(composition, /auto-match:/u);
-  assert.match(composition, /orderPriceVarianceBasisPoints|priceWithinTolerance/u);
+  assert.match(page, /priceWithinTolerance/u);
   assert.doesNotMatch(page, /حساب بدهکار|حساب بستانکار/u);
 });

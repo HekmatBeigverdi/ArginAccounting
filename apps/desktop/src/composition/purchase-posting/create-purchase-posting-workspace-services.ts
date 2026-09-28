@@ -191,9 +191,16 @@ export function createPurchasePostingWorkspaceServices(input: {
       const totalsByLine = [];
 
       for (const line of lines) {
-        const terms = createPurchaseCommercialTerms(
-          parse<PurchaseCommercialTerms>(line.commercial_terms_json, "شرایط تجاری خرید"),
-        );
+        const persisted = parse<PurchaseCommercialTerms>(line.commercial_terms_json, "شرایط تجاری خرید");
+        const terms = createPurchaseCommercialTerms({
+          enteredQuantity: persisted.quantity.enteredQuantity,
+          enteredUnit: persisted.quantity.enteredUnit,
+          baseUnit: persisted.quantity.baseUnit,
+          unitPrice: persisted.unitPrice,
+          discounts: persisted.discounts,
+          charges: persisted.charges,
+          tax: persisted.tax,
+        });
         const lineTotals = calculatePurchaseLineTotals(terms);
         totalsByLine.push(lineTotals);
 

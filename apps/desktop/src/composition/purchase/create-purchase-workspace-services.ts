@@ -247,8 +247,6 @@ export function createPurchaseWorkspaceServices(input: {
   const findReceipts = (document: PurchaseDocumentSnapshot) => inventoryDocuments.listBySource(
     document.companyId, "purchase", document.documentType, document.documentId,
   );
-  const findReceipt = async (document: PurchaseDocumentSnapshot) =>
-    (await findReceipts(document)).find(receipt => receipt.status !== "cancelled" && receipt.status !== "reversed") ?? null;
   const parties = new SqlitePartyReader(database);
   const products = new SqliteProductReader(database);
   const productSelector = new SqliteProductSelectorReader(database);

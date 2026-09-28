@@ -113,7 +113,7 @@ function fixture(permissions = ["system.full-access"], auditErrors?: "string" | 
   return { sqlite, database, services, input };
 }
 
-test("purchase receipt staging reuses its linked draft and later reports the confirmed receipt", async (t) => {
+test("purchase receipt staging tracks partial drafts and confirmed receipts without over-allocation", async (t) => {
   const { sqlite, database, services, input } = fixture();
   t.after(() => sqlite.close());
   let document = await services.create(input);
@@ -124,30 +124,43 @@ test("purchase receipt staging reuses its linked draft and later reports the con
   await new SqlitePurchaseDocumentRepository(database).update(document, 1);
   sqlite.exec(`INSERT INTO warehouses (id, company_id, code, title, kind, organizational_scope, created_at, updated_at)
     VALUES ('warehouse', 'company', 'W1', 'Warehouse', 'general', 'company', '2026-09-19T00:00:00Z', '2026-09-19T00:00:00Z');`);
-  const first = await services.stageInventoryReceipt(document, "warehouse");
+  const quantities = { [document.lines[0]!.lineId]: "1" };
+  for (const emptyQuantities of [{}, { [document.lines[0]!.lineId]: "   " }]) {
+    await assert.rejects(services.stageInventoryReceipt(document, "warehouse", emptyQuantities),
+      (error: unknown) => error instanceof Error && "field" in error && error.field === "allocations");
+  }
+  assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 0);
+  const first = await services.stageInventoryReceipt(document, "warehouse", quantities);
   assert.equal(first.status, "draft");
-  const repeated = await services.stageInventoryReceipt(document, "warehouse");
-  assert.equal(repeated.inventoryDocumentId, first.inventoryDocumentId);
+  const partial = await services.get("company", document.documentId);
+  assert.equal(partial?.receiptFulfillment[0]?.allocatedBaseQuantity, "1");
+  assert.equal(partial?.receiptFulfillment[0]?.remainingBaseQuantity, "1");
+  const second = await services.stageInventoryReceipt(document, "warehouse", quantities);
+  assert.equal(second.status, "draft");
+  assert.notEqual(second.inventoryDocumentId, first.inventoryDocumentId);
+  await assert.rejects(services.stageInventoryReceipt(document, "warehouse", quantities),
+    (error: unknown) => error instanceof Error && "field" in error && error.field === "receiptQuantity");
   const repository = new SqliteInventoryDocumentRepository(database);
   let receipt = await repository.findById("company", first.inventoryDocumentId);
   assert.ok(receipt);
+  assert.equal(receipt.lines[0]?.operation?.quantity.baseQuantity, "1");
   receipt = inventory.rehydrateInventoryDocument({ ...receipt, documentNumber: "000008" });
   const receiptAction = { occurredAt: receipt.createdAt, actorUserId: "user" };
   receipt = inventory.submitInventoryDocument(receipt, receiptAction);
   receipt = inventory.approveInventoryDocument(receipt, receiptAction);
   receipt = inventory.confirmInventoryDocument(receipt, receiptAction);
   await repository.update(receipt, 1);
-  const afterConfirmation = await services.stageInventoryReceipt(document, "warehouse");
-  assert.equal(afterConfirmation.inventoryDocumentId, receipt.documentId);
-  assert.equal(afterConfirmation.status, "confirmed");
   const detail = await services.get("company", document.documentId);
-  assert.equal(detail?.inventoryReceipt?.documentNumber, "000008");
-  assert.equal(detail?.inventoryReceipt?.status, "confirmed");
-  assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 1);
-  await assert.rejects(new inventory.InventoryDraftService(new SqliteInventoryUnitOfWork(database)).create({
-    companyId: "company", requestKey: "duplicate-source", payloadFingerprint: "duplicate-source",
-    document: { ...receipt, documentId: "another-receipt", documentNumber: null },
-  }), (error: unknown) => error instanceof Error && "code" in error && error.code === "inventory.application.source-document-duplicate");
+  assert.equal(detail?.inventoryReceipts.length, 2);
+  const confirmed = detail?.inventoryReceipts.find(item => item.documentId === receipt.documentId);
+  assert.equal(confirmed?.documentNumber, "000008");
+  assert.equal(confirmed?.status, "confirmed");
+  assert.equal(detail?.inventoryReceipts.find(item => item.documentId === second.inventoryDocumentId)?.status, "draft");
+  assert.equal(detail?.receiptFulfillment[0]?.allocatedBaseQuantity, "2");
+  assert.equal(detail?.receiptFulfillment[0]?.remainingBaseQuantity, "0");
+  await assert.rejects(services.stageInventoryReceipt(document, "warehouse", quantities),
+    (error: unknown) => error instanceof Error && "field" in error && error.field === "receiptQuantity");
+  assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 2);
   await assert.rejects(new inventory.InventoryDraftService(new SqliteInventoryUnitOfWork(database)).create({
     companyId: "company", requestKey: "duplicate-number", payloadFingerprint: "duplicate-number",
     document: { ...receipt, documentId: "duplicate-number", sourceReference: null },
@@ -317,7 +330,7 @@ async function confirmedInvoiceReceipt(f: ReturnType<typeof fixture>) {
   await new SqlitePurchaseDocumentRepository(f.database).update(invoice, 1);
   f.sqlite.exec(`INSERT INTO warehouses (id,company_id,code,title,kind,organizational_scope,created_at,updated_at)
     VALUES ('warehouse','company','W1','Warehouse','general','company','2026-09-19','2026-09-19');`);
-  const staged = await f.services.stageInventoryReceipt(invoice, "warehouse");
+  const staged = await f.services.stageInventoryReceipt(invoice, "warehouse", { [invoice.lines[0]!.lineId]: "15" });
   const repository = new SqliteInventoryDocumentRepository(f.database);
   let receipt = (await repository.findById("company", staged.inventoryDocumentId))!;
   receipt = inventory.rehydrateInventoryDocument({ ...receipt, documentNumber: "000008" });
@@ -337,6 +350,14 @@ test("confirmed invoice receipt can be matched and costed, including legacy rece
   const reader = new SqlitePurchaseOperationalReportReader(f.database);
   const query = { companyId: "company", branchId: "branch", fiscalYearId: "year", supplierId: null, fromBusinessDate: null, toBusinessDate: null, limit: 50, offset: 0 };
   assert.equal((await reader.readUnresolvedCosts(query)).items[0]?.reason, "invoice-match-required");
+  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /به‌طور کامل با فاکتور تطبیق نشده/);
+  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 0);
+  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_valuation_cost_inputs").get()?.n, 0);
+  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM inventory_valuation_cost_inputs").get()?.n, 0);
+  const matching = await f.services.matchConfirmedReceipts(invoice);
+  assert.equal(matching.status, "matched");
+  assert.equal(matching.proposals.length, 0);
+  await f.services.matchConfirmedReceipts(invoice);
   await f.services.resolveReceiptCost(invoice);
   await f.services.resolveReceiptCost(invoice);
   assert.equal((await reader.readUnresolvedCosts(query)).items.length, 0);
@@ -352,6 +373,7 @@ for (const auditErrors of ["string", "error"] as const) {
     const f = fixture(["system.full-access"], auditErrors);
     t.after(() => f.sqlite.close());
     const { invoice } = await confirmedInvoiceReceipt(f);
+    await f.services.matchConfirmedReceipts(invoice);
     await f.services.resolveReceiptCost(invoice);
     const revision = f.sqlite.prepare("SELECT revision FROM inventory_valuation_stream_versions").get()?.revision;
     await f.services.resolveReceiptCost(invoice);
@@ -367,6 +389,7 @@ test("receipt cost replay still reports unrelated audit write failures", async t
   const f = fixture(["system.full-access"], "string");
   t.after(() => f.sqlite.close());
   const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.matchConfirmedReceipts(invoice);
   await f.services.resolveReceiptCost(invoice);
   f.sqlite.exec(`CREATE TRIGGER fail_cost_audit BEFORE INSERT ON audit_entries
     WHEN NEW.message='purchase.cost.resolve'
@@ -400,6 +423,7 @@ test("receipt cost resolution refuses an existing manual cost without overwritin
 test("failed cost delivery remains visible and retries without duplicating a receipt match", async t => {
   const f = fixture(); t.after(() => f.sqlite.close());
   const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.matchConfirmedReceipts(invoice);
   const transaction = f.database.transaction.bind(f.database);
   let failOnce = true;
   f.database.transaction = work => transaction(session => work({ ...session, async execute(sql, params) {
@@ -454,7 +478,7 @@ test("partial receipt matches are preserved and never expanded silently", async 
     (match_id,company_id,invoice_document_id,invoice_line_id,receipt_document_id,receipt_line_id,product_id,matched_base_quantity,created_at)
     VALUES ('partial','company',?,?,?,?,'product','5','2026-09-19')`)
     .run(invoice.documentId,invoice.lines[0]!.lineId,receipt.documentId,receipt.lines[0]!.lineId);
-  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /جزئی/);
+  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /به‌طور کامل با فاکتور تطبیق نشده/);
   assert.equal(f.sqlite.prepare("SELECT matched_base_quantity FROM purchase_receipt_invoice_matches").get()?.matched_base_quantity, "5");
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_valuation_cost_inputs").get()?.n, 0);
 });
@@ -462,6 +486,7 @@ test("partial receipt matches are preserved and never expanded silently", async 
 test("source cost is consumable by Inventory and replay does not advance its revision", async t => {
   const f = fixture(); t.after(() => f.sqlite.close());
   const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.matchConfirmedReceipts(invoice);
   await f.services.resolveReceiptCost(invoice);
   const { SqliteInventoryValuationMovementReader, SqliteInventoryValuationCostInputProvider } = await import("@argin/inventory-tauri");
   const movement = (await new SqliteInventoryValuationMovementReader(f.database).findById("company", "movement"))!;
