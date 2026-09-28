@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–28 are complete. Steps 29–36 are not started.
+Steps 1–29 are complete. Steps 30–36 are not started.
 
 ## Governance
 
@@ -48,6 +48,7 @@ Mandatory references:
 - [Purchase Fulfillment and Accounting Policy](../architecture/purchase-fulfillment-accounting-policy.md)
 - [Invoice-to-Goods-Receipt Workflow](../architecture/purchase-invoice-to-goods-receipt-workflow.md)
 - [Purchase Matching Engine](../architecture/purchase-matching-engine.md)
+- [Automatic Purchase Posting Orchestrator](../architecture/automatic-purchase-posting-orchestrator.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -238,7 +239,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 26 | Purchase Fulfillment & Accounting Policy | Completed |
 | 27 | Invoice-to-Goods-Receipt Workflow | Completed |
 | 28 | Purchase Matching Engine | Completed |
-| 29 | Automatic Purchase Posting Orchestrator | Not started |
+| 29 | Automatic Purchase Posting Orchestrator | Completed |
 | 30 | Purchase Accounting Workspace UX | Not started |
 | 31 | Purchase Workflow Hardening | Not started |
 | 32 | Domain and Application Tests | Not started |
@@ -1918,6 +1919,76 @@ pnpm --filter @argin/purchase typecheck
 pnpm --filter @argin/purchase test
 pnpm --filter @argin/purchase-tauri typecheck
 pnpm --filter @argin/purchase-tauri test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
+```
+
+## Step 29 — Automatic Purchase Posting Orchestrator
+
+### Completed work
+
+- Added the canonical [Automatic Purchase Posting Orchestrator](../architecture/automatic-purchase-posting-orchestrator.md).
+- Added an application-level Supplier Invoice Posting orchestrator that composes fulfillment eligibility, Inventory Valuation, tax/charge policy, Posting Rules, Journal generation and replay-safe commit.
+- Automatic mode now creates a system-generated Accounting Journal draft only after the Supplier Invoice is accounting-eligible.
+- Service/non-stock Supplier Invoices can automatically attempt Posting immediately after confirmation because they do not require an Inventory receipt.
+- Stock Supplier Invoices automatically continue from completed Matching through Purchase-backed valuation-cost resolution into Posting orchestration.
+- Added an explicit **ایجاد ثبت حسابداری** action in the Posting panel as an authorized recovery/retry path; the page never asks for Debit/Credit/account re-entry.
+- The desktop Posting adapter rebuilds a Purchase Posting Fact from durable Purchase Commercial Facts and resolved Inventory Valuation entries.
+- Stock fulfillment eligibility is derived from durable Receipt/Invoice match coverage.
+- Normal VAT baseline is recoverable, preserving the existing Purchase valuation rule that recoverable VAT is excluded from stock Cost Input.
+- Account resolution remains fully rule-driven through `purchase_posting_rules`; missing/ambiguous mappings block Posting rather than silently selecting accounts.
+- Added deterministic source-version Posting ID, Journal ID and Journal Line IDs.
+- Added SHA-256 payload fingerprinting and reused the existing replay-safe/idempotent Purchase Posting commit.
+- Purchase confirmation is not rolled back when accounting configuration is incomplete; the confirmed commercial fact remains valid and the Posting UI exposes the failure/retry path.
+- The created Journal remains an Accounting-owned draft and is visible in Accounting; final submit/approval/post lifecycle remains owned by Accounting.
+- Added focused orchestrator tests and Desktop Posting UI contract coverage.
+- Preserved Argin Bridge lineage from Purchase source version → Purchase Posting → Journal Voucher → idempotency record.
+
+### Exit criteria
+
+- [x] Supplier Invoice Posting can be invoked from an Application orchestration boundary.
+- [x] Purchase Order still creates no direct accounting Journal.
+- [x] Service/non-stock invoices do not wait for Inventory receipt.
+- [x] Stock invoices require complete fulfillment/matching before Posting.
+- [x] Stock posting consumes resolved Inventory Valuation rather than re-calculating inventory cost from UI values.
+- [x] Automatic workflow runs after completed matching/cost resolution.
+- [x] Posting UI exposes an authorized retry/recovery action.
+- [x] Posting Rule account resolution remains authoritative.
+- [x] Journal lines are generated without manual Debit/Credit entry.
+- [x] Journal creation is replay-safe for the same Purchase source version.
+- [x] Duplicate compatible execution does not intentionally create a second Journal.
+- [x] Missing account mapping, valuation, dimensions, fiscal eligibility or lock constraints fail closed.
+- [x] Accounting remains owner of the Journal lifecycle after draft creation.
+- [x] Purchase confirmation remains independent from a later Posting configuration failure.
+- [x] Argin Bridge durable identity/lineage is preserved.
+
+### Validation evidence
+
+- Added `packages/purchase-posting/src/application/automatic-purchase-posting-orchestrator.ts`.
+- Added `packages/purchase-posting/tests/automatic-purchase-posting-orchestrator.test.ts`.
+- Exported the orchestrator contracts from `packages/purchase-posting/src/index.ts`.
+- Extended `apps/desktop/src/composition/purchase-posting/create-purchase-posting-workspace-services.ts` with Supplier Invoice execution.
+- Updated `apps/desktop/src/pages/purchase/purchase-posting-panel.tsx` with the recovery execution action.
+- Updated `apps/desktop/src/pages/purchase/purchase-documents-page.tsx` to auto-orchestrate eligible Supplier Invoices after confirmation/matching.
+- Extended `apps/desktop/tests/purchase-posting-ui.test.ts`.
+- Added `docs/architecture/automatic-purchase-posting-orchestrator.md`.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+
+pnpm install --frozen-lockfile
+
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
+pnpm --filter @argin/purchase typecheck
+pnpm --filter @argin/purchase test
 pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 pnpm --filter @argin/desktop build
