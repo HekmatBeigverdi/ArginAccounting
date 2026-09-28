@@ -24,6 +24,10 @@ import {
   SqlitePurchasePostingReplayUnitOfWork,
   SqlitePurchasePostingUnitOfWork,
 } from "@argin/purchase-posting-tauri";
+import {
+  purchaseWorkflowKey,
+  withPurchaseWorkflowLock,
+} from "../purchase-workflow-hardening";
 
 export interface PurchasePostingWorkspaceActor {
   readonly permissions: readonly string[];
@@ -176,6 +180,9 @@ export function createPurchasePostingWorkspaceServices(input: {
     },
 
     async executeSupplierInvoice({ companyId, branchId, sourceId }) {
+      return withPurchaseWorkflowLock(
+        purchaseWorkflowKey(companyId, sourceId),
+        async () => {
       if (!can(purchasePostingPermissions.execute)) {
         throw new Error("برای ایجاد ثبت حسابداری خرید مجوز ندارید.");
       }
@@ -442,8 +449,14 @@ export function createPurchasePostingWorkspaceServices(input: {
                 branchId,
                 createdAt: capturedAt,
               });
-              await context.postings.add(created);
-              return created;
+              try {
+                await context.postings.add(created);
+                return created;
+              } catch (error) {
+                const raced = await context.postings.findById(postingId);
+                if (raced) return raced;
+                throw error;
+              }
             });
           },
         },
@@ -467,6 +480,8 @@ export function createPurchasePostingWorkspaceServices(input: {
         },
         unitOfWork: replayUow,
       });
+        },
+      );
     },
   });
 }
