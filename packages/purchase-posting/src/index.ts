@@ -228,6 +228,18 @@ export type {
 } from "./domain/purchase-posting-idempotency.ts";
 
 export {
+  PURCHASE_POSTING_ORCHESTRATION_STATUSES,
+  orchestrateSupplierInvoicePosting,
+} from "./application/automatic-purchase-posting-orchestrator.ts";
+export type {
+  OrchestrateSupplierInvoicePostingInput,
+  PurchasePostingJournalIdentity,
+  PurchasePostingOrchestrationStatus,
+  SupplierInvoicePostingOrchestrationResult,
+  SupplierInvoicePostingOrchestratorDependencies,
+} from "./application/automatic-purchase-posting-orchestrator.ts";
+
+export {
   commitPurchasePostingReplaySafe,
 } from "./application/replay-safe-posting.ts";
 export type {
