@@ -50,7 +50,7 @@ function postingHint(
   if (!canExecute) {
     return "سند آماده ثبت حسابداری است، اما کاربر مجوز ایجاد ثبت خرید را ندارد.";
   }
-  return "سند از نظر UI آماده ثبت حسابداری است. ایجاد Journal باید فقط از سرویس Application انجام شود و این صفحه هیچ مبلغ یا حسابی را دوباره محاسبه نمی‌کند.";
+  return "در صورت تکمیل شرایط خرید، ثبت حسابداری توسط Posting Orchestrator و بدون ورود مجدد مبلغ یا حساب ایجاد می‌شود.";
 }
 
 export function PurchasePostingPanel(props: {
@@ -64,6 +64,7 @@ export function PurchasePostingPanel(props: {
   const [rows, setRows] = useState<readonly PurchasePostingReconciliationSnapshot[]>([]);
   const [selectedPostingId, setSelectedPostingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [executing, setExecuting] = useState(false);
   const [error, setError] = useState("");
 
   const reload = useCallback(async () => {
@@ -92,6 +93,26 @@ export function PurchasePostingPanel(props: {
 
   useEffect(() => { void reload(); }, [reload]);
 
+  const executePosting = useCallback(async () => {
+    if (!props.services?.canExecute) return;
+    setExecuting(true);
+    setError("");
+    try {
+      await props.services.executeSupplierInvoice({
+        companyId: props.companyId,
+        branchId: props.branchId,
+        sourceId: props.sourceId,
+      });
+      await reload();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "ایجاد ثبت حسابداری خرید ناموفق بود.");
+    } finally {
+      setExecuting(false);
+    }
+  }, [props.services, props.companyId, props.branchId, props.sourceId, reload]);
+
+
+
   const selected = useMemo(
     () => rows.find(row => row.posting?.postingId === selectedPostingId) ?? rows[0] ?? null,
     [rows, selectedPostingId],
@@ -119,6 +140,18 @@ export function PurchasePostingPanel(props: {
         <div className="purchase-posting-panel__empty">
           <strong>هنوز ثبت حسابداری ایجاد نشده است.</strong>
           <span>{postingHint(props.sourceType, props.sourceStatus, props.services.canExecute)}</span>
+          {props.sourceType === "supplier-invoice" &&
+            props.sourceStatus === "confirmed" &&
+            props.services.canExecute && (
+              <button
+                type="button"
+                className="primary"
+                disabled={executing}
+                onClick={() => void executePosting()}
+              >
+                {executing ? "در حال ایجاد ثبت…" : "ایجاد ثبت حسابداری"}
+              </button>
+            )}
         </div>
       )}
 
