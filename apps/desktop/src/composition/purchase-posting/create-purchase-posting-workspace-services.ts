@@ -115,7 +115,6 @@ export function createPurchasePostingWorkspaceServices(input: {
   const permissions = new Set(input.actor.permissions);
   const branchIds = new Set(input.actor.branchIds);
   const reader = new SqlitePurchasePostingReconciliationReader(input.database);
-  const postingUow = new SqlitePurchasePostingUnitOfWork(input.database);
   const replayUow = new SqlitePurchasePostingReplayUnitOfWork(input.database);
 
   const can = (permission: string) =>
@@ -343,6 +342,20 @@ export function createPurchasePostingWorkspaceServices(input: {
         );
       }
 
+      const dimensionTypes = await input.database.query<{ id: string; code: string }>(
+        "SELECT id,code FROM accounting_dimension_types WHERE company_id=? AND status='active'",
+        [companyId],
+      );
+      const dimensionTypeId = (code: string) =>
+        dimensionTypes.find(value => value.code.toUpperCase() === code)?.id;
+      const scopedPostingUow = new SqlitePurchasePostingUnitOfWork(input.database, Object.freeze({
+        party: dimensionTypeId("PARTY"),
+        product: dimensionTypeId("PRODUCT"),
+        warehouse: dimensionTypeId("WAREHOUSE"),
+        "cost-center": dimensionTypeId("COST_CENTER"),
+        project: dimensionTypeId("PROJECT"),
+      }));
+
       const source = createPurchasePostingSourceIdentityFromFact(fact);
       const postingId = postingIdFor(sourceId, document.version);
       const voucherId = journalIdFor(sourceId, document.version);
@@ -385,7 +398,7 @@ export function createPurchasePostingWorkspaceServices(input: {
       }, {
         posting: {
           async loadOrCreate() {
-            return postingUow.execute(async context => {
+            return scopedPostingUow.execute(async context => {
               const existing = await context.postings.findById(postingId);
               if (existing) return existing;
               const created = createPurchasePosting({
@@ -401,21 +414,21 @@ export function createPurchasePostingWorkspaceServices(input: {
         },
         rules: {
           listActive: targetCompanyId =>
-            postingUow.execute(context => context.rules.listActive(targetCompanyId)),
+            scopedPostingUow.execute(context => context.rules.listActive(targetCompanyId)),
         },
         accounts: {
           findById: (targetCompanyId, accountId) =>
-            postingUow.execute(context => context.accounts.findById(targetCompanyId, accountId)),
+            scopedPostingUow.execute(context => context.accounts.findById(targetCompanyId, accountId)),
         },
         dimensions: {
           findPoliciesForAccount: (targetCompanyId, accountId) =>
-            postingUow.execute(context => context.dimensions.findPoliciesForAccount(targetCompanyId, accountId)),
+            scopedPostingUow.execute(context => context.dimensions.findPoliciesForAccount(targetCompanyId, accountId)),
           findTypesByCompanyId: targetCompanyId =>
-            postingUow.execute(context => context.dimensions.findTypesByCompanyId(targetCompanyId)),
+            scopedPostingUow.execute(context => context.dimensions.findTypesByCompanyId(targetCompanyId)),
           resolveMemberBySource: (targetCompanyId, sourceKind, sourceReferenceId) =>
-            postingUow.execute(context => context.dimensions.resolveMemberBySource(targetCompanyId, sourceKind, sourceReferenceId)),
+            scopedPostingUow.execute(context => context.dimensions.resolveMemberBySource(targetCompanyId, sourceKind, sourceReferenceId)),
           findMembersByIds: ids =>
-            postingUow.execute(context => context.dimensions.findMembersByIds(ids)),
+            scopedPostingUow.execute(context => context.dimensions.findMembersByIds(ids)),
         },
         unitOfWork: replayUow,
       });
