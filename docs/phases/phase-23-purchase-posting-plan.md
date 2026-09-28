@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–30 are complete. Steps 31–36 are not started.
+Steps 1–31 are complete. Steps 32–36 are not started.
 
 ## Governance
 
@@ -50,6 +50,7 @@ Mandatory references:
 - [Purchase Matching Engine](../architecture/purchase-matching-engine.md)
 - [Automatic Purchase Posting Orchestrator](../architecture/automatic-purchase-posting-orchestrator.md)
 - [Purchase Accounting Workspace UX](../architecture/purchase-accounting-workspace-ux.md)
+- [Purchase Workflow Hardening](../architecture/purchase-workflow-hardening.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -242,7 +243,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 28 | Purchase Matching Engine | Completed |
 | 29 | Automatic Purchase Posting Orchestrator | Completed |
 | 30 | Purchase Accounting Workspace UX | Completed |
-| 31 | Purchase Workflow Hardening | Not started |
+| 31 | Purchase Workflow Hardening | Completed |
 | 32 | Domain and Application Tests | Not started |
 | 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Not started |
 | 34 | Bridge, Replay, Rollback and Failure Tests | Not started |
@@ -2055,6 +2056,79 @@ pnpm --filter @argin/purchase-posting typecheck
 pnpm --filter @argin/purchase-posting test
 pnpm --filter @argin/purchase-posting-tauri typecheck
 pnpm --filter @argin/purchase-posting-tauri test
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/desktop build
+```
+
+## Step 31 — Purchase Workflow Hardening
+
+### Completed work
+
+- Added the canonical [Purchase Workflow Hardening](../architecture/purchase-workflow-hardening.md).
+- Added a shared per-Supplier-Invoice desktop workflow serialization guard keyed by Company + Purchase Document.
+- Receipt staging, Matching, Purchase-backed Cost Resolution and Purchase Posting now coordinate through the same workflow lock.
+- Different Purchase documents remain independently executable; the lock does not serialize unrelated invoices.
+- Added a per-open-form receipt submission identity so accidental double clicks reuse the same in-flight/successful result.
+- Receipt request ID, operation ID and Inventory document ID are now deterministic for one receipt-form submission.
+- Reopening the Receipt flow creates a new submission identity, so legitimate repeated partial deliveries remain supported.
+- Receipt staging reloads the Supplier Invoice under the workflow lock and rejects stale Purchase document versions.
+- Remaining quantity is recalculated from current linked receipts before the Inventory draft is staged.
+- Matching remains deterministic/idempotent per Invoice/Receipt line pair and now executes under source-level serialization.
+- Partial Matching success remains retryable: committed matches are preserved and later retries propose only uncovered quantity.
+- Purchase-backed Cost Resolution is serialized with Matching and remains replay-safe per Inventory movement.
+- Purchase Posting execution now shares the same source workflow serialization boundary.
+- Hardened deterministic Posting aggregate creation so a concurrent insert race refetches the already-created aggregate instead of intentionally creating another one.
+- Existing source-version Posting idempotency, SHA-256 payload fingerprinting, deterministic Journal identity and atomic Journal commit remain authoritative.
+- Added UI busy guards for Receipt, Matching and Cost actions; correctness still depends on Application/Repository controls rather than button state.
+- Added executable Desktop tests for serialization, independent-document concurrency, duplicate submission reuse, failed-submission retry and workflow identity validation.
+- Explicitly documented that in-memory runtime coordination is not Argin Bridge authority; durable IDs/version/idempotency/CAS boundaries remain the synchronization contract.
+
+### Exit criteria
+
+- [x] Same-runtime mutations for one Supplier Invoice are serialized.
+- [x] Unrelated Purchase documents can continue concurrently.
+- [x] Double-clicking one open Receipt submission does not intentionally create a second Receipt.
+- [x] A later legitimate partial Receipt with the same quantity/warehouse remains possible after reopening the flow.
+- [x] Receipt staging rejects stale Purchase source versions.
+- [x] Remaining quantity is re-read before Receipt staging.
+- [x] Matching retries preserve successful immutable matches and continue from remaining coverage.
+- [x] Cost-resolution retry remains idempotent per Inventory movement.
+- [x] Posting execution is serialized with upstream Purchase workflow mutations.
+- [x] Deterministic Posting aggregate creation recovers from a concurrent insert race.
+- [x] Incompatible Posting replay/fingerprint state still fails closed.
+- [x] UI duplicate-action suppression is present but is not treated as the correctness boundary.
+- [x] In-memory locks/caches are excluded from Argin Bridge synchronization authority.
+- [x] Step 31 has executable hardening tests.
+
+### Validation evidence
+
+- Added `apps/desktop/src/composition/purchase-workflow-hardening.ts`.
+- Updated `apps/desktop/src/composition/purchase/create-purchase-workspace-services.ts`.
+- Updated `apps/desktop/src/composition/purchase-posting/create-purchase-posting-workspace-services.ts`.
+- Updated `apps/desktop/src/pages/purchase/purchase-documents-page.tsx`.
+- Added `apps/desktop/tests/purchase-workflow-hardening.test.ts`.
+- Added `docs/architecture/purchase-workflow-hardening.md`.
+- No local/CI PASS is claimed from this session; run the commands below before owner acceptance.
+
+### Local verification commands
+
+```bash
+git switch phase/23-purchase-posting
+git pull origin phase/23-purchase-posting
+
+pnpm install --frozen-lockfile
+
+pnpm --filter @argin/purchase typecheck
+pnpm --filter @argin/purchase test
+pnpm --filter @argin/purchase-tauri typecheck
+pnpm --filter @argin/purchase-tauri test
+
+pnpm --filter @argin/purchase-posting typecheck
+pnpm --filter @argin/purchase-posting test
+pnpm --filter @argin/purchase-posting-tauri typecheck
+pnpm --filter @argin/purchase-posting-tauri test
+
 pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 pnpm --filter @argin/desktop build
