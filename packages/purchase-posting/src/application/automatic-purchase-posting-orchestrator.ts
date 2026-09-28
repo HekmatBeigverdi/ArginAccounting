@@ -156,6 +156,11 @@ export async function orchestrateSupplierInvoicePosting(
   );
   const rules = await deps.rules.listActive(input.fact.companyId);
 
+  const journalLineIds =
+    input.journal.lineIds.length === 0
+      ? Object.freeze(components.map((_, index) => `${input.journal.voucherId}:line:${index + 1}`))
+      : input.journal.lineIds;
+
   const journal = await createPurchasePostingDraftJournal({
     fact: input.fact,
     eventKind: "supplier-invoice-recognition",
@@ -165,7 +170,10 @@ export async function orchestrateSupplierInvoicePosting(
     dimensions: deps.dimensions,
     dimensionContext: input.dimensionContext ?? null,
     trace: input.trace,
-    journal: input.journal,
+    journal: {
+      ...input.journal,
+      lineIds: journalLineIds,
+    },
   });
 
   const committed: ReplaySafePurchasePostingResult =
