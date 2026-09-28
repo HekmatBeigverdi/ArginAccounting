@@ -131,6 +131,9 @@ test("purchase receipt staging tracks partial drafts and confirmed receipts with
   }
   assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 0);
   const first = await services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-1");
+  const replay = await services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-1");
+  assert.equal(replay.inventoryDocumentId, first.inventoryDocumentId);
+  assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 1);
   assert.equal(first.status, "draft");
   const partial = await services.get("company", document.documentId);
   assert.equal(partial?.receiptFulfillment[0]?.allocatedBaseQuantity, "1");
