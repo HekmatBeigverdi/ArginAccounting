@@ -8,7 +8,6 @@ import {
 } from "@argin/fiscal-tauri";
 import {
   InventoryDraftService,
-  InventoryApplicationError,
   createInventoryDocumentLine,
   createInventoryLineOperation,
   type InventorySourceDocumentPort,
@@ -23,8 +22,12 @@ import {
   calculatePurchaseDocumentTotals,
   calculatePurchaseMatchingStatus,
   calculatePurchaseLineTotals,
+  createPurchaseMatchingPolicy,
+  evaluatePurchaseMatching,
+  type PurchaseMatchingEvaluation,
   createPurchaseApplicationServices,
   createPurchaseCommercialTerms,
+  correctPurchaseDocument,
   createPurchaseItemSnapshot,
   createPurchaseSupplierSnapshot,
   type PurchaseCommercialFactSnapshot,
@@ -40,6 +43,11 @@ import type { ProductDto, ProductSelectorItemDto } from "@argin/product";
 import { SqliteWarehouseReader } from "@argin/warehouse-tauri";
 import type { WarehouseListItemDto } from "@argin/warehouse";
 import type { AuditServices } from "../audit/create-audit-services";
+import {
+  oncePerPurchaseSubmission,
+  purchaseWorkflowKey,
+  withPurchaseWorkflowLock,
+} from "../purchase-workflow-hardening";
 
 export interface PurchaseDesktopActor {
   readonly id: string;
@@ -59,12 +67,36 @@ export interface PurchaseWorkspaceLineInput {
   readonly description: string | null;
 }
 
+export interface PurchaseReceiptFulfillmentLine {
+  readonly purchaseLineId: string;
+  readonly itemDisplayName: string;
+  readonly baseUnitTitle: string;
+  readonly invoicedBaseQuantity: string;
+  readonly allocatedBaseQuantity: string;
+  readonly remainingBaseQuantity: string;
+}
+
 export interface PurchaseWorkspaceDetail {
   readonly document: PurchaseDocumentSnapshot;
   readonly commercialFacts: readonly PurchaseCommercialFactSnapshot[];
   readonly lineTotals: Readonly<Record<string, PurchaseLineTotals>>;
   readonly totals: ReturnType<typeof calculatePurchaseDocumentTotals>;
+  /** Compatibility pointer for older UI paths; first active linked receipt, if any. */
   readonly inventoryReceipt: Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version"> | null;
+  readonly inventoryReceipts: readonly Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version">[];
+  readonly receiptFulfillment: readonly PurchaseReceiptFulfillmentLine[];
+  readonly matching: PurchaseMatchingEvaluation | null;
+  readonly receiptCostResolution: {
+    readonly status: "not-required" | "pending" | "complete";
+    readonly requiredMovementCount: number;
+    readonly resolvedMovementCount: number;
+  };
+  readonly inventoryTrackingDrift: readonly {
+    readonly purchaseLineId: string;
+    readonly itemDisplayName: string;
+    readonly invoiceStockTracking: boolean;
+    readonly currentStockTracking: boolean;
+  }[];
 }
 
 export interface PurchaseWorkspaceDraftInput {
@@ -76,10 +108,12 @@ export interface PurchaseWorkspaceDraftInput {
   readonly businessDate: string;
   readonly description: string | null;
   readonly correctionReference?: { readonly documentId: string; readonly reason: string } | null;
+  readonly sourceReference?: { readonly sourceSystem: string; readonly sourceDocumentId: string; readonly sourceLineId: string | null } | null;
   readonly lines: readonly PurchaseWorkspaceLineInput[];
 }
 
 export interface PurchaseWorkspaceServices {
+  matchConfirmedReceipts(document: PurchaseDocumentSnapshot): Promise<PurchaseMatchingEvaluation>;
   resolveReceiptCost(document: PurchaseDocumentSnapshot): Promise<void>;
   readonly can: (permission: PurchasePermission | string) => boolean;
   list(companyId: string, branchId: string, search: string): Promise<readonly PurchaseDocumentSnapshot[]>;
@@ -97,12 +131,54 @@ export interface PurchaseWorkspaceServices {
   reopen(document: PurchaseDocumentSnapshot, reason: string): Promise<PurchaseDocumentSnapshot>;
   returnPurchase(document: PurchaseDocumentSnapshot, relatedDocumentId: string, reason: string): Promise<PurchaseDocumentSnapshot>;
   correct(document: PurchaseDocumentSnapshot, relatedDocumentId: string, reason: string): Promise<PurchaseDocumentSnapshot>;
-  stageInventoryReceipt(document: PurchaseDocumentSnapshot, warehouseId: string): Promise<{ inventoryDocumentId: string; status: string; version: number }>;
+  createInventoryTrackingReplacement(
+    document: PurchaseDocumentSnapshot,
+    reason: string,
+  ): Promise<PurchaseDocumentSnapshot>;
+  stageInventoryReceipt(
+    document: PurchaseDocumentSnapshot,
+    warehouseId: string,
+    quantitiesByLine: Readonly<Record<string, string>>,
+    submissionId: string,
+  ): Promise<{ inventoryDocumentId: string; status: string; version: number }>;
 }
 
 const now = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
 const fingerprint = (value: unknown) => JSON.stringify(value);
+
+type QuantityDecimal = { coefficient: bigint; scale: number };
+const parseQuantity = (value: string): QuantityDecimal => {
+  const normalized = value.trim();
+  if (!/^\d+(?:\.\d+)?$/u.test(normalized)) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "quantity");
+  const [whole = "0", fraction = ""] = normalized.split(".");
+  return { coefficient: BigInt(whole + fraction), scale: fraction.length };
+};
+const quantityScale = (value: QuantityDecimal, scale: number) =>
+  value.coefficient * 10n ** BigInt(scale - value.scale);
+const quantitySubtract = (left: string, right: string): string => {
+  const a = parseQuantity(left), b = parseQuantity(right);
+  const scale = Math.max(a.scale, b.scale);
+  const result = quantityScale(a, scale) - quantityScale(b, scale);
+  if (result < 0n) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptQuantity");
+  const digits = result.toString().padStart(scale + 1, "0");
+  if (scale === 0) return digits;
+  return (digits.slice(0, -scale) + "." + digits.slice(-scale)).replace(/\.0+$/u, "").replace(/(\.\d*?)0+$/u, "$1");
+};
+const quantityAdd = (left: string, right: string): string => {
+  const a = parseQuantity(left), b = parseQuantity(right);
+  const scale = Math.max(a.scale, b.scale);
+  const result = quantityScale(a, scale) + quantityScale(b, scale);
+  const digits = result.toString().padStart(scale + 1, "0");
+  if (scale === 0) return digits;
+  return (digits.slice(0, -scale) + "." + digits.slice(-scale)).replace(/\.0+$/u, "").replace(/(\.\d*?)0+$/u, "$1");
+};
+const quantityIsPositive = (value: string) => parseQuantity(value).coefficient > 0n;
+const quantityLte = (left: string, right: string) => {
+  const a = parseQuantity(left), b = parseQuantity(right);
+  const scale = Math.max(a.scale, b.scale);
+  return quantityScale(a, scale) <= quantityScale(b, scale);
+};
 
 function prefix(type: PurchaseDocumentType): string {
   if (type === "purchase-order") return "PO-";
@@ -191,12 +267,9 @@ export function createPurchaseWorkspaceServices(input: {
   const inventoryUow = new SqliteInventoryUnitOfWork(database);
   const inventoryDrafts = new InventoryDraftService(inventoryUow);
   const inventoryDocuments = new SqliteInventoryDocumentRepository(database);
-  const findReceipt = (document: PurchaseDocumentSnapshot) => inventoryDocuments.findBySource(
+  const findReceipts = (document: PurchaseDocumentSnapshot) => inventoryDocuments.listBySource(
     document.companyId, "purchase", document.documentType, document.documentId,
   );
-  const receiptResult = (receipt: InventoryDocumentSnapshot) => ({
-    inventoryDocumentId: receipt.documentId, status: receipt.status, version: receipt.version,
-  });
   const parties = new SqlitePartyReader(database);
   const products = new SqliteProductReader(database);
   const productSelector = new SqliteProductSelectorReader(database);
@@ -283,7 +356,8 @@ export function createPurchaseWorkspaceServices(input: {
           metadata: { requestId: event.requestId, operationId: event.operationId, purchaseAction: event.action, ...event.metadata },
         });
       } catch (error) {
-        if (!(error instanceof Error) || !/already|duplicate|unique/i.test(error.message)) throw error;
+        const message = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+        if (!/\bUNIQUE constraint failed: audit_entries\.id\s*$/i.test(message)) throw error;
       }
     },
   };
@@ -408,6 +482,91 @@ export function createPurchaseWorkspaceServices(input: {
     };
   };
 
+  async function evaluateMatching(detail: PurchaseWorkspaceDetail): Promise<PurchaseMatchingEvaluation | null> {
+    const invoice = detail.document;
+    if (invoice.documentType !== "supplier-invoice" || invoice.status !== "confirmed") return null;
+
+    const invoiceLines = [];
+    for (const line of invoice.lines.filter(item => item.lineKind === "stock-product")) {
+      const fact = detail.commercialFacts.find(item => item.purchaseLineId === line.lineId);
+      if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
+      invoiceLines.push({
+        invoiceLineId: line.lineId,
+        productId: line.itemId,
+        baseQuantity: fact.commercialTerms.quantity.baseQuantity,
+        unitPriceAmount: fact.commercialTerms.unitPrice.amount,
+        orderLineId:
+          line.sourceReference?.sourceSystem === "purchase"
+            ? line.sourceReference.sourceLineId
+            : null,
+      });
+    }
+    if (!invoiceLines.length) return null;
+
+    const receiptLines = [];
+    for (const receiptRef of detail.inventoryReceipts) {
+      const receipt = await inventoryDocuments.findById(invoice.companyId, receiptRef.documentId);
+      if (!receipt || receipt.status !== "confirmed") continue;
+      for (const line of receipt.lines) {
+        if (!line.operation ||
+            line.sourceReference?.sourceSystem !== "purchase" ||
+            line.sourceReference.documentId !== invoice.documentId ||
+            !line.sourceReference.lineId) continue;
+        receiptLines.push({
+          receiptDocumentId: receipt.documentId,
+          receiptLineId: line.lineId,
+          sourceInvoiceLineId: line.sourceReference.lineId,
+          productId: line.productId,
+          baseQuantity: line.operation.quantity.baseQuantity,
+        });
+      }
+    }
+
+    const existingMatches = [];
+    for (const line of invoiceLines) {
+      existingMatches.push(...await uow.execute(context =>
+        context.matches.listByInvoiceLine(invoice.companyId, invoice.documentId, line.invoiceLineId)));
+    }
+
+    let orderLines: Array<{
+      orderLineId: string;
+      productId: string;
+      baseQuantity: string;
+      unitPriceAmount: number;
+    }> | undefined;
+    const orderId =
+      invoice.sourceReference?.sourceSystem === "purchase"
+        ? invoice.sourceReference.sourceDocumentId
+        : null;
+    if (orderId) {
+      const order = await uow.execute(context => context.documents.findById(invoice.companyId, orderId));
+      if (order?.documentType === "purchase-order" && order.status === "confirmed") {
+        const orderFacts = await uow.execute(context => context.commercialFacts.listByDocument(invoice.companyId, order.documentId));
+        orderLines = order.lines
+          .filter(line => line.lineKind === "stock-product")
+          .flatMap(line => {
+            const fact = orderFacts.find(item => item.purchaseLineId === line.lineId);
+            return fact ? [{
+              orderLineId: line.lineId,
+              productId: line.itemId,
+              baseQuantity: fact.commercialTerms.quantity.baseQuantity,
+              unitPriceAmount: fact.commercialTerms.unitPrice.amount,
+            }] : [];
+          });
+      }
+    }
+
+    return evaluatePurchaseMatching({
+      invoiceLines,
+      receiptLines,
+      existingMatches,
+      orderLines,
+      // Step 28 freezes exact quantity and zero price variance by default.
+      // A configurable company tolerance can replace this value in the settings step.
+      policy: createPurchaseMatchingPolicy(0),
+    });
+  }
+
   async function prepareDraft(args: PurchaseWorkspaceDraftInput, previous?: PurchaseWorkspaceDetail) {
     if (!args.lines.length) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "lines");
     const year = await fiscalYears.findById(args.fiscalYearId);
@@ -471,6 +630,7 @@ export function createPurchaseWorkspaceServices(input: {
         documentId: newId(), companyId: args.companyId, supplierId: supplier.id,
         supplierSnapshot: supplierSnapshot(supplier), documentType: args.documentType,
         businessDate: args.businessDate, description: args.description,
+        sourceReference: args.sourceReference ?? null,
         correctionReference: args.correctionReference ?? null,
         createdAt, lines: lineInputs,
       },
@@ -496,10 +656,112 @@ export function createPurchaseWorkspaceServices(input: {
       const facts = await uow.execute(context => context.commercialFacts.listByDocument(companyId, documentId));
       const lineTotals: Record<string, PurchaseLineTotals> = {};
       for (const fact of facts) lineTotals[fact.purchaseLineId] = calculatePurchaseLineTotals(fact.commercialTerms);
-      return {
+      const linkedReceipts = await findReceipts(document);
+      const activeReceipts = linkedReceipts.filter(receipt => receipt.status !== "cancelled" && receipt.status !== "reversed");
+      const allocatedByLine = new Map<string, string>();
+      for (const receipt of activeReceipts) {
+        for (const line of receipt.lines) {
+          const sourceLineId = line.sourceReference?.lineId ?? null;
+          if (!sourceLineId || !line.operation) continue;
+          allocatedByLine.set(
+            sourceLineId,
+            quantityAdd(allocatedByLine.get(sourceLineId) ?? "0", line.operation.quantity.baseQuantity),
+          );
+        }
+      }
+      const receiptFulfillment = document.lines
+        .filter(line => line.lineKind === "stock-product")
+        .map(line => {
+          const fact = facts.find(item => item.purchaseLineId === line.lineId);
+          if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
+          const invoiced = fact.commercialTerms.quantity.baseQuantity;
+          const allocated = allocatedByLine.get(line.lineId) ?? "0";
+          if (!quantityLte(allocated, invoiced)) {
+            throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "receiptQuantity");
+          }
+          return Object.freeze({
+            purchaseLineId: line.lineId,
+            itemDisplayName: line.itemSnapshot.displayName,
+            baseUnitTitle: fact.commercialTerms.quantity.baseUnit.title,
+            invoicedBaseQuantity: invoiced,
+            allocatedBaseQuantity: allocated,
+            remainingBaseQuantity: quantitySubtract(invoiced, allocated),
+          });
+        });
+      const stockLineCount = document.lines.filter(line => line.lineKind === "stock-product").length;
+      const confirmedReceiptIds = activeReceipts
+        .filter(receipt => receipt.status === "confirmed")
+        .map(receipt => receipt.documentId);
+
+      let receiptCostResolution: PurchaseWorkspaceDetail["receiptCostResolution"] = Object.freeze({
+        status: stockLineCount === 0 ? "not-required" : "pending",
+        requiredMovementCount: 0,
+        resolvedMovementCount: 0,
+      });
+
+      if (stockLineCount > 0 && confirmedReceiptIds.length > 0) {
+        const placeholders = confirmedReceiptIds.map(() => "?").join(",");
+        const rows = await database.query<{
+          movement_id: string;
+          cost_input_id: string | null;
+        }>(
+          `SELECT m.movement_id,c.cost_input_id
+             FROM inventory_stock_movements m
+             LEFT JOIN purchase_valuation_cost_inputs c
+               ON c.company_id=m.company_id
+              AND c.movement_id=m.movement_id
+            WHERE m.company_id=?
+              AND m.document_id IN (${placeholders})
+            ORDER BY m.business_date,m.business_order,m.movement_id`,
+          [companyId, ...confirmedReceiptIds],
+        );
+        const requiredMovementCount = rows.length;
+        const resolvedMovementCount = rows.filter(row => row.cost_input_id !== null).length;
+        receiptCostResolution = Object.freeze({
+          status:
+            requiredMovementCount > 0 && resolvedMovementCount === requiredMovementCount
+              ? "complete"
+              : "pending",
+          requiredMovementCount,
+          resolvedMovementCount,
+        });
+      }
+
+      const inventoryTrackingDrift = [];
+      if (document.documentType === "supplier-invoice" && document.status === "confirmed") {
+        for (const line of document.lines.filter(item => item.itemType === "product")) {
+          const product = await products.getById({ companyId, productId: line.itemId });
+          if (!product) continue;
+          const currentStockTracking = product.masterData.operational.stockTracking;
+          if (line.itemSnapshot.stockTracking !== currentStockTracking) {
+            inventoryTrackingDrift.push(Object.freeze({
+              purchaseLineId: line.lineId,
+              itemDisplayName: line.itemSnapshot.displayName,
+              invoiceStockTracking: line.itemSnapshot.stockTracking,
+              currentStockTracking,
+            }));
+          }
+        }
+      }
+
+      const baseDetail: PurchaseWorkspaceDetail = {
         document, commercialFacts: facts, lineTotals: Object.freeze(lineTotals),
         totals: calculatePurchaseDocumentTotals(Object.values(lineTotals)),
-        inventoryReceipt: await findReceipt(document),
+        inventoryReceipt: activeReceipts[0] ?? null,
+        inventoryReceipts: Object.freeze(activeReceipts.map(receipt => Object.freeze({
+          documentId: receipt.documentId,
+          documentNumber: receipt.documentNumber,
+          status: receipt.status,
+          version: receipt.version,
+        }))),
+        receiptFulfillment: Object.freeze(receiptFulfillment),
+        matching: null,
+        receiptCostResolution,
+        inventoryTrackingDrift: Object.freeze(inventoryTrackingDrift),
+      };
+      return {
+        ...baseDetail,
+        matching: await evaluateMatching(baseDetail),
       };
     },
     selectSuppliers: (companyId, search) => parties.select({
@@ -552,104 +814,426 @@ export function createPurchaseWorkspaceServices(input: {
       ...lifecycleCommand(document, "correct", reason),
       relatedDocumentId,
     }),
-    async resolveReceiptCost(document) {
-      const current = await uow.execute(context => context.documents.findById(document.companyId, document.documentId));
+    async createInventoryTrackingReplacement(document, reason) {
+      return withPurchaseWorkflowLock(
+        purchaseWorkflowKey(document.companyId, document.documentId),
+        async () => {
+          const cleanReason = reason.trim();
+          if (!cleanReason) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "reason");
+          await authorization.require({ branchId: document.scope.branchId }, "purchases.documents.create");
+          await authorization.require({ branchId: document.scope.branchId }, "purchases.documents.correct");
+
+          const current = await this.get(document.companyId, document.documentId);
+          if (!current || current.document.documentType !== "supplier-invoice" || current.document.status !== "confirmed") {
+            throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "classificationCorrectionSource");
+          }
+          if (current.inventoryReceipts.length > 0) {
+            throw new Error("برای این فاکتور قبلاً رسید انبار ایجاد شده است؛ اصلاح طبقه‌بندی باید از مسیر اصلاح/برگشت موجودی انجام شود.");
+          }
+
+          const sourcePostings = await database.query<{
+            posting_id: string;
+            status: "draft" | "prepared" | "posted" | "reversed";
+            journal_voucher_id: string | null;
+            has_idempotency: number;
+            has_reversal: number;
+          }>(
+            `SELECT
+                p.posting_id,
+                p.status,
+                p.journal_voucher_id,
+                EXISTS (
+                  SELECT 1
+                    FROM purchase_posting_idempotency i
+                   WHERE i.company_id=p.company_id
+                     AND i.posting_id=p.posting_id
+                     AND i.source_system='purchase'
+                     AND i.source_type='supplier-invoice'
+                     AND i.source_id=?
+                ) AS has_idempotency,
+                EXISTS (
+                  SELECT 1
+                    FROM purchase_posting_reversals r
+                   WHERE r.company_id=p.company_id
+                     AND r.posting_id=p.posting_id
+                ) AS has_reversal
+               FROM purchase_postings p
+              WHERE p.company_id=?
+                AND (
+                  p.posting_id LIKE ?
+                  OR EXISTS (
+                    SELECT 1
+                      FROM purchase_posting_idempotency i
+                     WHERE i.company_id=p.company_id
+                       AND i.posting_id=p.posting_id
+                       AND i.source_system='purchase'
+                       AND i.source_type='supplier-invoice'
+                       AND i.source_id=?
+                  )
+                )
+              ORDER BY p.created_at DESC,p.posting_id`,
+            [
+              document.documentId,
+              document.companyId,
+              `purchase-posting:${document.documentId}:v%`,
+              document.documentId,
+            ],
+          );
+
+          const accountingEffect = sourcePostings.find(posting =>
+            posting.status !== "draft" ||
+            posting.journal_voucher_id !== null ||
+            posting.has_idempotency === 1 ||
+            posting.has_reversal === 1);
+          if (accountingEffect) {
+            throw new Error("برای این فاکتور قبلاً اثر حسابداری ایجاد شده است؛ اصلاح طبقه‌بندی باید از مسیر برگشت/اصلاح حسابداری انجام شود.");
+          }
+
+          // A failed Posting attempt may intentionally leave only a deterministic Draft
+          // aggregate (Step 34) with no Journal/idempotency/economic effect. Such a row
+          // must not block correction of the source invoice.
+          for (const orphan of sourcePostings) {
+            await database.execute(
+              `DELETE FROM purchase_postings
+                WHERE company_id=?
+                  AND posting_id=?
+                  AND status='draft'
+                  AND journal_voucher_id IS NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM purchase_posting_idempotency i
+                     WHERE i.company_id=purchase_postings.company_id
+                       AND i.posting_id=purchase_postings.posting_id
+                  )
+                  AND NOT EXISTS (
+                    SELECT 1 FROM purchase_posting_reversals r
+                     WHERE r.company_id=purchase_postings.company_id
+                       AND r.posting_id=purchase_postings.posting_id
+                  )`,
+              [document.companyId, orphan.posting_id],
+            );
+          }
+
+          const drift = current.inventoryTrackingDrift.filter(item =>
+            item.invoiceStockTracking === false && item.currentStockTracking === true);
+          if (!drift.length) {
+            throw new Error("تغییر «بدون ردیابی موجودی → موجودی‌دار» برای ردیف‌های این فاکتور پیدا نشد.");
+          }
+
+          const existing = await database.queryOne<{ id: string }>(
+            `SELECT id
+               FROM purchase_documents
+              WHERE company_id=?
+                AND source_system='purchase-classification-replacement'
+                AND source_document_id=?
+                AND status<>'cancelled'
+              ORDER BY created_at DESC
+              LIMIT 1`,
+            [document.companyId, document.documentId],
+          );
+
+          let replacement: PurchaseDocumentSnapshot | null = existing
+            ? await uow.execute(context => context.documents.findById(document.companyId, existing.id))
+            : null;
+
+          if (!replacement) {
+            const replacementLines = [];
+            const replacementFacts: Record<string, PurchaseCommercialTerms> = {};
+            for (const oldLine of current.document.lines) {
+              const product = await products.getById({
+                companyId: current.document.companyId,
+                productId: oldLine.itemId,
+              });
+              if (!product || product.status !== "active") {
+                throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "productId");
+              }
+              const fact = current.commercialFacts.find(value => value.purchaseLineId === oldLine.lineId);
+              if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
+              const lineId = newId();
+              replacementLines.push({
+                lineId,
+                position: oldLine.position,
+                lineKind: product.kind === "service"
+                  ? "service" as const
+                  : product.masterData.operational.stockTracking
+                    ? "stock-product" as const
+                    : "non-stock-product" as const,
+                itemId: product.productId,
+                itemType: product.kind,
+                itemSnapshot: itemSnapshot(product),
+                description: oldLine.description,
+                sourceReference: {
+                  sourceSystem: "purchase-classification-replacement",
+                  sourceDocumentId: current.document.documentId,
+                  sourceLineId: oldLine.lineId,
+                },
+              });
+              replacementFacts[lineId] = fact.commercialTerms;
+            }
+
+            const createdAt = now();
+            replacement = await secured.create(security, {
+              context: {
+                companyId: current.document.companyId,
+                branchId: current.document.scope.branchId,
+                requestId: `classification-replacement:${current.document.documentId}`,
+                operationId: `classification-replacement:${current.document.documentId}`,
+                payloadFingerprint: fingerprint([
+                  current.document.documentId,
+                  current.document.version,
+                  cleanReason,
+                  replacementLines.map(line => [line.itemId, line.lineKind]),
+                ]),
+                actorUserId: actor.id,
+                occurredAt: createdAt,
+              },
+              document: {
+                scope: current.document.scope,
+                documentId: newId(),
+                companyId: current.document.companyId,
+                supplierId: current.document.supplierId,
+                supplierSnapshot: current.document.supplierSnapshot,
+                documentType: "supplier-invoice",
+                businessDate: current.document.businessDate,
+                description: `جایگزین اصلاح طبقه‌بندی موجودی برای ${current.document.documentNumber ?? current.document.documentId} — ${cleanReason}`,
+                sourceReference: {
+                  sourceSystem: "purchase-classification-replacement",
+                  sourceDocumentId: current.document.documentId,
+                  sourceLineId: null,
+                },
+                correctionReference: null,
+                createdAt,
+                lines: replacementLines,
+              },
+              commercialTermsByLine: replacementFacts,
+            });
+          }
+
+          // Mark the historical invoice as corrected only after the replacement exists.
+          // The old snapshot stays immutable and its lifecycle points to the replacement.
+          const freshOriginal = await uow.execute(context =>
+            context.documents.findById(document.companyId, document.documentId));
+          if (freshOriginal?.status === "confirmed") {
+            const occurredAt = now();
+            const corrected = correctPurchaseDocument(freshOriginal, {
+              occurredAt,
+              actorUserId: actor.id,
+              reason: cleanReason,
+              relatedDocumentId: replacement.documentId,
+            });
+            await uow.execute(context =>
+              context.documents.update(corrected, freshOriginal.version));
+            await auditSink.record({
+              action: "purchase.document.classification-correct",
+              companyId: freshOriginal.companyId,
+              branchId: freshOriginal.scope.branchId,
+              documentId: freshOriginal.documentId,
+              actorId: actor.id,
+              occurredAt,
+              operationId: `classification-correct:${freshOriginal.documentId}`,
+              requestId: `classification-correct:${freshOriginal.documentId}`,
+              correlationId: `classification-correct:${freshOriginal.documentId}`,
+              reason: cleanReason,
+              beforeStatus: "confirmed",
+              afterStatus: "corrected",
+              metadata: { replacementDocumentId: replacement.documentId },
+            });
+          }
+
+          return replacement;
+        },
+      );
+    },
+
+    async matchConfirmedReceipts(document) {
+      return withPurchaseWorkflowLock(
+        purchaseWorkflowKey(document.companyId, document.documentId),
+        async () => {
+      const current = await this.get(document.companyId, document.documentId);
       if (!current) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+      await authorization.require({ branchId: current.document.scope.branchId }, "purchases.matching.manage");
+      if (current.document.documentType !== "supplier-invoice" || current.document.status !== "confirmed") {
+        throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "matchingSource");
+      }
+      const evaluation = current.matching;
+      if (!evaluation) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "matching");
+      for (const proposal of evaluation.proposals) {
+        const key = `auto-match:${current.document.documentId}:${proposal.receiptDocumentId}:${proposal.receiptLineId}`;
+        await secured.matchReceiptInvoice(security, {
+          context: {
+            companyId: current.document.companyId,
+            branchId: current.document.scope.branchId,
+            requestId: key,
+            operationId: key,
+            payloadFingerprint: fingerprint(proposal),
+            actorUserId: actor.id,
+            occurredAt: now(),
+          },
+          match: {
+            matchId: key,
+            companyId: current.document.companyId,
+            invoiceDocumentId: current.document.documentId,
+            invoiceLineId: proposal.invoiceLineId,
+            receiptDocumentId: proposal.receiptDocumentId,
+            receiptLineId: proposal.receiptLineId,
+            productId: proposal.productId,
+            matchedBaseQuantity: proposal.matchedBaseQuantity,
+          },
+        });
+      }
+      const refreshed = await this.get(document.companyId, document.documentId);
+      if (!refreshed?.matching) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "matching");
+      return refreshed.matching;
+        },
+      );
+    },
+    async resolveReceiptCost(document) {
+      return withPurchaseWorkflowLock(
+        purchaseWorkflowKey(document.companyId, document.documentId),
+        async () => {
+      const currentDetail = await this.get(document.companyId, document.documentId);
+      if (!currentDetail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+      const current = currentDetail.document;
       await authorization.require({ branchId: current.scope.branchId }, "purchases.matching.manage");
       await authorization.require({ branchId: current.scope.branchId }, "purchases.cost-resolution.manage");
       if (current.documentType !== "supplier-invoice" || current.status !== "confirmed") {
-        throw new Error("تطبیق خودکار فقط برای فاکتور تأمین‌کننده قطعی مجاز است.");
+        throw new Error("ثبت مبنای هزینه فقط برای فاکتور تأمین‌کننده قطعی مجاز است.");
       }
-      const linked = await findReceipt(current);
-      const receipt = linked && await inventoryDocuments.findById(current.companyId, linked.documentId);
-      if (!receipt || receipt.documentType !== "receipt" || receipt.status !== "confirmed" ||
-          receipt.scope?.branchId !== current.scope.branchId) {
-        throw new Error("رسید مرتبط باید در همان شعبه قطعی شده باشد.");
+      if (currentDetail.matching?.committedStatus !== "matched") {
+        throw new Error("ابتدا تطبیق رسیدهای قطعی را ثبت کنید.");
       }
-      const movements = await database.query<{ movement_id: string; line_id: string }>(
-        "SELECT movement_id,line_id FROM inventory_stock_movements WHERE company_id=? AND document_id=? AND reversal_of_movement_id IS NULL",
-        [current.companyId, receipt.documentId]);
-      if (!movements.length) throw new Error("گردش قطعی موجودی برای این رسید یافت نشد.");
-      // Preflight every movement so a pre-existing manual basis is never overwritten.
-      for (const movement of movements) {
+
+      const confirmedReceipts: InventoryDocumentSnapshot[] = [];
+      for (const receiptRef of currentDetail.inventoryReceipts) {
+        const receipt = await inventoryDocuments.findById(current.companyId, receiptRef.documentId);
+        if (!receipt || receipt.documentType !== "receipt" || receipt.status !== "confirmed" ||
+            receipt.scope?.branchId !== current.scope.branchId) continue;
+        confirmedReceipts.push(receipt);
+      }
+      if (!confirmedReceipts.length) {
+        throw new Error("رسید قطعی مرتبط در همان شعبه یافت نشد.");
+      }
+
+      const allMovements: Array<{ receipt: InventoryDocumentSnapshot; movement_id: string; line_id: string }> = [];
+      for (const receipt of confirmedReceipts) {
+        const movements = await database.query<{ movement_id: string; line_id: string }>(
+          "SELECT movement_id,line_id FROM inventory_stock_movements WHERE company_id=? AND document_id=? AND reversal_of_movement_id IS NULL",
+          [current.companyId, receipt.documentId],
+        );
+        for (const movement of movements) allMovements.push({ receipt, ...movement });
+      }
+      if (!allMovements.length) throw new Error("گردش قطعی موجودی برای رسیدهای مرتبط یافت نشد.");
+
+      for (const movement of allMovements) {
         const cost = await database.queryOne<{ basis_line_id: string }>(
           "SELECT basis_line_id FROM inventory_valuation_cost_inputs WHERE company_id=? AND movement_id=?",
-          [current.companyId, movement.movement_id]);
+          [current.companyId, movement.movement_id],
+        );
         if (cost && cost.basis_line_id !== `purchase-cost:${movement.movement_id}`) {
-          throw new Error("برای این رسید قبلاً مبنای هزینه دیگری ثبت شده است؛ اصلاح هزینه باید از مسیر ارزش‌گذاری انجام شود.");
+          throw new Error("برای یکی از رسیدها قبلاً مبنای هزینه دیگری ثبت شده است؛ اصلاح هزینه باید از مسیر ارزش‌گذاری انجام شود.");
         }
-      }
-      for (const movement of movements) {
-        const line = receipt.lines.find(item => item.lineId === movement.line_id);
+        const line = movement.receipt.lines.find(item => item.lineId === movement.line_id);
         const source = line?.sourceReference;
-        if (!line?.operation || source?.sourceSystem !== "purchase" || source.documentId !== current.documentId || !source.lineId) {
-          throw new Error("ارتباط ردیف رسید با ردیف فاکتور مشخص نیست؛ تطبیق خودکار امکان‌پذیر نیست.");
+        if (!line?.operation || source?.sourceSystem !== "purchase" ||
+            source.documentId !== current.documentId || !source.lineId) {
+          throw new Error("ارتباط ردیف رسید با ردیف فاکتور مشخص نیست.");
         }
-        const existing = await uow.execute(context => context.matches.listByReceiptLine(current.companyId, receipt.documentId, line.lineId));
-        const coverage = calculatePurchaseMatchingStatus(line.operation.quantity.baseQuantity, existing.map(match => match.matchedBaseQuantity));
-        if (coverage.status === "partially-matched" || existing.some(match => match.invoiceDocumentId !== current.documentId || match.invoiceLineId !== source.lineId)) {
-          throw new Error("این رسید قبلاً تطبیق متفاوت یا جزئی دارد؛ تطبیق موجود باید بررسی شود.");
+        const existing = await uow.execute(context =>
+          context.matches.listByReceiptLine(current.companyId, movement.receipt.documentId, line.lineId));
+        const coverage = calculatePurchaseMatchingStatus(
+          line.operation.quantity.baseQuantity,
+          existing.map(match => match.matchedBaseQuantity),
+        );
+        if (coverage.status !== "fully-matched" ||
+            existing.some(match =>
+              match.invoiceDocumentId !== current.documentId ||
+              match.invoiceLineId !== source.lineId)) {
+          throw new Error("یکی از رسیدهای قطعی هنوز به‌طور کامل با فاکتور تطبیق نشده است.");
         }
-        const context = (key: string) => ({
-          companyId: current.companyId, branchId: current.scope.branchId,
-          requestId: key, operationId: key, payloadFingerprint: key,
-          actorUserId: actor.id, occurredAt: now(),
-        });
-        if (coverage.status === "unmatched") {
-          const matchId = `source-match:${current.documentId}:${line.lineId}`;
-          await secured.matchReceiptInvoice(security, {
-            context: context(matchId),
-            match: { matchId, companyId: current.companyId,
-              invoiceDocumentId: current.documentId, invoiceLineId: source.lineId,
-              receiptDocumentId: receipt.documentId, receiptLineId: line.lineId,
-              productId: line.productId, matchedBaseQuantity: line.operation.quantity.baseQuantity },
-          });
-        }
-        const costInputId = `purchase-cost:${movement.movement_id}`;
+      }
+
+      for (const movement of allMovements) {
+        const key = `purchase-cost:${movement.movement_id}`;
         const result = await secured.resolveMovementCost(security, {
-          context: context(costInputId), movementId: movement.movement_id, costInputId,
-        });
-        if (result.status !== "resolved") throw new Error("تطبیق انجام شد اما مبنای هزینه فاکتور هنوز کامل نیست.");
-      }
-    },
-    async stageInventoryReceipt(document, warehouseId) {
-      await authorization.require({ branchId: document.scope.branchId }, "purchases.receipts.stage");
-      const detail = await this.get(document.companyId, document.documentId);
-      if (!detail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
-      if (detail.inventoryReceipt) return {
-        inventoryDocumentId: detail.inventoryReceipt.documentId,
-        status: detail.inventoryReceipt.status, version: detail.inventoryReceipt.version,
-      };
-      document = detail.document;
-      const allocations = document.lines.filter(line => line.lineKind === "stock-product").map(line => {
-        const fact = detail.commercialFacts.find(item => item.purchaseLineId === line.lineId);
-        if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
-        return {
-          purchaseLineId: line.lineId, baseQuantity: fact.commercialTerms.quantity.baseQuantity,
-          warehouse: { warehouseId, zoneId: null, locationId: null },
-        };
-      });
-      if (!allocations.length) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "allocations");
-      const rid = newId();
-      const fp = fingerprint([document.documentId, warehouseId, allocations]);
-      try {
-        return await secured.stageInventoryReceipt(security, {
           context: {
-            companyId: document.companyId, branchId: document.scope.branchId,
-            requestId: rid, operationId: newId(), payloadFingerprint: fp,
-            actorUserId: actor.id, occurredAt: now(),
+            companyId: current.companyId,
+            branchId: current.scope.branchId,
+            requestId: key,
+            operationId: key,
+            payloadFingerprint: key,
+            actorUserId: actor.id,
+            occurredAt: now(),
           },
-          purchaseDocumentId: document.documentId, inventoryDocumentId: newId(),
-          allocations, payloadFingerprint: fp,
+          movementId: movement.movement_id,
+          costInputId: key,
         });
-      } catch (error) {
-        if (error instanceof InventoryApplicationError && error.code === "inventory.application.source-document-duplicate") {
-          // Another request may have created the same source receipt after our read.
-          const existing = await findReceipt(detail.document);
-          if (existing) return receiptResult(existing);
+        if (result.status !== "resolved") {
+          throw new Error("مبنای هزینه یکی از دریافت‌های تطبیق‌شده هنوز قابل حل نیست.");
         }
-        throw error;
       }
+        },
+      );
+    },
+
+    async stageInventoryReceipt(document, warehouseId, quantitiesByLine, submissionId) {
+      const workflowKey = purchaseWorkflowKey(document.companyId, document.documentId);
+      const submissionKey = `purchase-receipt:${workflowKey}:${submissionId}`;
+      return oncePerPurchaseSubmission(submissionKey, () =>
+        withPurchaseWorkflowLock(workflowKey, async () => {
+          await authorization.require({ branchId: document.scope.branchId }, "purchases.receipts.stage");
+          const detail = await this.get(document.companyId, document.documentId);
+          if (!detail) throw new PurchaseApplicationError("PURCHASE_APP_NOT_FOUND", "documentId");
+          const current = detail.document;
+          if (current.version !== document.version) {
+            throw new PurchaseApplicationError("PURCHASE_APP_VERSION_CONFLICT", "version");
+          }
+          if (current.documentType !== "supplier-invoice" || current.status !== "confirmed") {
+            throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptSource");
+          }
+
+          const allocations = detail.receiptFulfillment.flatMap(line => {
+            const requested = quantitiesByLine[line.purchaseLineId]?.trim() || "0";
+            if (!quantityIsPositive(requested)) return [];
+            if (!quantityLte(requested, line.remainingBaseQuantity)) {
+              throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "receiptQuantity");
+            }
+            return [{
+              purchaseLineId: line.purchaseLineId,
+              baseQuantity: requested,
+              warehouse: { warehouseId, zoneId: null, locationId: null },
+            }];
+          });
+          if (!allocations.length) {
+            throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "allocations");
+          }
+
+          const fp = fingerprint([
+            current.documentId,
+            current.version,
+            warehouseId,
+            allocations,
+            submissionId,
+          ]);
+          const requestId = `purchase-receipt:${current.documentId}:v${current.version}:${submissionId}`;
+          const inventoryDocumentId =
+            `purchase-receipt:${current.documentId}:v${current.version}:${submissionId}`;
+
+          return secured.stageInventoryReceipt(security, {
+            context: {
+              companyId: current.companyId,
+              branchId: current.scope.branchId,
+              requestId,
+              operationId: requestId + ":operation",
+              payloadFingerprint: fp,
+              actorUserId: actor.id,
+              occurredAt: now(),
+            },
+            purchaseDocumentId: current.documentId,
+            inventoryDocumentId,
+            allocations,
+            payloadFingerprint: fp,
+          });
+        }),
+      );
     },
   };
 }

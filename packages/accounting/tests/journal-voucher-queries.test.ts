@@ -126,6 +126,28 @@ test("get projects voucher detail including lines, money and dimension assignmen
   ]);
 });
 
+test("search preserves source ownership so lifecycle views can distinguish editable drafts", async () => {
+  for (const source of [
+    { type: "manual", sourceId: null },
+    { type: "source_document", sourceId: "invoice-1" },
+  ] as const) {
+    const original = voucher();
+    const repository = new QueryRepository({
+      ...original,
+      source: { ...original.source, ...source },
+    });
+    const result = await searchJournalVouchers(
+      { companyId: "company-1" },
+      repository,
+      authorizer(),
+    );
+
+    assert.equal(result.items.length, 1);
+    assert.equal(result.items[0]?.sourceType, source.type);
+    assert.equal(result.items[0]?.sourceId, source.sourceId);
+  }
+});
+
 test("read queries require the journal view permission before persistence access", async () => {
   const repository = new QueryRepository();
 

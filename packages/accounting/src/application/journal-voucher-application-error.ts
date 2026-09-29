@@ -1,6 +1,7 @@
 export type JournalVoucherApplicationErrorCode =
   | "journal.unauthorized"
   | "journal.not-found"
+  | "journal.source-owned"
   | "journal.account-not-found"
   | "journal.fiscal-context-not-found"
   | "journal.validation-failed"

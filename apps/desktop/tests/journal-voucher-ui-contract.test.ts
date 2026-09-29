@@ -45,3 +45,10 @@ test("journal form controls are width-contained to prevent intrinsic overflow", 
   assert.match(styles, /\.journal-searchbar input,[\s\S]*?\.journal-entry-table select\s*\{[^}]*min-width:\s*0/u);
   assert.match(styles, /\.journal-layout > \*,[\s\S]*?\.journal-lines-card\s*\{[^}]*min-width:\s*0/u);
 });
+
+
+test("source-owned Journals hide direct edit/delete actions and explain ownership", () => {
+  assert.match(page, /selected\.sourceType === "manual"/u);
+  assert.match(page, /سند سیستمی/u);
+  assert.match(page, /ویرایش یا حذف مستقیم آن مجاز نیست/u);
+});

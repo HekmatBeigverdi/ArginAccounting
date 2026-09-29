@@ -366,3 +366,46 @@ test("cross-company delete is hidden as not-found and does not remove the vouche
   assert.ok(testRuntime.unitOfWork.records.has(created.voucher.id));
   assert.equal(testRuntime.published.length, eventsBefore);
 });
+
+
+test("source-owned draft cannot be updated directly from generic Journal UI", async () => {
+  const testRuntime = runtime();
+  const created = await createJournalVoucherDraft({
+    ...baseCommand(),
+    sourceType: "source_document",
+    sourceId: "purchase-invoice-1",
+  }, testRuntime.dependencies);
+
+  await assert.rejects(
+    () => updateJournalVoucherDraft({
+      context: { ...baseCommand().context, requestId: null },
+      voucherId: created.voucher.id,
+      expectedVersion: created.voucher.version,
+      voucherDate: created.voucher.voucherDate,
+      lines: baseCommand().lines,
+    }, testRuntime.dependencies),
+    assertApplicationError("journal.source-owned"),
+  );
+
+  assert.equal(testRuntime.unitOfWork.records.get(created.voucher.id)?.version, 1);
+});
+
+test("source-owned draft cannot be deleted directly from generic Journal UI", async () => {
+  const testRuntime = runtime();
+  const created = await createJournalVoucherDraft({
+    ...baseCommand(),
+    sourceType: "source_document",
+    sourceId: "purchase-invoice-1",
+  }, testRuntime.dependencies);
+
+  await assert.rejects(
+    () => deleteJournalVoucherDraft({
+      context: { ...baseCommand().context, requestId: null },
+      voucherId: created.voucher.id,
+      expectedVersion: created.voucher.version,
+    }, testRuntime.dependencies),
+    assertApplicationError("journal.source-owned"),
+  );
+
+  assert.ok(testRuntime.unitOfWork.records.has(created.voucher.id));
+});

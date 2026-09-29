@@ -13,7 +13,8 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Accounting Dimensions | `@argin/accounting`, `@argin/accounting-tauri`, Desktop | Implemented | 11 | `docs/phases/phase-11-accounting-dimensions.md` |
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
-| Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 Step 16 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
+| Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
+| Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri`, Desktop | Phase 23 complete; final validation passed; semantic publication manual | 23 | [Phase 23 Purchase Posting](../phases/phase-23-purchase-posting-plan.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -43,6 +44,22 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 - Reporting: Step 21 adds bounded operational Purchase reports for document register/totals, Supplier activity, invoice-receipt matching and unresolved Purchase-backed Inventory cost; reports are read-only rebuildable projections.
 - Testing: Step 22 expands Purchase Domain/Application regression coverage across command/query boundaries, compensation edge cases, security scope, and replay safety for matching and cost resolution.
 - Integration: Step 23 adds real-SQLite Purchase migration/UoW/restart/constraint/Bridge evidence and reconciles the concrete Desktop -> Inventory -> Valuation integration suite.
+
+## Purchase Posting — Phase 23 Current State
+
+- Purpose/ownership: Purchase-specific accounting-recognition boundary between authoritative Purchase/Inventory/Valuation facts and Accounting-owned Journal Vouchers.
+- Domain/Application: `@argin/purchase-posting` owns Posting semantics, account-rule resolution, Journal construction, replay/idempotency, controlled reversal, reconciliation and Bridge contracts. Purchase remains commercial authority; Inventory remains quantity authority; Inventory Valuation remains FIFO/MWA monetary authority; Accounting owns Journal lifecycle.
+- Persistence: migration `0033_purchase_posting.sql` plus `@argin/purchase-posting-tauri` provide Posting/rule/replay/reversal persistence, expected-version CAS, Fiscal/Account/Dimension readers and atomic replay-safe UoW boundaries.
+- Fulfillment: stock Supplier Invoices require durable receipt fulfillment and committed Receipt/Invoice Matching before Purchase Cost Resolution and Posting; service/non-stock lines do not require Inventory receipts.
+- Matching: projected proposals and committed Match facts are distinct. Cost Resolution and accounting eligibility use committed durable Match state.
+- Valuation: Purchase delivers authoritative Purchase-backed Cost Inputs. Inventory materializes/owns resolved valuation entries and FIFO/MWA state; exact replay is safe and conflicting resolved valuation fails closed.
+- Orchestration: eligible Supplier Invoices flow through fulfillment → matching → valuation → Posting Rules → balanced Accounting Journal draft. Core built-in Inventory Asset / Accounts Payable mappings can be bootstrapped from known Argin coding-template identities; missing/ambiguous rules still fail closed.
+- Dimensions: required PARTY dimension membership for supplier payable lines is materialized from durable Supplier identity when absent.
+- Journal ownership: Purchase-generated Journals are source-owned system Journals. Generic direct edit/delete is blocked; corrections use source workflow or controlled reversal/correction.
+- Correction: confirmed historical invoice snapshots are immutable. If a Product was confirmed as non-stock and later corrected to stock-tracked before downstream effects exist, Desktop offers a controlled classification replacement that preserves the original as corrected and creates a traced replacement invoice.
+- Desktop: the five-stage Purchase-to-Accounting workspace exposes fulfillment, committed matching, durable Cost Resolution, Posting and Journal status with human-readable Persian Journal descriptions and no commercial/accounting re-entry.
+- Bridge: contract/schema version 1 envelopes preserve durable source/version/revision, trace, fingerprint, idempotency, dependencies and reversal lineage; live transport remains Phase 45.
+- Quality: Steps 32–34 provide Domain/Application, real SQLite E2E, replay/CAS/rollback/failure-injection coverage. Step 35 records owner manual Desktop acceptance and post-acceptance corrective evidence. Full release-gate execution remains Step 36.
 
 ## Required Fields for Future Entries
 
