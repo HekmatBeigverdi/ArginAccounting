@@ -6,6 +6,58 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.23.0] - Unreleased
+
+### Added
+
+- Purchase Posting bounded context and SQLite adapter for deterministic Purchase accounting recognition.
+- Rule-driven Supplier Invoice accounting for Inventory/Purchase Expense, Accounts Payable, recoverable Input VAT, Purchase Charges and GRNI-ready roles.
+- Purchase fulfillment/accounting eligibility policy with stock vs service/non-stock behavior.
+- Invoice-to-Goods-Receipt workflow with partial receipt support and durable receipt/invoice matching.
+- Automatic Purchase Posting orchestrator from confirmed eligible Supplier Invoice through authoritative Inventory Valuation to balanced Accounting Journal draft.
+- Five-stage Persian RTL Purchase-to-Accounting workspace with contextual next action, reconciliation health and source trace.
+- Controlled Posting reversal, source-to-ledger reconciliation, versioned Argin Bridge contracts and replay-safe source identity.
+- Controlled Inventory-classification replacement for confirmed invoices whose historical Product snapshot is non-stock while current Product master is stock-tracked, when no downstream effect exists.
+- Fixed Desktop shell with persistent header/footer/sidebar chrome and independently scrollable Navigation/workspace content.
+
+### Accounting and Integrity
+
+- Purchase-generated Journal drafts are source-owned system Journals and cannot be directly edited/deleted through generic Accounting UI.
+- Generated Purchase Journal descriptions are Persian business-readable text rather than internal component IDs.
+- Supplier PARTY Accounting Dimension members are materialized from durable Supplier identity when required by payable accounts.
+- Core Purchase Posting account mappings may bootstrap from known built-in Argin coding-template accounts; missing/ambiguous mappings remain fail-closed.
+- Projected matching proposals are separated from committed durable Match state; cost/accounting actions depend on committed matches.
+- Durable Cost Resolution state is derived from persisted movement/Cost Input facts and prevents duplicate operator actions.
+
+### Database
+
+- Added migration `0033_purchase_posting.sql`.
+- Added Purchase Posting aggregate/rule/idempotency/reversal persistence with expected-version CAS.
+- Added append-only Posting idempotency evidence and controlled Journal linkage.
+- Hardened Purchase source-cost → Inventory valuation projection for exact replay, legacy projection repair and rollback safety.
+
+### Tests and Acceptance
+
+- Added Domain/Application regression coverage for fulfillment policy, deterministic matching, Posting gates and replay behavior.
+- Added real SQLite E2E coverage from Supplier Invoice → Receipt → Matching → Purchase Cost → Inventory Valuation → Purchase Posting → balanced Journal.
+- Added Bridge JSON round-trip, CAS, rollback/failure-injection, exact replay and append-only evidence tests.
+- Added owner-executed Desktop acceptance evidence and regression fixes discovered during real UI testing.
+- Full Step 36 release-gate execution is not yet claimed.
+
+### Deferred
+
+- Live Argin Bridge transport, acknowledgement, remote apply and distributed conflict UI: Phase 45.
+- General-purpose Posting Rules platform beyond Phase 23 Purchase-specific contracts: Phase 29.
+- Sales posting: Phase 25.
+
+### Release
+
+- Target semantic tag: `v0.23.0`.
+- Release title: `ArginAccounting v0.23.0 — Purchase Posting & Accounting Integration`.
+- Merge/tag/GitHub Release remain Step 36 and require observed validation evidence.
+
+---
+
 ## [0.22.0] - Unreleased
 
 ### Added
