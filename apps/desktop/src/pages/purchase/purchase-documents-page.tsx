@@ -199,7 +199,18 @@ function errorMessage(error: unknown): string {
       return "تأمین‌کننده انتخاب‌شده غیرفعال است؛ یک تأمین‌کننده فعال انتخاب کنید.";
     return "عملیات خرید معتبر نیست؛ " + error.field;
   }
-  if (error instanceof Error && error.message) return error.message;
+  if (error instanceof Error && error.message) {
+    if (error.message.includes("purchase_posting.account_mapping_missing")) {
+      return "تطبیق خرید انجام شده است، اما برای ایجاد سند حسابداری یکی از قواعد اتصال نقش‌های خرید به حساب‌ها تعریف نشده است. اگر شرکت از کدینگ پیش‌فرض آرگین استفاده کند، برنامه تلاش می‌کند قواعد پایه موجودی کالا و حساب‌های پرداختنی را خودکار ایجاد کند؛ سپس عملیات را دوباره اجرا کنید.";
+    }
+    if (error.message.includes("purchase_posting.account_not_postable")) {
+      return "حسابی که برای ثبت خرید انتخاب شده غیرفعال است یا اجازه ثبت مستقیم ندارد. کدینگ حساب‌ها و قواعد ثبت خرید را بررسی کنید.";
+    }
+    if (error.message.includes("purchase_posting.posting_rule_ambiguous")) {
+      return "برای یکی از نقش‌های ثبت خرید بیش از یک قاعده هم‌اولویت پیدا شد. قواعد ثبت خرید باید بدون ابهام باشند.";
+    }
+    return error.message;
+  }
   if (typeof error === "string" && error.trim()) return error;
   return "عملیات با خطا مواجه شد.";
 }
@@ -657,15 +668,20 @@ export function PurchaseDocumentsPage() {
     try {
       const result = await services.matchConfirmedReceipts(selected);
       let postingCreated = false;
+      let postingWarning = "";
       if (result.status === "matched") {
         await services.resolveReceiptCost(selected);
         if (postingServices?.canExecute) {
-          await postingServices.executeSupplierInvoice({
-            companyId: selected.companyId,
-            branchId: selected.scope.branchId,
-            sourceId: selected.documentId,
-          });
-          postingCreated = true;
+          try {
+            await postingServices.executeSupplierInvoice({
+              companyId: selected.companyId,
+              branchId: selected.scope.branchId,
+              sourceId: selected.documentId,
+            });
+            postingCreated = true;
+          } catch (postingError) {
+            postingWarning = errorMessage(postingError);
+          }
         }
       }
       await openDocument(selected.documentId);
@@ -678,6 +694,7 @@ export function PurchaseDocumentsPage() {
             ? "تطبیق انجام شد اما اختلاف سفارش/فاکتور نیاز به بررسی دارد."
             : "رسیدهای قطعی موجود تطبیق شدند؛ هنوز بخشی از مقدار فاکتور دریافت نشده است.",
       );
+      if (postingWarning) setError(postingWarning);
     } catch (error) {
       setError(errorMessage(error));
     } finally {
