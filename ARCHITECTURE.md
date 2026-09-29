@@ -87,9 +87,29 @@ Inventory Valuation FIFO / MWA
 
 Purchase never writes Inventory Stock Movements directly, and Inventory Valuation does not ask the operator to re-enter a normal Supplier price already owned by Purchase. Receipt-before-invoice remains explicitly unresolved until authoritative Supplier Invoice cost exists. Purchase Return/Correction creates compensating facts rather than rewriting confirmed history.
 
-Argin Bridge synchronizes authoritative Purchase Documents, Commercial Facts, Matches and Purchase-backed Cost Inputs; operational reports and FIFO/MWA projections remain rebuildable. Purchase accounting posting is intentionally deferred to Phase 23.
+Argin Bridge synchronizes authoritative Purchase Documents, Commercial Facts, Matches and Purchase-backed Cost Inputs; operational reports and FIFO/MWA projections remain rebuildable.
 
-See [Commercial Pricing and Inventory Valuation Boundary](docs/architecture/commercial-pricing-and-valuation-boundary.md) and [Phase 22 Purchase Workflow](docs/phases/phase-22-purchase-workflow-plan.md).
+Phase 23 adds the Purchase-specific accounting-recognition boundary:
+
+```text
+Purchase commercial facts
+        +
+Inventory receipt / movement identity
+        +
+Inventory Valuation output
+        ↓
+Purchase Posting eligibility + matching + rules
+        ↓
+balanced replay-safe Journal draft
+        ↓
+Accounting-owned Journal lifecycle
+```
+
+Stock Supplier Invoices require complete durable fulfillment/matching and resolved valuation before Posting. Service/non-stock lines may be eligible without an Inventory receipt. Purchase-generated Journal drafts are source-owned: generic direct edit/delete is forbidden, and correction/reversal must follow the source-controlled workflow.
+
+Confirmed Purchase snapshots remain historical facts even if mutable Product Master Data later changes. A pre-effect Inventory Tracking classification mistake is corrected through a traced replacement invoice rather than rewriting the confirmed source in place.
+
+See [Commercial Pricing and Inventory Valuation Boundary](docs/architecture/commercial-pricing-and-valuation-boundary.md), [Phase 22 Purchase Workflow](docs/phases/phase-22-purchase-workflow-plan.md), and [Phase 23 Purchase Posting](docs/phases/phase-23-purchase-posting-plan.md).
 
 Operational modules do not write arbitrary journal entries. They submit deterministic, idempotent posting requests to the Posting Engine.
 
