@@ -354,7 +354,7 @@ test("confirmed invoice receipt can be matched and costed, including legacy rece
   const reader = new SqlitePurchaseOperationalReportReader(f.database);
   const query = { companyId: "company", branchId: "branch", fiscalYearId: "year", supplierId: null, fromBusinessDate: null, toBusinessDate: null, limit: 50, offset: 0 };
   assert.equal((await reader.readUnresolvedCosts(query)).items[0]?.reason, "invoice-match-required");
-  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /به‌طور کامل با فاکتور تطبیق نشده/);
+  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /ابتدا تطبیق رسیدهای قطعی را ثبت کنید/);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 0);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_valuation_cost_inputs").get()?.n, 0);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM inventory_valuation_cost_inputs").get()?.n, 0);
@@ -418,9 +418,10 @@ test("receipt cost resolution refuses an existing manual cost without overwritin
   f.sqlite.exec(`INSERT INTO inventory_valuation_cost_inputs
     (basis_line_id,company_id,movement_id,product_id,warehouse_id,quantity,currency,base_cost,landed_cost,total_cost,unit_cost,allocations_json,revision)
     VALUES ('manual-cost','company','movement','product','warehouse','15','IRR',150,0,150,'10','[]',1)`);
+  await f.services.matchConfirmedReceipts(invoice);
   await assert.rejects(() => f.services.resolveReceiptCost(invoice), /قبلاً/);
   assert.equal(f.sqlite.prepare("SELECT total_cost FROM inventory_valuation_cost_inputs").get()?.total_cost, 150);
-  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 0);
+  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 1);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_valuation_cost_inputs").get()?.n, 0);
 });
 
@@ -482,7 +483,7 @@ test("partial receipt matches are preserved and never expanded silently", async 
     (match_id,company_id,invoice_document_id,invoice_line_id,receipt_document_id,receipt_line_id,product_id,matched_base_quantity,created_at)
     VALUES ('partial','company',?,?,?,?,'product','5','2026-09-19')`)
     .run(invoice.documentId,invoice.lines[0]!.lineId,receipt.documentId,receipt.lines[0]!.lineId);
-  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /به‌طور کامل با فاکتور تطبیق نشده/);
+  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /ابتدا تطبیق رسیدهای قطعی را ثبت کنید/);
   assert.equal(f.sqlite.prepare("SELECT matched_base_quantity FROM purchase_receipt_invoice_matches").get()?.matched_base_quantity, "5");
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_valuation_cost_inputs").get()?.n, 0);
 });
