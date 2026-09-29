@@ -222,6 +222,44 @@ export function createPurchaseCorrectionDraftComponents(
   return Object.freeze(result);
 }
 
+function journalLineDescription(
+  fact: PurchasePostingFactSnapshot,
+  component: PurchasePostingDraftComponent,
+): string {
+  const documentLabel = fact.documentNumber?.trim()
+    ? `فاکتور ${fact.documentNumber.trim()}`
+    : "فاکتور خرید";
+  const line = component.sourceLineId
+    ? fact.lines.find(item => item.purchaseLineId === component.sourceLineId) ?? null
+    : null;
+  const itemLabel = line?.item.displayName?.trim() || null;
+
+  switch (component.accountRole) {
+    case "inventory-asset":
+      return itemLabel
+        ? `خرید موجودی «${itemLabel}» - ${documentLabel}`
+        : `ثبت موجودی خرید - ${documentLabel}`;
+    case "purchase-expense":
+      return itemLabel
+        ? `هزینه خرید «${itemLabel}» - ${documentLabel}`
+        : `هزینه خرید - ${documentLabel}`;
+    case "accounts-payable":
+      return `بدهی به تأمین‌کننده «${fact.supplier.displayName}» - ${documentLabel}`;
+    case "input-vat-recoverable":
+      return itemLabel
+        ? `مالیات بر ارزش افزوده خرید «${itemLabel}» - ${documentLabel}`
+        : `مالیات بر ارزش افزوده خرید - ${documentLabel}`;
+    case "purchase-charge":
+      return itemLabel
+        ? `هزینه اضافی خرید «${itemLabel}» - ${documentLabel}`
+        : `هزینه اضافی خرید - ${documentLabel}`;
+    case "grni":
+      return itemLabel
+        ? `حساب واسط دریافت کالا/فاکتور «${itemLabel}» - ${documentLabel}`
+        : `حساب واسط دریافت کالا/فاکتور - ${documentLabel}`;
+  }
+}
+
 function lineKind(
   fact: PurchasePostingFactSnapshot,
   sourceLineId: string | null,
@@ -319,7 +357,7 @@ export async function createPurchasePostingDraftJournal(
       id: input.journal.lineIds[index]!,
       order: index + 1,
       accountId: resolution.account.accountId,
-      description: item.componentId,
+      description: journalLineDescription(input.fact, item),
       debit: item.side === "debit" ? item.amount : 0,
       credit: item.side === "credit" ? item.amount : 0,
       dimensionAssignments,
@@ -335,7 +373,8 @@ export async function createPurchasePostingDraftJournal(
     voucherDate: input.fact.businessDate,
     fiscalYearId: input.fact.fiscalYearId,
     fiscalPeriodId: input.fact.fiscalPeriodId,
-    description: input.journal.description ?? `Purchase posting: ${input.fact.purchaseDocumentId}`,
+    description: input.journal.description
+      ?? `ثبت حسابداری خرید ${input.fact.documentNumber ?? input.fact.purchaseDocumentId} از تأمین‌کننده ${input.fact.supplier.displayName}`,
     currency: input.fact.totals.currency as NonNullable<CreateJournalVoucherInput["currency"]>,
     source: {
       type: "source_document",
