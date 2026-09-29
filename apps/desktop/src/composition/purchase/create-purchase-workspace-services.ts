@@ -27,6 +27,7 @@ import {
   type PurchaseMatchingEvaluation,
   createPurchaseApplicationServices,
   createPurchaseCommercialTerms,
+  correctPurchaseDocument,
   createPurchaseItemSnapshot,
   createPurchaseSupplierSnapshot,
   type PurchaseCommercialFactSnapshot,
@@ -85,6 +86,12 @@ export interface PurchaseWorkspaceDetail {
   readonly inventoryReceipts: readonly Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version">[];
   readonly receiptFulfillment: readonly PurchaseReceiptFulfillmentLine[];
   readonly matching: PurchaseMatchingEvaluation | null;
+  readonly inventoryTrackingDrift: readonly {
+    readonly purchaseLineId: string;
+    readonly itemDisplayName: string;
+    readonly invoiceStockTracking: boolean;
+    readonly currentStockTracking: boolean;
+  }[];
 }
 
 export interface PurchaseWorkspaceDraftInput {
@@ -96,6 +103,7 @@ export interface PurchaseWorkspaceDraftInput {
   readonly businessDate: string;
   readonly description: string | null;
   readonly correctionReference?: { readonly documentId: string; readonly reason: string } | null;
+  readonly sourceReference?: { readonly sourceSystem: string; readonly sourceDocumentId: string; readonly sourceLineId: string | null } | null;
   readonly lines: readonly PurchaseWorkspaceLineInput[];
 }
 
@@ -118,6 +126,10 @@ export interface PurchaseWorkspaceServices {
   reopen(document: PurchaseDocumentSnapshot, reason: string): Promise<PurchaseDocumentSnapshot>;
   returnPurchase(document: PurchaseDocumentSnapshot, relatedDocumentId: string, reason: string): Promise<PurchaseDocumentSnapshot>;
   correct(document: PurchaseDocumentSnapshot, relatedDocumentId: string, reason: string): Promise<PurchaseDocumentSnapshot>;
+  createInventoryTrackingReplacement(
+    document: PurchaseDocumentSnapshot,
+    reason: string,
+  ): Promise<PurchaseDocumentSnapshot>;
   stageInventoryReceipt(
     document: PurchaseDocumentSnapshot,
     warehouseId: string,
@@ -613,6 +625,7 @@ export function createPurchaseWorkspaceServices(input: {
         documentId: newId(), companyId: args.companyId, supplierId: supplier.id,
         supplierSnapshot: supplierSnapshot(supplier), documentType: args.documentType,
         businessDate: args.businessDate, description: args.description,
+        sourceReference: args.sourceReference ?? null,
         correctionReference: args.correctionReference ?? null,
         createdAt, lines: lineInputs,
       },
@@ -670,6 +683,23 @@ export function createPurchaseWorkspaceServices(input: {
             remainingBaseQuantity: quantitySubtract(invoiced, allocated),
           });
         });
+      const inventoryTrackingDrift = [];
+      if (document.documentType === "supplier-invoice" && document.status === "confirmed") {
+        for (const line of document.lines.filter(item => item.itemType === "product")) {
+          const product = await products.getById({ companyId, productId: line.itemId });
+          if (!product) continue;
+          const currentStockTracking = product.masterData.operational.stockTracking;
+          if (line.itemSnapshot.stockTracking !== currentStockTracking) {
+            inventoryTrackingDrift.push(Object.freeze({
+              purchaseLineId: line.lineId,
+              itemDisplayName: line.itemSnapshot.displayName,
+              invoiceStockTracking: line.itemSnapshot.stockTracking,
+              currentStockTracking,
+            }));
+          }
+        }
+      }
+
       const baseDetail: PurchaseWorkspaceDetail = {
         document, commercialFacts: facts, lineTotals: Object.freeze(lineTotals),
         totals: calculatePurchaseDocumentTotals(Object.values(lineTotals)),
@@ -682,6 +712,7 @@ export function createPurchaseWorkspaceServices(input: {
         }))),
         receiptFulfillment: Object.freeze(receiptFulfillment),
         matching: null,
+        inventoryTrackingDrift: Object.freeze(inventoryTrackingDrift),
       };
       return {
         ...baseDetail,
@@ -738,6 +769,162 @@ export function createPurchaseWorkspaceServices(input: {
       ...lifecycleCommand(document, "correct", reason),
       relatedDocumentId,
     }),
+    async createInventoryTrackingReplacement(document, reason) {
+      return withPurchaseWorkflowLock(
+        purchaseWorkflowKey(document.companyId, document.documentId),
+        async () => {
+          const cleanReason = reason.trim();
+          if (!cleanReason) throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "reason");
+          await authorization.require({ branchId: document.scope.branchId }, "purchases.documents.create");
+          await authorization.require({ branchId: document.scope.branchId }, "purchases.documents.correct");
+
+          const current = await this.get(document.companyId, document.documentId);
+          if (!current || current.document.documentType !== "supplier-invoice" || current.document.status !== "confirmed") {
+            throw new PurchaseApplicationError("PURCHASE_APP_INPUT_INVALID", "classificationCorrectionSource");
+          }
+          if (current.inventoryReceipts.length > 0) {
+            throw new Error("برای این فاکتور قبلاً رسید انبار ایجاد شده است؛ اصلاح طبقه‌بندی باید از مسیر اصلاح/برگشت موجودی انجام شود.");
+          }
+
+          const posting = await database.queryOne<{ posting_id: string; status: string }>(
+            "SELECT posting_id,status FROM purchase_postings WHERE company_id=? AND source_id=? LIMIT 1",
+            [document.companyId, document.documentId],
+          );
+          if (posting) {
+            throw new Error("برای این فاکتور قبلاً ثبت حسابداری ایجاد شده است؛ اصلاح طبقه‌بندی باید از مسیر برگشت/اصلاح حسابداری انجام شود.");
+          }
+
+          const drift = current.inventoryTrackingDrift.filter(item =>
+            item.invoiceStockTracking === false && item.currentStockTracking === true);
+          if (!drift.length) {
+            throw new Error("تغییر «بدون ردیابی موجودی → موجودی‌دار» برای ردیف‌های این فاکتور پیدا نشد.");
+          }
+
+          const existing = await database.queryOne<{ id: string }>(
+            `SELECT id
+               FROM purchase_documents
+              WHERE company_id=?
+                AND source_system='purchase-classification-replacement'
+                AND source_document_id=?
+                AND status<>'cancelled'
+              ORDER BY created_at DESC
+              LIMIT 1`,
+            [document.companyId, document.documentId],
+          );
+
+          let replacement: PurchaseDocumentSnapshot | null = existing
+            ? await uow.execute(context => context.documents.findById(document.companyId, existing.id))
+            : null;
+
+          if (!replacement) {
+            const replacementLines = [];
+            const replacementFacts: Record<string, PurchaseCommercialTerms> = {};
+            for (const oldLine of current.document.lines) {
+              const product = await products.getById({
+                companyId: current.document.companyId,
+                productId: oldLine.itemId,
+              });
+              if (!product || product.status !== "active") {
+                throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "productId");
+              }
+              const fact = current.commercialFacts.find(value => value.purchaseLineId === oldLine.lineId);
+              if (!fact) throw new PurchaseApplicationError("PURCHASE_APP_DEPENDENCY_INVALID", "commercialFact");
+              const lineId = newId();
+              replacementLines.push({
+                lineId,
+                position: oldLine.position,
+                lineKind: product.kind === "service"
+                  ? "service" as const
+                  : product.masterData.operational.stockTracking
+                    ? "stock-product" as const
+                    : "non-stock-product" as const,
+                itemId: product.productId,
+                itemType: product.kind,
+                itemSnapshot: itemSnapshot(product),
+                description: oldLine.description,
+                sourceReference: {
+                  sourceSystem: "purchase-classification-replacement",
+                  sourceDocumentId: current.document.documentId,
+                  sourceLineId: oldLine.lineId,
+                },
+              });
+              replacementFacts[lineId] = fact.commercialTerms;
+            }
+
+            const createdAt = now();
+            replacement = await secured.create(security, {
+              context: {
+                companyId: current.document.companyId,
+                branchId: current.document.scope.branchId,
+                requestId: `classification-replacement:${current.document.documentId}`,
+                operationId: `classification-replacement:${current.document.documentId}`,
+                payloadFingerprint: fingerprint([
+                  current.document.documentId,
+                  current.document.version,
+                  cleanReason,
+                  replacementLines.map(line => [line.itemId, line.lineKind]),
+                ]),
+                actorUserId: actor.id,
+                occurredAt: createdAt,
+              },
+              document: {
+                scope: current.document.scope,
+                documentId: newId(),
+                companyId: current.document.companyId,
+                supplierId: current.document.supplierId,
+                supplierSnapshot: current.document.supplierSnapshot,
+                documentType: "supplier-invoice",
+                businessDate: current.document.businessDate,
+                description: `جایگزین اصلاح طبقه‌بندی موجودی برای ${current.document.documentNumber ?? current.document.documentId} — ${cleanReason}`,
+                sourceReference: {
+                  sourceSystem: "purchase-classification-replacement",
+                  sourceDocumentId: current.document.documentId,
+                  sourceLineId: null,
+                },
+                correctionReference: null,
+                createdAt,
+                lines: replacementLines,
+              },
+              commercialTermsByLine: replacementFacts,
+            });
+          }
+
+          // Mark the historical invoice as corrected only after the replacement exists.
+          // The old snapshot stays immutable and its lifecycle points to the replacement.
+          const freshOriginal = await uow.execute(context =>
+            context.documents.findById(document.companyId, document.documentId));
+          if (freshOriginal?.status === "confirmed") {
+            const occurredAt = now();
+            const corrected = correctPurchaseDocument(freshOriginal, {
+              occurredAt,
+              actorUserId: actor.id,
+              reason: cleanReason,
+              relatedDocumentId: replacement.documentId,
+            });
+            await uow.execute(context =>
+              context.documents.update(corrected, freshOriginal.version));
+            await auditSink.record({
+              action: "purchase.document.classification-correct",
+              companyId: freshOriginal.companyId,
+              branchId: freshOriginal.scope.branchId,
+              documentId: freshOriginal.documentId,
+              actorId: actor.id,
+              occurredAt,
+              operationId: `classification-correct:${freshOriginal.documentId}`,
+              requestId: `classification-correct:${freshOriginal.documentId}`,
+              correlationId: `classification-correct:${freshOriginal.documentId}`,
+              reason: cleanReason,
+              beforeStatus: "confirmed",
+              afterStatus: "corrected",
+              metadata: { replacementDocumentId: replacement.documentId },
+            });
+          }
+
+          return replacement;
+        },
+      );
+    },
+
     async matchConfirmedReceipts(document) {
       return withPurchaseWorkflowLock(
         purchaseWorkflowKey(document.companyId, document.documentId),
