@@ -45,11 +45,11 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Latest completed implementation: [Phase 20 — Inventory Documents](phases/phase-20-inventory-documents-plan.md)
-- Phase 20 module record: [Inventory Documents Module](modules/inventory-documents.md)
-- All 22 fixed Phase 20 steps are complete and owner-accepted; semantic Tag/GitHub Release `v0.20.0` remains a manual repository-owner action.
-- Current implementation target: Phase 21 — Inventory Valuation.
-- Phase 21 must consume immutable Phase 20 movement facts and must not rewrite quantity history.
+- Current implementation target: [Phase 23 — Purchase Posting & Accounting Integration](phases/phase-23-purchase-posting-plan.md).
+- Phase 23 Steps 1–35 of 36 are complete; Step 36 final validation/merge/release closure remains.
+- Phase 23 consumes authoritative Purchase/Inventory/Valuation facts and creates deterministic Accounting-owned Journal drafts without commercial/accounting re-entry.
+- Manual Desktop acceptance and post-Step-34 corrections are recorded in [Phase 23 Manual Desktop Acceptance Evidence](testing/phase-23-manual-desktop-acceptance.md).
+- Phase 20 Inventory, Phase 21 Valuation and Phase 22 Purchase remain upstream authority boundaries; Phase 23 does not rewrite their historical facts.
 - Canonical roadmap: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Source-of-Truth Policy
