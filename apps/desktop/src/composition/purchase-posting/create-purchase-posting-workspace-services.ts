@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "@argin/database";
+import { createAccountingDimensionMember } from "@argin/accounting";
 import {
   createPurchaseFulfillmentAccountingPolicy,
   createPurchasePosting,
@@ -398,6 +399,80 @@ export function createPurchasePostingWorkspaceServices(input: {
         ...(costCenterDimensionId ? { "cost-center": costCenterDimensionId } : {}),
         ...(projectDimensionId ? { project: projectDimensionId } : {}),
       }));
+
+      // Payable accounts in the built-in Iranian coding templates require PARTY.
+      // Phase 23 owns the Purchase-side bridge from authoritative Supplier master identity
+      // to the accounting dimension member used by the generated Journal.
+      if (partyDimensionId) {
+        const supplierId = fact.supplier.supplierId;
+        const existingPartyMember = await input.database.queryOne<{ id: string }>(
+          `SELECT id
+             FROM accounting_dimension_members
+            WHERE company_id=?
+              AND dimension_type_id=?
+              AND source_reference_id=?
+              AND status='active'
+            ORDER BY id
+            LIMIT 1`,
+          [companyId, partyDimensionId, supplierId],
+        );
+
+        if (!existingPartyMember) {
+          const member = createAccountingDimensionMember({
+            id: `module-party:${supplierId}`,
+            companyId,
+            dimensionTypeId: partyDimensionId,
+            code: `PARTY-${supplierId}`.slice(0, 50),
+            name: fact.supplier.displayName,
+            englishName: null,
+            parentId: null,
+            status: "active",
+            validFrom: null,
+            validTo: null,
+            displayOrder: 0,
+            source: "module",
+            sourceReferenceId: supplierId,
+            createdAt: capturedAt,
+          });
+
+          try {
+            await input.database.execute(
+              `INSERT INTO accounting_dimension_members(
+                id,company_id,dimension_type_id,code,name,english_name,parent_id,
+                status,valid_from,valid_to,display_order,source,source_reference_id,
+                created_at,updated_at,version
+              ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+              [
+                member.id,
+                member.companyId,
+                member.dimensionTypeId,
+                member.code,
+                member.name,
+                member.englishName,
+                member.parentId,
+                member.status,
+                member.validFrom,
+                member.validTo,
+                member.displayOrder,
+                member.source,
+                member.sourceReferenceId,
+                member.createdAt,
+                member.updatedAt,
+                member.version,
+              ],
+            );
+          } catch (error) {
+            const raced = await input.database.queryOne<{ id: string }>(
+              `SELECT id
+                 FROM accounting_dimension_members
+                WHERE company_id=? AND dimension_type_id=? AND source_reference_id=?
+                ORDER BY id LIMIT 1`,
+              [companyId, partyDimensionId, supplierId],
+            );
+            if (!raced) throw error;
+          }
+        }
+      }
 
       const currentRules = await scopedPostingUow.execute(context =>
         context.rules.listActive(companyId),
