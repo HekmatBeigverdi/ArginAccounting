@@ -94,13 +94,22 @@ Per invoice line and overall Purchase matching state use:
 - `matched`;
 - `variance`.
 
-`matched` means all required confirmed receipt quantity is covered and, in three-way mode, Purchase Order quantity/price checks are within policy.
+`matched` is a projected engine result when current deterministic proposals would fully cover the invoice. The evaluation also exposes a separate committed status derived only from already-persisted Match facts. Downstream Cost Resolution/accounting eligibility and user-facing completion state must use committed status, not projected proposals.
+
+A common pre-commit state is therefore:
+
+```text
+Projected status = matched
+Committed status = unmatched / partially-matched
+```
+
+After the authorized matching command persists the proposals, committed status becomes `matched`.
 
 `variance` blocks downstream accounting eligibility until reviewed/resolved by a future controlled variance workflow.
 
 ## Desktop workflow
 
-The Purchase workspace displays a dedicated Matching section with:
+The Purchase workspace displays a dedicated Matching section and distinguishes “ready to match” from “durably matched”. It shows:
 
 - two-way vs three-way mode;
 - invoice quantity;
