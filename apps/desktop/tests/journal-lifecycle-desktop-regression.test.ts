@@ -182,17 +182,10 @@ describe("journal lifecycle desktop regression", () => {
     assert.equal(technical.kind, "technical");
     assert.match(technical.technical ?? "", /disk unavailable/u);
   });
-});
-
-
-test("source-owned draft lifecycle UI does not expose generic edit/delete actions", async () => {
-  const page = await readFile(
-    new URL("../src/pages/accounting/journal-voucher-lifecycle-overview.tsx", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(page, /sourceOwned = row\.voucher\.sourceType !== "manual"/u);
-  assert.match(page, /action\.action !== "edit"/u);
-  assert.match(page, /action\.action !== "delete"/u);
-  assert.match(page, /سند سیستمی قابل ویرایش مستقیم نیست/u);
+  it("source-owned draft lifecycle UI does not expose generic edit/delete actions", () => {
+    assert.match(overviewSource, /sourceOwned = row\.voucher\.sourceType !== "manual"/u);
+    assert.match(overviewSource, /action\.action !== "edit"/u);
+    assert.match(overviewSource, /action\.action !== "delete"/u);
+    assert.match(overviewSource, /سند سیستمی قابل ویرایش مستقیم نیست/u);
+  });
 });
