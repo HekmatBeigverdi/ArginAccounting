@@ -786,8 +786,32 @@ export function createPurchaseWorkspaceServices(input: {
             throw new Error("برای این فاکتور قبلاً رسید انبار ایجاد شده است؛ اصلاح طبقه‌بندی باید از مسیر اصلاح/برگشت موجودی انجام شود.");
           }
 
-          const posting = await database.queryOne<{ posting_id: string; status: string }>(
-            `SELECT p.posting_id,p.status
+          const sourcePostings = await database.query<{
+            posting_id: string;
+            status: "draft" | "prepared" | "posted" | "reversed";
+            journal_voucher_id: string | null;
+            has_idempotency: number;
+            has_reversal: number;
+          }>(
+            `SELECT
+                p.posting_id,
+                p.status,
+                p.journal_voucher_id,
+                EXISTS (
+                  SELECT 1
+                    FROM purchase_posting_idempotency i
+                   WHERE i.company_id=p.company_id
+                     AND i.posting_id=p.posting_id
+                     AND i.source_system='purchase'
+                     AND i.source_type='supplier-invoice'
+                     AND i.source_id=?
+                ) AS has_idempotency,
+                EXISTS (
+                  SELECT 1
+                    FROM purchase_posting_reversals r
+                   WHERE r.company_id=p.company_id
+                     AND r.posting_id=p.posting_id
+                ) AS has_reversal
                FROM purchase_postings p
               WHERE p.company_id=?
                 AND (
@@ -802,16 +826,46 @@ export function createPurchaseWorkspaceServices(input: {
                        AND i.source_id=?
                   )
                 )
-              ORDER BY p.created_at DESC,p.posting_id
-              LIMIT 1`,
+              ORDER BY p.created_at DESC,p.posting_id`,
             [
+              document.documentId,
               document.companyId,
               `purchase-posting:${document.documentId}:v%`,
               document.documentId,
             ],
           );
-          if (posting) {
-            throw new Error("برای این فاکتور قبلاً ثبت حسابداری ایجاد شده است؛ اصلاح طبقه‌بندی باید از مسیر برگشت/اصلاح حسابداری انجام شود.");
+
+          const accountingEffect = sourcePostings.find(posting =>
+            posting.status !== "draft" ||
+            posting.journal_voucher_id !== null ||
+            posting.has_idempotency === 1 ||
+            posting.has_reversal === 1);
+          if (accountingEffect) {
+            throw new Error("برای این فاکتور قبلاً اثر حسابداری ایجاد شده است؛ اصلاح طبقه‌بندی باید از مسیر برگشت/اصلاح حسابداری انجام شود.");
+          }
+
+          // A failed Posting attempt may intentionally leave only a deterministic Draft
+          // aggregate (Step 34) with no Journal/idempotency/economic effect. Such a row
+          // must not block correction of the source invoice.
+          for (const orphan of sourcePostings) {
+            await database.execute(
+              `DELETE FROM purchase_postings
+                WHERE company_id=?
+                  AND posting_id=?
+                  AND status='draft'
+                  AND journal_voucher_id IS NULL
+                  AND NOT EXISTS (
+                    SELECT 1 FROM purchase_posting_idempotency i
+                     WHERE i.company_id=purchase_postings.company_id
+                       AND i.posting_id=purchase_postings.posting_id
+                  )
+                  AND NOT EXISTS (
+                    SELECT 1 FROM purchase_posting_reversals r
+                     WHERE r.company_id=purchase_postings.company_id
+                       AND r.posting_id=purchase_postings.posting_id
+                  )`,
+              [document.companyId, orphan.posting_id],
+            );
           }
 
           const drift = current.inventoryTrackingDrift.filter(item =>
