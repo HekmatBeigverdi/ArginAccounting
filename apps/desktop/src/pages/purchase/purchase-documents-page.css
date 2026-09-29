@@ -289,3 +289,23 @@
   .purchase-new-header { grid-template-columns: 1fr; }
   .purchase-modal .wide { grid-column: auto; }
 }
+
+
+.purchase-item-inventory-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: .7rem;
+  font-weight: 700;
+}
+.purchase-item-inventory-badge.is-stock {
+  background: #ecfdf3;
+  color: #027a48;
+}
+.purchase-item-inventory-badge.is-non-stock {
+  background: #fffaeb;
+  color: #b54708;
+}
