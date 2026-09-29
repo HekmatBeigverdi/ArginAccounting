@@ -23,7 +23,7 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 - Phase 01–20: implementation completed and integrated through the Phase 20 stable baseline.
 - Phase 21 — Inventory Valuation: implementation Steps 1–19 complete; its standalone final release record remains separate.
 - Phase 22 — Purchase Workflow: implementation Steps 1–23 complete and promoted; semantic publication remains a repository-owner action.
-- Phase 23 — Purchase Posting & Accounting Integration: Steps 1–35 of 36 complete on `phase/23-purchase-posting`; only the final validation/merge/release closure step remains.
+- Phase 23 — Purchase Posting & Accounting Integration: all 36 steps complete; the final Phase 23 GitHub Actions validation gate passed; promotion to `develop`/`main` and manual semantic publication follow the release procedure.
 - Prepared Phase 23 target: `v0.23.0` — `ArginAccounting v0.23.0 — Purchase Posting & Accounting Integration`.
 
 Phase 22 owns Supplier/Purchase commercial facts and connects confirmed stock purchases to Inventory receipts and authoritative Inventory Valuation Cost Inputs. Phase 23 consumes those durable facts and valuation outputs to produce deterministic, balanced, replay-safe Accounting Journal drafts without duplicate operator entry. Inventory remains quantity authority, Inventory Valuation remains FIFO/MWA authority, Purchase remains commercial authority, and Accounting remains Journal lifecycle authority.
