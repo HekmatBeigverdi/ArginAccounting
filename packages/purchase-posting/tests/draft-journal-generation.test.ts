@@ -193,9 +193,18 @@ test("builds balanced Accounting draft journal from resolved Purchase components
   assert.equal(draft.totalDebit.amount, 10_010);
   assert.equal(draft.totalCredit.amount, 10_010);
   assert.equal(draft.lines.length, 3);
-  assert.equal(draft.lines[0]?.description, "خرید موجودی «Product» - فاکتور PINV-001");
-  assert.equal(draft.lines[1]?.description, "مالیات بر ارزش افزوده خرید «Product» - فاکتور PINV-001");
-  assert.equal(draft.lines[2]?.description, "بدهی به تأمین‌کننده «Supplier» - فاکتور PINV-001");
+  assert.equal(
+    draft.lines.find(line => line.accountId === "acc-inventory")?.description,
+    "خرید موجودی «Product» - فاکتور PINV-001",
+  );
+  assert.equal(
+    draft.lines.find(line => line.accountId === "acc-vat")?.description,
+    "مالیات بر ارزش افزوده خرید «Product» - فاکتور PINV-001",
+  );
+  assert.equal(
+    draft.lines.find(line => line.accountId === "acc-ap")?.description,
+    "بدهی به تأمین‌کننده «Supplier» - فاکتور PINV-001",
+  );
   assert.equal(draft.source.type, "source_document");
   assert.equal(draft.source.sourceId, "invoice-001");
   assert.equal(draft.source.requestId, "request-001");
@@ -295,6 +304,7 @@ test("generated Purchase journal descriptions never expose internal component ha
   });
 
   for (const line of draft.lines) {
+    assert.ok(line.description !== null, "generated journal lines must have descriptions");
     assert.doesNotMatch(line.description, /^(principal|tax|charge):|^[0-9a-f]{8}-/iu);
     assert.match(line.description, /فاکتور PINV-001/u);
   }
