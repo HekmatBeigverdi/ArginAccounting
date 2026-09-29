@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–34 are complete. Steps 35–36 are not started.
+Steps 1–35 are complete. Step 36 is not started.
 
 ## Governance
 
@@ -54,6 +54,7 @@ Mandatory references:
 - [Purchase Domain and Application Test Matrix](../architecture/purchase-domain-application-test-matrix.md)
 - [Purchase End-to-End SQLite Acceptance Matrix](../testing/phase-23-purchase-e2e-sqlite-tests.md)
 - [Phase 23 Bridge, Replay, Rollback and Failure Acceptance](../testing/phase-23-bridge-replay-rollback-failure-tests.md)
+- [Phase 23 Manual Desktop Acceptance Evidence](../testing/phase-23-manual-desktop-acceptance.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -250,7 +251,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 32 | Domain and Application Tests | Completed |
 | 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Completed |
 | 34 | Bridge, Replay, Rollback and Failure Tests | Completed |
-| 35 | Documentation, Step Status and Phase Evidence | Not started |
+| 35 | Documentation, Step Status and Phase Evidence | Completed |
 | 36 | Release, Merge and Phase Closure | Not started |
 
 ## Fixed Execution Sequence
@@ -2343,3 +2344,65 @@ pnpm --filter @argin/desktop typecheck
 pnpm --filter @argin/desktop test
 pnpm --filter @argin/desktop build
 ```
+
+## Step 35 — Documentation, Step Status and Phase Evidence
+
+### Completed work
+
+- Reconciled the canonical Phase 23 record with the implemented 36-step plan and marked Steps 1–35 complete.
+- Added [Phase 23 Manual Desktop Acceptance Evidence](../testing/phase-23-manual-desktop-acceptance.md) to record owner-executed acceptance observations and the corrective work discovered after Step 34.
+- Documented the distinction between projected Matching proposals and committed durable Match facts; Cost Resolution and user-facing completion state now depend on committed Matching.
+- Documented Product Inventory Tracking semantics: Product master identity does not imply stock tracking; stock-tracked and non-stock Product behavior is explicit in Product and Purchase UI.
+- Documented Purchase Posting account bootstrap from built-in Argin coding-template account identities for core Inventory Asset and Accounts Payable roles, while retaining fail-closed behavior for missing/ambiguous mappings.
+- Documented automatic Supplier PARTY Accounting Dimension member materialization from durable Supplier identity.
+- Documented Persian business-readable Purchase-generated Journal descriptions and the rule that internal component IDs are never end-user descriptions.
+- Documented source-owned Journal behavior: Purchase-generated draft Journals cannot be directly edited/deleted through generic Accounting UI; source correction or controlled reversal/correction owns mutation.
+- Documented the controlled Inventory-classification replacement workflow for a confirmed invoice whose historical Product Snapshot was non-stock while current Product Master Data is stock-tracked.
+- Documented that a failed prior Posting attempt may leave a non-economic deterministic Draft Posting aggregate; such an orphan draft does not count as an accounting effect and can be safely cleaned before a permitted classification replacement.
+- Documented durable Receipt Cost Resolution state so duplicate cost-resolution actions disappear after persisted Cost Inputs are complete.
+- Documented the Desktop fixed-shell UX: application viewport is fixed, header/footer remain visible, Navigation and workspace content scroll independently, and print mode releases the viewport lock.
+- Updated the root architecture narrative so Phase 23 is the owner of Purchase accounting recognition from Purchase/Inventory/Valuation facts into Accounting-owned Journals.
+- Updated the database design for migration 0033 Purchase Posting persistence, replay evidence, rules, reversals and Journal linkage.
+- Updated the Module Registry from Step 25 status to the completed Step 35 implementation state.
+- Added the Phase 23 unreleased changelog section and updated root/project documentation status.
+- Updated the Release Checklist from Phase 22-specific language to include the Phase 23 release gate and target.
+- Preserved evidence discipline: Step 35 does not claim unobserved full monorepo/typecheck/test/build/lint/Rust/doc-link PASS results.
+- Reserved Step 36 for actual release validation, merge/promotion, tag/release preparation and final phase closure.
+
+### Documentation impact
+
+Canonical files reconciled in Step 35 include:
+
+- `docs/phases/phase-23-purchase-posting-plan.md`
+- `docs/testing/phase-23-manual-desktop-acceptance.md`
+- `docs/phases/README.md`
+- `docs/README.md`
+- `docs/registries/module-registry.md`
+- `docs/database/database-design.md`
+- `ARCHITECTURE.md`
+- `README.md`
+- `ROADMAP.md`
+- `CHANGELOG.md`
+- `RELEASE_CHECKLIST.md`
+
+The generated documentation index is intentionally not hand-edited. Step 36 must run the repository generator/link validator and record the observed result.
+
+### Exit criteria
+
+- [x] Canonical Phase 23 Step Status matches the implemented repository state.
+- [x] Manual Desktop acceptance findings and post-Step-34 corrections are recorded.
+- [x] Current Purchase Posting ownership and non-ownership boundaries are documented.
+- [x] Matching, fulfillment, valuation, Posting and Journal workflow documentation matches current behavior.
+- [x] Confirmed historical Product Snapshot / Inventory Tracking correction behavior is documented.
+- [x] Source-owned Journal direct-mutation policy is documented.
+- [x] SQLite Purchase Posting persistence and replay/reversal facts are reflected in database documentation.
+- [x] Root README, Architecture, Roadmap, Changelog and module registry are reconciled.
+- [x] Release checklist includes the Phase 23 gate and target.
+- [x] No unexecuted validation PASS is claimed.
+- [x] Step 36 remains the only open Phase 23 step.
+
+### Validation evidence
+
+Step 35 is a documentation/evidence reconciliation step. The repository changes and manual acceptance record are the evidence.
+
+No full automated release-gate PASS is claimed in this step. Step 36 must execute and record the required validation commands before merge/release closure.
