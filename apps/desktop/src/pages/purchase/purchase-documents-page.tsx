@@ -243,6 +243,8 @@ export function PurchaseDocumentsPage() {
   );
   const [reason, setReason] = useState("");
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [classificationCorrectionOpen, setClassificationCorrectionOpen] = useState(false);
+  const [classificationCorrectionReason, setClassificationCorrectionReason] = useState("");
   const [linkCompensationOpen, setLinkCompensationOpen] = useState<
     "return" | "correct" | null
   >(null);
@@ -503,6 +505,31 @@ export function PurchaseDocumentsPage() {
       } else {
         setError(errorMessage(e));
       }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const createInventoryTrackingReplacement = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!services || !selected || saving || !classificationCorrectionReason.trim()) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const replacement = await services.createInventoryTrackingReplacement(
+        selected,
+        classificationCorrectionReason,
+      );
+      setClassificationCorrectionOpen(false);
+      setClassificationCorrectionReason("");
+      setMessage(
+        "فاکتور قبلی به‌صورت کنترل‌شده اصلاح شد و فاکتور جایگزین با وضعیت جدید ردیابی موجودی ساخته شد. فاکتور جایگزین را بررسی و چرخه تأیید آن را ادامه دهید.",
+      );
+      await reload();
+      await openDocument(replacement.documentId);
+    } catch (cause) {
+      setError(errorMessage(cause));
     } finally {
       setSaving(false);
     }
@@ -815,6 +842,32 @@ export function PurchaseDocumentsPage() {
                       {STATUS_LABELS[detail.document.status]}
                     </span>
                   </header>
+                  {detail.document.documentType === "supplier-invoice" &&
+                    detail.document.status === "confirmed" &&
+                    detail.inventoryTrackingDrift.some(item =>
+                      !item.invoiceStockTracking && item.currentStockTracking
+                    ) && (
+                    <div className="purchase-classification-warning" role="alert">
+                      <strong>طبقه‌بندی موجودی کالا بعد از قطعی‌شدن فاکتور تغییر کرده است.</strong>
+                      <span>
+                        این فاکتور با Snapshot قدیمی «بدون ردیابی موجودی» ثبت شده، اما کالا اکنون موجودی‌دار است.
+                        برای حفظ تاریخچه، فاکتور قطعی قبلی ویرایش نمی‌شود؛ از مسیر اصلاح کنترل‌شده یک فاکتور جایگزین بسازید.
+                      </span>
+                      <button
+                        type="button"
+                        className="primary"
+                        disabled={saving}
+                        onClick={() => {
+                          setClassificationCorrectionReason(
+                            "کالا هنگام ثبت فاکتور اشتباهاً بدون ردیابی موجودی بوده و پس از قطعی‌شدن اصلاح شده است.",
+                          );
+                          setClassificationCorrectionOpen(true);
+                        }}
+                      >
+                        اصلاح طبقه‌بندی و ساخت فاکتور جایگزین
+                      </button>
+                    </div>
+                  )}
                   <div className="purchase-detail__actions">
                     {detail.inventoryReceipts.length > 0 && (
                       <span className="status" role="status">
@@ -1106,6 +1159,9 @@ export function PurchaseDocumentsPage() {
                       })}
                     </section>
                   )}
+                  {!detail.inventoryTrackingDrift.some(item =>
+                    !item.invoiceStockTracking && item.currentStockTracking
+                  ) && (
                   <PurchasePostingPanel
                     services={postingServices}
                     companyId={detail.document.companyId}
@@ -1120,6 +1176,7 @@ export function PurchaseDocumentsPage() {
                     }
                     matchingStatus={detail.matching?.committedStatus ?? null}
                   />
+                  )}
                   <details className="purchase-history">
                     <summary>تاریخچه گردش</summary>
                     <ol>
@@ -1565,6 +1622,56 @@ export function PurchaseDocumentsPage() {
                   disabled={saving || !relatedDocumentId}
                 >
                   ثبت ارتباط
+                </button>
+              </footer>
+            </form>
+          </div>
+        )}
+
+        {classificationCorrectionOpen && selected && detail && (
+          <div className="purchase-modal" role="presentation">
+            <form onSubmit={createInventoryTrackingReplacement} role="dialog" aria-modal="true">
+              <h2>اصلاح طبقه‌بندی موجودی فاکتور قطعی</h2>
+              <p>
+                این عملیات فاکتور قطعی قبلی را ویرایش نمی‌کند. فاکتور قبلی با وضعیت «اصلاح‌شده»
+                حفظ می‌شود و یک فاکتور تأمین‌کننده جایگزین با Snapshot فعلی کالا ساخته خواهد شد.
+              </p>
+              <div className="purchase-classification-diff">
+                {detail.inventoryTrackingDrift.map(item => (
+                  <div key={item.purchaseLineId}>
+                    <strong>{item.itemDisplayName}</strong>
+                    <span>
+                      فاکتور قبلی: {item.invoiceStockTracking ? "موجودی‌دار" : "بدون ردیابی موجودی"}
+                      {" ← "}
+                      وضعیت فعلی کالا: {item.currentStockTracking ? "موجودی‌دار" : "بدون ردیابی موجودی"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <label>
+                علت اصلاح
+                <textarea
+                  required
+                  autoFocus
+                  value={classificationCorrectionReason}
+                  onChange={(event) => setClassificationCorrectionReason(event.target.value)}
+                />
+              </label>
+              <small>
+                این مسیر فقط زمانی مجاز است که برای فاکتور قبلی هنوز رسید انبار یا ثبت حسابداری ایجاد نشده باشد.
+              </small>
+              <footer>
+                <button
+                  type="button"
+                  onClick={() => setClassificationCorrectionOpen(false)}
+                >
+                  انصراف
+                </button>
+                <button
+                  className="primary"
+                  disabled={saving || !classificationCorrectionReason.trim()}
+                >
+                  ساخت فاکتور جایگزین
                 </button>
               </footer>
             </form>
