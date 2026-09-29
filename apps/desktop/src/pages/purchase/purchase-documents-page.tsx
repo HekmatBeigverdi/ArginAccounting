@@ -892,10 +892,17 @@ export function PurchaseDocumentsPage() {
                       selected.status === "confirmed" &&
                       detail.matching?.committedStatus === "matched" &&
                       detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
+                      detail.receiptCostResolution.status !== "complete" &&
                       can(purchasePermissions.resolveCost) && (
                         <button disabled={saving} onClick={() => void resolveReceiptCost()}>
                           ثبت مبنای هزینه دریافت‌های تطبیق‌شده
                         </button>
+                      )}
+                    {selected?.documentType === "supplier-invoice" &&
+                      detail.receiptCostResolution.status === "complete" && (
+                        <span className="status status--confirmed" role="status">
+                          مبنای هزینه دریافت‌ها ثبت شده
+                        </span>
                       )}
                     {selected?.status === "draft" && can(purchasePermissions.edit) && (
                       <button disabled={saving} onClick={() => void openEdit()}>ویرایش</button>
