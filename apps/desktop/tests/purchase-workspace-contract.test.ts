@@ -171,3 +171,24 @@ test("Purchase lines make stock-tracking behavior visible to users", async () =>
   assert.match(page, /itemSnapshot\.stockTracking/u);
   assert.match(page, /purchase-item-inventory-badge/u);
 });
+
+
+test("confirmed non-stock invoice can be safely replaced after inventory tracking is enabled", async () => {
+  const [page, composition, css] = await Promise.all([
+    read("src/pages/purchase/purchase-documents-page.tsx"),
+    read("src/composition/purchase/create-purchase-workspace-services.ts"),
+    read("src/pages/purchase/purchase-documents-page.css"),
+  ]);
+
+  assert.match(composition, /inventoryTrackingDrift/u);
+  assert.match(composition, /createInventoryTrackingReplacement/u);
+  assert.match(composition, /purchase-classification-replacement/u);
+  assert.match(composition, /correctPurchaseDocument/u);
+  assert.match(composition, /قبلاً رسید انبار ایجاد شده است/u);
+  assert.match(composition, /قبلاً ثبت حسابداری ایجاد شده است/u);
+  assert.match(page, /اصلاح طبقه‌بندی و ساخت فاکتور جایگزین/u);
+  assert.match(page, /فاکتور قبلی با وضعیت «اصلاح‌شده»/u);
+  assert.match(page, /ساخت فاکتور جایگزین/u);
+  assert.match(css, /purchase-classification-warning/u);
+  assert.match(css, /purchase-classification-diff/u);
+});
