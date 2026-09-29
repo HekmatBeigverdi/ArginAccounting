@@ -37,3 +37,10 @@ Architecture documents describe the current design. ADRs preserve why major deci
 - [Purchase-to-Ledger Reconciliation](purchase-posting-reconciliation.md)
 
 - [Purchase Posting UI and Trace Viewer](purchase-posting-ui-and-trace-viewer.md)
+- [Purchase Fulfillment and Accounting Policy](purchase-fulfillment-accounting-policy.md)
+- [Invoice-to-Goods-Receipt Workflow](purchase-invoice-to-goods-receipt-workflow.md)
+- [Purchase Matching Engine](purchase-matching-engine.md)
+- [Automatic Purchase Posting Orchestrator](automatic-purchase-posting-orchestrator.md)
+- [Purchase Accounting Workspace UX](purchase-accounting-workspace-ux.md)
+- [Purchase Workflow Hardening](purchase-workflow-hardening.md)
+- [Purchase Domain and Application Test Matrix](purchase-domain-application-test-matrix.md)
