@@ -309,3 +309,42 @@
   background: #fffaeb;
   color: #b54708;
 }
+
+
+.purchase-classification-warning {
+  display: grid;
+  gap: .55rem;
+  margin: .75rem 0;
+  padding: .8rem .9rem;
+  border: 1px solid #fedf89;
+  border-radius: 10px;
+  background: #fffaeb;
+}
+.purchase-classification-warning strong {
+  color: #93370d;
+}
+.purchase-classification-warning span {
+  color: #7a2e0e;
+  line-height: 1.7;
+}
+.purchase-classification-warning button {
+  width: fit-content;
+}
+
+.purchase-classification-diff {
+  display: grid;
+  gap: .5rem;
+  margin: .5rem 0;
+}
+.purchase-classification-diff > div {
+  display: grid;
+  gap: .2rem;
+  padding: .65rem .75rem;
+  border: 1px solid #fedf89;
+  border-radius: 8px;
+  background: #fffcf5;
+}
+.purchase-classification-diff span {
+  color: #667085;
+  font-size: .82rem;
+}
