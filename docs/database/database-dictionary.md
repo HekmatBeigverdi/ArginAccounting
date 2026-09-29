@@ -356,6 +356,8 @@ Migration `0033_purchase_posting.sql` persists the Purchase accounting-recogniti
 
 Company/Branch-scoped Purchase Posting aggregate state with Draft/Prepared/Posted/Reversed lifecycle, original Journal Voucher linkage, optimistic `version`, timestamps and Bridge sync metadata. Draft rows cannot have a Journal link; all later states require one. A Journal can belong to only one Purchase Posting.
 
+A deterministic Draft Posting with no Journal, idempotency record or reversal may remain after a failed pre-commit attempt. It is explicitly non-economic: retry may reuse it, and a permitted pre-effect Purchase classification replacement may remove it. Any linked Journal/idempotency/reversal or non-Draft status is treated as a real downstream accounting effect.
+
 ### `purchase_posting_rules`
 
 Versioned Purchase-specific account-resolution rules scoped by Company and optional Branch/event/line kind. Rules reference existing company-scoped Accounts and retain priority/active flags plus Bridge metadata. Ambiguity remains an Application invariant rather than being silently collapsed by the schema.
@@ -380,3 +382,5 @@ Append-only Step 17 reversal lineage linking one Purchase Posting to its origina
 `SqlitePurchasePostingUnitOfWork` binds all repositories/readers and the Accounting Journal repository to one transaction-scoped `DatabaseSession`. Atomic Posting and Replay adapters use that same session. Reversal composition receives the exact active session so canonical Accounting reversal can participate without opening a nested transaction.
 
 Purchase Posting aggregate/rule updates use expected-version compare-and-swap. Durable Domain identity remains TEXT-based and independent of SQLite row identity.
+
+Purchase-generated Accounting Journals are source-owned. Generic Journal draft edit/delete commands are rejected at the Accounting Application boundary; database FK restrictions remain a final integrity backstop rather than the intended user-facing control.
