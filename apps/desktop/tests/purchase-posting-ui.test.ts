@@ -121,3 +121,18 @@ test("Purchase posting bootstraps core built-in account mappings and keeps match
   assert.match(page, /تطبیق خرید انجام شده است/u);
   assert.match(page, /postingWarning/u);
 });
+
+
+test("Purchase posting auto-materializes supplier PARTY dimension member for payable accounts", async () => {
+  const [service, page] = await Promise.all([
+    read("../src/composition/purchase-posting/create-purchase-posting-workspace-services.ts"),
+    read("../src/pages/purchase/purchase-documents-page.tsx"),
+  ]);
+
+  assert.match(service, /createAccountingDimensionMember/u);
+  assert.match(service, /module-party:/u);
+  assert.match(service, /sourceReferenceId: supplierId/u);
+  assert.match(service, /dimension_type_id=.*source_reference_id/u);
+  assert.match(page, /purchase_posting\.dimension_required_missing/u);
+  assert.match(page, /بُعد «طرف حساب»/u);
+});
