@@ -216,3 +216,17 @@ test("classification correction ignores an orphan draft Posting with no accounti
   assert.match(composition, /journal_voucher_id IS NULL/u);
   assert.match(composition, /اثر حسابداری ایجاد شده است/u);
 });
+
+
+test("resolved receipt cost becomes durable workspace state and hides duplicate cost action", async () => {
+  const [page, composition] = await Promise.all([
+    read("src/pages/purchase/purchase-documents-page.tsx"),
+    read("src/composition/purchase/create-purchase-workspace-services.ts"),
+  ]);
+
+  assert.match(composition, /receiptCostResolution/u);
+  assert.match(composition, /purchase_valuation_cost_inputs/u);
+  assert.match(composition, /resolvedMovementCount/u);
+  assert.match(page, /receiptCostResolution\.status !== "complete"/u);
+  assert.match(page, /مبنای هزینه دریافت‌ها ثبت شده/u);
+});
