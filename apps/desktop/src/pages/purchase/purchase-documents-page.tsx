@@ -809,7 +809,7 @@ export function PurchaseDocumentsPage() {
                       selected.status === "confirmed" &&
                       detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
                       detail.matching &&
-                      detail.matching.status !== "matched" &&
+                      detail.matching.committedStatus !== "matched" &&
                       can(purchasePermissions.manageMatching) && (
                         <button disabled={saving} onClick={() => void matchConfirmedReceipts()}>
                           تطبیق رسیدهای قطعی
@@ -817,7 +817,7 @@ export function PurchaseDocumentsPage() {
                       )}
                     {selected?.documentType === "supplier-invoice" &&
                       selected.status === "confirmed" &&
-                      detail.matching?.status === "matched" &&
+                      detail.matching?.committedStatus === "matched" &&
                       detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
                       can(purchasePermissions.resolveCost) && (
                         <button disabled={saving} onClick={() => void resolveReceiptCost()}>
@@ -961,7 +961,8 @@ export function PurchaseDocumentsPage() {
                           <span dir="ltr">تخصیص‌یافته: {line.allocatedBaseQuantity}</span>
                           <strong dir="ltr">باقیمانده: {line.remainingBaseQuantity} {line.baseUnitTitle}</strong>
                         </div>
-                      ))}
+                        );
+                      })}
                       {detail.inventoryReceipts.length > 0 && (
                         <small>
                           رسیدهای مرتبط: {detail.inventoryReceipts.map(receipt =>
@@ -1044,21 +1045,27 @@ export function PurchaseDocumentsPage() {
                           </small>
                         </div>
                         <span className="status">
-                          {detail.matching.status === "matched"
+                          {detail.matching.committedStatus === "matched"
                             ? "تطبیق کامل"
-                            : detail.matching.status === "partially-matched"
+                            : detail.matching.committedStatus === "partially-matched"
                               ? "تطبیق جزئی"
-                              : detail.matching.status === "variance"
+                              : detail.matching.committedStatus === "variance"
                                 ? "دارای اختلاف"
-                                : "بدون تطبیق"}
+                                : detail.matching.proposals.length > 0
+                                  ? "آماده ثبت تطبیق"
+                                  : "بدون تطبیق"}
                         </span>
                       </header>
-                      {detail.matching.lines.map(line => (
+                      {detail.matching.lines.map(line => {
+                        const committed = detail.matching?.committedLines.find(
+                          item => item.invoiceLineId === line.invoiceLineId,
+                        );
+                        return (
                         <div className="purchase-matching__line" key={line.invoiceLineId}>
                           <span>{detail.document.lines.find(item => item.lineId === line.invoiceLineId)?.itemSnapshot.displayName ?? line.productId}</span>
                           <span dir="ltr">فاکتور: {line.invoiceBaseQuantity}</span>
-                          <span dir="ltr">تطبیق‌شده: {line.matchedBaseQuantity}</span>
-                          <strong dir="ltr">باقیمانده: {line.remainingBaseQuantity}</strong>
+                          <span dir="ltr">تطبیق‌شده: {committed?.matchedBaseQuantity ?? "0"}</span>
+                          <strong dir="ltr">باقیمانده: {committed?.remainingBaseQuantity ?? line.invoiceBaseQuantity}</strong>
                           {detail.matching?.mode === "three-way" && (
                             <span>
                               {line.orderQuantityVariance
@@ -1084,7 +1091,7 @@ export function PurchaseDocumentsPage() {
                       detail.receiptFulfillment.length === 0 ||
                       detail.receiptFulfillment.every(line => line.remainingBaseQuantity === "0")
                     }
-                    matchingStatus={detail.matching?.status ?? null}
+                    matchingStatus={detail.matching?.committedStatus ?? null}
                   />
                   <details className="purchase-history">
                     <summary>تاریخچه گردش</summary>
