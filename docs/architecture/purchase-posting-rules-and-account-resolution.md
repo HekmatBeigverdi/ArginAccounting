@@ -47,6 +47,15 @@ Company-wide role fallback
 
 No silent fallback account exists when no rule matches.
 
+The Desktop composition may bootstrap the minimum core Purchase rules from Argin's built-in coding-template logical identities when all of the following are true:
+
+- no applicable active rule already exists;
+- the company account came from a built-in coding template;
+- the built-in logical identity is known and unambiguous;
+- the account is active and posting-enabled.
+
+This currently covers the normal stock-purchase Inventory Asset and Supplier Accounts Payable baseline. The bootstrap never searches by display-name text and never weakens the domain rule resolver.
+
 ## Account Validation
 
 A resolved account must:
