@@ -787,8 +787,28 @@ export function createPurchaseWorkspaceServices(input: {
           }
 
           const posting = await database.queryOne<{ posting_id: string; status: string }>(
-            "SELECT posting_id,status FROM purchase_postings WHERE company_id=? AND source_id=? LIMIT 1",
-            [document.companyId, document.documentId],
+            `SELECT p.posting_id,p.status
+               FROM purchase_postings p
+              WHERE p.company_id=?
+                AND (
+                  p.posting_id LIKE ?
+                  OR EXISTS (
+                    SELECT 1
+                      FROM purchase_posting_idempotency i
+                     WHERE i.company_id=p.company_id
+                       AND i.posting_id=p.posting_id
+                       AND i.source_system='purchase'
+                       AND i.source_type='supplier-invoice'
+                       AND i.source_id=?
+                  )
+                )
+              ORDER BY p.created_at DESC,p.posting_id
+              LIMIT 1`,
+            [
+              document.companyId,
+              `purchase-posting:${document.documentId}:v%`,
+              document.documentId,
+            ],
           );
           if (posting) {
             throw new Error("برای این فاکتور قبلاً ثبت حسابداری ایجاد شده است؛ اصلاح طبقه‌بندی باید از مسیر برگشت/اصلاح حسابداری انجام شود.");
