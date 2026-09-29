@@ -209,6 +209,9 @@ function errorMessage(error: unknown): string {
     if (error.message.includes("purchase_posting.posting_rule_ambiguous")) {
       return "برای یکی از نقش‌های ثبت خرید بیش از یک قاعده هم‌اولویت پیدا شد. قواعد ثبت خرید باید بدون ابهام باشند.";
     }
+    if (error.message.includes("purchase_posting.dimension_required_missing")) {
+      return "یکی از حساب‌های سند خرید به بُعد حسابداری اجباری نیاز دارد اما عضو متناظر پیدا نشد. برای حساب پرداختنی، آرگین اکنون باید بُعد «طرف حساب» را از تأمین‌کننده به‌صورت خودکار ایجاد/متصل کند؛ عملیات را دوباره اجرا کنید. اگر خطا باقی ماند، تنظیمات ابعاد اجباری حساب مربوطه را بررسی کنید.";
+    }
     return error.message;
   }
   if (typeof error === "string" && error.trim()) return error;
