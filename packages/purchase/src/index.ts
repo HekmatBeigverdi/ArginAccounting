@@ -69,6 +69,7 @@ export {
 } from "./domain/purchase-matching-engine.ts";
 export type {
   EvaluatePurchaseMatchingInput,
+  PurchaseMatchingCommittedLineResult,
   PurchaseMatchingEvaluation,
   PurchaseMatchingInvoiceLine,
   PurchaseMatchingLineResult,
