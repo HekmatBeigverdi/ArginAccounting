@@ -79,6 +79,8 @@ Document-level components such as Accounts Payable have no Purchase line ID.
 
 They can still receive Supplier/Party dimension because Party comes from the Purchase Fact supplier snapshot.
 
+During Desktop Posting composition, if the required PARTY Dimension Type exists but the Supplier does not yet have an active Accounting Dimension Member, Argin materializes a module-owned member from the durable Supplier ID and records that Supplier ID as `sourceReferenceId`. This is an integration projection of authoritative Party master identity, not a duplicate Party master record.
+
 ## Product and Warehouse
 
 Product and Warehouse are line-specific.
