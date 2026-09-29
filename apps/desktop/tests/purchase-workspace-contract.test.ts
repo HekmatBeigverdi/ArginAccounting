@@ -192,3 +192,13 @@ test("confirmed non-stock invoice can be safely replaced after inventory trackin
   assert.match(css, /purchase-classification-warning/u);
   assert.match(css, /purchase-classification-diff/u);
 });
+
+
+test("inventory classification replacement checks Purchase Posting source through valid schema", async () => {
+  const composition = await read("src/composition/purchase/create-purchase-workspace-services.ts");
+
+  assert.doesNotMatch(composition, /purchase_postings[^\n]*source_id/u);
+  assert.match(composition, /purchase_posting_idempotency/u);
+  assert.match(composition, /i\.source_id=\?/u);
+  assert.match(composition, /purchase-posting:\$\{document\.documentId\}:v%/u);
+});
