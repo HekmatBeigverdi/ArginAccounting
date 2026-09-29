@@ -77,3 +77,28 @@ Step 28 owns the multi-receipt 2-way / 3-way matching engine and will consume th
 ## Argin Bridge
 
 Multiple receipt documents are independent durable Inventory facts. Bridge synchronization must preserve their individual IDs and Purchase source references. A UI aggregation such as "remaining quantity" is derived state and is not synchronization authority.
+
+
+## Inventory Tracking snapshot integrity
+
+Whether a Purchase line is stock-tracked is captured in the confirmed Purchase Product snapshot. A later edit to Product Master Data does not silently rewrite the historical Supplier Invoice.
+
+If an operator confirms a Supplier Invoice while Inventory Tracking is accidentally disabled and later corrects the Product master to stock-tracked, the historical invoice remains non-stock.
+
+Before any linked Inventory receipt or real accounting effect exists, Desktop may offer a controlled classification replacement:
+
+```text
+confirmed historical non-stock invoice
+        ↓
+detect current Product is stock-tracked
+        ↓
+create traced replacement Supplier Invoice
+        ↓
+mark historical invoice corrected
+        ↓
+normal stock receipt / matching / valuation / posting
+```
+
+Commercial terms are carried from the authoritative original Purchase facts; the replacement captures the current Product snapshot. If downstream Inventory/accounting effects already exist, this simplified replacement is blocked and a controlled compensating correction/reversal workflow is required.
+
+A failed Posting attempt that left only a deterministic Draft Posting with no Journal, idempotency record or reversal is not an accounting effect. That non-economic residue may be cleaned before an otherwise valid pre-effect classification replacement.
