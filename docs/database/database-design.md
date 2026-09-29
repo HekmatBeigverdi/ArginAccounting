@@ -146,6 +146,28 @@ Purchase mutation replay is Company-scoped and persists request ID, operation ID
 
 The Purchase SQLite Unit of Work binds Document, Commercial Fact, Match, Cost Input and Idempotency repositories to one transaction session. Bridge change metadata is persisted on authoritative Purchase facts, while operational report rows and FIFO/MWA projections remain rebuildable and are not separate synchronization authority.
 
+## Purchase Posting Persistence — Phase 23
+
+Phase 23 adds migration `0033_purchase_posting.sql` and the `@argin/purchase-posting-tauri` adapter.
+
+Primary durable records include Purchase Posting aggregates, Purchase Posting Rules, replay/idempotency evidence and controlled Posting Reversal lineage. Purchase Posting references Accounting-owned Journal Voucher identity rather than copying Journal contents into Purchase tables.
+
+The persistence model preserves these boundaries:
+
+- `purchase_postings` owns Posting aggregate identity, Company/Branch scope, lifecycle status, optional Accounting Journal link, optimistic version and timestamps.
+- `purchase_posting_rules` owns Purchase-specific account-role resolution such as Inventory Asset, Purchase Expense, Accounts Payable, recoverable Input VAT, Purchase Charge and GRNI.
+- `purchase_posting_idempotency` owns append-only source/version/purpose/fingerprint → committed Posting/Journal result evidence. SQLite triggers reject update/delete.
+- `purchase_posting_reversals` owns immutable linkage between the original Posting/Journal and controlled reversal Journal.
+- Accounting Journal rows remain in Accounting-owned tables and are protected by source ownership; a Purchase-generated Journal draft cannot be generically deleted while Purchase Posting references it.
+
+Expected-version compare-and-swap protects Posting aggregate mutation. Replay-safe Posting commits Journal creation, Posting preparation and idempotency outcome atomically. A failed attempt may leave only a deterministic non-economic Draft Posting aggregate created before the atomic economic commit; it has no Journal/idempotency effect and may be reused on retry or removed by a permitted pre-effect classification correction.
+
+Purchase source Cost Input remains Purchase/Inventory integration authority. Inventory owns resolved valuation entries/layers. Phase 23 acceptance hardened the source-cost projection so exact replay is safe, missing legacy projection can be repaired, and conflicting resolved valuation fails closed.
+
+Confirmed Purchase document snapshots are not rewritten because current Product Master Data changes. If a confirmed invoice captured a non-stock Product and the master is later corrected to stock-tracked before any receipt/accounting effect exists, the replacement workflow preserves the original invoice as corrected and creates a traced replacement invoice with the current Product snapshot.
+
+Bridge synchronization treats durable Posting/source/reversal/idempotency identities as authority. UI workflow summaries, reconciliation presentation and local in-memory locks are rebuildable and are not independently synchronized.
+
 ## Transactions
 
 Use explicit Unit of Work boundaries for operations that write multiple aggregates, history records, audit entries, number-series values, or posting results. Phase 16 report execution is read-only and does not introduce a report-write transaction.
