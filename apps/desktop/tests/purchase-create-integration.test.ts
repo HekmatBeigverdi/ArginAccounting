@@ -18,13 +18,16 @@ const hooks = registerHooks({
   },
 });
 const { createPurchaseWorkspaceServices } = await import("../src/composition/purchase/create-purchase-workspace-services.ts");
+const { createPurchasePostingWorkspaceServices } = await import("../src/composition/purchase-posting/create-purchase-posting-workspace-services.ts");
 const purchase = await import("@argin/purchase");
 const { SqlitePurchaseDocumentRepository } = await import("@argin/purchase-tauri");
 const inventory = await import("@argin/inventory");
 const { SqliteInventoryDocumentRepository, SqliteInventoryUnitOfWork } = await import("@argin/inventory-tauri");
+const { recordAuditEntry } = await import("@argin/audit");
+const { DatabaseExecutorAdapter, SqliteAuditRepository, SqliteAuditUnitOfWork } = await import("@argin/audit-tauri");
 hooks.deregister();
 
-function fixture(permissions = ["system.full-access"]) {
+function fixture(permissions = ["system.full-access"], auditErrors?: "string" | "error") {
   const sqlite = new DatabaseSync(":memory:");
   const migrations = new URL("../src-tauri/migrations/", import.meta.url);
   for (const file of readdirSync(migrations).filter(file => file.endsWith(".sql")).sort()) {
@@ -52,8 +55,14 @@ function fixture(permissions = ["system.full-access"]) {
   const parameters = (values: readonly DatabaseValue[]) => values.map(value => typeof value === "boolean" ? Number(value) : value);
   const session: DatabaseSession = {
     async execute(sql, values = []) {
-      const result = sqlite.prepare(sql).run(...parameters(values));
-      return { rowsAffected: Number(result.changes) };
+      try {
+        const result = sqlite.prepare(sql).run(...parameters(values));
+        return { rowsAffected: Number(result.changes) };
+      } catch (error) {
+        // Rust's atomic SQLite commands reject with strings across the Tauri bridge.
+        if (auditErrors === "string" && error instanceof Error) throw error.message;
+        throw error;
+      }
     },
     async query<T>(sql: string, values: readonly DatabaseValue[] = []) {
       return sqlite.prepare(sql).all(...parameters(values)) as T[];
@@ -81,10 +90,20 @@ function fixture(permissions = ["system.full-access"]) {
     },
     async close() { sqlite.close(); },
   };
+  const auditDatabase = new DatabaseExecutorAdapter(database);
+  const auditContext = {
+    authorizer: { async hasPermission() { return true; } },
+    idGenerator: { generate: () => crypto.randomUUID() },
+    clock: { now: () => new Date().toISOString() },
+    unitOfWork: new SqliteAuditUnitOfWork(auditDatabase),
+    auditRepository: new SqliteAuditRepository(auditDatabase),
+  };
   const services = createPurchaseWorkspaceServices({
     database,
     actor: { id: "user", displayName: "User", permissions, branchIds: ["branch"] },
-    audit: { async recordAuditEntry() {} } as unknown as AuditServices,
+    audit: { recordAuditEntry: auditErrors
+      ? (input: Parameters<AuditServices["recordAuditEntry"]>[0]) => recordAuditEntry(auditContext, input)
+      : async () => {} } as unknown as AuditServices,
   });
   const input = {
     companyId: "company", branchId: "branch", fiscalYearId: "year", supplierId: "supplier",
@@ -95,7 +114,7 @@ function fixture(permissions = ["system.full-access"]) {
   return { sqlite, database, services, input };
 }
 
-test("purchase receipt staging reuses its linked draft and later reports the confirmed receipt", async (t) => {
+test("purchase receipt staging tracks partial drafts and confirmed receipts without over-allocation", async (t) => {
   const { sqlite, database, services, input } = fixture();
   t.after(() => sqlite.close());
   let document = await services.create(input);
@@ -106,30 +125,46 @@ test("purchase receipt staging reuses its linked draft and later reports the con
   await new SqlitePurchaseDocumentRepository(database).update(document, 1);
   sqlite.exec(`INSERT INTO warehouses (id, company_id, code, title, kind, organizational_scope, created_at, updated_at)
     VALUES ('warehouse', 'company', 'W1', 'Warehouse', 'general', 'company', '2026-09-19T00:00:00Z', '2026-09-19T00:00:00Z');`);
-  const first = await services.stageInventoryReceipt(document, "warehouse");
+  const quantities = { [document.lines[0]!.lineId]: "1" };
+  for (const emptyQuantities of [{}, { [document.lines[0]!.lineId]: "   " }]) {
+    await assert.rejects(services.stageInventoryReceipt(document, "warehouse", emptyQuantities, "empty-" + Object.keys(emptyQuantities).length),
+      (error: unknown) => error instanceof Error && "field" in error && error.field === "allocations");
+  }
+  assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 0);
+  const first = await services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-1");
+  const replay = await services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-1");
+  assert.equal(replay.inventoryDocumentId, first.inventoryDocumentId);
+  assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 1);
   assert.equal(first.status, "draft");
-  const repeated = await services.stageInventoryReceipt(document, "warehouse");
-  assert.equal(repeated.inventoryDocumentId, first.inventoryDocumentId);
+  const partial = await services.get("company", document.documentId);
+  assert.equal(partial?.receiptFulfillment[0]?.allocatedBaseQuantity, "1");
+  assert.equal(partial?.receiptFulfillment[0]?.remainingBaseQuantity, "1");
+  const second = await services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-auto-1");
+  assert.equal(second.status, "draft");
+  assert.notEqual(second.inventoryDocumentId, first.inventoryDocumentId);
+  await assert.rejects(services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-auto-2"),
+    (error: unknown) => error instanceof Error && "field" in error && error.field === "receiptQuantity");
   const repository = new SqliteInventoryDocumentRepository(database);
   let receipt = await repository.findById("company", first.inventoryDocumentId);
   assert.ok(receipt);
+  assert.equal(receipt.lines[0]?.operation?.quantity.baseQuantity, "1");
   receipt = inventory.rehydrateInventoryDocument({ ...receipt, documentNumber: "000008" });
   const receiptAction = { occurredAt: receipt.createdAt, actorUserId: "user" };
   receipt = inventory.submitInventoryDocument(receipt, receiptAction);
   receipt = inventory.approveInventoryDocument(receipt, receiptAction);
   receipt = inventory.confirmInventoryDocument(receipt, receiptAction);
   await repository.update(receipt, 1);
-  const afterConfirmation = await services.stageInventoryReceipt(document, "warehouse");
-  assert.equal(afterConfirmation.inventoryDocumentId, receipt.documentId);
-  assert.equal(afterConfirmation.status, "confirmed");
   const detail = await services.get("company", document.documentId);
-  assert.equal(detail?.inventoryReceipt?.documentNumber, "000008");
-  assert.equal(detail?.inventoryReceipt?.status, "confirmed");
-  assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 1);
-  await assert.rejects(new inventory.InventoryDraftService(new SqliteInventoryUnitOfWork(database)).create({
-    companyId: "company", requestKey: "duplicate-source", payloadFingerprint: "duplicate-source",
-    document: { ...receipt, documentId: "another-receipt", documentNumber: null },
-  }), (error: unknown) => error instanceof Error && "code" in error && error.code === "inventory.application.source-document-duplicate");
+  assert.equal(detail?.inventoryReceipts.length, 2);
+  const confirmed = detail?.inventoryReceipts.find(item => item.documentId === receipt.documentId);
+  assert.equal(confirmed?.documentNumber, "000008");
+  assert.equal(confirmed?.status, "confirmed");
+  assert.equal(detail?.inventoryReceipts.find(item => item.documentId === second.inventoryDocumentId)?.status, "draft");
+  assert.equal(detail?.receiptFulfillment[0]?.allocatedBaseQuantity, "2");
+  assert.equal(detail?.receiptFulfillment[0]?.remainingBaseQuantity, "0");
+  await assert.rejects(services.stageInventoryReceipt(document, "warehouse", quantities, "receipt-auto-3"),
+    (error: unknown) => error instanceof Error && "field" in error && error.field === "receiptQuantity");
+  assert.equal(sqlite.prepare("SELECT count(*) AS count FROM inventory_documents").get()?.count, 2);
   await assert.rejects(new inventory.InventoryDraftService(new SqliteInventoryUnitOfWork(database)).create({
     companyId: "company", requestKey: "duplicate-number", payloadFingerprint: "duplicate-number",
     document: { ...receipt, documentId: "duplicate-number", sourceReference: null },
@@ -299,7 +334,7 @@ async function confirmedInvoiceReceipt(f: ReturnType<typeof fixture>) {
   await new SqlitePurchaseDocumentRepository(f.database).update(invoice, 1);
   f.sqlite.exec(`INSERT INTO warehouses (id,company_id,code,title,kind,organizational_scope,created_at,updated_at)
     VALUES ('warehouse','company','W1','Warehouse','general','company','2026-09-19','2026-09-19');`);
-  const staged = await f.services.stageInventoryReceipt(invoice, "warehouse");
+  const staged = await f.services.stageInventoryReceipt(invoice, "warehouse", { [invoice.lines[0]!.lineId]: "15" }, "confirmed-receipt");
   const repository = new SqliteInventoryDocumentRepository(f.database);
   let receipt = (await repository.findById("company", staged.inventoryDocumentId))!;
   receipt = inventory.rehydrateInventoryDocument({ ...receipt, documentNumber: "000008" });
@@ -319,6 +354,14 @@ test("confirmed invoice receipt can be matched and costed, including legacy rece
   const reader = new SqlitePurchaseOperationalReportReader(f.database);
   const query = { companyId: "company", branchId: "branch", fiscalYearId: "year", supplierId: null, fromBusinessDate: null, toBusinessDate: null, limit: 50, offset: 0 };
   assert.equal((await reader.readUnresolvedCosts(query)).items[0]?.reason, "invoice-match-required");
+  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /ابتدا تطبیق رسیدهای قطعی را ثبت کنید/);
+  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 0);
+  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_valuation_cost_inputs").get()?.n, 0);
+  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM inventory_valuation_cost_inputs").get()?.n, 0);
+  const matching = await f.services.matchConfirmedReceipts(invoice);
+  assert.equal(matching.status, "matched");
+  assert.equal(matching.proposals.length, 0);
+  await f.services.matchConfirmedReceipts(invoice);
   await f.services.resolveReceiptCost(invoice);
   await f.services.resolveReceiptCost(invoice);
   assert.equal((await reader.readUnresolvedCosts(query)).items.length, 0);
@@ -327,6 +370,36 @@ test("confirmed invoice receipt can be matched and costed, including legacy rece
   assert.equal(f.sqlite.prepare("SELECT total_cost FROM purchase_valuation_cost_inputs").get()?.total_cost, 25000000);
   assert.equal(f.sqlite.prepare("SELECT total_cost FROM inventory_valuation_cost_inputs").get()?.total_cost, 25000000);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM inventory_stock_movements").get()?.n, 1);
+});
+
+for (const auditErrors of ["string", "error"] as const) {
+  test(`receipt cost replay succeeds with persistent audit and ${auditErrors} SQLite errors`, async t => {
+    const f = fixture(["system.full-access"], auditErrors);
+    t.after(() => f.sqlite.close());
+    const { invoice } = await confirmedInvoiceReceipt(f);
+    await f.services.matchConfirmedReceipts(invoice);
+    await f.services.resolveReceiptCost(invoice);
+    const revision = f.sqlite.prepare("SELECT revision FROM inventory_valuation_stream_versions").get()?.revision;
+    await f.services.resolveReceiptCost(invoice);
+    assert.equal(f.sqlite.prepare("SELECT count(*) n FROM audit_entries WHERE message='purchase.cost.resolve'").get()?.n, 1);
+    assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 1);
+    assert.equal(f.sqlite.prepare("SELECT count(*) n FROM inventory_valuation_cost_inputs").get()?.n, 1);
+    assert.equal(f.sqlite.prepare("SELECT total_cost FROM inventory_valuation_cost_inputs").get()?.total_cost, 25000000);
+    assert.equal(f.sqlite.prepare("SELECT revision FROM inventory_valuation_stream_versions").get()?.revision, revision);
+  });
+}
+
+test("receipt cost replay still reports unrelated audit write failures", async t => {
+  const f = fixture(["system.full-access"], "string");
+  t.after(() => f.sqlite.close());
+  const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.matchConfirmedReceipts(invoice);
+  await f.services.resolveReceiptCost(invoice);
+  f.sqlite.exec(`CREATE TRIGGER fail_cost_audit BEFORE INSERT ON audit_entries
+    WHEN NEW.message='purchase.cost.resolve'
+    BEGIN SELECT RAISE(ABORT, 'audit storage unavailable'); END;`);
+  await assert.rejects(() => f.services.resolveReceiptCost(invoice),
+    (error: unknown) => error === "audit storage unavailable");
 });
 
 test("receipt cost resolution checks permissions before creating match or cost facts", async t => {
@@ -345,15 +418,17 @@ test("receipt cost resolution refuses an existing manual cost without overwritin
   f.sqlite.exec(`INSERT INTO inventory_valuation_cost_inputs
     (basis_line_id,company_id,movement_id,product_id,warehouse_id,quantity,currency,base_cost,landed_cost,total_cost,unit_cost,allocations_json,revision)
     VALUES ('manual-cost','company','movement','product','warehouse','15','IRR',150,0,150,'10','[]',1)`);
+  await f.services.matchConfirmedReceipts(invoice);
   await assert.rejects(() => f.services.resolveReceiptCost(invoice), /قبلاً/);
   assert.equal(f.sqlite.prepare("SELECT total_cost FROM inventory_valuation_cost_inputs").get()?.total_cost, 150);
-  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 0);
+  assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 1);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_valuation_cost_inputs").get()?.n, 0);
 });
 
 test("failed cost delivery remains visible and retries without duplicating a receipt match", async t => {
   const f = fixture(); t.after(() => f.sqlite.close());
   const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.matchConfirmedReceipts(invoice);
   const transaction = f.database.transaction.bind(f.database);
   let failOnce = true;
   f.database.transaction = work => transaction(session => work({ ...session, async execute(sql, params) {
@@ -408,7 +483,7 @@ test("partial receipt matches are preserved and never expanded silently", async 
     (match_id,company_id,invoice_document_id,invoice_line_id,receipt_document_id,receipt_line_id,product_id,matched_base_quantity,created_at)
     VALUES ('partial','company',?,?,?,?,'product','5','2026-09-19')`)
     .run(invoice.documentId,invoice.lines[0]!.lineId,receipt.documentId,receipt.lines[0]!.lineId);
-  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /جزئی/);
+  await assert.rejects(() => f.services.resolveReceiptCost(invoice), /ابتدا تطبیق رسیدهای قطعی را ثبت کنید/);
   assert.equal(f.sqlite.prepare("SELECT matched_base_quantity FROM purchase_receipt_invoice_matches").get()?.matched_base_quantity, "5");
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_valuation_cost_inputs").get()?.n, 0);
 });
@@ -416,6 +491,7 @@ test("partial receipt matches are preserved and never expanded silently", async 
 test("source cost is consumable by Inventory and replay does not advance its revision", async t => {
   const f = fixture(); t.after(() => f.sqlite.close());
   const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.matchConfirmedReceipts(invoice);
   await f.services.resolveReceiptCost(invoice);
   const { SqliteInventoryValuationMovementReader, SqliteInventoryValuationCostInputProvider } = await import("@argin/inventory-tauri");
   const movement = (await new SqliteInventoryValuationMovementReader(f.database).findById("company", "movement"))!;
@@ -435,4 +511,344 @@ test("cost resolution uses the persisted invoice branch rather than a caller-sup
     audit: { async recordAuditEntry() {} } as unknown as AuditServices });
   await assert.rejects(() => restricted.resolveReceiptCost({ ...invoice, scope: { ...invoice.scope, branchId: "other" } }), /PURCHASE_APP_UNAUTHORIZED/);
   assert.equal(f.sqlite.prepare("SELECT count(*) n FROM purchase_receipt_invoice_matches").get()?.n, 0);
+});
+
+
+test("Step 32 receipt submission replay returns one Inventory draft while a new submission permits the next partial receipt", async (t) => {
+  const { sqlite, database, services, input } = fixture();
+  t.after(() => sqlite.close());
+
+  let document = await services.create(input);
+  const action = { occurredAt: document.createdAt, actorUserId: "user" };
+  document = purchase.confirmPurchaseDocument(
+    purchase.approvePurchaseDocument(
+      purchase.submitPurchaseDocument(document, action),
+      action,
+    ),
+    action,
+  );
+  await new SqlitePurchaseDocumentRepository(database).update(document, 1);
+  sqlite.exec(`INSERT INTO warehouses
+    (id,company_id,code,title,kind,organizational_scope,created_at,updated_at)
+    VALUES ('warehouse-step32','company','W32','Warehouse 32','general','company','2026-09-28','2026-09-28');`);
+
+  const quantities = { [document.lines[0]!.lineId]: "1" };
+  const first = await services.stageInventoryReceipt(
+    document,
+    "warehouse-step32",
+    quantities,
+    "submission-same",
+  );
+  const replay = await services.stageInventoryReceipt(
+    document,
+    "warehouse-step32",
+    quantities,
+    "submission-same",
+  );
+
+  assert.deepEqual(replay, first);
+  assert.equal(
+    sqlite.prepare("SELECT count(*) AS n FROM inventory_documents WHERE company_id='company' AND source_document_id=?")
+      .get(document.documentId)?.n,
+    1,
+  );
+
+  const second = await services.stageInventoryReceipt(
+    document,
+    "warehouse-step32",
+    quantities,
+    "submission-next",
+  );
+  assert.notEqual(second.inventoryDocumentId, first.inventoryDocumentId);
+
+  const detail = await services.get("company", document.documentId);
+  assert.equal(detail?.receiptFulfillment[0]?.allocatedBaseQuantity, "2");
+  assert.equal(detail?.receiptFulfillment[0]?.remainingBaseQuantity, "0");
+  assert.equal(detail?.inventoryReceipts.length, 2);
+});
+
+
+test("Step 33 E2E persists Purchase -> Receipt -> Matching -> Valuation -> Posting -> Accounting Journal in SQLite", async (t) => {
+  const f = fixture();
+  t.after(() => f.sqlite.close());
+
+  // Company valuation policy is authoritative before Purchase cost reaches Inventory valuation.
+  f.sqlite.exec(`
+    INSERT INTO inventory_valuation_policies(
+      policy_id,company_id,method,strategy_version,currency,effective_from,
+      previous_policy_id,change_reason,revision
+    ) VALUES (
+      'policy-step33','company','fifo',1,'IRR','2026-01-01',
+      NULL,'Phase 23 Step 33 E2E',1
+    );
+  `);
+
+  const { invoice, receipt } = await confirmedInvoiceReceipt(f);
+
+  // The stock invoice cannot reach accounting before durable matching/valuation.
+  const postingServices = createPurchasePostingWorkspaceServices({
+    database: f.database,
+    actor: { permissions: ["system.full-access"], branchIds: ["branch"] },
+  });
+  await assert.rejects(
+    () => postingServices.executeSupplierInvoice({
+      companyId: "company",
+      branchId: "branch",
+      sourceId: invoice.documentId,
+    }),
+    /رسید قطعی|دریافت کالای انباری/u,
+  );
+
+  const matching = await f.services.matchConfirmedReceipts(invoice);
+  assert.equal(matching.status, "matched");
+  await f.services.resolveReceiptCost(invoice);
+
+  const valuation = f.sqlite.prepare(`
+    SELECT valuation_entry_id,movement_id,document_id,line_id,method,currency,
+           quantity,unit_cost,total_cost,cost_state
+      FROM inventory_valuation_entries
+     WHERE company_id='company' AND movement_id='movement'
+  `).get() as {
+    valuation_entry_id: string;
+    movement_id: string;
+    document_id: string;
+    line_id: string;
+    method: string;
+    currency: string;
+    quantity: string;
+    unit_cost: string;
+    total_cost: number;
+    cost_state: string;
+  };
+  assert.equal(valuation.document_id, receipt.documentId);
+  assert.equal(valuation.line_id, receipt.lines[0]!.lineId);
+  assert.equal(valuation.method, "fifo");
+  assert.equal(valuation.currency, "IRR");
+  assert.equal(valuation.quantity, "15");
+  assert.equal(valuation.total_cost, 25_000_000);
+  assert.equal(valuation.cost_state, "resolved");
+
+  // Minimal posting-enabled chart/rules for the stock invoice.
+  f.sqlite.exec(`
+    INSERT INTO accounts
+      (id,company_id,parent_id,level,code,name,nature,normal_balance,statement_type,
+       balance_sheet_section,posting_allowed,created_at,updated_at)
+    VALUES
+      ('asset-g','company',NULL,'group','1','دارایی‌ها','debit','debit','balance_sheet','assets',0,'2026-09-28','2026-09-28'),
+      ('asset-gen','company','asset-g','general','11','دارایی جاری','debit','debit','balance_sheet','assets',0,'2026-09-28','2026-09-28'),
+      ('inventory-account','company','asset-gen','subsidiary','110001','موجودی کالا','debit','debit','balance_sheet','assets',1,'2026-09-28','2026-09-28'),
+      ('liability-g','company',NULL,'group','2','بدهی‌ها','credit','credit','balance_sheet','liabilities',0,'2026-09-28','2026-09-28'),
+      ('liability-gen','company','liability-g','general','21','بدهی جاری','credit','credit','balance_sheet','liabilities',0,'2026-09-28','2026-09-28'),
+      ('payable-account','company','liability-gen','subsidiary','210001','حساب‌های پرداختنی','credit','credit','balance_sheet','liabilities',1,'2026-09-28','2026-09-28');
+
+    INSERT INTO purchase_posting_rules
+      (rule_id,company_id,branch_id,event_kind,line_kind,account_role,account_id,
+       priority,active,version,created_at,updated_at)
+    VALUES
+      ('rule-inventory','company',NULL,'supplier-invoice-recognition','stock-product',
+       'inventory-asset','inventory-account',100,1,1,'2026-09-28','2026-09-28'),
+      ('rule-payable','company',NULL,'supplier-invoice-recognition',NULL,
+       'accounts-payable','payable-account',100,1,1,'2026-09-28','2026-09-28');
+  `);
+
+  const posted = await postingServices.executeSupplierInvoice({
+    companyId: "company",
+    branchId: "branch",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(posted.status, "journal-created");
+  assert.equal(posted.posting?.status, "prepared");
+  assert.equal(posted.journal?.status, "draft");
+  assert.equal(posted.journal?.totalDebit.amount, 25_000_000);
+  assert.equal(posted.journal?.totalCredit.amount, 25_000_000);
+
+  const postingRow = f.sqlite.prepare(`
+    SELECT status,journal_voucher_id,version
+      FROM purchase_postings
+     WHERE company_id='company'
+  `).get() as { status: string; journal_voucher_id: string; version: number };
+  assert.equal(postingRow.status, "prepared");
+  assert.equal(postingRow.version, 2);
+
+  const journalRow = f.sqlite.prepare(`
+    SELECT id,status,total_debit,total_credit,source_type,source_id
+      FROM journal_vouchers
+     WHERE company_id='company' AND id=?
+  `).get(postingRow.journal_voucher_id) as {
+    id: string; status: string; total_debit: number; total_credit: number;
+    source_type: string; source_id: string;
+  };
+  assert.equal(journalRow.status, "draft");
+  assert.equal(journalRow.total_debit, 25_000_000);
+  assert.equal(journalRow.total_credit, 25_000_000);
+  assert.equal(journalRow.source_type, "source_document");
+  assert.equal(journalRow.source_id, invoice.documentId);
+
+  const journalLines = f.sqlite.prepare(`
+    SELECT account_id,debit_amount AS debit,credit_amount AS credit
+      FROM journal_lines
+     WHERE voucher_id=?
+     ORDER BY line_order
+  `).all(journalRow.id) as Array<{ account_id: string; debit: number; credit: number }>;
+  assert.deepEqual(journalLines.map(line => ({ ...line })), [
+    { account_id: "inventory-account", debit: 25_000_000, credit: 0 },
+    { account_id: "payable-account", debit: 0, credit: 25_000_000 },
+  ]);
+
+  const trace = await postingServices.findBySource({
+    companyId: "company",
+    branchId: "branch",
+    sourceType: "supplier-invoice",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(trace.length, 1);
+  assert.equal(trace[0]?.reconciled, true);
+  assert.equal(trace[0]?.journal?.id, journalRow.id);
+
+  // Replay must return the committed result and never create another Journal.
+  const replay = await postingServices.executeSupplierInvoice({
+    companyId: "company",
+    branchId: "branch",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(replay.replayed, true);
+  assert.equal(replay.journal?.id, journalRow.id);
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM journal_vouchers WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    1,
+  );
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM purchase_posting_idempotency WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    1,
+  );
+});
+
+
+test("Step 34 Posting failure injection rolls back Journal/prepared state and retry completes exactly once", async (t) => {
+  const f = fixture();
+  t.after(() => f.sqlite.close());
+
+  f.sqlite.exec(`
+    INSERT INTO inventory_valuation_policies(
+      policy_id,company_id,method,strategy_version,currency,effective_from,
+      previous_policy_id,change_reason,revision
+    ) VALUES (
+      'policy-step34','company','fifo',1,'IRR','2026-01-01',
+      NULL,'Phase 23 Step 34 failure acceptance',1
+    );
+  `);
+
+  const { invoice } = await confirmedInvoiceReceipt(f);
+  await f.services.matchConfirmedReceipts(invoice);
+  await f.services.resolveReceiptCost(invoice);
+
+  f.sqlite.exec(`
+    INSERT INTO accounts
+      (id,company_id,parent_id,level,code,name,nature,normal_balance,statement_type,
+       balance_sheet_section,posting_allowed,created_at,updated_at)
+    VALUES
+      ('asset34-g','company',NULL,'group','3','دارایی تست ۳۴','debit','debit','balance_sheet','assets',0,'2026-09-29','2026-09-29'),
+      ('asset34-gen','company','asset34-g','general','31','دارایی جاری تست ۳۴','debit','debit','balance_sheet','assets',0,'2026-09-29','2026-09-29'),
+      ('inventory34','company','asset34-gen','subsidiary','310001','موجودی تست ۳۴','debit','debit','balance_sheet','assets',1,'2026-09-29','2026-09-29'),
+      ('liab34-g','company',NULL,'group','4','بدهی تست ۳۴','credit','credit','balance_sheet','liabilities',0,'2026-09-29','2026-09-29'),
+      ('liab34-gen','company','liab34-g','general','41','بدهی جاری تست ۳۴','credit','credit','balance_sheet','liabilities',0,'2026-09-29','2026-09-29'),
+      ('payable34','company','liab34-gen','subsidiary','410001','پرداختنی تست ۳۴','credit','credit','balance_sheet','liabilities',1,'2026-09-29','2026-09-29');
+
+    INSERT INTO purchase_posting_rules
+      (rule_id,company_id,branch_id,event_kind,line_kind,account_role,account_id,
+       priority,active,version,created_at,updated_at)
+    VALUES
+      ('rule34-inventory','company',NULL,'supplier-invoice-recognition','stock-product',
+       'inventory-asset','inventory34',100,1,1,'2026-09-29','2026-09-29'),
+      ('rule34-payable','company',NULL,'supplier-invoice-recognition',NULL,
+       'accounts-payable','payable34',100,1,1,'2026-09-29','2026-09-29');
+
+    CREATE TRIGGER phase23_fail_posting_idempotency
+    BEFORE INSERT ON purchase_posting_idempotency
+    BEGIN
+      SELECT RAISE(ABORT,'forced posting idempotency failure');
+    END;
+  `);
+
+  const postingServices = createPurchasePostingWorkspaceServices({
+    database: f.database,
+    actor: { permissions: ["system.full-access"], branchIds: ["branch"] },
+  });
+
+  await assert.rejects(
+    () => postingServices.executeSupplierInvoice({
+      companyId: "company",
+      branchId: "branch",
+      sourceId: invoice.documentId,
+    }),
+    /forced posting idempotency failure/u,
+  );
+
+  const failedPosting = f.sqlite.prepare(`
+    SELECT status,version,journal_voucher_id
+      FROM purchase_postings
+     WHERE company_id='company'
+  `).get() as { status: string; version: number; journal_voucher_id: string | null };
+
+  // Aggregate creation precedes the replay-safe commit; the economic effect must roll back.
+  assert.deepEqual({ ...failedPosting }, {
+    status: "draft",
+    version: 1,
+    journal_voucher_id: null,
+  });
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM journal_vouchers WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    0,
+  );
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM purchase_posting_idempotency WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    0,
+  );
+
+  f.sqlite.exec("DROP TRIGGER phase23_fail_posting_idempotency");
+
+  const recovered = await postingServices.executeSupplierInvoice({
+    companyId: "company",
+    branchId: "branch",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(recovered.status, "journal-created");
+  assert.equal(recovered.replayed, false);
+
+  const replay = await postingServices.executeSupplierInvoice({
+    companyId: "company",
+    branchId: "branch",
+    sourceId: invoice.documentId,
+  });
+  assert.equal(replay.replayed, true);
+  assert.equal(replay.journal?.id, recovered.journal?.id);
+
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM purchase_postings WHERE company_id='company'")
+      .get()?.n,
+    1,
+  );
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM journal_vouchers WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    1,
+  );
+  assert.equal(
+    f.sqlite.prepare("SELECT count(*) AS n FROM purchase_posting_idempotency WHERE company_id='company' AND source_id=?")
+      .get(invoice.documentId)?.n,
+    1,
+  );
+
+  assert.throws(
+    () => f.sqlite.exec("UPDATE purchase_posting_idempotency SET committed_posting_version=99"),
+    /append-only/u,
+  );
+  assert.throws(
+    () => f.sqlite.exec("DELETE FROM purchase_posting_idempotency"),
+    /append-only/u,
+  );
 });

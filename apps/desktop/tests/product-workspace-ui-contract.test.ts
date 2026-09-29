@@ -45,3 +45,12 @@ test("Product React surface does not execute direct Product SQL", () => {
   assert.doesNotMatch(page, /INSERT\s+INTO\s+products/iu);
   assert.doesNotMatch(page, /UPDATE\s+products/iu);
 });
+
+
+test("Product inventory tracking UX explains warehouse receipt consequences", () => {
+  assert.match(page, /کالای موجودی‌دار/u);
+  assert.match(page, /کالای بدون ردیابی موجودی/u);
+  assert.match(page, /رسید انبار لازم خواهد بود/u);
+  assert.match(page, /Non-stock/u);
+  assert.match(page, /بدون ردیابی موجودی/u);
+});

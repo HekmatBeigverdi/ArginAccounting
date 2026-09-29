@@ -23,13 +23,21 @@ pnpm install --frozen-lockfile
 
 ## 3. Focused Validation
 
-Run the current phase-specific validation first. For Phase 22:
+Run the current phase-specific validation first. For Phase 23, execute the focused commands recorded in the canonical Phase 23 plan, covering Purchase, Purchase-Tauri, Purchase-Posting, Purchase-Posting-Tauri, Inventory-Tauri and Desktop. Then run the repository-wide gates:
 
 ```bash
-pnpm validate:phase22
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm lint
+node scripts/generate-doc-index.mjs
+node scripts/check-doc-links.mjs
+cd apps/desktop/src-tauri
+cargo check
+cd ../../..
 ```
 
-This covers Purchase Domain/Application, Purchase-Tauri SQLite persistence, Inventory/Valuation integration, Desktop tests/build, documentation index/link checks, full monorepo typecheck/test/build/lint, and Rust `cargo check`.
+If a dedicated `validate:phase23` script is present by Step 36, use it as the canonical wrapper and still record its observed output.
 
 Validation evidence must identify who executed local commands. Connector-side documentation must not claim local execution it did not perform.
 
@@ -56,15 +64,13 @@ Run `pnpm lint` and documentation-index/link validation when configured for the 
 - [ ] New indexes/constraints have tests or measured query-path justification.
 - [ ] `PRAGMA foreign_key_check` and `PRAGMA integrity_check` are clean where a real migration database is exercised.
 
-Phase 22 migrations:
+Phase 23 migration:
 
 ```text
-0030_purchase_workflow.sql
-0031_purchase_scope_snapshot.sql
-0032_purchase_replay_safety.sql
+0033_purchase_posting.sql
 ```
 
-Phase 22 integration evidence must exercise these migrations on real SQLite, including upgrade from the Phase 21 boundary, rollback, restart durability, scoped numbering, append-only Match/replay facts and optimistic concurrency.
+Phase 23 integration evidence must exercise Purchase Posting persistence on real SQLite, including Posting Rules, expected-version CAS, append-only replay evidence, controlled reversal lineage, Journal linkage, rollback/failure recovery and exact replay. Upstream Purchase migrations 0030–0032 remain required input state.
 
 ## 6. Security and Scope
 
@@ -75,7 +81,7 @@ Phase 22 integration evidence must exercise these migrations on real SQLite, inc
 - [ ] Errors do not leak cross-scope identifiers.
 - [ ] No production password, token, secret, or private environment value is committed.
 
-For Phase 22 verify the Purchase permission families for document view/create/edit/lifecycle, Approval/Confirmation, Inventory receipt staging, receipt/invoice matching, cost resolution and report/export behavior.
+For Phase 23 verify independent Purchase Posting view/execute/trace/reverse permissions in addition to upstream Purchase document, receipt, matching and cost-resolution permissions. Source-owned Journals must not expose generic draft edit/delete mutations.
 
 ## 7. Bounded-Context Semantics
 
@@ -83,10 +89,13 @@ For Phase 22 verify the Purchase permission families for document view/create/ed
 - [ ] Inventory remains authoritative for quantity documents and Stock Movements.
 - [ ] Inventory Valuation remains authoritative for FIFO/MWA and derived monetary state.
 - [ ] Normal Purchase price is entered once and delivered as authoritative Cost Input without duplicate operator entry.
-- [ ] Service/non-stock purchases do not create stock Cost Inputs solely because they were purchased.
-- [ ] Return/Correction append compensating facts instead of rewriting confirmed Purchase/Inventory history.
-- [ ] Purchase does not create Journal Vouchers or supplier payable posting; Phase 23 owns Purchase Posting.
-- [ ] Bridge envelopes synchronize authoritative Purchase facts only; report/matching-summary/FIFO-MWA projections remain rebuildable.
+- [ ] Service/non-stock purchases do not require Inventory receipts solely because they were purchased.
+- [ ] Stock Purchase accounting waits for durable fulfillment/matching and resolved valuation.
+- [ ] Purchase Posting resolves accounts through explicit rules and fails closed on missing/ambiguous mappings.
+- [ ] Purchase-generated Journal drafts are source-owned; direct generic edit/delete is blocked.
+- [ ] Return/Correction/Reversal append linked compensating facts instead of rewriting posted history.
+- [ ] Confirmed Purchase snapshots are not rewritten after Product Master Data changes; safe pre-effect classification correction uses a traced replacement invoice.
+- [ ] Bridge envelopes synchronize authoritative Purchase Posting/source/reversal/replay facts; UI summaries and FIFO/MWA projections remain rebuildable.
 
 ## 8. Desktop Validation
 
@@ -100,7 +109,7 @@ For user-facing phases verify applicable surfaces:
 - [ ] Bounded list/selector/search behavior.
 - [ ] Import/export behavior when delivered.
 
-Phase 22 functional acceptance includes Purchase create/edit/lifecycle, Supplier/Product commercial lines, Jalali dates, Inventory receipt staging, receipt-cost resolution, matching/unresolved-cost visibility, stale-version handling, Persian RTL reports and permission-aware actions.
+Phase 23 functional acceptance includes stock/non-stock fulfillment behavior, partial confirmed receipts, committed matching, Purchase Cost Resolution, automatic/explicit Posting, balanced Journal creation, readable Persian Journal descriptions, source-owned Journal protection, controlled inventory-classification replacement and fixed desktop-shell scrolling behavior.
 
 ## 9. Documentation
 
@@ -132,19 +141,19 @@ Do not force-push shared branches.
 
 Create the semantic tag from the verified release commit on `main` and publish a GitHub Release using the matching `CHANGELOG.md` / release-notes section.
 
-For Phase 22 the prepared version is:
+For Phase 23 the prepared version is:
 
 ```text
-v0.22.0
+v0.23.0
 ```
 
 Prepared notes:
 
 ```text
-docs/phases/phase-22-release-notes.md
+docs/phases/phase-23-release-notes.md
 ```
 
-Phase 22 release is ordered after Phase 21. Do not create `v0.22.0` from a `main` commit that does not already contain the required Phase 21 state.
+Create `v0.23.0` only from the verified Phase 23 release commit on `main` after Step 36 validation and promotion.
 
 ## 12. Post-Release
 

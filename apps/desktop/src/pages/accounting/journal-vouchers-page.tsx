@@ -535,8 +535,8 @@ export function JournalVouchersPage() {
                   : "بدون شعبه"
               }
               accounts={accounts}
-              canEdit={can(journalVoucherPermissions.updateDraft)}
-              canDelete={can(journalVoucherPermissions.deleteDraft)}
+              canEdit={can(journalVoucherPermissions.updateDraft) && selected.sourceType === "manual"}
+              canDelete={can(journalVoucherPermissions.deleteDraft) && selected.sourceType === "manual"}
               onEdit={() => void startEdit()}
               onDelete={() => void removeSelected()}
               onClose={() => setSelected(null)}
@@ -991,6 +991,15 @@ function VoucherDetail({
           <dt>منبع</dt>
           <dd>{journalVoucherSourceLabel(voucher.sourceType)}</dd>
         </div>
+        {voucher.sourceType !== "manual" && (
+          <div className="journal-source-owned-notice">
+            <strong>سند سیستمی</strong>
+            <span>
+              این سند توسط ماژول مبدأ ایجاد شده است؛ ویرایش یا حذف مستقیم آن مجاز نیست.
+              اصلاح باید از سند مبدأ یا مسیر کنترل‌شده برگشت/اصلاح انجام شود.
+            </span>
+          </div>
+        )}
         <div>
           <dt>مرجع</dt>
           <dd>{voucher.reference ?? "—"}</dd>

@@ -118,10 +118,13 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Services/non-stock items do not create inventory Cost Inputs solely because they are purchased.
    - Preserve durable source identity, Audit, idempotency, optimistic concurrency and Argin Bridge ownership boundaries.
    - Prepared release target: `v0.22.0` — `ArginAccounting v0.22.0 — Purchase Workflow`.
-23. ⏳ Purchase Posting
+23. 🚧 Purchase Posting
+   - CR-23-01 expands Phase 23 to 36 steps so fulfillment, matching and posting orchestration are completed before final validation/release.
+   - All 36 steps completed. Final Phase 23 GitHub Actions validation passed; promotion to `develop`/`main` is the remaining repository transition in progress, with semantic `v0.23.0` publication manual.
    - Consume Phase 22 Purchase facts and Phase 21 valuation outputs without creating a second purchase-price store.
    - Own supplier payable, purchase/VAT accounting effects, configured Inventory/GRNI treatment, landed-cost accounting, corrections/reversals and reconciliation.
-   - Posting must preserve source integrity and idempotency and must not duplicate Purchase or Inventory authoritative pricing data.
+   - Posting must preserve source integrity, balanced Journal output, idempotency, immutable reversal lineage and Argin Bridge-ready durable identity.
+   - Release target: `v0.23.0` — `ArginAccounting v0.23.0 — Purchase Posting & Accounting Integration`.
 
 ## Sales
 
@@ -197,7 +200,7 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 22 is now promoted on top of Phase 21 in `main`. Publish `v0.22.0` from the verified `main` release commit, then Phase 23 — Purchase Posting is the next implementation phase.
+Phase 23 — Purchase Posting & Accounting Integration is now the current implementation target. CR-23-01 expanded the phase to 36 steps; all 36 are complete on `phase/23-purchase-posting`. Final GitHub Actions validation passed under PR #26. Phase 23 is being promoted to `develop`/`main`; semantic `v0.23.0` publication remains a manual repository-owner action. Phase 22 semantic Tag/GitHub Release publication remains a separate repository-owner action.
 
 ## Latest Completed Inventory Milestone
 

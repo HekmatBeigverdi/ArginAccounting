@@ -152,6 +152,16 @@ export function JournalVoucherLifecycleOverview() {
 
   const openDraftEditor = useCallback(async (row: LifecycleRow) => {
     setFailure(null);
+    if (row.voucher.sourceType !== "manual") {
+      setMessage("");
+      setFailure({
+        kind: "business",
+        title: "سند سیستمی قابل ویرایش مستقیم نیست",
+        message: "این سند از یک ماژول عملیاتی ایجاد شده است. برای بررسی شرح و ردیف‌ها سند را مشاهده کنید؛ هرگونه اصلاح باید از سند مبدأ یا مسیر کنترل‌شده اصلاح/برگشت انجام شود.",
+        technical: `journal.source-owned: sourceType=${row.voucher.sourceType}; sourceId=${row.voucher.sourceId ?? ""}`,
+      });
+      return;
+    }
     setMessage("در حال باز کردن سند برای ویرایش…");
     try {
       const listButton = Array.from(
@@ -438,6 +448,11 @@ function LifecycleTableRows({
     action: JournalVoucherLifecycleActionView,
   ) => void;
 }) {
+  const sourceOwned = row.voucher.sourceType !== "manual";
+  const actions = sourceOwned
+    ? view.actions.filter((action) => action.action !== "edit" && action.action !== "delete")
+    : view.actions;
+
   return (
     <>
       <tr>
@@ -449,11 +464,11 @@ function LifecycleTableRows({
           </span>
           <small>{view.statusDescription}</small>
         </td>
-        <td>{view.locked ? "قفل" : "قابل ویرایش"}</td>
+        <td>{sourceOwned ? "سیستمی" : view.locked ? "قفل" : "قابل ویرایش"}</td>
         <td>{view.versionLabel}</td>
         <td>
           <div className="journal-lifecycle-actions" aria-label={`عملیات سند ${row.voucher.number}`}>
-            {view.actions.map((action) => (
+            {actions.map((action) => (
               <LifecycleAction
                 key={action.action}
                 row={row}
@@ -462,7 +477,7 @@ function LifecycleTableRows({
                 onConfirm={onConfirm}
               />
             ))}
-            {view.actions.length === 0 && (
+            {actions.length === 0 && (
               <span className="journal-lifecycle-action--none">عملیات دیگری ندارد</span>
             )}
           </div>

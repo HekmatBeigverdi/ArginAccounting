@@ -1,0 +1,366 @@
+export {
+  PURCHASE_POSTING_STATUSES,
+  createPurchasePosting,
+  preparePurchasePosting,
+  rehydratePurchasePosting,
+  reversePurchasePosting,
+} from "./domain/purchase-posting.ts";
+export type {
+  CreatePurchasePostingInput,
+  PurchasePostingAggregate,
+  PurchasePostingStatus,
+  RehydratePurchasePostingInput,
+} from "./domain/purchase-posting.ts";
+
+export {
+  PURCHASE_POSTING_DOMAIN_ERROR_CODES,
+  PurchasePostingDomainError,
+} from "./domain/purchase-posting-domain-errors.ts";
+export type {
+  PurchasePostingDomainErrorCode,
+} from "./domain/purchase-posting-domain-errors.ts";
+
+export {
+  PURCHASE_POSTING_LINE_KINDS,
+  PURCHASE_POSTING_SOURCE_DOCUMENT_TYPES,
+  PURCHASE_POSTING_SOURCE_STATUSES,
+  createPurchasePostingCommercialAmountsSnapshot,
+  createPurchasePostingFact,
+  createPurchasePostingItemSnapshot,
+  createPurchasePostingLineFactSnapshot,
+  createPurchasePostingSupplierSnapshot,
+  createPurchasePostingValuationSnapshot,
+} from "./domain/purchase-posting-facts.ts";
+export type {
+  CreatePurchasePostingFactInput,
+  PurchasePostingCommercialAmountsSnapshot,
+  PurchasePostingFactSnapshot,
+  PurchasePostingItemSnapshot,
+  PurchasePostingItemType,
+  PurchasePostingLineFactSnapshot,
+  PurchasePostingLineKind,
+  PurchasePostingMoneySnapshot,
+  PurchasePostingSourceDocumentType,
+  PurchasePostingSourceStatus,
+  PurchasePostingSupplierSnapshot,
+  PurchasePostingValuationMethod,
+  PurchasePostingValuationSnapshot,
+} from "./domain/purchase-posting-facts.ts";
+
+export {
+  PURCHASE_POSTING_SOURCE_SYSTEM,
+  assertPurchasePostingLineReferenceMatchesFact,
+  assertPurchasePostingSourceMatchesFact,
+  createPurchasePostingSourceIdentity,
+  createPurchasePostingSourceIdentityFromFact,
+  createPurchasePostingSourceLineReference,
+  createPurchasePostingSourceLineReferenceFromFact,
+  createPurchasePostingSourceReference,
+  createPurchasePostingTraceContext,
+  purchasePostingSourceIdentityKey,
+} from "./domain/purchase-posting-source-reference.ts";
+export type {
+  CreatePurchasePostingSourceIdentityInput,
+  CreatePurchasePostingSourceLineReferenceInput,
+  CreatePurchasePostingSourceReferenceInput,
+  CreatePurchasePostingTraceContextInput,
+  PurchasePostingSourceIdentity,
+  PurchasePostingSourceLineReference,
+  PurchasePostingSourceReference,
+  PurchasePostingTraceContext,
+} from "./domain/purchase-posting-source-reference.ts";
+
+export {
+  PURCHASE_ACCOUNTING_ELIGIBILITY_REASON_CODES,
+  PURCHASE_ACCOUNTING_ELIGIBILITY_STATUSES,
+  PURCHASE_FULFILLMENT_STATES,
+  PURCHASE_POSTING_MODES,
+  createPurchaseFulfillmentAccountingPolicy,
+  evaluateSupplierInvoiceAccountingEligibility,
+} from "./domain/purchase-fulfillment-accounting-policy.ts";
+export type {
+  EvaluateSupplierInvoiceAccountingEligibilityInput,
+  PurchaseAccountingEligibilityLineResult,
+  PurchaseAccountingEligibilityReasonCode,
+  PurchaseAccountingEligibilityResult,
+  PurchaseAccountingEligibilityStatus,
+  PurchaseFulfillmentAccountingPolicy,
+  PurchaseFulfillmentLineState,
+  PurchaseFulfillmentState,
+  PurchasePostingMode,
+} from "./domain/purchase-fulfillment-accounting-policy.ts";
+
+export {
+  PURCHASE_POSTING_EVENT_DISPOSITIONS,
+  PURCHASE_POSTING_EVENT_KINDS,
+  PURCHASE_POSTING_EVENT_REASON_CODES,
+  classifyPurchasePostingEvent,
+  classifyPurchasePostingFact,
+  isPurchasePostingEventEligible,
+} from "./domain/purchase-posting-event-classification.ts";
+export type {
+  ClassifyPurchasePostingEventInput,
+  PurchasePostingEventClassification,
+  PurchasePostingEventDisposition,
+  PurchasePostingEventKind,
+  PurchasePostingEventReasonCode,
+} from "./domain/purchase-posting-event-classification.ts";
+
+export {
+  PURCHASE_POSTING_ACCOUNT_ROLES,
+  createPurchasePostingRule,
+  resolvePurchasePostingAccount,
+  selectPurchasePostingRule,
+} from "./domain/purchase-posting-rules.ts";
+export type {
+  CreatePurchasePostingRuleInput,
+  PurchasePostingAccountReader,
+  PurchasePostingAccountResolution,
+  PurchasePostingAccountResolutionContext,
+  PurchasePostingAccountRole,
+  PurchasePostingAccountSnapshot,
+  PurchasePostingRule,
+} from "./domain/purchase-posting-rules.ts";
+
+export {
+  createSupplierInvoicePostingPlan,
+} from "./domain/supplier-invoice-posting.ts";
+export type {
+  SupplierInvoiceAmountBasis,
+  SupplierInvoicePostingComponent,
+  SupplierInvoicePostingPlan,
+  SupplierInvoicePostingSide,
+} from "./domain/supplier-invoice-posting.ts";
+
+export {
+  PURCHASE_TAX_RECOVERABILITY,
+  createPurchaseTaxPolicy,
+  createPurchaseTaxPostingPlan,
+} from "./domain/purchase-tax-posting.ts";
+export type {
+  CreatePurchaseTaxPolicyInput,
+  PurchaseTaxPolicy,
+  PurchaseTaxPostingComponent,
+  PurchaseTaxPostingDestination,
+  PurchaseTaxPostingPlan,
+  PurchaseTaxRecoverability,
+} from "./domain/purchase-tax-posting.ts";
+
+export {
+  createPurchaseChargePostingPlan,
+} from "./domain/purchase-charge-posting.ts";
+export type {
+  PurchaseChargePostingComponent,
+  PurchaseChargePostingDestination,
+  PurchaseChargePostingPlan,
+} from "./domain/purchase-charge-posting.ts";
+
+export {
+  createPurchaseReturnPostingPlan,
+} from "./domain/purchase-return-posting.ts";
+export type {
+  PurchaseReturnAmountBasis,
+  PurchaseReturnPostingComponent,
+  PurchaseReturnPostingPlan,
+  PurchaseReturnPostingSide,
+  PurchaseReturnSourceReference,
+} from "./domain/purchase-return-posting.ts";
+
+export {
+  PURCHASE_CORRECTION_EFFECTS,
+  createPurchaseCorrectionPostingPlan,
+} from "./domain/purchase-correction-posting.ts";
+export type {
+  PurchaseCorrectionAmountBasis,
+  PurchaseCorrectionEffect,
+  PurchaseCorrectionLineLink,
+  PurchaseCorrectionPostingComponent,
+  PurchaseCorrectionPostingPlan,
+  PurchaseCorrectionPostingSide,
+  PurchaseCorrectionSourceReference,
+} from "./domain/purchase-correction-posting.ts";
+
+export {
+  resolvePurchaseCorrectionInventoryValuation,
+  resolvePurchaseReturnInventoryValuation,
+  resolveSupplierInvoiceInventoryValuation,
+} from "./domain/inventory-valuation-integration.ts";
+export type {
+  PurchasePostingResolvedValuation,
+  ResolvedPurchaseCorrectionPostingPlan,
+  ResolvedPurchaseReturnPostingPlan,
+  ResolvedSupplierInvoicePostingPlan,
+} from "./domain/inventory-valuation-integration.ts";
+
+export {
+  createPurchaseCorrectionDraftComponents,
+  createPurchasePostingDraftJournal,
+  createPurchaseReturnDraftComponents,
+  createSupplierInvoiceDraftComponents,
+} from "./domain/draft-journal-generation.ts";
+export type {
+  CreatePurchasePostingDraftJournalInput,
+  PurchasePostingDraftComponent,
+  PurchasePostingDraftJournalMetadata,
+} from "./domain/draft-journal-generation.ts";
+
+export {
+  commitPurchasePostingJournalDraftAtomically,
+} from "./application/atomic-journal-posting.ts";
+export type {
+  CommitPurchasePostingJournalDraftInput,
+  CommitPurchasePostingJournalDraftResult,
+  PurchasePostingAtomicSession,
+  PurchasePostingAtomicUnitOfWork,
+} from "./application/atomic-journal-posting.ts";
+
+export {
+  PURCHASE_POSTING_PURPOSES,
+  assertPurchasePostingReplayCompatible,
+  createPurchasePostingIdempotencyIdentity,
+  createPurchasePostingIdempotencyKey,
+  createPurchasePostingIdempotencyRecord,
+} from "./domain/purchase-posting-idempotency.ts";
+export type {
+  PurchasePostingIdempotencyIdentity,
+  PurchasePostingIdempotencyRecord,
+  PurchasePostingPurpose,
+} from "./domain/purchase-posting-idempotency.ts";
+
+export {
+  PURCHASE_POSTING_ORCHESTRATION_STATUSES,
+  orchestrateSupplierInvoicePosting,
+} from "./application/automatic-purchase-posting-orchestrator.ts";
+export type {
+  OrchestrateSupplierInvoicePostingInput,
+  PurchasePostingJournalIdentity,
+  PurchasePostingOrchestrationStatus,
+  SupplierInvoicePostingOrchestrationResult,
+  SupplierInvoicePostingOrchestratorDependencies,
+} from "./application/automatic-purchase-posting-orchestrator.ts";
+
+export {
+  commitPurchasePostingReplaySafe,
+} from "./application/replay-safe-posting.ts";
+export type {
+  PurchasePostingReplaySession,
+  PurchasePostingReplayUnitOfWork,
+  ReplaySafePurchasePostingInput,
+  ReplaySafePurchasePostingResult,
+} from "./application/replay-safe-posting.ts";
+
+export {
+  assertNewJournalDraftVersion,
+  assertPurchasePostingConcurrency,
+} from "./domain/posting-concurrency.ts";
+export type {
+  PurchasePostingConcurrencyExpectation,
+} from "./domain/posting-concurrency.ts";
+
+export {
+  reversePurchasePostingControlled,
+} from "./application/controlled-posting-reversal.ts";
+export type {
+  PurchasePostingReversalRecord,
+  PurchasePostingReversalSession,
+  PurchasePostingReversalUnitOfWork,
+  ReversePurchasePostingCommand,
+  ReversePurchasePostingResult,
+} from "./application/controlled-posting-reversal.ts";
+
+export {
+  assertPurchasePostingFiscalScope,
+} from "./domain/fiscal-scope-and-locks.ts";
+export type {
+  AssertPurchasePostingFiscalScopeInput,
+  PurchasePostingFiscalContext,
+  PurchasePostingFiscalContextReader,
+  PurchasePostingFiscalGateDependencies,
+  PurchasePostingHistoricalLock,
+  PurchasePostingHistoricalLockReader,
+  PurchasePostingHistoricalLockScope,
+} from "./domain/fiscal-scope-and-locks.ts";
+
+export {
+  PURCHASE_POSTING_DIMENSION_SOURCES,
+  collectPurchasePostingDimensionReferences,
+  resolvePurchasePostingDimensionAssignments,
+} from "./domain/purchase-posting-dimensions.ts";
+export type {
+  PurchasePostingDimensionContext,
+  PurchasePostingDimensionReader,
+  PurchasePostingDimensionReference,
+  PurchasePostingDimensionSource,
+  ResolvePurchasePostingDimensionsInput,
+} from "./domain/purchase-posting-dimensions.ts";
+
+export {
+  PURCHASE_POSTING_SYNC_CONTRACT_VERSION,
+  PURCHASE_POSTING_SYNC_SCHEMA_VERSION,
+  PURCHASE_POSTING_SYNC_ENTITIES,
+  PurchasePostingSyncContractError,
+  createPurchasePostingStateSyncEnvelope,
+  createPurchasePostingRuleSyncEnvelope,
+  createPurchasePostingReversalSyncEnvelope,
+} from "./application/contracts/purchase-posting-sync.ts";
+export type {
+  CreatePurchasePostingReversalSyncInput,
+  CreatePurchasePostingRuleSyncInput,
+  CreatePurchasePostingStateSyncInput,
+  PurchasePostingReversalSyncEnvelope,
+  PurchasePostingRuleSyncEnvelope,
+  PurchasePostingRuleSyncSnapshot,
+  PurchasePostingStateSyncEnvelope,
+  PurchasePostingSyncContractErrorCode,
+  PurchasePostingSyncDependency,
+  PurchasePostingSyncEntity,
+  PurchasePostingSyncMetadata,
+  PurchasePostingSyncMetadataInput,
+  PurchasePostingSyncOrigin,
+} from "./application/contracts/purchase-posting-sync.ts";
+
+export {
+  purchasePostingPermissions,
+  purchasePostingCorrelationId,
+} from "./application/contracts/purchase-posting-security.ts";
+export type {
+  PurchasePostingAuditAction,
+  PurchasePostingAuditEvent,
+  PurchasePostingAuditSink,
+  PurchasePostingAuthorizationContext,
+  PurchasePostingAuthorizationPolicy,
+  PurchasePostingPermission,
+  PurchasePostingRuleAuditSnapshot,
+  PurchasePostingSecurityContext,
+  PurchasePostingTraceReader,
+  PurchasePostingTraceSnapshot,
+} from "./application/contracts/purchase-posting-security.ts";
+
+export {
+  SecuredPurchasePostingService,
+  PurchasePostingSecurityError,
+} from "./application/secured-purchase-posting-service.ts";
+export type {
+  PurchasePostingRuleMutationContext,
+  PurchasePostingRuleMutationInput,
+  PurchasePostingScopeReader,
+  PurchasePostingSecurityErrorCode,
+  PurchasePostingTraceQuery,
+  SecuredPurchasePostingInput,
+  SecuredPurchasePostingReversalInput,
+  SecuredPurchasePostingServiceDependencies,
+} from "./application/secured-purchase-posting-service.ts";
+
+export {
+  purchasePostingAuditIdentity,
+} from "./application/purchase-posting-audit.ts";
+
+export {
+  PURCHASE_POSTING_RECONCILIATION_ISSUES,
+  evaluatePurchasePostingReconciliation,
+} from "./application/contracts/purchase-posting-reconciliation.ts";
+export type {
+  PurchasePostingReconciliationIssue,
+  PurchasePostingReconciliationReader,
+  PurchasePostingReconciliationSnapshot,
+} from "./application/contracts/purchase-posting-reconciliation.ts";

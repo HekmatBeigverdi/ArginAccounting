@@ -41,7 +41,9 @@
     "react-dom": "^19.1.0",
     "react-router": "^7.18.1",
     "@argin/purchase": "workspace:*",
-    "@argin/purchase-tauri": "workspace:*"
+    "@argin/purchase-tauri": "workspace:*",
+    "@argin/purchase-posting": "workspace:*",
+    "@argin/purchase-posting-tauri": "workspace:*"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

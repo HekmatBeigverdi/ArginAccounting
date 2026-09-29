@@ -390,3 +390,35 @@
   .product-form-grid__wide { grid-column: auto; }
   .product-pagination { align-items: stretch; flex-direction: column; }
 }
+
+
+.product-stock-tracking-note {
+  display: grid;
+  gap: .2rem;
+  padding: .65rem .75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  line-height: 1.65;
+}
+.product-stock-tracking-note.is-enabled {
+  border-color: #abefc6;
+  background: #ecfdf3;
+}
+.product-stock-tracking-note.is-disabled {
+  border-color: #fedf89;
+  background: #fffaeb;
+}
+.product-stock-tracking-note span {
+  color: var(--color-text-muted);
+}
+.product-detail__flags .is-stock-tracked {
+  border-color: #abefc6;
+  background: #ecfdf3;
+  color: #027a48;
+}
+.product-detail__flags .is-non-stock {
+  border-color: #fedf89;
+  background: #fffaeb;
+  color: #b54708;
+}

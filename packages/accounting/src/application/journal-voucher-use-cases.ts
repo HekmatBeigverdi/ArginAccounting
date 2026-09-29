@@ -157,6 +157,7 @@ export async function updateJournalVoucherDraft(
   );
   assertOwnedVoucher(existing, command.context.companyId, command.voucherId);
   assertExpectedVersion(existing, command.expectedVersion);
+  assertManualDraftMutationAllowed(existing);
   assertDraftEditable(existing);
 
   const fiscal = await resolveFiscalContext(
@@ -177,6 +178,7 @@ export async function updateJournalVoucherDraft(
       const current = await journals.findById(command.voucherId);
       assertOwnedVoucher(current, command.context.companyId, command.voucherId);
       assertExpectedVersion(current, command.expectedVersion);
+      assertManualDraftMutationAllowed(current);
       assertDraftEditable(current);
 
       const updated = rehydrateJournalVoucher({
@@ -230,6 +232,7 @@ export async function deleteJournalVoucherDraft(
       const current = await journals.findById(command.voucherId);
       assertOwnedVoucher(current, command.context.companyId, command.voucherId);
       assertExpectedVersion(current, command.expectedVersion);
+      assertManualDraftMutationAllowed(current);
       assertDraftEditable(current);
       await journals.deleteDraft(
         current.id,
@@ -415,6 +418,18 @@ function assertOwnedVoucher(
       { voucherId, companyId },
     );
   }
+}
+
+function assertManualDraftMutationAllowed(voucher: JournalVoucher): void {
+  if (voucher.source.type === "manual") return;
+  throw new JournalVoucherApplicationError(
+    "journal.source-owned",
+    "این سند حسابداری توسط یک ماژول عملیاتی ایجاد شده است و ویرایش یا حذف مستقیم آن مجاز نیست. تغییر باید از سند مبدأ یا مسیر کنترل‌شده اصلاح/برگشت انجام شود.",
+    {
+      sourceType: voucher.source.type,
+      sourceId: voucher.source.sourceId,
+    },
+  );
 }
 
 function assertExpectedVersion(

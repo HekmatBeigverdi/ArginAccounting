@@ -21,14 +21,14 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 ## Current Status
 
 - Phase 01–20: implementation completed and integrated through the Phase 20 stable baseline.
-- Phase 21 — Inventory Valuation: implementation Steps 1–19 complete; final release gate/promotion remains pending.
-- Phase 22 — Purchase Workflow: implementation Steps 1–23 complete; final validation/release preparation is active.
-- Prepared Phase 22 target: `v0.22.0` — `ArginAccounting v0.22.0 — Purchase Workflow`.
-- Phase 22 must not be published before the required Phase 21 promotion/reconciliation.
+- Phase 21 — Inventory Valuation: implementation Steps 1–19 complete; its standalone final release record remains separate.
+- Phase 22 — Purchase Workflow: implementation Steps 1–23 complete and promoted; semantic publication remains a repository-owner action.
+- Phase 23 — Purchase Posting & Accounting Integration: all 36 steps complete; the final Phase 23 GitHub Actions validation gate passed; promotion to `develop`/`main` and manual semantic publication follow the release procedure.
+- Prepared Phase 23 target: `v0.23.0` — `ArginAccounting v0.23.0 — Purchase Posting & Accounting Integration`.
 
-Phase 22 owns Supplier/Purchase commercial facts and connects confirmed stock purchases to Inventory receipts and Phase 21 valuation Cost Inputs. Normal Purchase price is entered once in Purchase; Inventory remains quantity authority and Valuation remains FIFO/MWA authority. Receipt-before-invoice stays explicitly unresolved until authoritative cost is available.
+Phase 22 owns Supplier/Purchase commercial facts and connects confirmed stock purchases to Inventory receipts and authoritative Inventory Valuation Cost Inputs. Phase 23 consumes those durable facts and valuation outputs to produce deterministic, balanced, replay-safe Accounting Journal drafts without duplicate operator entry. Inventory remains quantity authority, Inventory Valuation remains FIFO/MWA authority, Purchase remains commercial authority, and Accounting remains Journal lifecycle authority.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 21 record](docs/phases/phase-21-inventory-valuation-plan.md), [Phase 22 record](docs/phases/phase-22-purchase-workflow-plan.md), and [Phase 22 release notes](docs/phases/phase-22-release-notes.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 22 record](docs/phases/phase-22-purchase-workflow-plan.md), [Phase 23 record](docs/phases/phase-23-purchase-posting-plan.md), and [Phase 23 manual Desktop acceptance](docs/testing/phase-23-manual-desktop-acceptance.md).
 
 ## Main Modules
 
@@ -97,7 +97,7 @@ cd apps/desktop/src-tauri
 cargo check
 ```
 
-For the Phase 22 release gate, `pnpm validate:phase22` runs focused Purchase/Purchase-Tauri/Inventory/Inventory-Tauri/Desktop validation plus documentation checks, full monorepo typecheck/test/build/lint, and Rust `cargo check`.
+For the Phase 23 release gate, execute the focused Purchase/Purchase-Tauri/Purchase-Posting/Purchase-Posting-Tauri/Inventory-Tauri/Desktop validation recorded in the Phase 23 plan, then run full monorepo typecheck/test/build/lint, documentation index/link validation, and Rust `cargo check`. Step 36 must record the observed result rather than infer success from the existence of test files.
 
 Validation commands are requirements, not proof of success. Phase and release documents must record commands actually executed and their outcomes.
 
@@ -132,7 +132,8 @@ Validation commands are requirements, not proof of success. Phase and release do
 - [Roadmap](ROADMAP.md)
 - [Phase 21 — Inventory Valuation](docs/phases/phase-21-inventory-valuation-plan.md)
 - [Phase 22 — Purchase Workflow](docs/phases/phase-22-purchase-workflow-plan.md)
-- [Phase 22 Release Notes](docs/phases/phase-22-release-notes.md)
+- [Phase 23 — Purchase Posting & Accounting Integration](docs/phases/phase-23-purchase-posting-plan.md)
+- [Phase 23 Manual Desktop Acceptance](docs/testing/phase-23-manual-desktop-acceptance.md)
 - [ADR Registry](docs/adr/README.md)
 - [Database Design](docs/database/database-design.md)
 - [Accounting Engine](docs/accounting/accounting-engine.md)

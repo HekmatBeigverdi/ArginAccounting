@@ -182,4 +182,10 @@ describe("journal lifecycle desktop regression", () => {
     assert.equal(technical.kind, "technical");
     assert.match(technical.technical ?? "", /disk unavailable/u);
   });
+  it("source-owned draft lifecycle UI does not expose generic edit/delete actions", () => {
+    assert.match(overviewSource, /sourceOwned = row\.voucher\.sourceType !== "manual"/u);
+    assert.match(overviewSource, /action\.action !== "edit"/u);
+    assert.match(overviewSource, /action\.action !== "delete"/u);
+    assert.match(overviewSource, /سند سیستمی قابل ویرایش مستقیم نیست/u);
+  });
 });

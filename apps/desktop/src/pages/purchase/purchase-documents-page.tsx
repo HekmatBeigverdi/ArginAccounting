@@ -27,7 +27,10 @@ import {
 import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
 import { emptyLine, latinDigits, purchaseLineDrafts, purchaseLineInput, type LineDraft } from "./purchase-draft-form";
+import { PurchasePostingPanel } from "./purchase-posting-panel";
+import { createPurchasePostingWorkspaceServices, type PurchasePostingWorkspaceServices } from "../../composition/purchase-posting/create-purchase-posting-workspace-services";
 import "./purchase-documents-page.css";
+import "./purchase-posting-panel.css";
 
 const TYPE_LABELS: Record<PurchaseDocumentType, string> = {
   "purchase-order": "سفارش خرید",
@@ -196,7 +199,22 @@ function errorMessage(error: unknown): string {
       return "تأمین‌کننده انتخاب‌شده غیرفعال است؛ یک تأمین‌کننده فعال انتخاب کنید.";
     return "عملیات خرید معتبر نیست؛ " + error.field;
   }
-  if (error instanceof Error && error.message) return error.message;
+  if (error instanceof Error && error.message) {
+    if (error.message.includes("purchase_posting.account_mapping_missing")) {
+      return "تطبیق خرید انجام شده است، اما برای ایجاد سند حسابداری یکی از قواعد اتصال نقش‌های خرید به حساب‌ها تعریف نشده است. اگر شرکت از کدینگ پیش‌فرض آرگین استفاده کند، برنامه تلاش می‌کند قواعد پایه موجودی کالا و حساب‌های پرداختنی را خودکار ایجاد کند؛ سپس عملیات را دوباره اجرا کنید.";
+    }
+    if (error.message.includes("purchase_posting.account_not_postable")) {
+      return "حسابی که برای ثبت خرید انتخاب شده غیرفعال است یا اجازه ثبت مستقیم ندارد. کدینگ حساب‌ها و قواعد ثبت خرید را بررسی کنید.";
+    }
+    if (error.message.includes("purchase_posting.posting_rule_ambiguous")) {
+      return "برای یکی از نقش‌های ثبت خرید بیش از یک قاعده هم‌اولویت پیدا شد. قواعد ثبت خرید باید بدون ابهام باشند.";
+    }
+    if (error.message.includes("purchase_posting.dimension_required_missing")) {
+      return "یکی از حساب‌های سند خرید به بُعد حسابداری اجباری نیاز دارد اما عضو متناظر پیدا نشد. برای حساب پرداختنی، آرگین اکنون باید بُعد «طرف حساب» را از تأمین‌کننده به‌صورت خودکار ایجاد/متصل کند؛ عملیات را دوباره اجرا کنید. اگر خطا باقی ماند، تنظیمات ابعاد اجباری حساب مربوطه را بررسی کنید.";
+    }
+    return error.message;
+  }
+  if (typeof error === "string" && error.trim()) return error;
   return "عملیات با خطا مواجه شد.";
 }
 
@@ -207,6 +225,7 @@ export function PurchaseDocumentsPage() {
   const [services, setServices] = useState<PurchaseWorkspaceServices | null>(
     null,
   );
+  const [postingServices, setPostingServices] = useState<PurchasePostingWorkspaceServices | null>(null);
   const [documents, setDocuments] = useState<
     readonly PurchaseDocumentSnapshot[]
   >([]);
@@ -224,11 +243,15 @@ export function PurchaseDocumentsPage() {
   );
   const [reason, setReason] = useState("");
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [classificationCorrectionOpen, setClassificationCorrectionOpen] = useState(false);
+  const [classificationCorrectionReason, setClassificationCorrectionReason] = useState("");
   const [linkCompensationOpen, setLinkCompensationOpen] = useState<
     "return" | "correct" | null
   >(null);
   const [relatedDocumentId, setRelatedDocumentId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
+  const [receiptQuantities, setReceiptQuantities] = useState<Record<string, string>>({});
+  const [receiptSubmissionId, setReceiptSubmissionId] = useState("");
   const [warehouses, setWarehouses] = useState<readonly WarehouseListItemDto[]>(
     [],
   );
@@ -266,6 +289,13 @@ export function PurchaseDocumentsPage() {
             audit,
           }),
         );
+        setPostingServices(createPurchasePostingWorkspaceServices({
+          database,
+          actor: {
+            permissions: session.user.permissions,
+            branchIds: session.user.branchIds,
+          },
+        }));
       })
       .catch((e) => !cancelled && setError(errorMessage(e)));
     return () => {
@@ -480,20 +510,46 @@ export function PurchaseDocumentsPage() {
     }
   };
 
-  const lifecycle = async (
-    action: "submit" | "approve" | "confirm" | "cancel" | "reopen",
-    actionReason?: string | null,
-  ) => {
-    if (!services || !selected) return;
+  const createInventoryTrackingReplacement = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!services || !selected || saving || !classificationCorrectionReason.trim()) return;
     setSaving(true);
     setError("");
     setMessage("");
     try {
+      const replacement = await services.createInventoryTrackingReplacement(
+        selected,
+        classificationCorrectionReason,
+      );
+      setClassificationCorrectionOpen(false);
+      setClassificationCorrectionReason("");
+      setMessage(
+        "فاکتور قبلی به‌صورت کنترل‌شده اصلاح شد و فاکتور جایگزین با وضعیت جدید ردیابی موجودی ساخته شد. فاکتور جایگزین را بررسی و چرخه تأیید آن را ادامه دهید.",
+      );
+      await reload();
+      await openDocument(replacement.documentId);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const lifecycle = async (
+    action: "submit" | "approve" | "confirm" | "cancel" | "reopen",
+    actionReason?: string | null,
+  ) => {
+    if (!services || !selected || saving) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      let confirmedDocument: PurchaseDocumentSnapshot | null = null;
       if (action === "submit") await services.submit(selected, actionReason);
       else if (action === "approve")
         await services.approve(selected, actionReason);
       else if (action === "confirm")
-        await services.confirm(selected, actionReason);
+        confirmedDocument = await services.confirm(selected, actionReason);
       else if (action === "cancel")
         await services.cancel(selected, actionReason);
       else
@@ -503,7 +559,28 @@ export function PurchaseDocumentsPage() {
         );
       setReasonOpen(null);
       setReason("");
-      setMessage("وضعیت سند با موفقیت به‌روزرسانی شد.");
+      let postingError = "";
+      if (
+        confirmedDocument?.documentType === "supplier-invoice" &&
+        !confirmedDocument.lines.some(line => line.lineKind === "stock-product") &&
+        postingServices?.canExecute
+      ) {
+        try {
+          await postingServices.executeSupplierInvoice({
+            companyId: confirmedDocument.companyId,
+            branchId: confirmedDocument.scope.branchId,
+            sourceId: confirmedDocument.documentId,
+          });
+        } catch (cause) {
+          postingError = cause instanceof Error ? cause.message : "ایجاد خودکار ثبت حسابداری ناموفق بود.";
+        }
+      }
+      setMessage(
+        postingError
+          ? "سند قطعی شد، اما ثبت حسابداری خودکار نیاز به بررسی دارد."
+          : "وضعیت سند با موفقیت به‌روزرسانی شد.",
+      );
+      if (postingError) setError(postingError);
       await reload();
       await openDocument(selected.documentId);
     } catch (e) {
@@ -570,9 +647,9 @@ export function PurchaseDocumentsPage() {
       const fresh = await services.get(selected.companyId, selected.documentId);
       if (!fresh) throw new Error("سند خرید یافت نشد.");
       setDetail(fresh);
-      if (fresh.inventoryReceipt) {
-        setMessage("رسید انبار این سند قبلاً ایجاد شده است؛ وضعیت رسید: " +
-          RECEIPT_STATUS_LABELS[fresh.inventoryReceipt.status]);
+      const remaining = fresh.receiptFulfillment.filter(line => line.remainingBaseQuantity !== "0");
+      if (!remaining.length) {
+        setMessage("تمام مقدار کالاهای انباری این فاکتور قبلاً به رسید انبار تخصیص یافته است.");
         return;
       }
       setWarehouses(
@@ -582,20 +659,27 @@ export function PurchaseDocumentsPage() {
         ),
       );
       setWarehouseId("");
+      setReceiptQuantities(Object.fromEntries(
+        remaining.map(line => [line.purchaseLineId, line.remainingBaseQuantity]),
+      ));
+      setReceiptSubmissionId(crypto.randomUUID());
       setReceiptOpen(true);
     } catch (error) { setError(errorMessage(error)); }
   };
   const stageReceipt = async (event: FormEvent) => {
     event.preventDefault();
-    if (!services || !selected || !warehouseId) return;
+    if (!services || !selected || !warehouseId || !receiptSubmissionId || saving) return;
     setSaving(true);
     setError("");
     try {
       const result = await services.stageInventoryReceipt(
         selected,
         warehouseId,
+        receiptQuantities,
+        receiptSubmissionId,
       );
       setReceiptOpen(false);
+      setReceiptSubmissionId("");
       await openDocument(selected.documentId);
       setMessage("رسید انبار این سند ثبت شده است؛ وضعیت: " +
         (RECEIPT_STATUS_LABELS[result.status] ?? result.status));
@@ -606,8 +690,50 @@ export function PurchaseDocumentsPage() {
     }
   };
 
+  const matchConfirmedReceipts = async () => {
+    if (!services || !selected || saving) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await services.matchConfirmedReceipts(selected);
+      let postingCreated = false;
+      let postingWarning = "";
+      if (result.status === "matched") {
+        await services.resolveReceiptCost(selected);
+        if (postingServices?.canExecute) {
+          try {
+            await postingServices.executeSupplierInvoice({
+              companyId: selected.companyId,
+              branchId: selected.scope.branchId,
+              sourceId: selected.documentId,
+            });
+            postingCreated = true;
+          } catch (postingError) {
+            postingWarning = errorMessage(postingError);
+          }
+        }
+      }
+      await openDocument(selected.documentId);
+      setMessage(
+        result.status === "matched"
+          ? postingCreated
+            ? "تطبیق خرید کامل شد، مبنای هزینه ثبت شد و سند حسابداری خرید ایجاد شد."
+            : "تطبیق خرید کامل شد و مبنای هزینه ثبت شد."
+          : result.status === "variance"
+            ? "تطبیق انجام شد اما اختلاف سفارش/فاکتور نیاز به بررسی دارد."
+            : "رسیدهای قطعی موجود تطبیق شدند؛ هنوز بخشی از مقدار فاکتور دریافت نشده است.",
+      );
+      if (postingWarning) setError(postingWarning);
+    } catch (error) {
+      setError(errorMessage(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const resolveReceiptCost = async () => {
-    if (!services || !selected) return;
+    if (!services || !selected || saving) return;
     setSaving(true);
     setError("");
     setMessage("");
@@ -716,19 +842,67 @@ export function PurchaseDocumentsPage() {
                       {STATUS_LABELS[detail.document.status]}
                     </span>
                   </header>
+                  {detail.document.documentType === "supplier-invoice" &&
+                    detail.document.status === "confirmed" &&
+                    detail.inventoryTrackingDrift.some(item =>
+                      !item.invoiceStockTracking && item.currentStockTracking
+                    ) && (
+                    <div className="purchase-classification-warning" role="alert">
+                      <strong>طبقه‌بندی موجودی کالا بعد از قطعی‌شدن فاکتور تغییر کرده است.</strong>
+                      <span>
+                        این فاکتور با Snapshot قدیمی «بدون ردیابی موجودی» ثبت شده، اما کالا اکنون موجودی‌دار است.
+                        برای حفظ تاریخچه، فاکتور قطعی قبلی ویرایش نمی‌شود؛ از مسیر اصلاح کنترل‌شده یک فاکتور جایگزین بسازید.
+                      </span>
+                      <button
+                        type="button"
+                        className="primary"
+                        disabled={saving}
+                        onClick={() => {
+                          setClassificationCorrectionReason(
+                            "کالا هنگام ثبت فاکتور اشتباهاً بدون ردیابی موجودی بوده و پس از قطعی‌شدن اصلاح شده است.",
+                          );
+                          setClassificationCorrectionOpen(true);
+                        }}
+                      >
+                        اصلاح طبقه‌بندی و ساخت فاکتور جایگزین
+                      </button>
+                    </div>
+                  )}
                   <div className="purchase-detail__actions">
-                    {detail.inventoryReceipt && (
-                      <span className={"status status--" + detail.inventoryReceipt.status} role="status">
-                        رسید انبار {detail.inventoryReceipt.documentNumber ?? "بدون شماره"}
-                        {" — "}{RECEIPT_STATUS_LABELS[detail.inventoryReceipt.status]}
+                    {detail.inventoryReceipts.length > 0 && (
+                      <span className="status" role="status">
+                        {detail.inventoryReceipts.length} رسید مرتبط
+                        {" — "}
+                        {detail.receiptFulfillment.every(line => line.remainingBaseQuantity === "0")
+                          ? "تخصیص کامل"
+                          : "تحویل/تخصیص جزئی"}
                       </span>
                     )}
-                    {selected?.documentType === "supplier-invoice" && selected.status === "confirmed" &&
-                      detail.inventoryReceipt?.status === "confirmed" &&
-                      can(purchasePermissions.manageMatching) && can(purchasePermissions.resolveCost) && (
-                        <button disabled={saving} onClick={() => void resolveReceiptCost()}>
-                          تطبیق و ثبت هزینه رسید
+                    {selected?.documentType === "supplier-invoice" &&
+                      selected.status === "confirmed" &&
+                      detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
+                      detail.matching &&
+                      detail.matching.committedStatus !== "matched" &&
+                      can(purchasePermissions.manageMatching) && (
+                        <button disabled={saving} onClick={() => void matchConfirmedReceipts()}>
+                          تطبیق رسیدهای قطعی
                         </button>
+                      )}
+                    {selected?.documentType === "supplier-invoice" &&
+                      selected.status === "confirmed" &&
+                      detail.matching?.committedStatus === "matched" &&
+                      detail.inventoryReceipts.some(receipt => receipt.status === "confirmed") &&
+                      detail.receiptCostResolution.status !== "complete" &&
+                      can(purchasePermissions.resolveCost) && (
+                        <button disabled={saving} onClick={() => void resolveReceiptCost()}>
+                          ثبت مبنای هزینه دریافت‌های تطبیق‌شده
+                        </button>
+                      )}
+                    {selected?.documentType === "supplier-invoice" &&
+                      detail.receiptCostResolution.status === "complete" && (
+                        <span className="status status--confirmed" role="status">
+                          مبنای هزینه دریافت‌ها ثبت شده
+                        </span>
                       )}
                     {selected?.status === "draft" && can(purchasePermissions.edit) && (
                       <button disabled={saving} onClick={() => void openEdit()}>ویرایش</button>
@@ -781,16 +955,13 @@ export function PurchaseDocumentsPage() {
                         </button>
                       )}
                     {selected?.status === "confirmed" &&
-                      !detail.inventoryReceipt &&
-                      ["purchase-order", "supplier-invoice"].includes(
-                        selected.documentType,
-                      ) &&
-                      selected.lines.some(
-                        (x) => x.lineKind === "stock-product",
-                      ) &&
+                      selected.documentType === "supplier-invoice" &&
+                      detail.receiptFulfillment.some(line => line.remainingBaseQuantity !== "0") &&
                       can("purchases.receipts.stage") && (
                         <button onClick={() => void openReceipt()}>
-                          ایجاد پیش‌نویس رسید انبار
+                          {detail.inventoryReceipts.length === 0
+                            ? "ایجاد رسید انبار از فاکتور"
+                            : "ایجاد رسید برای باقیمانده"}
                         </button>
                       )}
                     {selected?.status === "confirmed" &&
@@ -852,6 +1023,35 @@ export function PurchaseDocumentsPage() {
                       </strong>
                     </div>
                   </div>
+                  {detail.document.documentType === "supplier-invoice" &&
+                    detail.receiptFulfillment.length > 0 && (
+                    <section className="purchase-receipt-progress" aria-label="وضعیت دریافت انبار">
+                      <header>
+                        <strong>وضعیت دریافت انبار</strong>
+                        <span>
+                          {detail.receiptFulfillment.every(line => line.remainingBaseQuantity === "0")
+                            ? "تخصیص کامل"
+                            : "در انتظار تکمیل دریافت"}
+                        </span>
+                      </header>
+                      {detail.receiptFulfillment.map(line => (
+                        <div className="purchase-receipt-progress__line" key={line.purchaseLineId}>
+                          <span>{line.itemDisplayName}</span>
+                          <span dir="ltr">فاکتور: {line.invoicedBaseQuantity}</span>
+                          <span dir="ltr">تخصیص‌یافته: {line.allocatedBaseQuantity}</span>
+                          <strong dir="ltr">باقیمانده: {line.remainingBaseQuantity} {line.baseUnitTitle}</strong>
+                        </div>
+                      ))}
+                      {detail.inventoryReceipts.length > 0 && (
+                        <small>
+                          رسیدهای مرتبط: {detail.inventoryReceipts.map(receipt =>
+                            (receipt.documentNumber ?? "بدون شماره") + " (" +
+                            (RECEIPT_STATUS_LABELS[receipt.status] ?? receipt.status) + ")"
+                          ).join("، ")}
+                        </small>
+                      )}
+                    </section>
+                  )}
                   <div className="purchase-lines-wrap">
                     <table className="purchase-lines">
                       <thead>
@@ -876,6 +1076,13 @@ export function PurchaseDocumentsPage() {
                               <td>
                                 <strong>{line.itemSnapshot.displayName}</strong>
                                 <small>{line.itemSnapshot.code}</small>
+                                {line.itemType === "product" && (
+                                  <span className={`purchase-item-inventory-badge ${line.itemSnapshot.stockTracking ? "is-stock" : "is-non-stock"}`}>
+                                    {line.itemSnapshot.stockTracking
+                                      ? "کالای موجودی‌دار"
+                                      : "کالا — بدون ردیابی موجودی"}
+                                  </span>
+                                )}
                               </td>
                               <td dir="ltr">
                                 {fact?.commercialTerms.quantity
@@ -912,6 +1119,71 @@ export function PurchaseDocumentsPage() {
                       </tbody>
                     </table>
                   </div>
+                  {detail.document.documentType === "supplier-invoice" && detail.matching && (
+                    <section className="purchase-matching" aria-label="تطبیق خرید">
+                      <header>
+                        <div>
+                          <strong>تطبیق خرید</strong>
+                          <small>
+                            {detail.matching.mode === "three-way"
+                              ? "تطبیق سه‌طرفه: سفارش خرید + رسید انبار + فاکتور"
+                              : "تطبیق دوطرفه: رسید انبار + فاکتور"}
+                          </small>
+                        </div>
+                        <span className="status">
+                          {detail.matching.committedStatus === "matched"
+                            ? "تطبیق کامل"
+                            : detail.matching.committedStatus === "partially-matched"
+                              ? "تطبیق جزئی"
+                              : detail.matching.committedStatus === "variance"
+                                ? "دارای اختلاف"
+                                : detail.matching.proposals.length > 0
+                                  ? "آماده ثبت تطبیق"
+                                  : "بدون تطبیق"}
+                        </span>
+                      </header>
+                      {detail.matching.lines.map(line => {
+                        const committed = detail.matching?.committedLines.find(
+                          item => item.invoiceLineId === line.invoiceLineId,
+                        );
+                        return (
+                        <div className="purchase-matching__line" key={line.invoiceLineId}>
+                          <span>{detail.document.lines.find(item => item.lineId === line.invoiceLineId)?.itemSnapshot.displayName ?? line.productId}</span>
+                          <span dir="ltr">فاکتور: {line.invoiceBaseQuantity}</span>
+                          <span dir="ltr">تطبیق‌شده: {committed?.matchedBaseQuantity ?? "0"}</span>
+                          <strong dir="ltr">باقیمانده: {committed?.remainingBaseQuantity ?? line.invoiceBaseQuantity}</strong>
+                          {detail.matching?.mode === "three-way" && (
+                            <span>
+                              {line.orderQuantityVariance
+                                ? "اختلاف مقدار سفارش"
+                                : !line.priceWithinTolerance
+                                  ? "اختلاف قیمت خارج از تلرانس"
+                                  : "سفارش منطبق"}
+                            </span>
+                          )}
+                        </div>
+                        );
+                      })}
+                    </section>
+                  )}
+                  {!detail.inventoryTrackingDrift.some(item =>
+                    !item.invoiceStockTracking && item.currentStockTracking
+                  ) && (
+                  <PurchasePostingPanel
+                    services={postingServices}
+                    companyId={detail.document.companyId}
+                    branchId={detail.document.scope.branchId}
+                    sourceType={detail.document.documentType}
+                    sourceId={detail.document.documentId}
+                    sourceStatus={detail.document.status}
+                    stockLineCount={detail.document.lines.filter(line => line.lineKind === "stock-product").length}
+                    receiptFulfilled={
+                      detail.receiptFulfillment.length === 0 ||
+                      detail.receiptFulfillment.every(line => line.remainingBaseQuantity === "0")
+                    }
+                    matchingStatus={detail.matching?.committedStatus ?? null}
+                  />
+                  )}
                   <details className="purchase-history">
                     <summary>تاریخچه گردش</summary>
                     <ol>
@@ -1363,13 +1635,63 @@ export function PurchaseDocumentsPage() {
           </div>
         )}
 
-        {receiptOpen && selected && (
+        {classificationCorrectionOpen && selected && detail && (
+          <div className="purchase-modal" role="presentation">
+            <form onSubmit={createInventoryTrackingReplacement} role="dialog" aria-modal="true">
+              <h2>اصلاح طبقه‌بندی موجودی فاکتور قطعی</h2>
+              <p>
+                این عملیات فاکتور قطعی قبلی را ویرایش نمی‌کند. فاکتور قبلی با وضعیت «اصلاح‌شده»
+                حفظ می‌شود و یک فاکتور تأمین‌کننده جایگزین با Snapshot فعلی کالا ساخته خواهد شد.
+              </p>
+              <div className="purchase-classification-diff">
+                {detail.inventoryTrackingDrift.map(item => (
+                  <div key={item.purchaseLineId}>
+                    <strong>{item.itemDisplayName}</strong>
+                    <span>
+                      فاکتور قبلی: {item.invoiceStockTracking ? "موجودی‌دار" : "بدون ردیابی موجودی"}
+                      {" ← "}
+                      وضعیت فعلی کالا: {item.currentStockTracking ? "موجودی‌دار" : "بدون ردیابی موجودی"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <label>
+                علت اصلاح
+                <textarea
+                  required
+                  autoFocus
+                  value={classificationCorrectionReason}
+                  onChange={(event) => setClassificationCorrectionReason(event.target.value)}
+                />
+              </label>
+              <small>
+                این مسیر فقط زمانی مجاز است که برای فاکتور قبلی هنوز رسید انبار یا ثبت حسابداری ایجاد نشده باشد.
+              </small>
+              <footer>
+                <button
+                  type="button"
+                  onClick={() => setClassificationCorrectionOpen(false)}
+                >
+                  انصراف
+                </button>
+                <button
+                  className="primary"
+                  disabled={saving || !classificationCorrectionReason.trim()}
+                >
+                  ساخت فاکتور جایگزین
+                </button>
+              </footer>
+            </form>
+          </div>
+        )}
+
+        {receiptOpen && selected && detail && (
           <div className="purchase-modal" role="presentation">
             <form onSubmit={stageReceipt} role="dialog" aria-modal="true">
-              <h2>ایجاد پیش‌نویس رسید انبار</h2>
+              <h2>ایجاد رسید انبار از فاکتور</h2>
               <p>
-                تمام ردیف‌های کالای انباری این سند با مقدار پایه در یک رسید
-                پیش‌نویس قرار می‌گیرند.
+                اطلاعات کالا از فاکتور منتقل شده است. فقط انبار و مقدار واقعی این دریافت را کنترل کنید؛
+                می‌توانید دریافت جزئی ثبت کنید و برای باقیمانده بعداً رسید دیگری بسازید.
               </p>
               <label>
                 انبار مقصد
@@ -1386,6 +1708,36 @@ export function PurchaseDocumentsPage() {
                   ))}
                 </select>
               </label>
+              <div className="purchase-receipt-lines">
+                <div className="purchase-receipt-lines__header">
+                  <span>کالا</span>
+                  <span>فاکتور</span>
+                  <span>قبلاً تخصیص‌یافته</span>
+                  <span>باقیمانده</span>
+                  <span>این دریافت</span>
+                </div>
+                {detail.receiptFulfillment
+                  .filter(line => line.remainingBaseQuantity !== "0")
+                  .map(line => (
+                    <div className="purchase-receipt-lines__row" key={line.purchaseLineId}>
+                      <strong>{line.itemDisplayName}</strong>
+                      <span dir="ltr">{line.invoicedBaseQuantity} {line.baseUnitTitle}</span>
+                      <span dir="ltr">{line.allocatedBaseQuantity}</span>
+                      <span dir="ltr">{line.remainingBaseQuantity}</span>
+                      <input
+                        dir="ltr"
+                        inputMode="decimal"
+                        required
+                        value={receiptQuantities[line.purchaseLineId] ?? ""}
+                        onChange={(e) => setReceiptQuantities(current => ({
+                          ...current,
+                          [line.purchaseLineId]: latinDigits(e.target.value),
+                        }))}
+                        aria-label={"مقدار دریافت " + line.itemDisplayName}
+                      />
+                    </div>
+                  ))}
+              </div>
               <footer>
                 <button type="button" onClick={() => setReceiptOpen(false)}>
                   انصراف
