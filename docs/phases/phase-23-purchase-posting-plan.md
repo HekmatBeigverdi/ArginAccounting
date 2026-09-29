@@ -55,6 +55,7 @@ Mandatory references:
 - [Purchase End-to-End SQLite Acceptance Matrix](../testing/phase-23-purchase-e2e-sqlite-tests.md)
 - [Phase 23 Bridge, Replay, Rollback and Failure Acceptance](../testing/phase-23-bridge-replay-rollback-failure-tests.md)
 - [Phase 23 Manual Desktop Acceptance Evidence](../testing/phase-23-manual-desktop-acceptance.md)
+- [Phase 23 Release Notes](phase-23-release-notes.md)
 - [Purchase Posting UI and Trace Viewer](../architecture/purchase-posting-ui-and-trace-viewer.md)
 
 ## Baseline and Release Target
@@ -2379,6 +2380,9 @@ Canonical files reconciled in Step 35 include:
 - `docs/README.md`
 - `docs/registries/module-registry.md`
 - `docs/database/database-design.md`
+- `docs/database/database-dictionary.md`
+- `docs/architecture/README.md`
+- `docs/phases/phase-23-release-notes.md`
 - `ARCHITECTURE.md`
 - `README.md`
 - `ROADMAP.md`
