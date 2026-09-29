@@ -792,8 +792,8 @@ export function createPurchaseWorkspaceServices(input: {
       if (current.documentType !== "supplier-invoice" || current.status !== "confirmed") {
         throw new Error("ثبت مبنای هزینه فقط برای فاکتور تأمین‌کننده قطعی مجاز است.");
       }
-      if (currentDetail.matching?.status !== "matched") {
-        throw new Error("ابتدا تطبیق خرید را کامل کنید.");
+      if (currentDetail.matching?.committedStatus !== "matched") {
+        throw new Error("ابتدا تطبیق رسیدهای قطعی را ثبت کنید.");
       }
 
       const confirmedReceipts: InventoryDocumentSnapshot[] = [];
