@@ -86,6 +86,11 @@ export interface PurchaseWorkspaceDetail {
   readonly inventoryReceipts: readonly Pick<InventoryDocumentSnapshot, "documentId" | "documentNumber" | "status" | "version">[];
   readonly receiptFulfillment: readonly PurchaseReceiptFulfillmentLine[];
   readonly matching: PurchaseMatchingEvaluation | null;
+  readonly receiptCostResolution: {
+    readonly status: "not-required" | "pending" | "complete";
+    readonly requiredMovementCount: number;
+    readonly resolvedMovementCount: number;
+  };
   readonly inventoryTrackingDrift: readonly {
     readonly purchaseLineId: string;
     readonly itemDisplayName: string;
@@ -683,6 +688,45 @@ export function createPurchaseWorkspaceServices(input: {
             remainingBaseQuantity: quantitySubtract(invoiced, allocated),
           });
         });
+      const stockLineCount = document.lines.filter(line => line.lineKind === "stock-product").length;
+      const confirmedReceiptIds = activeReceipts
+        .filter(receipt => receipt.status === "confirmed")
+        .map(receipt => receipt.documentId);
+
+      let receiptCostResolution: PurchaseWorkspaceDetail["receiptCostResolution"] = Object.freeze({
+        status: stockLineCount === 0 ? "not-required" : "pending",
+        requiredMovementCount: 0,
+        resolvedMovementCount: 0,
+      });
+
+      if (stockLineCount > 0 && confirmedReceiptIds.length > 0) {
+        const placeholders = confirmedReceiptIds.map(() => "?").join(",");
+        const rows = await database.query<{
+          movement_id: string;
+          cost_input_id: string | null;
+        }>(
+          `SELECT m.movement_id,c.cost_input_id
+             FROM inventory_stock_movements m
+             LEFT JOIN purchase_valuation_cost_inputs c
+               ON c.company_id=m.company_id
+              AND c.movement_id=m.movement_id
+            WHERE m.company_id=?
+              AND m.document_id IN (${placeholders})
+            ORDER BY m.business_date,m.business_order,m.movement_id`,
+          [companyId, ...confirmedReceiptIds],
+        );
+        const requiredMovementCount = rows.length;
+        const resolvedMovementCount = rows.filter(row => row.cost_input_id !== null).length;
+        receiptCostResolution = Object.freeze({
+          status:
+            requiredMovementCount > 0 && resolvedMovementCount === requiredMovementCount
+              ? "complete"
+              : "pending",
+          requiredMovementCount,
+          resolvedMovementCount,
+        });
+      }
+
       const inventoryTrackingDrift = [];
       if (document.documentType === "supplier-invoice" && document.status === "confirmed") {
         for (const line of document.lines.filter(item => item.itemType === "product")) {
@@ -712,6 +756,7 @@ export function createPurchaseWorkspaceServices(input: {
         }))),
         receiptFulfillment: Object.freeze(receiptFulfillment),
         matching: null,
+        receiptCostResolution,
         inventoryTrackingDrift: Object.freeze(inventoryTrackingDrift),
       };
       return {
