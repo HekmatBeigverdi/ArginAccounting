@@ -102,3 +102,30 @@ test("matching remains partial until confirmed receipt coverage reaches invoice 
   assert.equal(result.eligible, false);
   assert.equal(result.lines[0]?.remainingBaseQuantity, "12");
 });
+
+
+test("projected full coverage is not treated as committed matching before proposals persist", () => {
+  const result = evaluatePurchaseMatching({
+    invoiceLines: [{
+      invoiceLineId: "i-commit",
+      productId: "p-commit",
+      baseQuantity: "20",
+      unitPriceAmount: 1000,
+      orderLineId: null,
+    }],
+    receiptLines: [
+      { receiptDocumentId: "r-8", receiptLineId: "l-8", sourceInvoiceLineId: "i-commit", productId: "p-commit", baseQuantity: "8" },
+      { receiptDocumentId: "r-12", receiptLineId: "l-12", sourceInvoiceLineId: "i-commit", productId: "p-commit", baseQuantity: "12" },
+    ],
+    existingMatches: [],
+    policy: createPurchaseMatchingPolicy(),
+  });
+
+  assert.equal(result.status, "matched");
+  assert.equal(result.eligible, true);
+  assert.equal(result.committedStatus, "unmatched");
+  assert.equal(result.committedEligible, false);
+  assert.equal(result.committedLines[0]?.matchedBaseQuantity, "0");
+  assert.equal(result.committedLines[0]?.remainingBaseQuantity, "20");
+  assert.equal(result.proposals.length, 2);
+});
