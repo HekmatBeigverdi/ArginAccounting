@@ -996,6 +996,13 @@ export function PurchaseDocumentsPage() {
                               <td>
                                 <strong>{line.itemSnapshot.displayName}</strong>
                                 <small>{line.itemSnapshot.code}</small>
+                                {line.itemType === "product" && (
+                                  <span className={`purchase-item-inventory-badge ${line.itemSnapshot.stockTracking ? "is-stock" : "is-non-stock"}`}>
+                                    {line.itemSnapshot.stockTracking
+                                      ? "کالای موجودی‌دار"
+                                      : "کالا — بدون ردیابی موجودی"}
+                                  </span>
+                                )}
                               </td>
                               <td dir="ltr">
                                 {fact?.commercialTerms.quantity
