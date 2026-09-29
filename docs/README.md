@@ -46,7 +46,7 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 ## Current Project State
 
 - Current implementation target: [Phase 23 — Purchase Posting & Accounting Integration](phases/phase-23-purchase-posting-plan.md).
-- Phase 23 Steps 1–35 of 36 are complete; Step 36 final validation/merge/release closure remains.
+- Phase 23 Steps 1–36 are complete; the final GitHub Actions validation gate passed and release promotion/publication is prepared.
 - Prepared release notes: [Phase 23 Release Notes](phases/phase-23-release-notes.md).
 - Phase 23 consumes authoritative Purchase/Inventory/Valuation facts and creates deterministic Accounting-owned Journal drafts without commercial/accounting re-entry.
 - Manual Desktop acceptance and post-Step-34 corrections are recorded in [Phase 23 Manual Desktop Acceptance Evidence](testing/phase-23-manual-desktop-acceptance.md).
