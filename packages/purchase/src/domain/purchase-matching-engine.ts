@@ -61,10 +61,22 @@ export interface PurchaseMatchingLineResult {
   readonly priceWithinTolerance: boolean;
 }
 
+export interface PurchaseMatchingCommittedLineResult {
+  readonly invoiceLineId: string;
+  readonly status: PurchaseMatchingEngineStatus;
+  readonly matchedBaseQuantity: string;
+  readonly remainingBaseQuantity: string;
+}
+
 export interface PurchaseMatchingEvaluation {
   readonly mode: PurchaseMatchingMode;
+  /** Projected status after applying current deterministic proposals. */
   readonly status: PurchaseMatchingEngineStatus;
   readonly eligible: boolean;
+  /** Durable status based only on already-persisted match facts. */
+  readonly committedStatus: PurchaseMatchingEngineStatus;
+  readonly committedEligible: boolean;
+  readonly committedLines: readonly PurchaseMatchingCommittedLineResult[];
   readonly lines: readonly PurchaseMatchingLineResult[];
   readonly proposals: readonly PurchaseMatchingProposal[];
 }
@@ -167,6 +179,7 @@ export function evaluatePurchaseMatching(
   const proposalPairs = new Set<string>();
   const proposals: PurchaseMatchingProposal[] = [];
   const results: PurchaseMatchingLineResult[] = [];
+  const committedResults: PurchaseMatchingCommittedLineResult[] = [];
 
   for (const invoice of input.invoiceLines) {
     if (!invoice.invoiceLineId.trim() || !invoice.productId.trim() || invoiceIds.has(invoice.invoiceLineId)) {
@@ -184,6 +197,8 @@ export function evaluatePurchaseMatching(
       }
     }
     let remaining = subtract(invoiceQty, matched);
+    const committedMatched = matched;
+    const committedRemaining = remaining;
 
     const candidateReceipts = input.receiptLines
       .filter(receipt => receipt.sourceInvoiceLineId === invoice.invoiceLineId)
@@ -242,6 +257,20 @@ export function evaluatePurchaseMatching(
       isZero(matched) ? "unmatched" : isZero(remaining) ? "matched" : "partially-matched";
     const hasVariance = mode === "three-way" &&
       (orderQuantityVariance || !priceWithinTolerance);
+    const committedQuantityStatus: PurchaseMatchingEngineStatus =
+      isZero(committedMatched)
+        ? "unmatched"
+        : isZero(committedRemaining)
+          ? "matched"
+          : "partially-matched";
+
+    committedResults.push(Object.freeze({
+      invoiceLineId: invoice.invoiceLineId,
+      status: hasVariance ? "variance" : committedQuantityStatus,
+      matchedBaseQuantity: committedMatched,
+      remainingBaseQuantity: committedRemaining,
+    }));
+
     results.push(Object.freeze({
       invoiceLineId: invoice.invoiceLineId,
       productId: invoice.productId,
@@ -261,10 +290,19 @@ export function evaluatePurchaseMatching(
         : results.some(line => line.status !== "unmatched") ? "partially-matched"
           : "unmatched";
 
+  const committedStatus: PurchaseMatchingEngineStatus =
+    committedResults.some(line => line.status === "variance") ? "variance"
+      : committedResults.every(line => line.status === "matched") ? "matched"
+        : committedResults.some(line => line.status !== "unmatched") ? "partially-matched"
+          : "unmatched";
+
   return Object.freeze({
     mode,
     status,
     eligible: status === "matched",
+    committedStatus,
+    committedEligible: committedStatus === "matched",
+    committedLines: Object.freeze(committedResults),
     lines: Object.freeze(results),
     proposals: Object.freeze(proposals),
   });
