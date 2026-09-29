@@ -5,7 +5,7 @@
 - Version: 0.23.0
 - Tag: v0.23.0
 - Release title: ArginAccounting v0.23.0 — Purchase Posting & Accounting Integration
-- Status: prepared; Step 36 validation/merge/tag/release closure pending
+- Status: final validation passed; promotion prepared; semantic tag/GitHub Release publication is manual
 
 ## Highlights
 
@@ -53,14 +53,8 @@ Owner-executed Desktop acceptance identified and resolved additional integration
 
 ## Validation status
 
-Steps 1–35 are documented complete.
+All 36 Phase 23 steps are complete.
 
-The following are intentionally not claimed until Step 36 executes them and records observed results:
+GitHub Actions `Phase 23 Validation` run `36632952159` passed on the final implementation head used by PR #26. The `validate:phase23` gate includes focused Phase 23 package checks, Desktop tests/build, full monorepo typecheck/test/build/lint, documentation generation/link validation and Rust `cargo check`.
 
-- focused Phase 23 package tests/typechecks;
-- Desktop tests/build;
-- full monorepo typecheck/test/build/lint;
-- documentation index/link validation;
-- Rust cargo check;
-- develop/main promotion;
-- semantic tag and GitHub Release publication.
+Semantic tag and GitHub Release publication remain manual repository-owner actions after verified `main` promotion.
