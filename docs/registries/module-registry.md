@@ -14,7 +14,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Coding Templates | `@argin/accounting`, `@argin/accounting-tauri`, `@argin/database-tauri`, Desktop | Implemented | 12 | `docs/phases/phase-12-coding-templates.md` |
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
-| Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri`, Desktop | Implemented through Phase 23 Step 35; release closure pending | 23 | [Phase 23 Purchase Posting](../phases/phase-23-purchase-posting-plan.md) |
+| Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri`, Desktop | Phase 23 complete; final validation passed; semantic publication manual | 23 | [Phase 23 Purchase Posting](../phases/phase-23-purchase-posting-plan.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
