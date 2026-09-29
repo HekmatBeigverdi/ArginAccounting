@@ -158,7 +158,7 @@ test("matching UX gates cost resolution on committed durable matches", async () 
 
   assert.match(page, /matching\.committedStatus !== "matched"/u);
   assert.match(page, /matching\?\.committedStatus === "matched"/u);
-  assert.match(page, /matching\.committedLines/u);
+  assert.match(page, /matching\?\.committedLines/u);
   assert.match(composition, /matching\?\.committedStatus !== "matched"/u);
   assert.match(composition, /ابتدا تطبیق رسیدهای قطعی را ثبت کنید/u);
 });
@@ -185,7 +185,7 @@ test("confirmed non-stock invoice can be safely replaced after inventory trackin
   assert.match(composition, /purchase-classification-replacement/u);
   assert.match(composition, /correctPurchaseDocument/u);
   assert.match(composition, /قبلاً رسید انبار ایجاد شده است/u);
-  assert.match(composition, /قبلاً ثبت حسابداری ایجاد شده است/u);
+  assert.match(composition, /قبلاً اثر حسابداری ایجاد شده است/u);
   assert.match(page, /اصلاح طبقه‌بندی و ساخت فاکتور جایگزین/u);
   assert.match(page, /فاکتور قبلی با وضعیت «اصلاح‌شده»/u);
   assert.match(page, /ساخت فاکتور جایگزین/u);
