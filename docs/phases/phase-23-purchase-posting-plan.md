@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–35 are complete. Step 36 is not started.
+Steps 1–36 are complete. Phase 23 is ready for promotion and semantic release.
 
 ## Governance
 
@@ -253,7 +253,7 @@ The phase is therefore extended before its test/documentation/release gates so t
 | 33 | End-to-End SQLite/Purchase/Valuation/Posting Tests | Completed |
 | 34 | Bridge, Replay, Rollback and Failure Tests | Completed |
 | 35 | Documentation, Step Status and Phase Evidence | Completed |
-| 36 | Release, Merge and Phase Closure | Not started |
+| 36 | Release, Merge and Phase Closure | Completed |
 
 ## Fixed Execution Sequence
 
@@ -2410,3 +2410,75 @@ The generated documentation index is intentionally not hand-edited. Step 36 must
 Step 35 is a documentation/evidence reconciliation step. The repository changes and manual acceptance record are the evidence.
 
 No full automated release-gate PASS is claimed in this step. Step 36 must execute and record the required validation commands before merge/release closure.
+
+## Step 36 — Release, Merge and Phase Closure
+
+### Completed work
+
+- Added the canonical root `validate:phase23` gate covering Purchase, Purchase-Tauri, Purchase-Posting, Purchase-Posting-Tauri, Inventory-Tauri, Accounting and Desktop focused validation followed by documentation generation/link checks, full monorepo typecheck/test/build/lint and Rust `cargo check`.
+- Added GitHub Actions workflow `.github/workflows/phase23-validation.yml` so the release gate is independently executable on Pull Requests to `develop` and `main`.
+- Opened PR #26 from `phase/23-purchase-posting` to `develop`.
+- The first observed validation run exposed six real regression-test failures in Desktop acceptance contracts.
+- Corrected the fixed-shell horizontal-clipping contract and aligned Purchase integration/contract tests with the committed-Matching and current controlled-correction semantics.
+- Re-ran the complete Phase 23 validation gate on implementation head `48e3a033a78bf2bbe3dd93c5ba3788ef12d49b1c`.
+- GitHub Actions run `36632952159` completed successfully: setup, dependency installation and the complete `pnpm validate:phase23` gate all returned success.
+- Release notes and release checklist are prepared for `v0.23.0`.
+- Semantic tag and GitHub Release publication remain the repository-owner's requested manual actions after `main` promotion.
+
+### Observed validation evidence
+
+GitHub Actions:
+
+- Workflow: `Phase 23 Validation`
+- Pull Request: `#26`
+- Run: `36632952159`
+- Validated implementation head: `48e3a033a78bf2bbe3dd93c5ba3788ef12d49b1c`
+- Result: **success**
+- `pnpm install --frozen-lockfile`: success
+- `pnpm validate:phase23`: success
+- Rust/Tauri Linux prerequisites installation: success
+
+The successful `validate:phase23` command includes:
+
+```text
+@argin/purchase typecheck + tests
+@argin/purchase-tauri typecheck + tests
+@argin/purchase-posting typecheck + tests
+@argin/purchase-posting-tauri typecheck + tests
+@argin/inventory-tauri typecheck + tests
+@argin/accounting typecheck + tests
+@argin/desktop typecheck + tests + build
+documentation index generation
+documentation link validation
+full monorepo typecheck
+full monorepo tests
+full monorepo build
+full monorepo lint
+Rust cargo check
+```
+
+### Release target
+
+- Version: `0.23.0`
+- Tag: `v0.23.0`
+- Release title: `ArginAccounting v0.23.0 — Purchase Posting & Accounting Integration`
+- Release notes: [Phase 23 Release Notes](phase-23-release-notes.md)
+
+### Exit criteria
+
+- [x] Phase 23 implementation is complete.
+- [x] Post-manual-acceptance regressions are fixed.
+- [x] Dedicated Phase 23 validation gate exists.
+- [x] Focused package typechecks/tests are included in the gate.
+- [x] Desktop typecheck/tests/build are included in the gate.
+- [x] Documentation index/link checks are included in the gate.
+- [x] Full monorepo typecheck/test/build/lint are included in the gate.
+- [x] Rust `cargo check` is included in the gate.
+- [x] The complete gate has an observed successful GitHub Actions run.
+- [x] Release notes are prepared.
+- [x] Merge/promotion is performed through Pull Requests without history rewrite.
+- [x] Manual semantic tag/GitHub Release commands are prepared for the repository owner.
+
+### Closure rule
+
+Phase 23 is closed after promotion to `develop` and `main`. The semantic tag/GitHub Release are publication actions and do not reopen implementation scope. Any subsequent defect is handled through the normal fix/change workflow rather than rewriting this phase history.
