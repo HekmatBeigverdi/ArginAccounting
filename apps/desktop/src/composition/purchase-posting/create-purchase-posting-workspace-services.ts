@@ -3,6 +3,7 @@ import {
   createPurchaseFulfillmentAccountingPolicy,
   createPurchasePosting,
   createPurchasePostingFact,
+  createPurchasePostingRule,
   createPurchasePostingSourceIdentityFromFact,
   createPurchasePostingTraceContext,
   evaluateSupplierInvoiceAccountingEligibility,
@@ -397,6 +398,94 @@ export function createPurchasePostingWorkspaceServices(input: {
         ...(costCenterDimensionId ? { "cost-center": costCenterDimensionId } : {}),
         ...(projectDimensionId ? { project: projectDimensionId } : {}),
       }));
+
+      const currentRules = await scopedPostingUow.execute(context =>
+        context.rules.listActive(companyId),
+      );
+
+      const findBuiltInAccount = async (logicalKeys: readonly string[]) => {
+        for (const logicalKey of logicalKeys) {
+          const row = await input.database.queryOne<{
+            id: string;
+            source_reference_id: string | null;
+          }>(
+            `SELECT id,source_reference_id
+               FROM accounts
+              WHERE company_id=?
+                AND status='active'
+                AND posting_allowed=1
+                AND source_type='coding_template'
+                AND source_reference_id LIKE ?
+              ORDER BY code,id
+              LIMIT 1`,
+            [companyId, `%:${logicalKey}`],
+          );
+          if (row) return row.id;
+        }
+        return null;
+      };
+
+      const ensureRule = async (args: {
+        readonly role: "inventory-asset" | "accounts-payable";
+        readonly lineKind: "stock-product" | null;
+        readonly logicalKeys: readonly string[];
+      }) => {
+        const exists = currentRules.some(rule =>
+          rule.accountRole === args.role &&
+          rule.active &&
+          (rule.branchId === null || rule.branchId === branchId) &&
+          (rule.eventKind === null || rule.eventKind === "supplier-invoice-recognition") &&
+          (rule.lineKind === null || rule.lineKind === args.lineKind));
+        if (exists) return;
+
+        const accountId = await findBuiltInAccount(args.logicalKeys);
+        if (!accountId) return;
+
+        const now = capturedAt;
+        const rule = createPurchasePostingRule({
+          ruleId: `auto:${companyId}:${args.role}:${args.lineKind ?? "all"}`,
+          companyId,
+          branchId: null,
+          eventKind: "supplier-invoice-recognition",
+          lineKind: args.lineKind,
+          accountRole: args.role,
+          accountId,
+          priority: 100,
+          active: true,
+        });
+
+        await scopedPostingUow.execute(async context => {
+          const latest = await context.rules.listActive(companyId);
+          if (latest.some(item =>
+            item.accountRole === rule.accountRole &&
+            item.active &&
+            (item.eventKind === null || item.eventKind === rule.eventKind) &&
+            (item.lineKind === null || item.lineKind === rule.lineKind))) return;
+          await context.rules.add({
+            rule,
+            version: 1,
+            createdAt: now,
+            updatedAt: now,
+          });
+        });
+      };
+
+      if (fact.lines.some(line => line.lineKind === "stock-product")) {
+        await ensureRule({
+          role: "inventory-asset",
+          lineKind: "stock-product",
+          logicalKeys: [
+            "assets.current.inventory",
+            "assets.current.raw-materials",
+          ],
+        });
+      }
+
+      await ensureRule({
+        role: "accounts-payable",
+        lineKind: null,
+        logicalKeys: ["liabilities.current.payables"],
+      });
 
       const source = createPurchasePostingSourceIdentityFromFact(fact);
       const postingId = postingIdFor(sourceId, document.version);
