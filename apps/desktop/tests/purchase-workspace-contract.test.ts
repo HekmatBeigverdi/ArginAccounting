@@ -162,3 +162,12 @@ test("matching UX gates cost resolution on committed durable matches", async () 
   assert.match(composition, /matching\?\.committedStatus !== "matched"/u);
   assert.match(composition, /ابتدا تطبیق رسیدهای قطعی را ثبت کنید/u);
 });
+
+
+test("Purchase lines make stock-tracking behavior visible to users", async () => {
+  const page = await read("src/pages/purchase/purchase-documents-page.tsx");
+  assert.match(page, /کالای موجودی‌دار/u);
+  assert.match(page, /کالا — بدون ردیابی موجودی/u);
+  assert.match(page, /itemSnapshot\.stockTracking/u);
+  assert.match(page, /purchase-item-inventory-badge/u);
+});
