@@ -103,3 +103,21 @@ test("Phase 23 Step 30 presents an integrated Purchase Accounting workspace", as
   assert.match(css, /purchase-accounting-next-action/u);
   assert.doesNotMatch(panel, /ورود حساب بدهکار|ورود حساب بستانکار/u);
 });
+
+
+test("Purchase posting bootstraps core built-in account mappings and keeps matching success visible", async () => {
+  const [service, page] = await Promise.all([
+    read("../src/composition/purchase-posting/create-purchase-posting-workspace-services.ts"),
+    read("../src/pages/purchase/purchase-documents-page.tsx"),
+  ]);
+
+  assert.match(service, /createPurchasePostingRule/u);
+  assert.match(service, /assets\.current\.inventory/u);
+  assert.match(service, /assets\.current\.raw-materials/u);
+  assert.match(service, /liabilities\.current\.payables/u);
+  assert.match(service, /inventory-asset/u);
+  assert.match(service, /accounts-payable/u);
+  assert.match(page, /purchase_posting\.account_mapping_missing/u);
+  assert.match(page, /تطبیق خرید انجام شده است/u);
+  assert.match(page, /postingWarning/u);
+});
