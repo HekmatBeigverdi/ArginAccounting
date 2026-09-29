@@ -32,6 +32,17 @@ button, input, select, textarea { font-family: inherit; }
 a { color: inherit; }
 h1, h2, h3, h4 { text-align: start; }
 
+@media print {
+  html,
+  body,
+  #root {
+    width: auto;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+}
+
 .application-bootstrap {
   min-height: 100%;
   height: 100%;
