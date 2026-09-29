@@ -961,8 +961,7 @@ export function PurchaseDocumentsPage() {
                           <span dir="ltr">تخصیص‌یافته: {line.allocatedBaseQuantity}</span>
                           <strong dir="ltr">باقیمانده: {line.remainingBaseQuantity} {line.baseUnitTitle}</strong>
                         </div>
-                        );
-                      })}
+                      ))}
                       {detail.inventoryReceipts.length > 0 && (
                         <small>
                           رسیدهای مرتبط: {detail.inventoryReceipts.map(receipt =>
@@ -1076,7 +1075,8 @@ export function PurchaseDocumentsPage() {
                             </span>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </section>
                   )}
                   <PurchasePostingPanel
