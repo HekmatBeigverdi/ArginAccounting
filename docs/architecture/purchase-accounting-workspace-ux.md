@@ -31,6 +31,8 @@ The workspace derives one human-readable next action from the current state, for
 
 The UI never mutates authoritative status merely to make the workflow look complete.
 
+The workspace also exposes durable Receipt Cost Resolution state from persisted Inventory Movement / Purchase Cost Input facts. Once every required receipt movement has a resolved Purchase-backed Cost Input, the duplicate Cost Resolution action is hidden and a completed status is shown.
+
 ## Failure UX
 
 Automatic Posting failures are displayed as an actionable panel that makes two points explicit:
@@ -52,6 +54,8 @@ Once a Journal exists, the workspace shows:
 - Journal lines.
 
 Journal lines resolve Accounting account IDs to human-readable account code and name for display. The durable account ID remains authoritative.
+
+Purchase-generated Journal descriptions are localized business text. Source-owned Journals can be viewed/inspected in Accounting but generic draft edit/delete actions are intentionally unavailable.
 
 ## Permission boundary
 
@@ -75,3 +79,16 @@ No fixed desktop-only width is required to understand the flow.
 All workflow colors, labels, step completion indicators, and next-action text are projections.
 
 Bridge synchronization authority remains the durable Purchase document/source version, matching facts, Inventory facts, Purchase Posting aggregate, Journal Voucher and reversal/idempotency lineage.
+
+
+## Historical Product classification drift
+
+If a confirmed Supplier Invoice captured a Product as non-stock and the current Product master is later corrected to stock-tracked, the workspace shows an explicit warning instead of silently changing the historical invoice or allowing it to post as the wrong classification.
+
+When no downstream Inventory receipt or accounting effect exists, the operator may create a controlled replacement invoice. The original confirmed invoice is preserved and marked corrected; the replacement invoice captures the current Product snapshot and carries a durable source reference to the original.
+
+If downstream effects already exist, the simple replacement path is blocked and controlled Inventory/accounting correction is required.
+
+## Desktop shell behavior
+
+Phase 23 manual acceptance also hardened the Tauri shell presentation. Header/context and footer/status regions remain fixed to the application viewport. Sidebar Navigation and main workspace content scroll independently. Print media releases the viewport lock so report/PDF output is not clipped.
