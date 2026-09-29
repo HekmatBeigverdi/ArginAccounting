@@ -148,3 +148,17 @@ test("Phase 23 Step 28 exposes multi-receipt Purchase Matching Engine and matchi
   assert.match(page, /priceWithinTolerance/u);
   assert.doesNotMatch(page, /حساب بدهکار|حساب بستانکار/u);
 });
+
+
+test("matching UX gates cost resolution on committed durable matches", async () => {
+  const [page, composition] = await Promise.all([
+    read("src/pages/purchase/purchase-documents-page.tsx"),
+    read("src/composition/purchase/create-purchase-workspace-services.ts"),
+  ]);
+
+  assert.match(page, /matching\.committedStatus !== "matched"/u);
+  assert.match(page, /matching\?\.committedStatus === "matched"/u);
+  assert.match(page, /matching\.committedLines/u);
+  assert.match(composition, /matching\?\.committedStatus !== "matched"/u);
+  assert.match(composition, /ابتدا تطبیق رسیدهای قطعی را ثبت کنید/u);
+});
