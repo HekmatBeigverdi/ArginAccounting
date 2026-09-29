@@ -202,3 +202,17 @@ test("inventory classification replacement checks Purchase Posting source throug
   assert.match(composition, /i\.source_id=\?/u);
   assert.match(composition, /purchase-posting:\$\{document\.documentId\}:v%/u);
 });
+
+
+test("classification correction ignores an orphan draft Posting with no accounting effect", async () => {
+  const composition = await read("src/composition/purchase/create-purchase-workspace-services.ts");
+
+  assert.match(composition, /status !== "draft"/u);
+  assert.match(composition, /journal_voucher_id !== null/u);
+  assert.match(composition, /has_idempotency/u);
+  assert.match(composition, /has_reversal/u);
+  assert.match(composition, /DELETE FROM purchase_postings/u);
+  assert.match(composition, /status='draft'/u);
+  assert.match(composition, /journal_voucher_id IS NULL/u);
+  assert.match(composition, /اثر حسابداری ایجاد شده است/u);
+});
