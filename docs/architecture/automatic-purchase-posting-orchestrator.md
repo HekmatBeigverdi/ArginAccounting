@@ -80,6 +80,8 @@ The orchestrator does not invent account mappings.
 
 All Debit/Credit accounts are resolved through `purchase_posting_rules`. Missing or ambiguous mappings block Journal creation with a domain error rather than silently selecting an account.
 
+For companies created from Argin built-in coding templates, Desktop composition may bootstrap the core `inventory-asset` and `accounts-payable` Purchase rules from known built-in logical account identities when no applicable rule exists. This is deterministic configuration bootstrap, not heuristic account-name matching. Ambiguous or unavailable mappings still fail closed.
+
 This preserves enterprise accounting control. Typical roles include:
 
 - `inventory-asset`
@@ -119,6 +121,12 @@ Examples that defer/block accounting include:
 - replay fingerprint conflict.
 
 The business document remains confirmed and the Posting panel shows the actionable error/retry surface.
+
+If a required Accounts Payable PARTY dimension has no Accounting Dimension Member, Desktop composition materializes the module-owned member from the durable Supplier master identity before Journal generation. Display name is presentation data; Supplier ID is the durable source reference.
+
+Generated Purchase Journal descriptions are business-readable Persian text. Internal component IDs such as principal/tax/charge identifiers are never used as end-user Journal descriptions.
+
+A Purchase-generated Journal draft is source-owned. Generic Accounting edit/delete operations are forbidden even while the Journal is draft; correction must originate from the source workflow or a controlled correction/reversal path.
 
 ## Argin Bridge
 
