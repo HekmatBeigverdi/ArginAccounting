@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–5 are complete. Steps 6–30 are not started.
+Steps 1–6 are complete. Steps 7–30 are not started.
 
 ## Governance
 
@@ -122,7 +122,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 3 | Durable Document, Line & Source Identity | Completed |
 | 4 | Customer & Party Master Integration | Completed |
 | 5 | Sales Price List Model | Completed |
-| 6 | Price List Resolution Policy | Not started |
+| 6 | Price List Resolution Policy | Completed |
 | 7 | Effective Dating, Currency & Price Versioning | Not started |
 | 8 | Base, Wholesale & Customer/Segment Pricing | Not started |
 | 9 | Sales Commercial Terms | Not started |
@@ -147,6 +147,17 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 6 — Completion Record
+
+- Added a pure, persistence-neutral Sales price-list resolver with deterministic priority: `customer -> segment -> wholesale -> base`.
+- Resolution consumes explicit eligibility supplied by the owning context rather than duplicating Customer/Segment qualification rules before Step 8.
+- Resolver ignores inactive lists, falls through when a higher-priority list does not contain the requested Product, and returns `null` when no eligible price exists.
+- Enforced Company scope; cross-Company candidate lists fail explicitly.
+- Multiple eligible matches for the same Product at the same priority fail with `sales.price_resolution_ambiguous` instead of depending on query/array order.
+- Resolution result preserves `priceListId`, `priceListItemId`, kind, `productId` and `unitPrice` for downstream commercial traceability.
+- Added focused tests for priority, input-order independence, eligibility, inactive lists, Product fallback, no-match behavior, ambiguity and Company-scope rejection.
+- Step 7 remains the owner of effective-date, currency and price-version eligibility. Step 8 remains the owner of concrete base/wholesale/customer/segment qualification semantics.
 
 ## Step 5 — Completion Record
 
