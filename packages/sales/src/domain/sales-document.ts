@@ -1,6 +1,7 @@
 import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "./sales-domain-errors.ts";
 import type { SalesDomainErrorCode } from "./sales-domain-errors.ts";
 import type { SalesCustomerSnapshot } from "./sales-customer.ts";
+import { createSalesCommercialTerms, type CreateSalesCommercialTermsInput, type SalesCommercialTerms } from "./sales-commercial-terms.ts";
 
 export const SALES_DOCUMENT_TYPES = Object.freeze([
   "sales-order",
@@ -62,6 +63,7 @@ export interface SalesDocumentLineSnapshot {
   readonly item: SalesItemReference;
   readonly description: string | null;
   readonly sourceReference: SalesSourceReference | null;
+  readonly commercialTerms: SalesCommercialTerms | null;
 }
 
 export interface CreateSalesDocumentLineInput {
@@ -72,6 +74,7 @@ export interface CreateSalesDocumentLineInput {
   readonly itemType?: SalesItemType;
   readonly description?: string | null;
   readonly sourceReference?: CreateSalesSourceReferenceInput | null;
+  readonly commercialTerms?: CreateSalesCommercialTermsInput | null;
 }
 
 export interface SalesDocumentSnapshot {
@@ -167,6 +170,7 @@ export function createSalesDocumentLine(input: CreateSalesDocumentLineInput): Sa
     }),
     description: optionalText(input.description, "lines.description"),
     sourceReference: input.sourceReference == null ? null : createSalesSourceReference(input.sourceReference),
+    commercialTerms: input.commercialTerms == null ? null : createSalesCommercialTerms(input.commercialTerms),
   });
 }
 
