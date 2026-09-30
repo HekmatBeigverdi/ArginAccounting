@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–2 are complete. Steps 3–30 are not started.
+Steps 1–3 are complete. Steps 4–30 are not started.
 
 ## Governance
 
@@ -119,7 +119,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | ---: | --- | --- |
 | 1 | Baseline, Scope & Ownership Boundaries | Completed |
 | 2 | Sales Domain Model & Aggregates | Completed |
-| 3 | Durable Document, Line & Source Identity | Not started |
+| 3 | Durable Document, Line & Source Identity | Completed |
 | 4 | Customer & Party Master Integration | Not started |
 | 5 | Sales Price List Model | Not started |
 | 6 | Price List Resolution Policy | Not started |
@@ -147,6 +147,17 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 3 — Completion Record
+
+- Confirmed `documentId` and `lineId` as durable business identities independent from mutable/display-oriented document numbering.
+- Added persistence-neutral `SalesSourceReference` at document and line level with `sourceSystem`, `sourceDocumentId` and optional `sourceLineId`.
+- Added `SalesRelatedDocumentReference` for explicit correction/return/future fulfillment lineage using durable document/line IDs rather than names or document numbers.
+- Added explicit self-reference protection for native Sales references while permitting an external system to reuse an opaque identifier without false collision.
+- Exported the new identity contracts from `@argin/sales`.
+- Added focused tests for document-number independence, document/line source identity, lineage references and self-reference rejection.
+- Kept operation idempotency keys, replay payload fingerprints and mutation conflict semantics in their fixed owner Step 22.
+- Kept optimistic version/change metadata in Step 23 and full Argin Bridge sync-readiness contracts in Step 25; Step 3 supplies their durable identity foundation only.
 
 ## Step 2 — Completion Record
 
