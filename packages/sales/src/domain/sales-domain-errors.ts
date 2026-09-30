@@ -16,6 +16,7 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   priceInvalid: "sales.price_invalid",
   duplicatePriceListItemId: "sales.duplicate_price_list_item_id",
   duplicatePriceListProduct: "sales.duplicate_price_list_product",
+  priceResolutionAmbiguous: "sales.price_resolution_ambiguous",
 } as const);
 
 export type SalesDomainErrorCode =
