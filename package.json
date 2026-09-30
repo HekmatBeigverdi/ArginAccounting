@@ -2,7 +2,7 @@
   "name": "argin-accounting",
   "version": "0.2.0",
   "private": true,
-  "packageManager": "pnpm@12.6.0",
+  "packageManager": "pnpm@12.8.1",
   "scripts": {
     "dev": "turbo dev",
     "dev:web": "pnpm --filter @argin/web dev",
