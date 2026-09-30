@@ -12,6 +12,10 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   selfReference: "sales.self_reference",
   customerInvalid: "sales.customer_invalid",
   customerRoleRequired: "sales.customer_role_required",
+  priceListKindInvalid: "sales.price_list_kind_invalid",
+  priceInvalid: "sales.price_invalid",
+  duplicatePriceListItemId: "sales.duplicate_price_list_item_id",
+  duplicatePriceListProduct: "sales.duplicate_price_list_product",
 } as const);
 
 export type SalesDomainErrorCode =
