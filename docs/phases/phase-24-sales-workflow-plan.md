@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–3 are complete. Steps 4–30 are not started.
+Steps 1–4 are complete. Steps 5–30 are not started.
 
 ## Governance
 
@@ -120,7 +120,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 1 | Baseline, Scope & Ownership Boundaries | Completed |
 | 2 | Sales Domain Model & Aggregates | Completed |
 | 3 | Durable Document, Line & Source Identity | Completed |
-| 4 | Customer & Party Master Integration | Not started |
+| 4 | Customer & Party Master Integration | Completed |
 | 5 | Sales Price List Model | Not started |
 | 6 | Price List Resolution Policy | Not started |
 | 7 | Effective Dating, Currency & Price Versioning | Not started |
@@ -147,6 +147,17 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 4 — Completion Record
+
+- Integrated Sales with the canonical Phase 17 `@argin/party` selection contract rather than creating a duplicate Customer master.
+- Added `createSalesCustomerSnapshot(PartySelectionReference)`; only a Party carrying the `customer` role is eligible for Sales customer selection.
+- Kept durable `partyId` as the sole customer foreign identity. Party `code` and `displayName` are persisted only as immutable Sales display snapshots.
+- Updated `CreateSalesDocumentInput` to consume an explicit `SalesCustomerSnapshot`, making the identity/display boundary visible at the aggregate boundary.
+- Added focused tests proving customer-role enforcement, absence of a parallel customer identity, and historical snapshot stability when Party display metadata changes later.
+- Kept Party lifecycle/status authorization in the Party selection/application boundary; Sales does not copy Party ownership rules.
+- Customer-specific pricing remains owned by Steps 5–8 and is not introduced by this integration step.
+- Live Bridge synchronization remains deferred; this step preserves the durable `partyId` dependency needed by future sync contracts.
 
 ## Step 3 — Completion Record
 
