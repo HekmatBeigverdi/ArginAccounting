@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–4 are complete. Steps 5–30 are not started.
+Steps 1–5 are complete. Steps 6–30 are not started.
 
 ## Governance
 
@@ -121,7 +121,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 2 | Sales Domain Model & Aggregates | Completed |
 | 3 | Durable Document, Line & Source Identity | Completed |
 | 4 | Customer & Party Master Integration | Completed |
-| 5 | Sales Price List Model | Not started |
+| 5 | Sales Price List Model | Completed |
 | 6 | Price List Resolution Policy | Not started |
 | 7 | Effective Dating, Currency & Price Versioning | Not started |
 | 8 | Base, Wholesale & Customer/Segment Pricing | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 5 — Completion Record
+
+- Added the independent Sales-owned `SalesPriceList` aggregate; Product Master remains free of authoritative mutable Sales prices.
+- Added durable `priceListId` and `priceListItemId` identities plus explicit Company scope and human-facing code/name metadata.
+- Added structural price-list kinds `base`, `wholesale`, `customer`, and `segment` without prematurely implementing resolution priority or eligibility rules.
+- Price-list items reference Product/Service Master exclusively through durable `productId`.
+- Added non-negative safe-integer `unitPrice` validation consistent with the current Rial-oriented monetary boundary while keeping currency/effective dating in their fixed owner Step 7.
+- Rejected duplicate item identities and duplicate Product entries within one price list.
+- Explicitly kept Inventory Cost, COGS and accounting/posting state outside Sales pricing.
+- Added focused tests for kinds, Company scope, durable Product references, duplicate rejection, invalid prices and the selling-price/Inventory-cost boundary.
+- Step 6 remains the owner of price-list resolution/priority. Step 7 owns effective dates, currency and price versioning. Step 8 owns base/wholesale/customer/segment eligibility semantics.
 
 ## Step 4 — Completion Record
 
