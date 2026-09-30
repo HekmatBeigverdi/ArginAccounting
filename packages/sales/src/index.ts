@@ -49,3 +49,12 @@ export type {
   SalesPriceListResolutionCandidate,
   SalesResolvedPrice,
 } from "./domain/sales-price-resolution.ts";
+
+export {
+  createSalesPriceRevision,
+  isSalesPriceRevisionEffective,
+} from "./domain/sales-price-revision.ts";
+export type {
+  CreateSalesPriceRevisionInput,
+  SalesPriceRevision,
+} from "./domain/sales-price-revision.ts";
