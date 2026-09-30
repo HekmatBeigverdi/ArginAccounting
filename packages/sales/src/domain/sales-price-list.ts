@@ -1,5 +1,6 @@
 import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "./sales-domain-errors.ts";
 import { createSalesPriceRevision, type CreateSalesPriceRevisionInput, type SalesPriceRevision } from "./sales-price-revision.ts";
+import { createSalesPriceListTarget, type SalesPriceListTarget } from "./sales-price-target.ts";
 
 export const SALES_PRICE_LIST_KINDS = Object.freeze(["base", "wholesale", "customer", "segment"] as const);
 export type SalesPriceListKind = (typeof SALES_PRICE_LIST_KINDS)[number];
@@ -22,6 +23,7 @@ export interface SalesPriceList {
   readonly code: string;
   readonly name: string;
   readonly kind: SalesPriceListKind;
+  readonly target: SalesPriceListTarget;
   readonly isActive: boolean;
   readonly items: readonly SalesPriceListItem[];
 }
@@ -32,6 +34,7 @@ export interface CreateSalesPriceListInput {
   readonly code: string;
   readonly name: string;
   readonly kind: SalesPriceListKind;
+  readonly target?: { readonly customerPartyId?: string | null; readonly customerSegmentId?: string | null };
   readonly isActive?: boolean;
   readonly items?: readonly CreateSalesPriceListItemInput[];
 }
@@ -88,6 +91,7 @@ export function createSalesPriceList(input: CreateSalesPriceListInput): SalesPri
     code: required(input.code, "priceList.code"),
     name: required(input.name, "priceList.name"),
     kind: input.kind,
+    target: createSalesPriceListTarget(input.kind, input.target),
     isActive: input.isActive ?? true,
     items: Object.freeze(items),
   });
