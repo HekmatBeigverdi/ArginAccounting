@@ -10,6 +10,8 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   businessDateInvalid: "sales.business_date_invalid",
   scopeMismatch: "sales.scope_mismatch",
   selfReference: "sales.self_reference",
+  customerInvalid: "sales.customer_invalid",
+  customerRoleRequired: "sales.customer_role_required",
 } as const);
 
 export type SalesDomainErrorCode =
