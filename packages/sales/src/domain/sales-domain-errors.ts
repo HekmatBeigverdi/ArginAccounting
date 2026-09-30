@@ -22,6 +22,7 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   priceRevisionInvalid: "sales.price_revision_invalid",
   duplicatePriceRevision: "sales.duplicate_price_revision",
   priceRevisionOverlap: "sales.price_revision_overlap",
+  priceListTargetInvalid: "sales.price_list_target_invalid",
 } as const);
 
 export type SalesDomainErrorCode =
