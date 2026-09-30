@@ -58,3 +58,12 @@ export type {
   CreateSalesPriceRevisionInput,
   SalesPriceRevision,
 } from "./domain/sales-price-revision.ts";
+
+export {
+  createSalesPriceListTarget,
+  isSalesPriceListTargetEligible,
+} from "./domain/sales-price-target.ts";
+export type {
+  SalesPriceListTarget,
+  SalesPricingContext,
+} from "./domain/sales-price-target.ts";
