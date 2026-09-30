@@ -2,7 +2,7 @@
 
 ## Status
 
-Step 1 is complete. Steps 2–30 are not started.
+Steps 1–2 are complete. Steps 3–30 are not started.
 
 ## Governance
 
@@ -118,7 +118,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | Step | Title | Status |
 | ---: | --- | --- |
 | 1 | Baseline, Scope & Ownership Boundaries | Completed |
-| 2 | Sales Domain Model & Aggregates | Not started |
+| 2 | Sales Domain Model & Aggregates | Completed |
 | 3 | Durable Document, Line & Source Identity | Not started |
 | 4 | Customer & Party Master Integration | Not started |
 | 5 | Sales Price List Model | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 2 — Completion Record
+
+- Added the independent `@argin/sales` package at version `0.24.0`.
+- Established the Sales document aggregate and structural domain errors without coupling Sales to UI, SQLite or accounting.
+- Froze four commercial document kinds: `sales-order`, `sales-invoice`, `sales-return`, and `sales-correction`.
+- Froze three line classifications: `stock-product`, `non-stock-product`, and `service`.
+- Added company/Branch/fiscal scope plus durable `partyId` customer and `productId` item references as structural identities. Rich Party/Product snapshot integration remains Steps 4 and later.
+- Added structural invariants for required identities, valid Gregorian business date, line classification, unique line IDs and unique line positions.
+- Added focused domain tests for document kinds, aggregate creation, line ordering, duplicate rejection, classification and business-date validation.
+- Explicitly kept Sales pricing, Inventory cost, accounting posting, lifecycle, persistence and live Bridge behavior out of the Step 2 aggregate; their fixed owning steps remain unchanged.
+- Step 3 remains the owner of richer durable document/line/source identity semantics.
 
 ## Step 1 — Completion Record
 
