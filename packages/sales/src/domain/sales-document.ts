@@ -1,5 +1,6 @@
 import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "./sales-domain-errors.ts";
 import type { SalesDomainErrorCode } from "./sales-domain-errors.ts";
+import type { SalesCustomerSnapshot } from "./sales-customer.ts";
 
 export const SALES_DOCUMENT_TYPES = Object.freeze([
   "sales-order",
@@ -23,9 +24,7 @@ export interface SalesDocumentScope {
   readonly fiscalYearId: string;
 }
 
-export interface SalesCustomerReference {
-  readonly partyId: string;
-}
+export type SalesCustomerReference = SalesCustomerSnapshot;
 
 export interface SalesItemReference {
   readonly productId: string;
@@ -94,7 +93,7 @@ export interface CreateSalesDocumentInput {
   readonly companyId: string;
   readonly branchId: string;
   readonly fiscalYearId: string;
-  readonly customerPartyId: string;
+  readonly customer: SalesCustomerSnapshot;
   readonly documentNumber?: string | null;
   readonly businessDate: string;
   readonly description?: string | null;
@@ -206,7 +205,11 @@ export function createSalesDocument(input: CreateSalesDocumentInput): SalesDocum
     documentId,
     documentType: input.documentType,
     scope,
-    customer: Object.freeze({ partyId: identity(input.customerPartyId, "customerPartyId") }),
+    customer: Object.freeze({
+      partyId: identity(input.customer.partyId, "customer.partyId"),
+      code: identity(input.customer.code, "customer.code"),
+      displayName: identity(input.customer.displayName, "customer.displayName"),
+    }),
     documentNumber: optionalText(input.documentNumber, "documentNumber"),
     businessDate: businessDate(input.businessDate),
     description: optionalText(input.description, "description"),
