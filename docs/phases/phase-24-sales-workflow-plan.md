@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–9 are complete. Steps 10–30 are not started.
+Steps 1–10 are complete. Steps 11–30 are not started.
 
 ## Governance
 
@@ -126,7 +126,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 7 | Effective Dating, Currency & Price Versioning | Completed |
 | 8 | Base, Wholesale & Customer/Segment Pricing | Completed |
 | 9 | Sales Commercial Terms | Completed |
-| 10 | Discounts, Charges & Sales Tax | Not started |
+| 10 | Discounts, Charges & Sales Tax | Completed |
 | 11 | Deterministic Totals & Rounding | Not started |
 | 12 | Commercial Snapshot & Historical Integrity | Not started |
 | 13 | Sales Order | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 10 — Discounts, Charges & Sales Tax
+
+- Added immutable Sales-owned line inputs for discounts, charges and Sales taxes without prematurely calculating monetary totals.
+- Discounts and charges support explicit `amount` and `percent` modes. Percentage values use integer basis points (`1000 = 10%`, `750 = 7.5%`) to avoid floating-point percentage storage.
+- Amount adjustments use the same non-negative safe-integer monetary boundary as current Sales unit prices; currency remains inherited from the owning commercial terms.
+- Sales tax inputs preserve durable `taxId`, integer `rateBasisPoints` and optional `taxCode`; Tax Base and Tax Amount are deliberately not stored as Step 10 inputs.
+- Commercial terms now carry immutable `discounts[]`, `charges[]` and `taxes[]` collections.
+- Adjustment/tax identities must be unique within a line commercial fact, preventing ambiguous downstream calculation/audit references.
+- Added validation for adjustment mode/value, percentage/rate range `0..10000` basis points, tax rates and duplicate identities.
+- Added focused tests for fixed/percentage adjustments, VAT-style tax input, immutable attachment to commercial terms, invalid rates and duplicate identities.
+- Step 11 remains the sole owner of calculation order, tax base, gross/net/tax/grand-total arithmetic and deterministic rounding.
 
 ## Step 9 — Sales Commercial Terms
 
