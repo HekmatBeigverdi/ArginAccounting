@@ -24,3 +24,6 @@ export type {
 } from "./domain/sales-document.ts";
 export { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "./domain/sales-domain-errors.ts";
 export type { SalesDomainErrorCode } from "./domain/sales-domain-errors.ts";
+
+export { createSalesCustomerSnapshot } from "./domain/sales-customer.ts";
+export type { SalesCustomerSnapshot } from "./domain/sales-customer.ts";
