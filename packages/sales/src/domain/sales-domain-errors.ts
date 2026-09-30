@@ -25,6 +25,10 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   priceListTargetInvalid: "sales.price_list_target_invalid",
   salesQuantityInvalid: "sales.quantity_invalid",
   priceOriginInvalid: "sales.price_origin_invalid",
+  adjustmentModeInvalid: "sales.adjustment_mode_invalid",
+  adjustmentValueInvalid: "sales.adjustment_value_invalid",
+  taxRateInvalid: "sales.tax_rate_invalid",
+  duplicateCommercialAdjustmentId: "sales.duplicate_commercial_adjustment_id",
 } as const);
 
 export type SalesDomainErrorCode =
