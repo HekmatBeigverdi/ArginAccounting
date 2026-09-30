@@ -118,9 +118,9 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Services/non-stock items do not create inventory Cost Inputs solely because they are purchased.
    - Preserve durable source identity, Audit, idempotency, optimistic concurrency and Argin Bridge ownership boundaries.
    - Prepared release target: `v0.22.0` — `ArginAccounting v0.22.0 — Purchase Workflow`.
-23. 🚧 Purchase Posting
+23. ✅ Purchase Posting
    - CR-23-01 expands Phase 23 to 36 steps so fulfillment, matching and posting orchestration are completed before final validation/release.
-   - All 36 steps completed. Final Phase 23 GitHub Actions validation passed; promotion to `develop`/`main` is the remaining repository transition in progress, with semantic `v0.23.0` publication manual.
+   - All 36 steps completed. Final Phase 23 GitHub Actions validation passed and the phase is promoted to `develop`/`main`; semantic `v0.23.0` Tag/GitHub Release publication remains manual.
    - Consume Phase 22 Purchase facts and Phase 21 valuation outputs without creating a second purchase-price store.
    - Own supplier payable, purchase/VAT accounting effects, configured Inventory/GRNI treatment, landed-cost accounting, corrections/reversals and reconciliation.
    - Posting must preserve source integrity, balanced Journal output, idempotency, immutable reversal lineage and Argin Bridge-ready durable identity.
@@ -128,12 +128,13 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 ## Sales
 
-24. ⏳ Sales Workflow
+24. 🚧 Sales Workflow
    - Own Sales price lists and actual Sales invoice-line prices separately from inventory cost.
    - Support extensible price-list policy: base/default, wholesale, customer/segment-specific, effective dates, currency and future tier/discount rules.
    - The final Sales invoice-line price is a Sales commercial fact and never becomes an Inventory Cost Input.
    - Confirmed stock sales create/consume Inventory issue movements; FIFO/MWA independently determines cost of goods sold.
    - Product Master Data must not become a single mutable authoritative Sales-price store for all contexts.
+   - Fixed 30-step implementation plan is frozen in [Phase 24 Sales Workflow Plan](docs/phases/phase-24-sales-workflow-plan.md); Step 1 baseline/scope/ownership is complete on `phase/24-sales-workflow`.
 25. ⏳ Sales Posting
    - Post revenue/tax/receivable from Sales commercial facts.
    - Post COGS/inventory relief from Inventory Valuation outputs, never from selling price.
@@ -200,7 +201,7 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 23 — Purchase Posting & Accounting Integration is now the current implementation target. CR-23-01 expanded the phase to 36 steps; all 36 are complete on `phase/23-purchase-posting`. Final GitHub Actions validation passed under PR #26. Phase 23 is being promoted to `develop`/`main`; semantic `v0.23.0` publication remains a manual repository-owner action. Phase 22 semantic Tag/GitHub Release publication remains a separate repository-owner action.
+Phase 24 — Sales Workflow is now the current implementation target. Step 1 is complete on `phase/24-sales-workflow`, based on `main` commit `91a1dc43fa7c341493d92b7e9457c1ecf0a117a8`. The fixed 30-step plan freezes Sales pricing/document ownership, Inventory/Valuation boundaries and Argin Bridge-ready durable identity. Phase 23 is merged to `develop`/`main`; semantic `v0.23.0` publication remains a manual repository-owner action.
 
 ## Latest Completed Inventory Milestone
 
