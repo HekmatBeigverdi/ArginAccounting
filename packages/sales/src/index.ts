@@ -91,3 +91,13 @@ export type {
   SalesDiscount,
   SalesTax,
 } from "./domain/sales-adjustments.ts";
+
+export {
+  SALES_MONEY_ROUNDING_MODE,
+  calculateSalesDocumentTotals,
+  calculateSalesLineTotals,
+} from "./domain/sales-pricing.ts";
+export type {
+  SalesDocumentTotals,
+  SalesLineTotals,
+} from "./domain/sales-pricing.ts";
