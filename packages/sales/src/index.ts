@@ -27,3 +27,16 @@ export type { SalesDomainErrorCode } from "./domain/sales-domain-errors.ts";
 
 export { createSalesCustomerSnapshot } from "./domain/sales-customer.ts";
 export type { SalesCustomerSnapshot } from "./domain/sales-customer.ts";
+
+export {
+  SALES_PRICE_LIST_KINDS,
+  createSalesPriceList,
+  createSalesPriceListItem,
+} from "./domain/sales-price-list.ts";
+export type {
+  CreateSalesPriceListInput,
+  CreateSalesPriceListItemInput,
+  SalesPriceList,
+  SalesPriceListItem,
+  SalesPriceListKind,
+} from "./domain/sales-price-list.ts";
