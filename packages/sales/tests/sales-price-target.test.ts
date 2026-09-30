@@ -37,7 +37,7 @@ test("evaluates base wholesale customer and segment eligibility from pricing con
 
 test("resolves customer then segment then wholesale then base from real pricing context", () => {
   const mk = (id: string, kind: "base"|"wholesale"|"customer"|"segment", price: number, target?: {customerPartyId?: string; customerSegmentId?: string}) =>
-    createSalesPriceList({ priceListId: id, companyId: "c", code: id, name: id, kind, target, items: [item(id, price)] });
+    createSalesPriceList({ priceListId: id, companyId: "c", code: id, name: id, kind, ...(target === undefined ? {} : { target }), items: [item(id, price)] });
   const lists = [
     { priceList: mk("base", "base", 100) },
     { priceList: mk("wholesale", "wholesale", 90) },

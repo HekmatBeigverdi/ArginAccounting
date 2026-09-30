@@ -10,6 +10,8 @@ import {
 const list = (id: string, kind: "base" | "wholesale" | "customer" | "segment", price: number, active = true) =>
   createSalesPriceList({
     priceListId: id, companyId: "company-1", code: id.toUpperCase(), name: id, kind, isActive: active,
+    ...(kind === "customer" ? { target: { customerPartyId: "party-1" } } : {}),
+    ...(kind === "segment" ? { target: { customerSegmentId: "vip" } } : {}),
     items: [{ priceListItemId: `${id}-item`, productId: "product-1", revisions: [{ priceRevisionId: `${id}-r1`, revision: 1, currency: "IRR", unitPrice: price, effectiveFrom: "2026-01-01" }] }],
   });
 
@@ -45,6 +47,7 @@ test("skips ineligible and inactive higher-priority lists", () => {
 test("falls through when a higher-priority list has no requested product", () => {
   const customer = createSalesPriceList({
     priceListId: "customer", companyId: "company-1", code: "C", name: "Customer", kind: "customer",
+    target: { customerPartyId: "party-1" },
     items: [{ priceListItemId: "other", productId: "product-2", revisions: [{ priceRevisionId: "other-r1", revision: 1, currency: "IRR", unitPrice: 50, effectiveFrom: "2026-01-01" }] }],
   });
   const base = list("base", "base", 100);
