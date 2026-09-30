@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–6 are complete. Steps 7–30 are not started.
+Steps 1–7 are complete. Steps 8–30 are not started.
 
 ## Governance
 
@@ -123,7 +123,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 4 | Customer & Party Master Integration | Completed |
 | 5 | Sales Price List Model | Completed |
 | 6 | Price List Resolution Policy | Completed |
-| 7 | Effective Dating, Currency & Price Versioning | Not started |
+| 7 | Effective Dating, Currency & Price Versioning | Completed |
 | 8 | Base, Wholesale & Customer/Segment Pricing | Not started |
 | 9 | Sales Commercial Terms | Not started |
 | 10 | Discounts, Charges & Sales Tax | Not started |
@@ -147,6 +147,17 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 7 — Completion Record
+
+- Replaced mutable item-level selling price with immutable `SalesPriceRevision` history carrying durable `priceRevisionId`, monotonic revision number, ISO-style three-letter currency, unit price and inclusive effective-date window.
+- Price-list items now retain revision history instead of overwriting the previous selling price.
+- Added validation for revision identity/number, non-negative safe-integer monetary amount, currency format, Gregorian effective dates and invalid date ranges.
+- Duplicate revision identities/numbers and overlapping effective windows within a Product price history fail explicitly.
+- Extended Step 6 resolution so the requested Sales business date and currency select the effective revision while preserving the existing list-kind priority.
+- Resolution output now includes revision identity/number, currency and effective window for downstream Sales commercial traceability.
+- Added focused tests proving historical old/new price reconstruction, currency filtering, invalid metadata rejection and overlap/duplicate protection.
+- Step 8 remains the owner of concrete customer/segment/wholesale/base qualification semantics; this step only makes temporal/currency eligibility authoritative.
 
 ## Step 6 — Completion Record
 
