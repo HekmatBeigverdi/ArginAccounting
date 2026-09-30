@@ -32,12 +32,37 @@ export interface SalesItemReference {
   readonly itemType: SalesItemType;
 }
 
+export interface SalesSourceReference {
+  readonly sourceSystem: string;
+  readonly sourceDocumentId: string;
+  readonly sourceLineId: string | null;
+}
+
+export interface CreateSalesSourceReferenceInput {
+  readonly sourceSystem: string;
+  readonly sourceDocumentId: string;
+  readonly sourceLineId?: string | null;
+}
+
+export interface SalesRelatedDocumentReference {
+  readonly documentId: string;
+  readonly lineId: string | null;
+  readonly relationType: string;
+}
+
+export interface CreateSalesRelatedDocumentReferenceInput {
+  readonly documentId: string;
+  readonly lineId?: string | null;
+  readonly relationType: string;
+}
+
 export interface SalesDocumentLineSnapshot {
   readonly lineId: string;
   readonly position: number;
   readonly lineKind: SalesLineKind;
   readonly item: SalesItemReference;
   readonly description: string | null;
+  readonly sourceReference: SalesSourceReference | null;
 }
 
 export interface CreateSalesDocumentLineInput {
@@ -47,6 +72,7 @@ export interface CreateSalesDocumentLineInput {
   readonly productId: string;
   readonly itemType?: SalesItemType;
   readonly description?: string | null;
+  readonly sourceReference?: CreateSalesSourceReferenceInput | null;
 }
 
 export interface SalesDocumentSnapshot {
@@ -57,6 +83,8 @@ export interface SalesDocumentSnapshot {
   readonly documentNumber: string | null;
   readonly businessDate: string;
   readonly description: string | null;
+  readonly sourceReference: SalesSourceReference | null;
+  readonly relatedDocumentReference: SalesRelatedDocumentReference | null;
   readonly lines: readonly SalesDocumentLineSnapshot[];
 }
 
@@ -70,6 +98,8 @@ export interface CreateSalesDocumentInput {
   readonly documentNumber?: string | null;
   readonly businessDate: string;
   readonly description?: string | null;
+  readonly sourceReference?: CreateSalesSourceReferenceInput | null;
+  readonly relatedDocumentReference?: CreateSalesRelatedDocumentReferenceInput | null;
   readonly lines?: readonly CreateSalesDocumentLineInput[];
 }
 
@@ -98,6 +128,29 @@ function expectedItemType(kind: SalesLineKind): SalesItemType {
   return kind === "service" ? "service" : "product";
 }
 
+export function createSalesSourceReference(input: CreateSalesSourceReferenceInput): SalesSourceReference {
+  assertObject(input, "sourceReference");
+  return Object.freeze({
+    sourceSystem: identity(input.sourceSystem, "sourceReference.sourceSystem"),
+    sourceDocumentId: identity(input.sourceDocumentId, "sourceReference.sourceDocumentId"),
+    sourceLineId: input.sourceLineId == null ? null : identity(input.sourceLineId, "sourceReference.sourceLineId"),
+  });
+}
+
+export function createSalesRelatedDocumentReference(
+  input: CreateSalesRelatedDocumentReferenceInput,
+  currentDocumentId: string,
+): SalesRelatedDocumentReference {
+  assertObject(input, "relatedDocumentReference");
+  const documentId = identity(input.documentId, "relatedDocumentReference.documentId");
+  if (documentId === currentDocumentId) return fail(SALES_DOMAIN_ERROR_CODES.selfReference, "relatedDocumentReference.documentId");
+  return Object.freeze({
+    documentId,
+    lineId: input.lineId == null ? null : identity(input.lineId, "relatedDocumentReference.lineId"),
+    relationType: identity(input.relationType, "relatedDocumentReference.relationType"),
+  });
+}
+
 export function createSalesDocumentLine(input: CreateSalesDocumentLineInput): SalesDocumentLineSnapshot {
   assertObject(input, "line");
   if (!SALES_LINE_KINDS.includes(input.lineKind)) return fail(SALES_DOMAIN_ERROR_CODES.lineKindInvalid, "lines.lineKind");
@@ -114,18 +167,27 @@ export function createSalesDocumentLine(input: CreateSalesDocumentLineInput): Sa
       itemType,
     }),
     description: optionalText(input.description, "lines.description"),
+    sourceReference: input.sourceReference == null ? null : createSalesSourceReference(input.sourceReference),
   });
 }
 
 export function createSalesDocument(input: CreateSalesDocumentInput): SalesDocumentSnapshot {
   assertObject(input, "document");
   if (!SALES_DOCUMENT_TYPES.includes(input.documentType)) return fail(SALES_DOMAIN_ERROR_CODES.documentTypeInvalid, "documentType");
+  const documentId = identity(input.documentId, "documentId");
   const companyId = identity(input.companyId, "companyId");
   const scope = Object.freeze({
     companyId,
     branchId: identity(input.branchId, "branchId"),
     fiscalYearId: identity(input.fiscalYearId, "fiscalYearId"),
   });
+  const sourceReference = input.sourceReference == null ? null : createSalesSourceReference(input.sourceReference);
+  if (sourceReference?.sourceSystem === "sales" && sourceReference.sourceDocumentId === documentId) {
+    return fail(SALES_DOMAIN_ERROR_CODES.selfReference, "sourceReference.sourceDocumentId");
+  }
+  const relatedDocumentReference = input.relatedDocumentReference == null
+    ? null
+    : createSalesRelatedDocumentReference(input.relatedDocumentReference, documentId);
   const rawLines = input.lines ?? [];
   if (!Array.isArray(rawLines)) return fail(SALES_DOMAIN_ERROR_CODES.inputInvalid, "lines");
   const ids = new Set<string>();
@@ -141,13 +203,15 @@ export function createSalesDocument(input: CreateSalesDocumentInput): SalesDocum
   }
   lines.sort((a, b) => a.position - b.position);
   return Object.freeze({
-    documentId: identity(input.documentId, "documentId"),
+    documentId,
     documentType: input.documentType,
     scope,
     customer: Object.freeze({ partyId: identity(input.customerPartyId, "customerPartyId") }),
     documentNumber: optionalText(input.documentNumber, "documentNumber"),
     businessDate: businessDate(input.businessDate),
     description: optionalText(input.description, "description"),
+    sourceReference,
+    relatedDocumentReference,
     lines: Object.freeze(lines),
   });
 }
