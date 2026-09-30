@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–8 are complete. Steps 9–30 are not started.
+Steps 1–9 are complete. Steps 10–30 are not started.
 
 ## Governance
 
@@ -125,7 +125,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 6 | Price List Resolution Policy | Completed |
 | 7 | Effective Dating, Currency & Price Versioning | Completed |
 | 8 | Base, Wholesale & Customer/Segment Pricing | Completed |
-| 9 | Sales Commercial Terms | Not started |
+| 9 | Sales Commercial Terms | Completed |
 | 10 | Discounts, Charges & Sales Tax | Not started |
 | 11 | Deterministic Totals & Rounding | Not started |
 | 12 | Commercial Snapshot & Historical Integrity | Not started |
@@ -148,7 +148,19 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
 
-## Step 8 — Completion Record
+## Step 9 — Sales Commercial Terms
+
+- Added immutable `SalesCommercialTerms` as the Sales-owned commercial fact attached to a document line.
+- Commercial terms capture positive quantity, three-letter currency, unit selling price and explicit price origin without introducing Inventory Cost, COGS or accounting state.
+- Supported two explicit origins: `price-list` and `manual`. Manual negotiated prices carry no fabricated price-list lineage.
+- Price-list-origin terms preserve `priceListId`, `priceListItemId`, `priceRevisionId` and revision number so the actual selling-price source remains traceable after later list changes.
+- Added `createSalesCommercialTermsFromResolvedPrice` to convert the authoritative Step 6–8 resolution result into a line commercial fact without re-resolving or copying pricing rules.
+- Sales document lines can now carry optional immutable commercial terms; structural line creation remains usable while later document-specific completeness rules are deferred to Steps 13–16.
+- Added validation for positive finite quantity, non-negative safe-integer unit price, currency format and internally consistent price-origin metadata.
+- Added focused tests for manual terms, resolved-price lineage, invalid quantity/origin combinations and the explicit absence of Inventory Cost/COGS/discount/tax concerns.
+- Discounts, charges and Sales tax remain Step 10. Deterministic gross/net/tax/grand-total arithmetic and rounding remain Step 11.
+
+## Step 8 — Base, Wholesale & Customer/Segment Pricing
 
 - Added explicit Sales-owned price-list targeting for `base`, `wholesale`, `customer` and `segment` lists.
 - `customer` targeting references the canonical Party Master exclusively through durable `customerPartyId`; no duplicate Customer master or mutable Party code/name identity is introduced.
@@ -160,7 +172,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 - Added focused tests for target contracts, invalid target combinations, each eligibility rule and full priority fallback across customer/segment/wholesale/base.
 - Tier/quantity-break and discount mechanics remain future pricing-rule extensions; Step 9 begins document-line commercial terms and does not mutate these price-list ownership rules.
 
-## Step 7 — Completion Record
+## Step 7 — Effective Dating, Currency & Price Versioning
 
 - Replaced mutable item-level selling price with immutable `SalesPriceRevision` history carrying durable `priceRevisionId`, monotonic revision number, ISO-style three-letter currency, unit price and inclusive effective-date window.
 - Price-list items now retain revision history instead of overwriting the previous selling price.
@@ -171,7 +183,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 - Added focused tests proving historical old/new price reconstruction, currency filtering, invalid metadata rejection and overlap/duplicate protection.
 - Step 8 remains the owner of concrete customer/segment/wholesale/base qualification semantics; this step only makes temporal/currency eligibility authoritative.
 
-## Step 6 — Completion Record
+## Step 6 — Price List Resolution Policy
 
 - Added a pure, persistence-neutral Sales price-list resolver with deterministic priority: `customer -> segment -> wholesale -> base`.
 - Resolution consumes explicit eligibility supplied by the owning context rather than duplicating Customer/Segment qualification rules before Step 8.
@@ -182,7 +194,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 - Added focused tests for priority, input-order independence, eligibility, inactive lists, Product fallback, no-match behavior, ambiguity and Company-scope rejection.
 - Step 7 remains the owner of effective-date, currency and price-version eligibility. Step 8 remains the owner of concrete base/wholesale/customer/segment qualification semantics.
 
-## Step 5 — Completion Record
+## Step 5 — Sales Price List Model
 
 - Added the independent Sales-owned `SalesPriceList` aggregate; Product Master remains free of authoritative mutable Sales prices.
 - Added durable `priceListId` and `priceListItemId` identities plus explicit Company scope and human-facing code/name metadata.
@@ -194,7 +206,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 - Added focused tests for kinds, Company scope, durable Product references, duplicate rejection, invalid prices and the selling-price/Inventory-cost boundary.
 - Step 6 remains the owner of price-list resolution/priority. Step 7 owns effective dates, currency and price versioning. Step 8 owns base/wholesale/customer/segment eligibility semantics.
 
-## Step 4 — Completion Record
+## Step 4 — Customer & Party Master Integration
 
 - Integrated Sales with the canonical Phase 17 `@argin/party` selection contract rather than creating a duplicate Customer master.
 - Added `createSalesCustomerSnapshot(PartySelectionReference)`; only a Party carrying the `customer` role is eligible for Sales customer selection.
@@ -205,7 +217,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 - Customer-specific pricing remains owned by Steps 5–8 and is not introduced by this integration step.
 - Live Bridge synchronization remains deferred; this step preserves the durable `partyId` dependency needed by future sync contracts.
 
-## Step 3 — Completion Record
+## Step 3 — Durable Document, Line & Source Identity
 
 - Confirmed `documentId` and `lineId` as durable business identities independent from mutable/display-oriented document numbering.
 - Added persistence-neutral `SalesSourceReference` at document and line level with `sourceSystem`, `sourceDocumentId` and optional `sourceLineId`.
@@ -216,7 +228,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 - Kept operation idempotency keys, replay payload fingerprints and mutation conflict semantics in their fixed owner Step 22.
 - Kept optimistic version/change metadata in Step 23 and full Argin Bridge sync-readiness contracts in Step 25; Step 3 supplies their durable identity foundation only.
 
-## Step 2 — Completion Record
+## Step 2 — Sales Domain Model & Aggregates
 
 - Added the independent `@argin/sales` package at version `0.24.0`.
 - Established the Sales document aggregate and structural domain errors without coupling Sales to UI, SQLite or accounting.
@@ -228,7 +240,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 - Explicitly kept Sales pricing, Inventory cost, accounting posting, lifecycle, persistence and live Bridge behavior out of the Step 2 aggregate; their fixed owning steps remain unchanged.
 - Step 3 remains the owner of richer durable document/line/source identity semantics.
 
-## Step 1 — Completion Record
+## Step 1 — Baseline, Scope & Ownership Boundaries
 
 - Verified canonical Roadmap ownership and Phase 24 Sales Workflow scope.
 - Verified Phase 23 is merged into `main`.
