@@ -77,3 +77,17 @@ export type {
   SalesCommercialTerms,
   SalesPriceOrigin,
 } from "./domain/sales-commercial-terms.ts";
+
+export {
+  createSalesCharge,
+  createSalesDiscount,
+  createSalesTax,
+} from "./domain/sales-adjustments.ts";
+export type {
+  CreateSalesAdjustmentInput,
+  CreateSalesTaxInput,
+  SalesAdjustmentMode,
+  SalesCharge,
+  SalesDiscount,
+  SalesTax,
+} from "./domain/sales-adjustments.ts";
