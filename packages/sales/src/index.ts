@@ -67,3 +67,13 @@ export type {
   SalesPriceListTarget,
   SalesPricingContext,
 } from "./domain/sales-price-target.ts";
+
+export {
+  createSalesCommercialTerms,
+  createSalesCommercialTermsFromResolvedPrice,
+} from "./domain/sales-commercial-terms.ts";
+export type {
+  CreateSalesCommercialTermsInput,
+  SalesCommercialTerms,
+  SalesPriceOrigin,
+} from "./domain/sales-commercial-terms.ts";
