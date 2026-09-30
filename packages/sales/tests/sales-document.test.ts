@@ -47,3 +47,41 @@ test("does not introduce selling price, inventory cost or posting state in Step 
   assert.equal("inventoryCost" in document, false);
   assert.equal("journalVoucherId" in document, false);
 });
+
+
+test("preserves durable source identity independently from commercial document number", () => {
+  const document = createSalesDocument({
+    documentId: "01J-SALES-DURABLE", documentType: "sales-invoice", companyId: "c", branchId: "b",
+    fiscalYearId: "f", customerPartyId: "party-1", documentNumber: "INV-1405-0001", businessDate: "2026-09-30",
+    sourceReference: { sourceSystem: "legacy-sales", sourceDocumentId: "legacy-42" },
+    lines: [{
+      lineId: "01J-LINE-DURABLE", position: 1, lineKind: "stock-product", productId: "product-1",
+      sourceReference: { sourceSystem: "legacy-sales", sourceDocumentId: "legacy-42", sourceLineId: "7" },
+    }],
+  });
+  assert.equal(document.documentId, "01J-SALES-DURABLE");
+  assert.equal(document.documentNumber, "INV-1405-0001");
+  assert.equal(document.sourceReference?.sourceDocumentId, "legacy-42");
+  assert.equal(document.lines[0]?.sourceReference?.sourceLineId, "7");
+});
+
+test("captures explicit related-document lineage by durable IDs", () => {
+  const document = createSalesDocument({
+    documentId: "return-1", documentType: "sales-return", companyId: "c", branchId: "b", fiscalYearId: "f",
+    customerPartyId: "p", businessDate: "2026-09-30",
+    relatedDocumentReference: { documentId: "invoice-1", lineId: "invoice-line-1", relationType: "returns" },
+  });
+  assert.deepEqual(document.relatedDocumentReference, {
+    documentId: "invoice-1", lineId: "invoice-line-1", relationType: "returns",
+  });
+});
+
+test("rejects Sales self references while allowing external source identity", () => {
+  const base = { documentId: "sale-1", documentType: "sales-correction" as const, companyId: "c", branchId: "b", fiscalYearId: "f", customerPartyId: "p", businessDate: "2026-09-30" };
+  assert.throws(() => createSalesDocument({ ...base, sourceReference: { sourceSystem: "sales", sourceDocumentId: "sale-1" } }),
+    (error: unknown) => error instanceof SalesDomainError && error.code === "sales.self_reference");
+  assert.throws(() => createSalesDocument({ ...base, relatedDocumentReference: { documentId: "sale-1", relationType: "corrects" } }),
+    (error: unknown) => error instanceof SalesDomainError && error.code === "sales.self_reference");
+  const external = createSalesDocument({ ...base, sourceReference: { sourceSystem: "bridge-import", sourceDocumentId: "sale-1" } });
+  assert.equal(external.sourceReference?.sourceSystem, "bridge-import");
+});
