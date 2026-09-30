@@ -10,7 +10,7 @@ import {
 const list = (id: string, kind: "base" | "wholesale" | "customer" | "segment", price: number, active = true) =>
   createSalesPriceList({
     priceListId: id, companyId: "company-1", code: id.toUpperCase(), name: id, kind, isActive: active,
-    items: [{ priceListItemId: `${id}-item`, productId: "product-1", unitPrice: price }],
+    items: [{ priceListItemId: `${id}-item`, productId: "product-1", revisions: [{ priceRevisionId: `${id}-r1`, revision: 1, currency: "IRR", unitPrice: price, effectiveFrom: "2026-01-01" }] }],
   });
 
 test("freezes deterministic price-list priority", () => {
@@ -45,7 +45,7 @@ test("skips ineligible and inactive higher-priority lists", () => {
 test("falls through when a higher-priority list has no requested product", () => {
   const customer = createSalesPriceList({
     priceListId: "customer", companyId: "company-1", code: "C", name: "Customer", kind: "customer",
-    items: [{ priceListItemId: "other", productId: "product-2", unitPrice: 50 }],
+    items: [{ priceListItemId: "other", productId: "product-2", revisions: [{ priceRevisionId: "other-r1", revision: 1, currency: "IRR", unitPrice: 50, effectiveFrom: "2026-01-01" }] }],
   });
   const base = list("base", "base", 100);
   assert.equal(resolveSalesPriceList("company-1", "product-1", [
@@ -69,7 +69,7 @@ test("rejects ambiguous matches at the same priority instead of depending on can
 test("rejects cross-company candidates", () => {
   const foreign = createSalesPriceList({
     priceListId: "foreign", companyId: "company-2", code: "F", name: "Foreign", kind: "base",
-    items: [{ priceListItemId: "i", productId: "product-1", unitPrice: 100 }],
+    items: [{ priceListItemId: "i", productId: "product-1", revisions: [{ priceRevisionId: "r1", revision: 1, currency: "IRR", unitPrice: 100, effectiveFrom: "2026-01-01" }] }],
   });
   assert.throws(() => resolveSalesPriceList("company-1", "product-1", [{ priceList: foreign, eligible: true }]),
     (error: unknown) => error instanceof SalesDomainError && error.code === "sales.scope_mismatch");
