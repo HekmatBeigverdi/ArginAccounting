@@ -34,7 +34,8 @@ export function resolveSalesPriceList(
   const product = productId.trim();
   if (!company) return fail(SALES_DOMAIN_ERROR_CODES.identityRequired, "resolution.companyId");
   if (!product) return fail(SALES_DOMAIN_ERROR_CODES.identityRequired, "resolution.productId");
-  if (!Array.isArray(candidates)) return fail(SALES_DOMAIN_ERROR_CODES.inputInvalid, "resolution.candidates");
+  // Validate at runtime without narrowing the readonly candidates to any[].
+  if (!Array.isArray(candidates as unknown)) return fail(SALES_DOMAIN_ERROR_CODES.inputInvalid, "resolution.candidates");
 
   const eligible = candidates.filter(({ priceList }) => {
     if (priceList.companyId !== company) return fail(SALES_DOMAIN_ERROR_CODES.scopeMismatch, "resolution.companyId");

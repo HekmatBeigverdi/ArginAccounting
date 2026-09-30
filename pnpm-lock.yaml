@@ -768,6 +768,10 @@ importers:
         version: 5.9.3
 
   packages/sales:
+    dependencies:
+      '@argin/party':
+        specifier: workspace:*
+        version: link:../party
     devDependencies:
       '@types/node':
         specifier: ^20
