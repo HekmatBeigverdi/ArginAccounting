@@ -25,6 +25,7 @@ test("captures full price-list lineage from a resolved selling price", () => {
   assert.deepEqual(terms, {
     quantity: 3, currency: "IRR", unitPrice: 1200, priceOrigin: "price-list",
     priceListId: "pl", priceListItemId: "pli", priceRevisionId: "rev", priceRevision: 2,
+    discounts: [], charges: [], taxes: [],
   });
 });
 

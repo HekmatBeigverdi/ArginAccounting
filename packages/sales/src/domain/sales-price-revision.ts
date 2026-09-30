@@ -18,43 +18,81 @@ export interface CreateSalesPriceRevisionInput {
   readonly effectiveTo?: string | null;
 }
 
-function fail(code: (typeof SALES_DOMAIN_ERROR_CODES)[keyof typeof SALES_DOMAIN_ERROR_CODES], field: string): never {
+function fail(
+  code: (typeof SALES_DOMAIN_ERROR_CODES)[keyof typeof SALES_DOMAIN_ERROR_CODES],
+  field: string,
+): never {
   throw new SalesDomainError(code, field);
 }
-function required(value: string, field: string): string {
-  if (typeof value !== "string" || !value.trim()) return fail(SALES_DOMAIN_ERROR_CODES.identityRequired, field);
+
+function requireTrimmedString(value: string, field: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    return fail(SALES_DOMAIN_ERROR_CODES.identityRequired, field);
+  }
   return value.trim();
 }
-function date(value: string, field: string): string {
-  const v = required(value, field);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v + "T00:00:00Z"))) return fail(SALES_DOMAIN_ERROR_CODES.priceEffectiveDateInvalid, field);
-  return v;
+
+function normalizeDate(value: string, field: string): string {
+  const normalizedDate = requireTrimmedString(value, field);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate) ||
+    Number.isNaN(Date.parse(`${normalizedDate}T00:00:00Z`))
+  ) {
+    return fail(SALES_DOMAIN_ERROR_CODES.priceEffectiveDateInvalid, field);
+  }
+  return normalizedDate;
 }
-function currency(value: string): string {
-  const v = required(value, "priceRevision.currency").toUpperCase();
-  if (!/^[A-Z]{3}$/.test(v)) return fail(SALES_DOMAIN_ERROR_CODES.priceCurrencyInvalid, "priceRevision.currency");
-  return v;
+
+function normalizeCurrency(value: string): string {
+  const normalizedCurrency = requireTrimmedString(value, "priceRevision.currency").toUpperCase();
+  if (!/^[A-Z]{3}$/.test(normalizedCurrency)) {
+    return fail(SALES_DOMAIN_ERROR_CODES.priceCurrencyInvalid, "priceRevision.currency");
+  }
+  return normalizedCurrency;
 }
 
 export function createSalesPriceRevision(input: CreateSalesPriceRevisionInput): SalesPriceRevision {
-  if (typeof input !== "object" || input === null) return fail(SALES_DOMAIN_ERROR_CODES.inputInvalid, "priceRevision");
-  if (!Number.isInteger(input.revision) || input.revision < 1) return fail(SALES_DOMAIN_ERROR_CODES.priceRevisionInvalid, "priceRevision.revision");
-  if (!Number.isSafeInteger(input.unitPrice) || input.unitPrice < 0) return fail(SALES_DOMAIN_ERROR_CODES.priceInvalid, "priceRevision.unitPrice");
-  const from = date(input.effectiveFrom, "priceRevision.effectiveFrom");
-  const to = input.effectiveTo == null ? null : date(input.effectiveTo, "priceRevision.effectiveTo");
-  if (to !== null && to < from) return fail(SALES_DOMAIN_ERROR_CODES.priceEffectiveDateInvalid, "priceRevision.effectiveTo");
+  if (typeof input !== "object" || input === null) {
+    return fail(SALES_DOMAIN_ERROR_CODES.inputInvalid, "priceRevision");
+  }
+  if (!Number.isInteger(input.revision) || input.revision < 1) {
+    return fail(SALES_DOMAIN_ERROR_CODES.priceRevisionInvalid, "priceRevision.revision");
+  }
+  if (!Number.isSafeInteger(input.unitPrice) || input.unitPrice < 0) {
+    return fail(SALES_DOMAIN_ERROR_CODES.priceInvalid, "priceRevision.unitPrice");
+  }
+
+  const effectiveFrom = normalizeDate(input.effectiveFrom, "priceRevision.effectiveFrom");
+  const effectiveTo = input.effectiveTo == null
+    ? null
+    : normalizeDate(input.effectiveTo, "priceRevision.effectiveTo");
+
+  if (effectiveTo !== null && effectiveTo < effectiveFrom) {
+    return fail(SALES_DOMAIN_ERROR_CODES.priceEffectiveDateInvalid, "priceRevision.effectiveTo");
+  }
+
   return Object.freeze({
-    priceRevisionId: required(input.priceRevisionId, "priceRevision.priceRevisionId"),
+    priceRevisionId: requireTrimmedString(input.priceRevisionId, "priceRevision.priceRevisionId"),
     revision: input.revision,
-    currency: currency(input.currency),
+    currency: normalizeCurrency(input.currency),
     unitPrice: input.unitPrice,
-    effectiveFrom: from,
-    effectiveTo: to,
+    effectiveFrom,
+    effectiveTo,
   });
 }
 
-export function isSalesPriceRevisionEffective(revision: SalesPriceRevision, businessDate: string, requestedCurrency: string): boolean {
-  const day = date(businessDate, "resolution.businessDate");
-  const curr = currency(requestedCurrency);
-  return revision.currency === curr && revision.effectiveFrom <= day && (revision.effectiveTo === null || day <= revision.effectiveTo);
+export function isSalesPriceRevisionEffective(
+  revision: SalesPriceRevision,
+  businessDate: string,
+  requestedCurrency: string,
+): boolean {
+  const normalizedBusinessDate = normalizeDate(businessDate, "resolution.businessDate");
+  const normalizedCurrency = normalizeCurrency(requestedCurrency);
+
+  // Both date boundaries are inclusive; a null end date keeps the revision open-ended.
+  return (
+    revision.currency === normalizedCurrency &&
+    revision.effectiveFrom <= normalizedBusinessDate &&
+    (revision.effectiveTo === null || normalizedBusinessDate <= revision.effectiveTo)
+  );
 }
