@@ -1,6 +1,7 @@
 import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "./sales-domain-errors.ts";
 import type { SalesPriceList, SalesPriceListItem, SalesPriceListKind } from "./sales-price-list.ts";
 import { isSalesPriceRevisionEffective, type SalesPriceRevision } from "./sales-price-revision.ts";
+import { isSalesPriceListTargetEligible, type SalesPricingContext } from "./sales-price-target.ts";
 
 export const SALES_PRICE_LIST_RESOLUTION_PRIORITY = Object.freeze([
   "customer",
@@ -11,7 +12,7 @@ export const SALES_PRICE_LIST_RESOLUTION_PRIORITY = Object.freeze([
 
 export interface SalesPriceListResolutionCandidate {
   readonly priceList: SalesPriceList;
-  readonly eligible: boolean;
+  readonly eligible?: boolean;
 }
 
 export interface SalesResolvedPrice {
@@ -37,6 +38,7 @@ export function resolveSalesPriceList(
   candidates: readonly SalesPriceListResolutionCandidate[],
   businessDate = "9999-12-31",
   currency = "IRR",
+  pricingContext?: SalesPricingContext,
 ): SalesResolvedPrice | null {
   const company = companyId.trim();
   const product = productId.trim();
@@ -48,7 +50,10 @@ export function resolveSalesPriceList(
   const eligible = candidates.filter(({ priceList }) => {
     if (priceList.companyId !== company) return fail(SALES_DOMAIN_ERROR_CODES.scopeMismatch, "resolution.companyId");
     return priceList.isActive;
-  }).filter((candidate) => candidate.eligible);
+  }).filter((candidate) => {
+    if (candidate.eligible === false) return false;
+    return pricingContext ? isSalesPriceListTargetEligible(candidate.priceList.target, pricingContext) : candidate.eligible === true;
+  });
 
   for (const kind of SALES_PRICE_LIST_RESOLUTION_PRIORITY) {
     const matches: Array<{ priceList: SalesPriceList; item: SalesPriceListItem; revision: SalesPriceRevision }> = [];
