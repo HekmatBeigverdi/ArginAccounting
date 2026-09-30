@@ -40,3 +40,12 @@ export type {
   SalesPriceListItem,
   SalesPriceListKind,
 } from "./domain/sales-price-list.ts";
+
+export {
+  SALES_PRICE_LIST_RESOLUTION_PRIORITY,
+  resolveSalesPriceList,
+} from "./domain/sales-price-resolution.ts";
+export type {
+  SalesPriceListResolutionCandidate,
+  SalesResolvedPrice,
+} from "./domain/sales-price-resolution.ts";
