@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–10 are complete. Steps 11–30 are not started.
+Steps 1–11 are complete. Steps 12–30 are not started.
 
 ## Governance
 
@@ -127,7 +127,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 8 | Base, Wholesale & Customer/Segment Pricing | Completed |
 | 9 | Sales Commercial Terms | Completed |
 | 10 | Discounts, Charges & Sales Tax | Completed |
-| 11 | Deterministic Totals & Rounding | Not started |
+| 11 | Deterministic Totals & Rounding | Completed |
 | 12 | Commercial Snapshot & Historical Integrity | Not started |
 | 13 | Sales Order | Not started |
 | 14 | Sales Invoice | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 11 — Deterministic Totals & Rounding
+
+- Added a pure persistence-neutral Sales pricing engine that derives line and document totals exclusively from authoritative Sales Commercial Terms.
+- Fixed calculation order as `Gross -> ordered Discounts -> Net After Discount -> ordered Charges -> Tax Base -> Taxes -> Grand Total`.
+- Quantity × unit-price and all basis-point calculations use integer/BigInt arithmetic with the project-aligned `half-away-from-zero` monetary rounding rule; floating-point monetary arithmetic is not used for derived amounts.
+- Ordered percentage discounts apply to the current amount after preceding discounts. Ordered percentage charges apply to the current amount after discounts and preceding charges.
+- Each Sales tax is calculated from the final Tax Base and rounded deterministically; tax amounts are summed before Grand Total.
+- A discount that exceeds the current amount fails explicitly instead of producing a negative commercial base.
+- Added document-total aggregation with explicit same-currency enforcement and safe-integer overflow protection.
+- Added focused tests for the canonical 2.5 × 100 / 10% discount / 20 charge / 10% VAT scenario, half rounding boundaries, ordered adjustments, excessive discount rejection, document aggregation and mixed-currency rejection.
+- Calculated totals remain derived facts, not a new pricing authority. Step 12 owns the immutable historical Commercial Snapshot that will preserve the finalized inputs/results.
 
 ## Step 10 — Discounts, Charges & Sales Tax
 
