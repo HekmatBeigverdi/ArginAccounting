@@ -1,5 +1,6 @@
 import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "./sales-domain-errors.ts";
 import type { SalesResolvedPrice } from "./sales-price-resolution.ts";
+import { createSalesCharge, createSalesDiscount, createSalesTax, type CreateSalesAdjustmentInput, type CreateSalesTaxInput, type SalesCharge, type SalesDiscount, type SalesTax } from "./sales-adjustments.ts";
 
 export type SalesPriceOrigin = "price-list" | "manual";
 
@@ -12,6 +13,9 @@ export interface SalesCommercialTerms {
   readonly priceListItemId: string | null;
   readonly priceRevisionId: string | null;
   readonly priceRevision: number | null;
+  readonly discounts: readonly SalesDiscount[];
+  readonly charges: readonly SalesCharge[];
+  readonly taxes: readonly SalesTax[];
 }
 
 export interface CreateSalesCommercialTermsInput {
@@ -23,6 +27,9 @@ export interface CreateSalesCommercialTermsInput {
   readonly priceListItemId?: string | null;
   readonly priceRevisionId?: string | null;
   readonly priceRevision?: number | null;
+  readonly discounts?: readonly CreateSalesAdjustmentInput[];
+  readonly charges?: readonly CreateSalesAdjustmentInput[];
+  readonly taxes?: readonly CreateSalesTaxInput[];
 }
 
 function fail(code: (typeof SALES_DOMAIN_ERROR_CODES)[keyof typeof SALES_DOMAIN_ERROR_CODES], field: string): never {
@@ -57,6 +64,15 @@ export function createSalesCommercialTerms(input: CreateSalesCommercialTermsInpu
     return fail(SALES_DOMAIN_ERROR_CODES.priceOriginInvalid, "commercialTerms.priceOrigin");
   }
 
+  const discounts = (input.discounts ?? []).map(createSalesDiscount);
+  const charges = (input.charges ?? []).map(createSalesCharge);
+  const taxes = (input.taxes ?? []).map(createSalesTax);
+  const ids = new Set<string>();
+  for (const id of [...discounts.map((x) => x.discountId), ...charges.map((x) => x.chargeId), ...taxes.map((x) => x.taxId)]) {
+    if (ids.has(id)) return fail(SALES_DOMAIN_ERROR_CODES.duplicateCommercialAdjustmentId, "commercialTerms.adjustments");
+    ids.add(id);
+  }
+
   return Object.freeze({
     quantity: input.quantity,
     currency: currency(input.currency),
@@ -66,6 +82,9 @@ export function createSalesCommercialTerms(input: CreateSalesCommercialTermsInpu
     priceListItemId,
     priceRevisionId,
     priceRevision: revision,
+    discounts: Object.freeze(discounts),
+    charges: Object.freeze(charges),
+    taxes: Object.freeze(taxes),
   });
 }
 
