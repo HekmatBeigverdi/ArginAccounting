@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–7 are complete. Steps 8–30 are not started.
+Steps 1–8 are complete. Steps 9–30 are not started.
 
 ## Governance
 
@@ -124,7 +124,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 5 | Sales Price List Model | Completed |
 | 6 | Price List Resolution Policy | Completed |
 | 7 | Effective Dating, Currency & Price Versioning | Completed |
-| 8 | Base, Wholesale & Customer/Segment Pricing | Not started |
+| 8 | Base, Wholesale & Customer/Segment Pricing | Completed |
 | 9 | Sales Commercial Terms | Not started |
 | 10 | Discounts, Charges & Sales Tax | Not started |
 | 11 | Deterministic Totals & Rounding | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 8 — Completion Record
+
+- Added explicit Sales-owned price-list targeting for `base`, `wholesale`, `customer` and `segment` lists.
+- `customer` targeting references the canonical Party Master exclusively through durable `customerPartyId`; no duplicate Customer master or mutable Party code/name identity is introduced.
+- `segment` targeting stores a durable `customerSegmentId` while segment membership is supplied through a persistence-neutral `SalesPricingContext`.
+- `wholesale` eligibility is an explicit Sales pricing-context fact rather than inferred from price amount or Product state; `base` remains universally eligible.
+- Target shape is validated by list kind: base/wholesale cannot carry customer/segment targets, customer requires Party id, and segment requires Segment id.
+- Step 6 resolver now derives concrete target eligibility from `SalesPricingContext` while retaining deterministic priority `customer -> segment -> wholesale -> base` and Step 7 date/currency revision filtering.
+- Existing explicit `eligible` candidates remain supported as a lower-level boundary; an explicit false always excludes a list.
+- Added focused tests for target contracts, invalid target combinations, each eligibility rule and full priority fallback across customer/segment/wholesale/base.
+- Tier/quantity-break and discount mechanics remain future pricing-rule extensions; Step 9 begins document-line commercial terms and does not mutate these price-list ownership rules.
 
 ## Step 7 — Completion Record
 
