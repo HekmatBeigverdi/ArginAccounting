@@ -9,6 +9,7 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   duplicateLinePosition: "sales.duplicate_line_position",
   businessDateInvalid: "sales.business_date_invalid",
   scopeMismatch: "sales.scope_mismatch",
+  selfReference: "sales.self_reference",
 } as const);
 
 export type SalesDomainErrorCode =
