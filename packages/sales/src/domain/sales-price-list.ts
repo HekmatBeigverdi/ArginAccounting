@@ -1,4 +1,5 @@
 import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "./sales-domain-errors.ts";
+import { createSalesPriceRevision, type CreateSalesPriceRevisionInput, type SalesPriceRevision } from "./sales-price-revision.ts";
 
 export const SALES_PRICE_LIST_KINDS = Object.freeze(["base", "wholesale", "customer", "segment"] as const);
 export type SalesPriceListKind = (typeof SALES_PRICE_LIST_KINDS)[number];
@@ -6,13 +7,13 @@ export type SalesPriceListKind = (typeof SALES_PRICE_LIST_KINDS)[number];
 export interface SalesPriceListItem {
   readonly priceListItemId: string;
   readonly productId: string;
-  readonly unitPrice: number;
+  readonly revisions: readonly SalesPriceRevision[];
 }
 
 export interface CreateSalesPriceListItemInput {
   readonly priceListItemId: string;
   readonly productId: string;
-  readonly unitPrice: number;
+  readonly revisions: readonly CreateSalesPriceRevisionInput[];
 }
 
 export interface SalesPriceList {
@@ -46,13 +47,23 @@ function required(value: string, field: string): string {
 
 export function createSalesPriceListItem(input: CreateSalesPriceListItemInput): SalesPriceListItem {
   if (typeof input !== "object" || input === null) return fail(SALES_DOMAIN_ERROR_CODES.inputInvalid, "priceListItem");
-  if (!Number.isSafeInteger(input.unitPrice) || input.unitPrice < 0) {
-    return fail(SALES_DOMAIN_ERROR_CODES.priceInvalid, "priceList.items.unitPrice");
+  if (!Array.isArray(input.revisions) || input.revisions.length === 0) return fail(SALES_DOMAIN_ERROR_CODES.priceRevisionInvalid, "priceList.items.revisions");
+  const revisions = input.revisions.map(createSalesPriceRevision).sort((a, b) => a.revision - b.revision);
+  const ids = new Set<string>();
+  const numbers = new Set<number>();
+  for (const revision of revisions) {
+    if (ids.has(revision.priceRevisionId) || numbers.has(revision.revision)) return fail(SALES_DOMAIN_ERROR_CODES.duplicatePriceRevision, "priceList.items.revisions");
+    ids.add(revision.priceRevisionId); numbers.add(revision.revision);
+  }
+  for (let i = 1; i < revisions.length; i++) {
+    const previous = revisions[i - 1]!;
+    const current = revisions[i]!;
+    if (previous.effectiveTo === null || current.effectiveFrom <= previous.effectiveTo) return fail(SALES_DOMAIN_ERROR_CODES.priceRevisionOverlap, "priceList.items.revisions");
   }
   return Object.freeze({
     priceListItemId: required(input.priceListItemId, "priceList.items.priceListItemId"),
     productId: required(input.productId, "priceList.items.productId"),
-    unitPrice: input.unitPrice,
+    revisions: Object.freeze(revisions),
   });
 }
 
