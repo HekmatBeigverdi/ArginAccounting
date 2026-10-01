@@ -33,6 +33,7 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   currencyMismatch: "sales.currency_mismatch",
   commercialSnapshotInvalid: "sales.commercial_snapshot_invalid",
   commercialTermsRequired: "sales.commercial_terms_required",
+  salesOrderLinesRequired: "sales.order_lines_required",
 } as const);
 
 export type SalesDomainErrorCode =
