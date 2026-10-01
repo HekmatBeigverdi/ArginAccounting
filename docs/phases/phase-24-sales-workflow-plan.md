@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–11 are complete. Steps 12–30 are not started.
+Steps 1–12 are complete. Steps 13–30 are not started.
 
 ## Governance
 
@@ -128,7 +128,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 9 | Sales Commercial Terms | Completed |
 | 10 | Discounts, Charges & Sales Tax | Completed |
 | 11 | Deterministic Totals & Rounding | Completed |
-| 12 | Commercial Snapshot & Historical Integrity | Not started |
+| 12 | Commercial Snapshot & Historical Integrity | Completed |
 | 13 | Sales Order | Not started |
 | 14 | Sales Invoice | Not started |
 | 15 | Sales Return | Not started |
@@ -147,6 +147,19 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 12 — Commercial Snapshot & Historical Integrity
+
+- Added durable `SalesCommercialSnapshot` identity per captured line commercial fact, preserving line ID, Product ID, line kind and capture timestamp.
+- Snapshot creation requires authoritative line Commercial Terms; incomplete structural lines cannot silently become historical commercial facts.
+- Commercial Terms are rebuilt through domain factories into an independent immutable snapshot rather than retaining caller-owned mutable references.
+- Captured terms preserve actual quantity, currency, selling price, price origin/revision lineage, ordered discounts/charges and Sales tax inputs.
+- Step 11 deterministic line totals are calculated at capture time and retained beside their authoritative inputs for historical display/audit.
+- Added `verifySalesCommercialSnapshot` to deterministically recalculate totals from captured facts and detect persisted/tampered total inconsistencies.
+- Later Price List or master-data changes do not re-resolve or rewrite an existing snapshot; historical selling-price provenance remains the captured revision/manual fact.
+- Snapshot scope deliberately excludes Inventory Cost, COGS and accounting posting, preserving the Phase 21/25 ownership boundary.
+- Added focused tests for immutable capture, historical price independence, missing Commercial Terms, totals-integrity verification and invalid timestamps.
+- Document-type finalization and when snapshots become mandatory/locked are owned by Steps 13–17; Step 12 provides the immutable commercial-history primitive.
 
 ## Step 11 — Deterministic Totals & Rounding
 
