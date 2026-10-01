@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–13 are complete. Steps 14–30 are not started.
+Steps 1–14 are complete. Steps 15–30 are not started.
 
 ## Governance
 
@@ -130,7 +130,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 11 | Deterministic Totals & Rounding | Completed |
 | 12 | Commercial Snapshot & Historical Integrity | Completed |
 | 13 | Sales Order | Completed |
-| 14 | Sales Invoice | Not started |
+| 14 | Sales Invoice | Completed |
 | 15 | Sales Return | Not started |
 | 16 | Sales Correction | Not started |
 | 17 | Lifecycle, Status & Approval | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 14 — Sales Invoice
+
+- Added the dedicated `SalesInvoice` aggregate on top of the shared Sales document primitives with document type fixed to `sales-invoice`.
+- A Sales Invoice requires at least one complete commercial line; empty invoices and lines without Commercial Terms fail explicitly.
+- Invoice creation captures immutable Step 12 Commercial Snapshots and derives document totals exclusively through the Step 11 deterministic pricing engine.
+- Invoice/document and line-level lineage can preserve originating Sales Order identity through durable `relatedDocumentReference` and `sourceReference` contracts without copying or mutating the original order.
+- Stock-product, non-stock-product and service lines are valid invoice commercial facts while preserving their distinct classification.
+- Step 14 records commercial invoice facts only. It does not directly create Inventory Issue, COGS, Accounts Receivable, Output VAT posting or Journal Voucher.
+- Inventory fulfillment belongs to Steps 18/21; lifecycle/approval belongs to Step 17; revenue/receivable/tax/COGS accounting belongs to Phase 25.
+- Order-to-invoice quantity allocation and matching are intentionally deferred to Step 21 rather than being partially implemented here.
+- Added focused tests for invoice creation, order/line lineage, snapshots/totals, supported line classifications, empty/missing-commercial-fact rejection and absence of Inventory/accounting side effects.
 
 ## Step 13 — Sales Order
 
