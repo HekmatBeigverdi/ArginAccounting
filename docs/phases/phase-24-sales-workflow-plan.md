@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–12 are complete. Steps 13–30 are not started.
+Steps 1–13 are complete. Steps 14–30 are not started.
 
 ## Governance
 
@@ -129,7 +129,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 10 | Discounts, Charges & Sales Tax | Completed |
 | 11 | Deterministic Totals & Rounding | Completed |
 | 12 | Commercial Snapshot & Historical Integrity | Completed |
-| 13 | Sales Order | Not started |
+| 13 | Sales Order | Completed |
 | 14 | Sales Invoice | Not started |
 | 15 | Sales Return | Not started |
 | 16 | Sales Correction | Not started |
@@ -147,6 +147,19 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 13 — Sales Order
+
+- Added the dedicated `SalesOrder` aggregate on top of the shared Sales document primitives; callers do not supply or mutate another document type when creating an order.
+- A Sales Order requires at least one commercial line. Empty orders fail explicitly.
+- Every order line must contain valid Sales Commercial Terms; structural lines without selling-price/quantity facts cannot become a Sales Order.
+- Order creation captures one immutable Step 12 Commercial Snapshot per line using deterministic snapshot identity derived from durable order/line IDs.
+- Document totals are derived exclusively from the captured line totals through the Step 11 deterministic pricing engine.
+- Stock-product, non-stock-product and service lines are all valid commercial order lines while preserving their distinct Product/Service classification.
+- Customer identity remains the canonical Phase 17 Party `partyId`; Product/Service identity remains durable `productId`.
+- Sales Order creation deliberately has no Inventory Issue, COGS, journal or receivable side effect. Fulfillment belongs to Steps 18/21 and accounting belongs to Phase 25.
+- Lifecycle status, submit/approve/finalize/cancel behavior remains Step 17; Step 13 establishes the order-specific aggregate and completeness rules only.
+- Added focused tests for aggregate creation, snapshots/totals, all line classifications, empty-order rejection, missing Commercial Terms and absence of Inventory/accounting effects.
 
 ## Step 12 — Commercial Snapshot & Historical Integrity
 
