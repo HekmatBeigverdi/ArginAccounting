@@ -38,6 +38,9 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   salesReturnLinesRequired: "sales.return_lines_required",
   salesReturnInvoiceRequired: "sales.return_invoice_required",
   salesReturnInvoiceLineRequired: "sales.return_invoice_line_required",
+  salesCorrectionLinesRequired: "sales.correction_lines_required",
+  salesCorrectionInvoiceRequired: "sales.correction_invoice_required",
+  salesCorrectionInvoiceLineRequired: "sales.correction_invoice_line_required",
 } as const);
 
 export type SalesDomainErrorCode =
