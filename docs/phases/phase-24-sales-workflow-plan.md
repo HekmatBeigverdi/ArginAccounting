@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–18 are complete. Steps 19–30 are not started.
+Steps 1–19 are complete. Steps 20–30 are not started.
 
 ## Governance
 
@@ -135,7 +135,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 16 | Sales Correction | Completed |
 | 17 | Lifecycle, Status & Approval | Completed |
 | 18 | Stock Sales -> Inventory Issue Integration | Completed |
-| 19 | Sales Return -> Inventory Receipt Integration | Not started |
+| 19 | Sales Return -> Inventory Receipt Integration | Completed |
 | 20 | Selling Price vs Inventory Cost/COGS Boundary | Not started |
 | 21 | Sales Fulfillment & Matching | Not started |
 | 22 | Idempotency, Replay Safety & Payload Fingerprint | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 19 — Sales Return -> Inventory Receipt Integration
+
+- Added a Sales application gateway that maps finalized stock Sales Returns to Phase 20's public `InventorySourceDocumentPort` as Inventory `receipt` drafts.
+- Only a `finalized` Sales Return with lifecycle identity matching that same return may stage a receipt.
+- Only returned `stock-product` lines cross the quantity boundary; returned services and non-stock products do not create stock receipts.
+- Every returned stock line requires exact operational routing (Inventory unit + Warehouse), and routing must cover every and only stock-return line.
+- Inventory source identity is the durable Sales Return document/line identity. Because each Sales Return line already references its originating Sales Invoice line, audit lineage remains `Inventory Receipt <- Sales Return Line <- Sales Invoice Line`.
+- The returned commercial quantity crosses into Inventory, but selling price, discounts, charges, VAT and Grand Total never become Inventory receipt cost inputs.
+- Inventory remains authoritative for receipt draft lifecycle, approval, confirmation, movement facts, stock projection, concurrency and transaction boundaries.
+- Step 19 deliberately does not assign return valuation/cost from Sales commercial amounts. Inventory valuation and later COGS reversal/correction remain independent concerns of Phase 21/25.
+- Added focused tests for stock-only receipt mapping, return lineage, finalized-return requirement, exact routing, no-stock behavior and absence of monetary Sales fields from the Inventory request.
 
 ## Step 18 — Stock Sales -> Inventory Issue Integration
 
