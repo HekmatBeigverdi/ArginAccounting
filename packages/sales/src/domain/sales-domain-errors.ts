@@ -34,6 +34,7 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   commercialSnapshotInvalid: "sales.commercial_snapshot_invalid",
   commercialTermsRequired: "sales.commercial_terms_required",
   salesOrderLinesRequired: "sales.order_lines_required",
+  salesInvoiceLinesRequired: "sales.invoice_lines_required",
 } as const);
 
 export type SalesDomainErrorCode =
