@@ -116,3 +116,16 @@ export type { CreateSalesReturnInput, SalesReturn } from "./domain/sales-return.
 
 export { createSalesCorrection } from "./domain/sales-correction.ts";
 export type { CreateSalesCorrectionInput, SalesCorrection } from "./domain/sales-correction.ts";
+
+export {
+  SALES_DOCUMENT_STATUSES,
+  createSalesLifecycle,
+  transitionSalesLifecycle,
+} from "./domain/sales-lifecycle.ts";
+export type {
+  SalesDocumentStatus,
+  SalesLifecycleAction,
+  SalesLifecycleState,
+  SalesLifecycleTransition,
+  TransitionSalesLifecycleInput,
+} from "./domain/sales-lifecycle.ts";
