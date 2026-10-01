@@ -7,7 +7,7 @@ import {
 } from "../src/index.ts";
 
 const change = (transitionId: string, action: "submit" | "approve" | "reject" | "finalize" | "cancel", reason?: string) => ({
-  transitionId, action, actorId: "user-1", occurredAt: "2026-10-01T12:00:00Z", reason,
+  transitionId, action, actorId: "user-1", occurredAt: "2026-10-01T12:00:00Z", reason: reason ?? null,
 });
 
 test("runs the canonical draft to finalized lifecycle with audit history", () => {

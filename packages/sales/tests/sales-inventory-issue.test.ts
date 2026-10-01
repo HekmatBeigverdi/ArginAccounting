@@ -67,14 +67,13 @@ test("requires exact routing for every and only stock line", async () => {
 });
 
 test("does not stage inventory for invoices without stock-product lines", async () => {
-  const base = invoice();
   const noStock = createSalesInvoice({
     documentId: "inv-2", companyId: "co-1", branchId: "br-1", fiscalYearId: "fy-1", customer,
     businessDate: "2026-10-01", capturedAt: "2026-10-01T10:00:00Z",
-    lines: base.document.lines.filter(x => x.lineKind !== "stock-product").map(x => ({
-      lineId: x.lineId, position: x.position, lineKind: x.lineKind, productId: x.item.productId, itemType: x.item.itemType,
-      commercialTerms: x.commercialTerms!,
-    })),
+    lines: [
+      { lineId: "nonstock-1", position: 2, lineKind: "non-stock-product", productId: "p-2", commercialTerms: { quantity: 3, currency: "IRR", unitPrice: 200, priceOrigin: "manual" } },
+      { lineId: "service-1", position: 3, lineKind: "service", itemType: "service", productId: "s-1", commercialTerms: { quantity: 1, currency: "IRR", unitPrice: 500, priceOrigin: "manual" } },
+    ],
   });
   const gateway = new InventorySalesIssueGateway({ async stageDraft() { throw new Error("must not call inventory"); } });
   await assert.rejects(() => gateway.stage({

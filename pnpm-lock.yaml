@@ -769,9 +769,15 @@ importers:
 
   packages/sales:
     dependencies:
+      '@argin/inventory':
+        specifier: workspace:*
+        version: link:../inventory
       '@argin/party':
         specifier: workspace:*
         version: link:../party
+      '@argin/warehouse':
+        specifier: workspace:*
+        version: link:../warehouse
     devDependencies:
       '@types/node':
         specifier: ^20

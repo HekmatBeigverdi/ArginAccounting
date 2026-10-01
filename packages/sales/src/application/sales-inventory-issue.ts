@@ -4,9 +4,9 @@ import type {
   StageInventorySourceDocumentRequest,
 } from "@argin/inventory";
 import type { WarehouseOperationalReference } from "@argin/warehouse";
-import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "./sales-domain-errors.ts";
-import type { SalesInvoice } from "./sales-invoice.ts";
-import type { SalesLifecycleState } from "./sales-lifecycle.ts";
+import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "../domain/sales-domain-errors.ts";
+import type { SalesInvoice } from "../domain/sales-invoice.ts";
+import type { SalesLifecycleState } from "../domain/sales-lifecycle.ts";
 
 export interface SalesStockIssueLineRouting {
   readonly salesLineId: string;
