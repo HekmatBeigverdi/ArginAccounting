@@ -104,3 +104,6 @@ export type {
 
 export { createSalesCommercialSnapshot, verifySalesCommercialSnapshot } from "./domain/sales-commercial-snapshot.ts";
 export type { CreateSalesCommercialSnapshotInput, SalesCommercialSnapshot } from "./domain/sales-commercial-snapshot.ts";
+
+export { createSalesOrder } from "./domain/sales-order.ts";
+export type { CreateSalesOrderInput, SalesOrder } from "./domain/sales-order.ts";
