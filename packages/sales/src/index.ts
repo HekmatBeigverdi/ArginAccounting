@@ -143,3 +143,12 @@ export type {
   SalesStockReturnReceiptLineRouting,
   StageSalesReturnInventoryReceiptInput,
 } from "./application/sales-inventory-return-receipt.ts";
+
+export {
+  createSalesCommercialAmountFact,
+  createSalesInventoryCostFact,
+} from "./domain/sales-cost-boundary.ts";
+export type {
+  SalesCommercialAmountFact,
+  SalesInventoryCostFact,
+} from "./domain/sales-cost-boundary.ts";
