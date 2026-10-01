@@ -101,3 +101,6 @@ export type {
   SalesDocumentTotals,
   SalesLineTotals,
 } from "./domain/sales-pricing.ts";
+
+export { createSalesCommercialSnapshot, verifySalesCommercialSnapshot } from "./domain/sales-commercial-snapshot.ts";
+export type { CreateSalesCommercialSnapshotInput, SalesCommercialSnapshot } from "./domain/sales-commercial-snapshot.ts";
