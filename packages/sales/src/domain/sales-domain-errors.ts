@@ -31,6 +31,8 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   duplicateCommercialAdjustmentId: "sales.duplicate_commercial_adjustment_id",
   pricingCalculationInvalid: "sales.pricing_calculation_invalid",
   currencyMismatch: "sales.currency_mismatch",
+  commercialSnapshotInvalid: "sales.commercial_snapshot_invalid",
+  commercialTermsRequired: "sales.commercial_terms_required",
 } as const);
 
 export type SalesDomainErrorCode =
