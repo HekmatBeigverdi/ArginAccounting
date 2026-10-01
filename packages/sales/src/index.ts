@@ -113,3 +113,6 @@ export type { CreateSalesInvoiceInput, SalesInvoice } from "./domain/sales-invoi
 
 export { createSalesReturn } from "./domain/sales-return.ts";
 export type { CreateSalesReturnInput, SalesReturn } from "./domain/sales-return.ts";
+
+export { createSalesCorrection } from "./domain/sales-correction.ts";
+export type { CreateSalesCorrectionInput, SalesCorrection } from "./domain/sales-correction.ts";
