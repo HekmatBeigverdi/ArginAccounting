@@ -25,7 +25,7 @@ function commercial() {
 function valuation(overrides: Partial<InventoryValuationEntrySnapshot> = {}): InventoryValuationEntrySnapshot {
   return {
     valuationEntryId: "val-1", companyId: "co-1", productId: "p-1",
-    stockKey: { productId: "p-1", warehouseId: "wh-1", zoneId: null, locationId: null },
+    stockKey: { companyId: "co-1", productId: "p-1", warehouseId: "wh-1", zoneId: null, locationId: null },
     source: { movementId: "mov-1", documentId: "issue-1", lineId: "sales-line-1", reversalOfMovementId: null, transferId: null },
     kind: "outbound", method: "fifo", strategyVersion: 1, currency: "IRR",
     businessDate: "2026-10-02", businessOrder: 1, quantity: "2",
