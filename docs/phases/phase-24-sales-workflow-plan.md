@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–15 are complete. Steps 16–30 are not started.
+Steps 1–16 are complete. Steps 17–30 are not started.
 
 ## Governance
 
@@ -132,7 +132,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 13 | Sales Order | Completed |
 | 14 | Sales Invoice | Completed |
 | 15 | Sales Return | Completed |
-| 16 | Sales Correction | Not started |
+| 16 | Sales Correction | Completed |
 | 17 | Lifecycle, Status & Approval | Not started |
 | 18 | Stock Sales -> Inventory Issue Integration | Not started |
 | 19 | Sales Return -> Inventory Receipt Integration | Not started |
@@ -147,6 +147,17 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 16 — Sales Correction
+
+- Added the dedicated `SalesCorrection` aggregate with document type fixed to `sales-correction`.
+- A correction is a new durable commercial fact with its own document/line identities; it never edits, replaces or rewrites the originating Sales Invoice or its historical Commercial Snapshots.
+- A Sales Correction requires at least one complete corrected commercial line.
+- Every correction must reference an originating `sales-invoice` at document level, and every correction line must reference a concrete line of that same invoice through durable Sales source identity.
+- Corrected quantity, selling price, discounts, charges and taxes are captured in new immutable Step 12 Commercial Snapshots; deterministic totals are recalculated through the Step 11 engine.
+- The original invoice remains authoritative for what was originally issued; the correction preserves explicit lineage for later delta/reversal accounting rather than mutating history.
+- Step 16 deliberately does not decide lifecycle/finalization, Inventory movement deltas, Accounts Receivable/VAT adjustments or Journal Voucher effects. Lifecycle belongs to Step 17 and accounting effects belong to Phase 25.
+- Added focused tests for independent correction identity, invoice/line lineage, empty correction rejection, wrong/missing invoice origin, cross-invoice lineage, missing corrected Commercial Terms and absence of direct Inventory/accounting side effects.
 
 ## Step 15 — Sales Return
 
