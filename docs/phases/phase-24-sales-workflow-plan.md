@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–14 are complete. Steps 15–30 are not started.
+Steps 1–15 are complete. Steps 16–30 are not started.
 
 ## Governance
 
@@ -131,7 +131,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 12 | Commercial Snapshot & Historical Integrity | Completed |
 | 13 | Sales Order | Completed |
 | 14 | Sales Invoice | Completed |
-| 15 | Sales Return | Not started |
+| 15 | Sales Return | Completed |
 | 16 | Sales Correction | Not started |
 | 17 | Lifecycle, Status & Approval | Not started |
 | 18 | Stock Sales -> Inventory Issue Integration | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 15 — Sales Return
+
+- Added the dedicated `SalesReturn` aggregate with document type fixed to `sales-return`.
+- A Sales Return requires at least one complete commercial line; empty returns and lines without Commercial Terms fail explicitly.
+- Every Sales Return must reference an originating `sales-invoice` at document level. A return cannot be created as an unanchored commercial document.
+- Every return line must carry a durable Sales source reference to a concrete line of that same originating invoice. Cross-invoice or missing line lineage fails explicitly.
+- Return creation captures immutable Step 12 Commercial Snapshots and derives return totals through the Step 11 deterministic pricing engine.
+- The return owns its own commercial facts (returned quantity, selling-price context, discounts/charges/taxes) while preserving immutable lineage to the original invoice facts.
+- Step 15 does not create Inventory Receipt, reverse COGS, adjust Accounts Receivable, post Output VAT reversal or create a Journal Voucher.
+- Inventory re-entry belongs to Step 19, fulfillment/matching and over-return controls belong to Step 21, and accounting reversal/correction effects belong to Phase 25.
+- Added focused tests for valid invoice/line lineage, empty-return rejection, wrong/missing invoice origin, cross-invoice line rejection, missing Commercial Terms and absence of Inventory/accounting side effects.
 
 ## Step 14 — Sales Invoice
 
