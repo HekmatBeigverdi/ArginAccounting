@@ -110,3 +110,6 @@ export type { CreateSalesOrderInput, SalesOrder } from "./domain/sales-order.ts"
 
 export { createSalesInvoice } from "./domain/sales-invoice.ts";
 export type { CreateSalesInvoiceInput, SalesInvoice } from "./domain/sales-invoice.ts";
+
+export { createSalesReturn } from "./domain/sales-return.ts";
+export type { CreateSalesReturnInput, SalesReturn } from "./domain/sales-return.ts";
