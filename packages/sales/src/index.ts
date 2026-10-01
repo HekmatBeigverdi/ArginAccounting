@@ -129,3 +129,10 @@ export type {
   SalesLifecycleTransition,
   TransitionSalesLifecycleInput,
 } from "./domain/sales-lifecycle.ts";
+
+export { InventorySalesIssueGateway } from "./application/sales-inventory-issue.ts";
+export type {
+  SalesInventoryIssueGateway,
+  SalesStockIssueLineRouting,
+  StageSalesInvoiceInventoryIssueInput,
+} from "./application/sales-inventory-issue.ts";
