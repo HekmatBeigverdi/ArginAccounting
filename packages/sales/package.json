@@ -19,6 +19,8 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
-    "@argin/party": "workspace:*"
+    "@argin/party": "workspace:*",
+    "@argin/inventory": "workspace:*",
+    "@argin/warehouse": "workspace:*"
   }
 }
