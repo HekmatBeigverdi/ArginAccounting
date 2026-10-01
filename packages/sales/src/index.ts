@@ -136,3 +136,10 @@ export type {
   SalesStockIssueLineRouting,
   StageSalesInvoiceInventoryIssueInput,
 } from "./application/sales-inventory-issue.ts";
+
+export { InventorySalesReturnReceiptGateway } from "./application/sales-inventory-return-receipt.ts";
+export type {
+  SalesInventoryReturnReceiptGateway,
+  SalesStockReturnReceiptLineRouting,
+  StageSalesReturnInventoryReceiptInput,
+} from "./application/sales-inventory-return-receipt.ts";
