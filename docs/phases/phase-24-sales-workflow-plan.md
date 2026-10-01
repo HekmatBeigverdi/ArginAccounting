@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–19 are complete. Steps 20–30 are not started.
+Steps 1–20 are complete. Steps 21–30 are not started.
 
 ## Governance
 
@@ -136,7 +136,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 17 | Lifecycle, Status & Approval | Completed |
 | 18 | Stock Sales -> Inventory Issue Integration | Completed |
 | 19 | Sales Return -> Inventory Receipt Integration | Completed |
-| 20 | Selling Price vs Inventory Cost/COGS Boundary | Not started |
+| 20 | Selling Price vs Inventory Cost/COGS Boundary | Completed |
 | 21 | Sales Fulfillment & Matching | Not started |
 | 22 | Idempotency, Replay Safety & Payload Fingerprint | Not started |
 | 23 | Optimistic Concurrency & Version Control | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 20 — Selling Price vs Inventory Cost/COGS Boundary
+
+- Formalized the commercial-price versus inventory-cost boundary as executable Sales contracts rather than documentation-only guidance.
+- `SalesCommercialAmountFact` is derived exclusively from the immutable Sales Commercial Snapshot and exposes selling quantity/price, discounts, charges, tax and Grand Total without any Inventory Cost or COGS field.
+- `SalesInventoryCostFact` is derived exclusively from a resolved Phase 21 `InventoryValuationEntrySnapshot` of kind `outbound`; Sales invoice prices cannot be supplied as its cost source.
+- Inventory cost lineage must match the durable Sales line identity carried through the Inventory Issue source line. A valuation entry for another line is rejected.
+- Cost facts retain Inventory movement ID, valuation-entry ID, valuation method and revision so Phase 25 can consume authoritative, explainable COGS inputs.
+- Unresolved valuation and non-outbound valuation are explicitly rejected as COGS/cost sources. Sales does not silently substitute zero cost, selling price or another commercial amount.
+- Selling Price and Inventory Cost remain independent even when their numeric values happen to be equal. Their source, ownership and accounting meaning remain distinct.
+- Step 20 does not create accounting entries. Phase 25 will join Sales commercial facts with Inventory valuation facts to produce Revenue/Tax/Receivable and COGS/Inventory Relief.
+- Added focused tests proving source separation, differing selling/cost values, rejection of unresolved/non-outbound valuation and lineage mismatch protection.
 
 ## Step 19 — Sales Return -> Inventory Receipt Integration
 
