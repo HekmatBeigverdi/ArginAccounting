@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–17 are complete. Steps 18–30 are not started.
+Steps 1–18 are complete. Steps 19–30 are not started.
 
 ## Governance
 
@@ -134,7 +134,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 15 | Sales Return | Completed |
 | 16 | Sales Correction | Completed |
 | 17 | Lifecycle, Status & Approval | Completed |
-| 18 | Stock Sales -> Inventory Issue Integration | Not started |
+| 18 | Stock Sales -> Inventory Issue Integration | Completed |
 | 19 | Sales Return -> Inventory Receipt Integration | Not started |
 | 20 | Selling Price vs Inventory Cost/COGS Boundary | Not started |
 | 21 | Sales Fulfillment & Matching | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 18 — Stock Sales -> Inventory Issue Integration
+
+- Added a Sales application gateway that consumes Phase 20's public `InventorySourceDocumentPort`; Sales never writes Inventory documents, movements, ledgers or balance projections directly.
+- Only a `finalized` Sales Invoice with a lifecycle state belonging to that same invoice may stage an Inventory Issue.
+- Only `stock-product` invoice lines are mapped to the Inventory `issue` request. Non-stock products and services are deliberately excluded.
+- Each stock line requires explicit operational routing (Inventory unit + Warehouse reference); routing must match every and only stock line.
+- Durable lineage is preserved: Inventory source system/type/document ID identify the Sales Invoice and each Inventory source line uses the durable Sales line ID.
+- The quantity crossing the boundary is the Sales commercial quantity; selling price, discount, charge, tax, Grand Total and other monetary facts never cross into the Inventory quantity request.
+- Inventory remains authoritative for its own draft lifecycle, approval, confirmation, negative-stock policy, stock ledger, movement identity, concurrency and transaction boundary.
+- Step 18 stages the Issue through the Inventory public contract; it does not bypass Inventory approval/confirmation or directly invoke FIFO/MWA. Phase 21 valuation remains the independent cost authority.
+- Added focused tests proving stock-only mapping, source lineage, finalized-invoice requirement, exact operational routing and the absence of selling-price/tax fields from the Inventory request.
 
 ## Step 17 — Lifecycle, Status & Approval
 
