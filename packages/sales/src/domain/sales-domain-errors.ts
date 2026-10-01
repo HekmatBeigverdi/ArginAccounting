@@ -44,6 +44,9 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   lifecycleTransitionInvalid: "sales.lifecycle_transition_invalid",
   lifecycleTransitionDuplicate: "sales.lifecycle_transition_duplicate",
   lifecycleTimestampInvalid: "sales.lifecycle_timestamp_invalid",
+  inventoryIssueFinalizedInvoiceRequired: "sales.inventory_issue_finalized_invoice_required",
+  inventoryIssueStockLinesRequired: "sales.inventory_issue_stock_lines_required",
+  inventoryIssueRoutingMismatch: "sales.inventory_issue_routing_mismatch",
 } as const);
 
 export type SalesDomainErrorCode =
