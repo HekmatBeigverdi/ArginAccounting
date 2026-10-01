@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–16 are complete. Steps 17–30 are not started.
+Steps 1–17 are complete. Steps 18–30 are not started.
 
 ## Governance
 
@@ -133,7 +133,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 14 | Sales Invoice | Completed |
 | 15 | Sales Return | Completed |
 | 16 | Sales Correction | Completed |
-| 17 | Lifecycle, Status & Approval | Not started |
+| 17 | Lifecycle, Status & Approval | Completed |
 | 18 | Stock Sales -> Inventory Issue Integration | Not started |
 | 19 | Sales Return -> Inventory Receipt Integration | Not started |
 | 20 | Selling Price vs Inventory Cost/COGS Boundary | Not started |
@@ -147,6 +147,19 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 17 — Lifecycle, Status & Approval
+
+- Added a shared persistence-neutral Sales lifecycle state machine for Sales Order, Invoice, Return and Correction.
+- Every Sales document begins in `draft`; the canonical confirmation path is `draft -> submitted -> approved -> finalized`.
+- Supported review paths are explicit: Submitted or Approved documents may be rejected back to Draft; Draft/Submitted/Approved documents may be cancelled.
+- `finalized` and `cancelled` are terminal states. Invalid skips such as Draft -> Approved and mutations after terminal state fail explicitly.
+- Status never changes without an immutable transition fact carrying durable `transitionId`, document identity/type, from/to status, action, actor, timestamp and optional reason.
+- Duplicate transition identity fails explicitly, preparing the lifecycle contract for later replay/idempotency enforcement in Step 22.
+- Approval is represented as an explicit domain transition rather than a UI-only flag. Permission enforcement for who may submit/approve/finalize/cancel remains Step 26.
+- Finalization in Step 17 establishes commercial lifecycle finality only; it does not itself create Inventory movements or accounting postings. Those effects are owned by Steps 18/19/21 and Phase 25.
+- Optimistic version checks are intentionally deferred to Step 23 rather than being mixed into the lifecycle primitive.
+- Added focused tests for the canonical path, rejection, cancellation, invalid transition skips, terminal-state protection, duplicate transition IDs and timestamp validation.
 
 ## Step 16 — Sales Correction
 
