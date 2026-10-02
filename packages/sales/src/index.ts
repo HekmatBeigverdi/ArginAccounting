@@ -188,3 +188,10 @@ export type {
   SalesCompareAndSwapCommand,
   SalesVersionedAggregate,
 } from "./application/sales-concurrency.ts";
+
+export type {
+  SalesDocumentRepository,
+  SalesPersistedDocument,
+  SalesUnitOfWork,
+  SalesUnitOfWorkContext,
+} from "./application/sales-persistence.ts";
