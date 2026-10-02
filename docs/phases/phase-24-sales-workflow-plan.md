@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–22 are complete. Steps 23–30 are not started.
+Steps 1–23 are complete. Steps 24–30 are not started.
 
 ## Governance
 
@@ -139,7 +139,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 20 | Selling Price vs Inventory Cost/COGS Boundary | Completed |
 | 21 | Sales Fulfillment & Matching | Completed |
 | 22 | Idempotency, Replay Safety & Payload Fingerprint | Completed |
-| 23 | Optimistic Concurrency & Version Control | Not started |
+| 23 | Optimistic Concurrency & Version Control | Completed |
 | 24 | SQLite Persistence, Migration & Transaction Boundary | Not started |
 | 25 | Argin Bridge Contracts & Sync Readiness | Not started |
 | 26 | Permissions, Audit & Traceability | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 23 — Optimistic Concurrency & Version Control
+
+- Added persistence-neutral `SalesVersionedAggregate<T>` and compare-and-swap helpers with mandatory positive safe-integer versions.
+- Every new mutable Sales operation is expected to carry `expectedVersion`; a mismatch fails explicitly with `sales.concurrency_conflict` before the mutation callback executes.
+- Successful CAS increments the aggregate version exactly once and leaves the prior immutable value/version unchanged.
+- Added a version-aware Sales lifecycle wrapper so Submit/Approve/Reject/Finalize/Cancel transitions can participate in the same aggregate concurrency model without duplicating lifecycle rules.
+- Replay ordering from Step 22 is now executable: `prepareSalesMutation` performs idempotency/replay resolution first and only checks `expectedVersion` for a genuinely new mutation.
+- Therefore an exact retry of a committed request can replay its original result even if the aggregate has since advanced to a newer version; a new request against a stale version still conflicts.
+- Idempotency and optimistic concurrency remain distinct controls: identity/fingerprint protects retries, while CAS protects concurrent edits/commands.
+- SQLite row-level compare-and-swap persistence (for example `UPDATE ... WHERE version = expectedVersion`) is deferred to Step 24, where repository/UoW transaction semantics are implemented.
+- Added focused tests for successful CAS, stale-write rejection without mutation execution, lifecycle version increments, concurrent lifecycle conflict, invalid versions, exact replay-before-version behavior and stale new-mutation rejection.
 
 ## Step 22 — Idempotency, Replay Safety & Payload Fingerprint
 
