@@ -52,6 +52,12 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   inventoryReturnReceiptRoutingMismatch: "sales.inventory_return_receipt_routing_mismatch",
   inventoryCostResolvedOutboundRequired: "sales.inventory_cost_resolved_outbound_required",
   inventoryCostLineageMismatch: "sales.inventory_cost_lineage_mismatch",
+  fulfillmentOrderRelationMismatch: "sales.fulfillment_order_relation_mismatch",
+  fulfillmentOrderLineMismatch: "sales.fulfillment_order_line_mismatch",
+  fulfillmentOverInvoice: "sales.fulfillment_over_invoice",
+  fulfillmentInvoiceRelationMismatch: "sales.fulfillment_invoice_relation_mismatch",
+  fulfillmentInvoiceLineMismatch: "sales.fulfillment_invoice_line_mismatch",
+  fulfillmentOverReturn: "sales.fulfillment_over_return",
 } as const);
 
 export type SalesDomainErrorCode =
