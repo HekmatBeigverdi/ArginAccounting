@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–21 are complete. Steps 22–30 are not started.
+Steps 1–22 are complete. Steps 23–30 are not started.
 
 ## Governance
 
@@ -138,7 +138,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 19 | Sales Return -> Inventory Receipt Integration | Completed |
 | 20 | Selling Price vs Inventory Cost/COGS Boundary | Completed |
 | 21 | Sales Fulfillment & Matching | Completed |
-| 22 | Idempotency, Replay Safety & Payload Fingerprint | Not started |
+| 22 | Idempotency, Replay Safety & Payload Fingerprint | Completed |
 | 23 | Optimistic Concurrency & Version Control | Not started |
 | 24 | SQLite Persistence, Migration & Transaction Boundary | Not started |
 | 25 | Argin Bridge Contracts & Sync Readiness | Not started |
@@ -147,6 +147,18 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 22 — Idempotency, Replay Safety & Payload Fingerprint
+
+- Added a normalized `SalesMutationContext` carrying Company, Branch, durable `requestId`, durable `operationId`, normalized operation name, `payloadFingerprint`, actor and canonical UTC occurrence time.
+- Added dual-key replay lookup contracts. Both request identity and operation identity are checked independently within the Company boundary so accidental cross-linking cannot silently replay the wrong mutation.
+- A mutation with no prior identity is classified as `execute`. An exact committed retry with matching request ID, operation ID, operation and payload fingerprint is classified as `replay`.
+- Reuse of either durable identity with a different peer identity, operation name or payload fingerprint fails explicitly with `sales.idempotency_conflict`.
+- Added append-oriented `SalesIdempotencyRecord` contracts with outcome kind/ID, optional version/status and exact committed `resultJson`. Replay returns this exact stored response rather than reloading later aggregate state.
+- Exact replay semantics are intentionally evaluated before future optimistic-version checks. Step 23 adds aggregate version/CAS rules; idempotency does not replace concurrency control.
+- The same request/operation/fingerprint identities are deliberately suitable for Step 25 Argin Bridge envelopes so local replay truth and future synchronization do not invent competing mutation identities.
+- Repository persistence and atomic transaction wiring are deferred to Step 24; this step freezes the persistence-neutral semantics and repository ports.
+- Added focused tests for first execution, exact replay, changed-payload conflict, request/operation identity reuse conflicts, crossed identities, canonical UTC normalization and malformed stored result protection.
 
 ## Step 21 — Sales Fulfillment & Matching
 
