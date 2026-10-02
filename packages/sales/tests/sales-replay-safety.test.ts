@@ -22,7 +22,7 @@ const context = (overrides: Partial<ReturnType<typeof createSalesMutationContext
     ...overrides,
   });
 
-const record = (overrides: Partial<SalesIdempotencyRecord> = {}) =>
+const record = () =>
   createSalesIdempotencyRecord({
     context: context(),
     outcomeKind: "sales-document",
@@ -31,9 +31,7 @@ const record = (overrides: Partial<SalesIdempotencyRecord> = {}) =>
     outcomeStatus: "draft",
     resultJson: JSON.stringify({ documentId: "inv-1", status: "draft", version: 1 }),
     recordedAt: "2026-10-02T09:00:01+03:30",
-    ...("context" in overrides ? { context: overrides.context as never } : {}),
-    ...Object.fromEntries(Object.entries(overrides).filter(([key]) => key !== "context")),
-  } as never);
+  });
 
 function reader(records: readonly SalesIdempotencyRecord[]) {
   return {
