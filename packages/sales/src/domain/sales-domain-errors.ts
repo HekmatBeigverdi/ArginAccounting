@@ -58,6 +58,8 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   fulfillmentInvoiceRelationMismatch: "sales.fulfillment_invoice_relation_mismatch",
   fulfillmentInvoiceLineMismatch: "sales.fulfillment_invoice_line_mismatch",
   fulfillmentOverReturn: "sales.fulfillment_over_return",
+  idempotencyConflict: "sales.idempotency_conflict",
+  idempotencyResultInvalid: "sales.idempotency_result_invalid",
 } as const);
 
 export type SalesDomainErrorCode =
