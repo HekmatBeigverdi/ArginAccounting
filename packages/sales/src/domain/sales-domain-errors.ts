@@ -62,6 +62,7 @@ export const SALES_DOMAIN_ERROR_CODES = Object.freeze({
   idempotencyResultInvalid: "sales.idempotency_result_invalid",
   versionInvalid: "sales.version_invalid",
   concurrencyConflict: "sales.concurrency_conflict",
+  unauthorized: "sales.unauthorized",
 } as const);
 
 export type SalesDomainErrorCode =
