@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–24 are complete. Steps 25–30 are not started.
+Steps 1–25 are complete. Steps 26–30 are not started.
 
 ## Governance
 
@@ -141,12 +141,25 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 22 | Idempotency, Replay Safety & Payload Fingerprint | Completed |
 | 23 | Optimistic Concurrency & Version Control | Completed |
 | 24 | SQLite Persistence, Migration & Transaction Boundary | Completed |
-| 25 | Argin Bridge Contracts & Sync Readiness | Not started |
+| 25 | Argin Bridge Contracts & Sync Readiness | Completed |
 | 26 | Permissions, Audit & Traceability | Not started |
 | 27 | Persian RTL Sales Workspace | Not started |
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 25 — Argin Bridge Contracts & Sync Readiness
+
+- Added versioned wire-neutral Sales synchronization contract `SALES_SYNC_CONTRACT_VERSION = 1` with explicit `upsert` and `tombstone` change kinds.
+- Sales document upserts preserve durable Company/Branch/document/line identity, display number, complete validated commercial snapshot, lifecycle status and the local optimistic aggregate version.
+- Bridge metadata reuses the exact Step 22 `requestId`, `operationId`, operation name and `payloadFingerprint`; transport must not invent a parallel idempotency key.
+- Envelopes carry canonical change time, actor, source system/instance, optional server revision and de-duplicated external references.
+- Dependencies are derived from authoritative Sales facts: Branch, Fiscal Year, Customer Party, Product/Service masters and related/source Sales document/line identities.
+- Synchronization tombstones are distinct from Sales lifecycle state and are permitted only for a last-known Draft. Submitted/approved/finalized/cancelled business history is not converted into deletion.
+- Inventory Issue/Receipt and Inventory Valuation remain owned by their existing Inventory Bridge contracts; Sales sync does not serialize Inventory cost as Selling Price or duplicate Inventory authority.
+- Remote transport, acknowledgements, retry scheduling, server conflict resolution/merge and live PostgreSQL/.NET synchronization remain outside Phase 24 and belong to the later Argin Bridge implementation phase.
+- Added focused tests for mutation identity preservation, local version, dependency extraction, scope/reference mismatch, external-reference uniqueness, tombstone restrictions and timestamp ordering.
+- Added `docs/architecture/sales-argin-bridge-contract.md` as the explicit Sales synchronization boundary.
 
 ## Step 24 — SQLite Persistence, Migration & Transaction Boundary
 
