@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–23 are complete. Steps 24–30 are not started.
+Steps 1–24 are complete. Steps 25–30 are not started.
 
 ## Governance
 
@@ -140,13 +140,27 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 21 | Sales Fulfillment & Matching | Completed |
 | 22 | Idempotency, Replay Safety & Payload Fingerprint | Completed |
 | 23 | Optimistic Concurrency & Version Control | Completed |
-| 24 | SQLite Persistence, Migration & Transaction Boundary | Not started |
+| 24 | SQLite Persistence, Migration & Transaction Boundary | Completed |
 | 25 | Argin Bridge Contracts & Sync Readiness | Not started |
 | 26 | Permissions, Audit & Traceability | Not started |
 | 27 | Persian RTL Sales Workspace | Not started |
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 24 — SQLite Persistence, Migration & Transaction Boundary
+
+- Added persistence-neutral Sales repository and Unit-of-Work ports for durable document/lifecycle state and idempotency records.
+- Added `@argin/sales-tauri` as the desktop SQLite adapter package, following the existing Purchase/Inventory adapter separation.
+- Added migration `0035_sales_workflow.sql` and registered migration version 35 in the Tauri desktop migration list.
+- `sales_documents` persists durable Sales aggregate identity, scope, customer, type/status, immutable document JSON, aggregate version, timestamps and sync-origin/change metadata.
+- `sales_document_lifecycle` persists append-only transition identity/history with a Company-scoped unique transition ID and document FK.
+- `sales_idempotency` persists request ID, operation ID, operation name, payload fingerprint and exact committed result JSON; both request and operation identities are independently unique within Company scope.
+- SQLite document updates use real compare-and-swap: `UPDATE ... WHERE company_id=? AND id=? AND version=?`. A zero-row update becomes `sales.concurrency_conflict`.
+- Repository updates require the supplied next aggregate version to equal `expectedVersion + 1`; successful writes therefore advance version exactly once.
+- `SqliteSalesUnitOfWork` binds Sales document and idempotency repositories to the same pinned DatabaseSession. The production `@argin/database-tauri` transaction implementation supplies `BEGIN IMMEDIATE / COMMIT / ROLLBACK`, allowing mutation state and replay truth to commit atomically.
+- Added adapter tests for SQL CAS, zero-row conflict, lifecycle append, exact idempotency envelope persistence and single-session UoW; added a desktop migration contract test for tables, JSON constraints, operation uniqueness and migration registration.
+- Step 24 intentionally persists the current Sales aggregate/lifecycle/replay truth only. Argin Bridge envelopes/sync contracts remain Step 25, permissions/audit Step 26 and UI Step 27.
 
 ## Step 23 — Optimistic Concurrency & Version Control
 
