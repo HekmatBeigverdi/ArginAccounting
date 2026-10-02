@@ -34,3 +34,51 @@ test("only a last-known draft may become a synchronization tombstone",()=>{
 test("changedAt cannot precede committed state or mutation occurrence",()=>{
   assert.throws(()=>createSalesDocumentSyncUpsertEnvelope({...base,changedAt:"2026-10-02T09:59:00Z",reference:{companyId:"co",branchId:"b",documentId:"inv",documentNumber:"SI-1"},state:{document:document(),lifecycle:createSalesLifecycle("inv","sales-invoice"),version:1,createdAt:"2026-10-02T09:00:00Z",updatedAt:"2026-10-02T10:02:00Z"}}),(e:unknown)=>e instanceof SalesSyncContractError&&e.code==="sales.sync.timestamp-invalid");
 });
+
+for (const adjustmentKind of ["discounts", "charges"] as const) {
+  test(`upsert preserves saved ${adjustmentKind} in its snapshot`, () => {
+    const snapshot = createSalesDocument({
+      ...document(),
+      ...document().scope,
+      lines: [
+        {
+          lineId: "l1",
+          position: 1,
+          lineKind: "stock-product",
+          productId: "prod",
+          commercialTerms: {
+            quantity: 2,
+            currency: "IRR",
+            unitPrice: 10000,
+            priceOrigin: "price-list",
+            priceListId: "prices",
+            priceListItemId: "price-item",
+            priceRevisionId: "revision",
+            priceRevision: 3,
+            [adjustmentKind]: [
+              { id: "adjustment-1", mode: "amount", value: 500, reason: "Adjustment" },
+              { id: "adjustment-2", mode: "percent", value: 1000 },
+            ],
+            taxes: [{ taxId: "tax", rateBasisPoints: 900, taxCode: "VAT" }],
+          },
+        },
+        { lineId: "l2", position: 2, lineKind: "service", productId: "service" },
+      ],
+    });
+
+    const envelope = createSalesDocumentSyncUpsertEnvelope({
+      ...base,
+      reference: { companyId: "co", branchId: "b", documentId: "inv", documentNumber: "SI-1" },
+      state: {
+        document: snapshot,
+        lifecycle: createSalesLifecycle("inv", "sales-invoice"),
+        version: 2,
+        createdAt: "2026-10-02T09:00:00Z",
+        updatedAt: "2026-10-02T10:02:00Z",
+      },
+    });
+
+    assert.deepEqual(envelope.snapshot, snapshot);
+    assert.ok(Object.isFrozen(envelope.snapshot.lines[0]?.commercialTerms));
+  });
+}
