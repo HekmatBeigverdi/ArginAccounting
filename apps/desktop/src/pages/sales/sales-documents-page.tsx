@@ -2,7 +2,7 @@ import { useEffect,useMemo,useState } from "react";
 import type { SalesDocumentSnapshot,SalesDocumentStatus } from "@argin/sales";
 import { salesPermissions } from "@argin/sales";
 import { getDesktopDatabase } from "@argin/database-tauri";
-import { SqliteSalesDocumentRepository } from "@argin/sales-tauri";
+import "@argin/sales-tauri";
 import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Page } from "../../components/layout";
