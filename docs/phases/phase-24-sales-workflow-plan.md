@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–25 are complete. Steps 26–30 are not started.
+Steps 1–26 are complete. Steps 27–30 are not started.
 
 ## Governance
 
@@ -142,11 +142,25 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 23 | Optimistic Concurrency & Version Control | Completed |
 | 24 | SQLite Persistence, Migration & Transaction Boundary | Completed |
 | 25 | Argin Bridge Contracts & Sync Readiness | Completed |
-| 26 | Permissions, Audit & Traceability | Not started |
+| 26 | Permissions, Audit & Traceability | Completed |
 | 27 | Persian RTL Sales Workspace | Not started |
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 26 — Permissions, Audit & Traceability
+
+- Added stable Sales permission keys for view/create/edit, lifecycle submit/approve/reject/finalize/cancel, Inventory issue/return-receipt staging and report export.
+- Added persistence-neutral Sales authorization and audit contracts so shared Security/Audit remain the infrastructure owners; Sales does not create a parallel user/role/audit subsystem.
+- Authorization is evaluated before mutation execution using Actor + Company + Branch + request ID + operation ID + correlation ID.
+- Added `SecuredSalesMutationService` as the Sales mutation security boundary. Authorization failure blocks the business callback and does not emit a successful-mutation Audit event.
+- The secured boundary validates both preloaded and returned aggregate scope, preventing authorization for one Company/Branch/document from being reused to mutate another.
+- Successful Audit facts preserve actor, Company/Branch/document identity, request/operation/correlation identity, occurred-at timestamp, before/after lifecycle status, before/after aggregate version, reason and operation/payload fingerprint metadata.
+- Correlation uses the caller-supplied correlation ID when present and deterministically falls back to request ID.
+- Replay identity from Step 22, aggregate version from Steps 23–24, Bridge metadata from Step 25 and Audit trace now share one durable mutation identity chain.
+- Inventory remains responsible for authorization of Inventory-owned Issue/Receipt effects; Sales permission to stage an integration request does not bypass Inventory security.
+- Added focused tests for authorization-before-execution, denial behavior, complete audit trace, Company/Branch/document scope protection and correlation fallback.
+- Added `docs/security/sales-security-audit.md` documenting the ownership and traceability boundary.
 
 ## Step 25 — Argin Bridge Contracts & Sync Readiness
 
