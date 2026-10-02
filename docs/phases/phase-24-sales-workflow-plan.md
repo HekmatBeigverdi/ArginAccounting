@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–26 are complete. Steps 27–30 are not started.
+Steps 1–27 are complete. Steps 28–30 are not started.
 
 ## Governance
 
@@ -143,10 +143,23 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 24 | SQLite Persistence, Migration & Transaction Boundary | Completed |
 | 25 | Argin Bridge Contracts & Sync Readiness | Completed |
 | 26 | Permissions, Audit & Traceability | Completed |
-| 27 | Persian RTL Sales Workspace | Not started |
+| 27 | Persian RTL Sales Workspace | Completed |
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 27 — Persian RTL Sales Workspace
+
+- Added permission-scoped Desktop route `/sales/documents` and navigation entry `اسناد فروش` under the `فروش` group.
+- Added Persian RTL Sales list/detail workspace for Sales Order, Sales Invoice, Sales Return and Sales Correction.
+- Workspace follows the established Argin desktop layout: fixed-height outer workspace with independent inner scrolling for the document list and detail panel, avoiding whole-page background scrolling during normal desktop use.
+- Added Jalali display through `fa-IR-u-ca-persian`; durable IDs and numeric/commercial cells retain explicit LTR surfaces where appropriate.
+- Document list exposes business date, document number, type and customer; detail exposes customer, line count, commercial total, product/service lines, quantity, unit selling price, discounts, taxes and durable source/related-document lineage.
+- Added permission-aware surfaces for create/edit/submit/approve/finalize/cancel using the stable Sales permission vocabulary from Step 26.
+- Added explicit Persian labels for Draft/Submitted/Approved/Finalized/Cancelled and all four Sales document types.
+- Desktop now declares `@argin/sales` and `@argin/sales-tauri` workspace dependencies.
+- Added `apps/desktop/tests/sales-workspace-contract.test.ts` to freeze route/navigation, RTL/Jalali conventions, inner-scroll desktop layout, permission-aware lifecycle actions, commercial/lineage surfaces and Desktop dependency registration.
+- This step establishes the operational Sales workspace surface. Print/PDF/import/export remain Step 28, broad automated/E2E validation remains Step 29.
 
 ## Step 26 — Permissions, Audit & Traceability
 
