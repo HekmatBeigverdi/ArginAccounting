@@ -152,3 +152,12 @@ export type {
   SalesCommercialAmountFact,
   SalesInventoryCostFact,
 } from "./domain/sales-cost-boundary.ts";
+
+export {
+  matchSalesOrderInvoices,
+  matchSalesInvoiceReturns,
+} from "./domain/sales-fulfillment.ts";
+export type {
+  SalesDocumentFulfillment,
+  SalesLineFulfillment,
+} from "./domain/sales-fulfillment.ts";
