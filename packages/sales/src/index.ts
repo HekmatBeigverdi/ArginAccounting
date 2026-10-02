@@ -195,3 +195,20 @@ export type {
   SalesUnitOfWork,
   SalesUnitOfWorkContext,
 } from "./application/sales-persistence.ts";
+
+export {
+  SALES_SYNC_CHANGE_KINDS,
+  SALES_SYNC_CONTRACT_VERSION,
+  SalesSyncContractError,
+  createSalesDocumentSyncTombstoneEnvelope,
+  createSalesDocumentSyncUpsertEnvelope,
+} from "./application/contracts/sales-sync.ts";
+export type {
+  SalesDocumentSyncEnvelope,
+  SalesDocumentSyncTombstoneEnvelope,
+  SalesDocumentSyncUpsertEnvelope,
+  SalesSyncDependency,
+  SalesSyncDocumentReference,
+  SalesSyncExternalReference,
+  SalesSyncOrigin,
+} from "./application/contracts/sales-sync.ts";
