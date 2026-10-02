@@ -181,6 +181,7 @@ export {
   applySalesCompareAndSwap,
   assertSalesExpectedVersion,
   createSalesVersionedAggregate,
+  prepareSalesMutation,
   transitionSalesLifecycleWithVersion,
 } from "./application/sales-concurrency.ts";
 export type {
