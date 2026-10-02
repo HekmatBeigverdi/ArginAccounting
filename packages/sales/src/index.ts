@@ -212,3 +212,13 @@ export type {
   SalesSyncExternalReference,
   SalesSyncOrigin,
 } from "./application/contracts/sales-sync.ts";
+
+export { salesCorrelationId, salesPermissions } from "./application/contracts/sales-security.ts";
+export type {
+  SalesAuditAction, SalesAuditEvent, SalesAuditSink, SalesAuthorizationContext,
+  SalesAuthorizationPolicy, SalesPermission, SalesSecurityContext,
+} from "./application/contracts/sales-security.ts";
+export { SecuredSalesMutationService } from "./application/secured-sales-mutation-service.ts";
+export type {
+  SalesSecuredMutationInput, SecuredSalesMutationDependencies,
+} from "./application/secured-sales-mutation-service.ts";
