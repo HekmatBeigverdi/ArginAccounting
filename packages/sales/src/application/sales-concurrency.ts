@@ -1,5 +1,11 @@
 import { SALES_DOMAIN_ERROR_CODES, SalesDomainError } from "../domain/sales-domain-errors.ts";
 import {
+  decideSalesReplay,
+  type SalesIdempotencyReader,
+  type SalesMutationContext,
+  type SalesReplayDecision,
+} from "./sales-replay-safety.ts";
+import {
   transitionSalesLifecycle,
   type SalesLifecycleState,
   type TransitionSalesLifecycleInput,
@@ -73,4 +79,16 @@ export function transitionSalesLifecycleWithVersion(
     { expectedVersion: input.expectedVersion },
     (state) => transitionSalesLifecycle(state, input),
   );
+}
+
+export async function prepareSalesMutation(
+  reader: SalesIdempotencyReader,
+  context: SalesMutationContext,
+  currentVersion: number,
+  expectedVersion: number,
+): Promise<SalesReplayDecision> {
+  const replay = await decideSalesReplay(reader, context);
+  if (replay.kind === "replay") return replay;
+  assertSalesExpectedVersion(currentVersion, expectedVersion);
+  return replay;
 }
