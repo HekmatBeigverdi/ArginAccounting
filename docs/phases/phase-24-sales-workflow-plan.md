@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–20 are complete. Steps 21–30 are not started.
+Steps 1–21 are complete. Steps 22–30 are not started.
 
 ## Governance
 
@@ -137,7 +137,7 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 18 | Stock Sales -> Inventory Issue Integration | Completed |
 | 19 | Sales Return -> Inventory Receipt Integration | Completed |
 | 20 | Selling Price vs Inventory Cost/COGS Boundary | Completed |
-| 21 | Sales Fulfillment & Matching | Not started |
+| 21 | Sales Fulfillment & Matching | Completed |
 | 22 | Idempotency, Replay Safety & Payload Fingerprint | Not started |
 | 23 | Optimistic Concurrency & Version Control | Not started |
 | 24 | SQLite Persistence, Migration & Transaction Boundary | Not started |
@@ -147,6 +147,19 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 28 | Import/Export, Print/PDF & Operational Trace | Not started |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 21 — Sales Fulfillment & Matching
+
+- Added deterministic line-level quantity matching for `Sales Order -> Sales Invoice` and `Sales Invoice -> Sales Return`.
+- Matching is based on durable Sales document/line identity, not document numbers, descriptions, product-name text or UI position.
+- Order fulfillment aggregates quantities across all supplied related invoices per source order line and exposes matched, remaining and complete state.
+- Cumulative invoiced quantity above the originating order-line quantity fails explicitly with `sales.fulfillment_over_invoice`.
+- Return matching aggregates quantities across all supplied Sales Return documents per originating invoice line and exposes remaining returnable quantity.
+- Cumulative returned quantity above the originating invoice-line quantity fails explicitly with `sales.fulfillment_over_return`; splitting an excessive return across multiple return documents cannot bypass the control.
+- Related-document identity, source-line identity, Product identity and line classification must remain consistent across each matching chain.
+- Step 21 is a deterministic domain calculation over supplied immutable documents; persistence/query ownership for discovering the complete related-document set remains with later application/persistence steps.
+- Inventory Issue/Receipt creation remains owned by Steps 18/19. Matching does not derive Inventory Cost, Selling Price or accounting postings.
+- Added focused tests for partial/complete fulfillment, cumulative over-invoice, bad source identity, partial return capacity and cumulative over-return.
 
 ## Step 20 — Selling Price vs Inventory Cost/COGS Boundary
 
