@@ -176,3 +176,14 @@ export type {
   SalesMutationContext,
   SalesReplayDecision,
 } from "./application/sales-replay-safety.ts";
+
+export {
+  applySalesCompareAndSwap,
+  assertSalesExpectedVersion,
+  createSalesVersionedAggregate,
+  transitionSalesLifecycleWithVersion,
+} from "./application/sales-concurrency.ts";
+export type {
+  SalesCompareAndSwapCommand,
+  SalesVersionedAggregate,
+} from "./application/sales-concurrency.ts";
