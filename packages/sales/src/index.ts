@@ -161,3 +161,18 @@ export type {
   SalesDocumentFulfillment,
   SalesLineFulfillment,
 } from "./domain/sales-fulfillment.ts";
+
+export {
+  createSalesIdempotencyRecord,
+  createSalesMutationContext,
+  decideSalesReplay,
+  replaySalesResult,
+} from "./application/sales-replay-safety.ts";
+export type {
+  SalesIdempotencyOutcomeKind,
+  SalesIdempotencyReader,
+  SalesIdempotencyRecord,
+  SalesIdempotencyWriter,
+  SalesMutationContext,
+  SalesReplayDecision,
+} from "./application/sales-replay-safety.ts";
