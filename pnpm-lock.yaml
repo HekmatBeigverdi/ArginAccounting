@@ -244,6 +244,12 @@ importers:
       '@argin/purchase-tauri':
         specifier: workspace:*
         version: link:../../packages/purchase-tauri
+      '@argin/sales':
+        specifier: workspace:*
+        version: link:../../packages/sales
+      '@argin/sales-tauri':
+        specifier: workspace:*
+        version: link:../../packages/sales-tauri
       '@argin/security':
         specifier: workspace:*
         version: link:../../packages/security
