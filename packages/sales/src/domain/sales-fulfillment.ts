@@ -26,9 +26,6 @@ function q(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return fail(SALES_DOMAIN_ERROR_CODES.salesQuantityInvalid, "fulfillment.quantity");
   return value;
 }
-function sum(values: readonly number[]): number {
-  return values.reduce((total, value) => total + value, 0);
-}
 function normalized(value: number): number {
   return Number(value.toPrecision(15));
 }

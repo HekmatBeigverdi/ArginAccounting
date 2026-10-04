@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import type { SalesDocumentSnapshot, SalesDocumentStatus } from "@argin/sales";
-import { salesPermissions } from "@argin/sales";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { SalesDocumentSnapshot, SalesDocumentStatus, SalesLifecycleAction } from "@argin/sales";
+import { SalesDomainError, calculateSalesLineTotals, salesPermissions } from "@argin/sales";
 import { getDesktopDatabase } from "@argin/database-tauri";
-import "@argin/sales-tauri";
+import { FiscalValidationError } from "@argin/fiscal";
+import { createSalesWorkspaceServices, type SalesWorkspaceDocument } from "../../composition/sales/create-sales-workspace-services";
+import { SalesActionDialog } from "./sales-action-dialog";
+import { SalesDocumentForm } from "./sales-document-form";
 import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Page } from "../../components/layout";
@@ -40,41 +43,70 @@ function calculateLineTotal(line: SalesDocumentSnapshot["lines"][number]) {
   const terms = line.commercialTerms;
   if (!terms) return 0;
 
-  const grossAmount = terms.quantity * terms.unitPrice;
-  const discountTotal = terms.discounts.reduce(
-    (total, discount) =>
-      total +
-      (discount.mode === "amount"
-        ? discount.value
-        : Math.round((grossAmount * discount.value) / 10000)),
-    0,
-  );
-  const netAmount = grossAmount - discountTotal;
-  const chargeTotal = terms.charges.reduce(
-    (total, charge) =>
-      total +
-      (charge.mode === "amount"
-        ? charge.value
-        : Math.round((netAmount * charge.value) / 10000)),
-    0,
-  );
-  const taxableAmount = netAmount + chargeTotal;
-  const taxTotal = terms.taxes.reduce(
-    (total, tax) =>
-      total + Math.round((taxableAmount * tax.rateBasisPoints) / 10000),
-    0,
-  );
-
-  return taxableAmount + taxTotal;
+  return calculateSalesLineTotals(terms).grandTotal;
 }
 
+const ACTION_LABELS: Record<SalesLifecycleAction, string> = {
+  submit: "ارسال برای تأیید", approve: "تأیید", finalize: "قطعی‌کردن", cancel: "لغو سند", reject: "برگشت به پیش‌نویس",
+};
+const ACTION_MESSAGES: Record<SalesLifecycleAction, string> = {
+  submit: "سند برای تأیید ارسال شد.", approve: "سند فروش تأیید شد.", finalize: "سند فروش قطعی شد.",
+  cancel: "سند فروش لغو شد.", reject: "سند به پیش‌نویس برگشت داده شد.",
+};
+
 export function SalesDocumentsPage() {
+  const active = useActiveContext();
+  const { session } = useAuthSession();
+  return <SalesDocumentsWorkspace key={JSON.stringify([active.companyId, active.branchId, active.fiscalYearId, session?.user.id])} />;
+}
+
+function SalesDocumentsWorkspace() {
   const activeContext = useActiveContext();
   const { session } = useAuthSession();
-  const [documents, setDocuments] = useState<readonly SalesDocumentSnapshot[]>([]);
+  const [documents, setDocuments] = useState<readonly SalesWorkspaceDocument[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [newDocumentScope, setNewDocumentScope] = useState<string | null>(null);
+  const [editingDocument, setEditingDocument] = useState<SalesWorkspaceDocument | null>(null);
+  const [pendingAction, setPendingAction] = useState<"cancel" | "reject" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const mutationInFlight = useRef(false);
+  const mutationRequests = useRef(new Map<string, string>());
+  const [message, setMessage] = useState("");
+  const [refreshRevision, setRefreshRevision] = useState(0);
+  const scopeKey = JSON.stringify([activeContext.companyId, activeContext.branchId, activeContext.fiscalYearId, session?.user.id]);
+  const currentScope = useRef(scopeKey);
+  currentScope.current = scopeKey;
+
+  function openNewDocument() {
+    setError("");
+    setMessage("");
+    if (!activeContext.companyId || !activeContext.branchId || !activeContext.fiscalYearId) {
+      setError("شرکت، شعبه و سال مالی فعال را انتخاب کنید.");
+      return;
+    }
+    setEditingDocument(null);
+    setNewDocumentScope(scopeKey);
+  }
+
+  function documentCreated(document: SalesDocumentSnapshot) {
+    if (currentScope.current !== scopeKey) return;
+    setNewDocumentScope(null);
+    setDocuments(current => {
+      const previous = current.find(value => value.documentId === document.documentId);
+      const saved: SalesWorkspaceDocument = {
+        ...document, status: "draft", version: (previous?.version ?? 0) + 1,
+        lifecycle: previous?.lifecycle ?? { documentId: document.documentId, documentType: document.documentType, status: "draft", transitions: [] },
+      };
+      return [saved, ...current.filter(value => value.documentId !== document.documentId)];
+    });
+    setSelectedId(document.documentId);
+    setSearch("");
+    setMessage(editingDocument ? "تغییرات سند فروش ذخیره شد." : "پیش‌نویس سند فروش ایجاد شد.");
+    setEditingDocument(null);
+    setRefreshRevision(value => value + 1);
+  }
 
   const hasPermission = (permission: string) =>
     Boolean(
@@ -86,19 +118,14 @@ export function SalesDocumentsPage() {
     let cancelled = false;
 
     async function loadDocuments() {
-      if (!activeContext.companyId || !session) return;
+      if (!activeContext.companyId || !activeContext.branchId || !activeContext.fiscalYearId || !session) return;
 
       try {
         const database = await getDesktopDatabase();
-        const rows = await database.query<{ document_json: string }>(
-          "SELECT document_json FROM sales_documents WHERE company_id=? ORDER BY business_date DESC,updated_at DESC",
-          [activeContext.companyId],
-        );
+        const services = createSalesWorkspaceServices(database, session.user);
+        const loadedDocuments = await services.list(activeContext.companyId, activeContext.branchId, activeContext.fiscalYearId);
         if (cancelled) return;
 
-        const loadedDocuments = rows.map(
-          (row) => JSON.parse(row.document_json) as SalesDocumentSnapshot,
-        );
         setDocuments(loadedDocuments);
         setSelectedId((currentId) =>
           currentId && loadedDocuments.some((document) => document.documentId === currentId)
@@ -120,7 +147,7 @@ export function SalesDocumentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeContext.companyId, session]);
+  }, [activeContext.companyId, activeContext.branchId, activeContext.fiscalYearId, session, refreshRevision]);
 
   const filteredDocuments = useMemo(() => {
     const query = search.trim().toLocaleLowerCase("fa");
@@ -144,6 +171,66 @@ export function SalesDocumentsPage() {
       0,
     ) ?? 0;
 
+  function canAct(action: SalesLifecycleAction | "edit") {
+    if (busy || !selectedDocument || !hasPermission(salesPermissions[action])) return false;
+    if (!session?.user.permissions.includes("system.full-access") && !session?.user.branchIds.includes(activeContext.branchId)) return false;
+    const status = selectedDocument.status;
+    if (action === "edit" || action === "submit") return status === "draft";
+    if (action === "approve") return status === "submitted";
+    if (action === "finalize") return status === "approved";
+    if (action === "reject") return status === "submitted" || status === "approved";
+    return status === "draft" || status === "submitted" || status === "approved";
+  }
+
+  function openEdit() {
+    if (!canAct("edit") || !selectedDocument) return;
+    setError("");
+    setMessage("");
+    setEditingDocument(selectedDocument);
+    setNewDocumentScope(scopeKey);
+  }
+
+  async function runAction(action: SalesLifecycleAction, reason = "") {
+    if (!selectedDocument || !session || mutationInFlight.current || !canAct(action)) return;
+    const target = selectedDocument;
+    mutationInFlight.current = true;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    const fingerprint = JSON.stringify([target.documentId, target.version, action, reason]);
+    const submissionId = mutationRequests.current.get(fingerprint) ?? crypto.randomUUID();
+    mutationRequests.current.set(fingerprint, submissionId);
+    try {
+      const services = createSalesWorkspaceServices(await getDesktopDatabase(), session.user);
+      const result = await services.transition({
+        ...target.scope, documentId: target.documentId, expectedVersion: target.version,
+        submissionId, action, reason,
+      });
+      if (currentScope.current !== scopeKey) return;
+      setDocuments(current => current.map(value => value.documentId === target.documentId
+        ? { ...result.document, status: result.lifecycle.status, version: result.version, lifecycle: result.lifecycle }
+        : value));
+      setPendingAction(null);
+      setMessage(ACTION_MESSAGES[action]);
+    } catch (error) {
+      if (currentScope.current !== scopeKey) return;
+      if (error instanceof SalesDomainError && error.code === "sales.concurrency_conflict") {
+        setError("سند هم‌زمان تغییر کرده است؛ نسخهٔ جدید بارگذاری شد. دوباره عملیات را بررسی کنید.");
+        setPendingAction(null);
+        setRefreshRevision(value => value + 1);
+      } else if (error instanceof SalesDomainError && error.code === "sales.lifecycle_transition_invalid") {
+        setError("این عملیات در وضعیت فعلی سند مجاز نیست.");
+      } else if (error instanceof FiscalValidationError) {
+        setError(error.issues.map(issue => issue.message).join(" "));
+      } else {
+        setError(error instanceof Error ? error.message : "عملیات سند فروش ناموفق بود.");
+      }
+    } finally {
+      mutationInFlight.current = false;
+      setBusy(false);
+    }
+  }
+
   return (
     <Page>
       <div className="sales-workspace" dir="rtl">
@@ -154,12 +241,32 @@ export function SalesDocumentsPage() {
             placeholder="جست‌وجو در شماره سند، مشتری یا نوع سند"
             aria-label="جست‌وجوی اسناد فروش"
           />
-          <button className="primary" disabled={!hasPermission(salesPermissions.create)}>
+          <button className="primary" disabled={busy || !hasPermission(salesPermissions.create)} onClick={openNewDocument}>
             سند فروش جدید
           </button>
         </header>
 
         {error && <Feedback tone="error">{error}</Feedback>}
+        {message && <Feedback tone="success">{message}</Feedback>}
+        {newDocumentScope === scopeKey && session && (
+          <SalesDocumentForm
+            key={scopeKey + (editingDocument?.documentId ?? "new")}
+            initialDocument={editingDocument ?? undefined}
+            expectedVersion={editingDocument?.version}
+            actor={session.user}
+            companyId={activeContext.companyId}
+            branchId={activeContext.branchId}
+            fiscalYearId={activeContext.fiscalYearId}
+            onClose={() => { setNewDocumentScope(null); setEditingDocument(null); setRefreshRevision(value => value + 1); }}
+            onCreated={documentCreated}
+          />
+        )}
+
+        {pendingAction && (
+          <SalesActionDialog title={ACTION_LABELS[pendingAction]} busy={busy} error={error}
+            onConfirm={reason => void runAction(pendingAction, reason)}
+            onClose={() => { setPendingAction(null); setError(""); }} />
+        )}
 
         <div className="sales-workspace__grid">
           <section className="sales-list" aria-label="فهرست اسناد فروش">
@@ -175,6 +282,7 @@ export function SalesDocumentsPage() {
                 return (
                   <button
                     key={document.documentId}
+                    disabled={busy}
                     className={"sales-list__row " + (isSelected ? "is-active" : "")}
                     onClick={() => setSelectedId(document.documentId)}
                   >
@@ -186,7 +294,7 @@ export function SalesDocumentsPage() {
                       </small>
                     </span>
                     <span className={"status status--" + (isSelected ? "active" : "normal")}>
-                      {STATUS_LABELS.draft}
+                      {STATUS_LABELS[document.status]}
                     </span>
                   </button>
                 );
@@ -207,18 +315,23 @@ export function SalesDocumentsPage() {
                     </h2>
                     <div className="meta">
                       <span>{TYPE_LABELS[selectedDocument.documentType]}</span>
+                      <span>وضعیت: {STATUS_LABELS[selectedDocument.status]}</span>
                       <span>مشتری: {selectedDocument.customer.displayName}</span>
                       <span>تاریخ: {formatBusinessDate(selectedDocument.businessDate)}</span>
                     </div>
                   </div>
                 </header>
 
-                <div className="sales-detail__actions">
-                  <button disabled={!hasPermission(salesPermissions.edit)}>ویرایش</button>
-                  <button disabled={!hasPermission(salesPermissions.submit)}>ارسال برای تأیید</button>
-                  <button disabled={!hasPermission(salesPermissions.approve)}>تأیید</button>
-                  <button disabled={!hasPermission(salesPermissions.finalize)}>قطعی‌کردن</button>
-                  <button disabled={!hasPermission(salesPermissions.cancel)}>لغو</button>
+                <div className="sales-detail__actions" aria-busy={busy}>
+                  <button disabled={!canAct("edit")} onClick={openEdit}>ویرایش</button>
+                  <button disabled={!canAct("submit")} onClick={() => void runAction("submit")}>ارسال برای تأیید</button>
+                  <button disabled={!canAct("approve")} onClick={() => void runAction("approve")}>تأیید</button>
+                  <button disabled={!canAct("finalize")} onClick={() => void runAction("finalize")}>قطعی‌کردن</button>
+                  <button disabled={!canAct("cancel")} onClick={() => { setError(""); setPendingAction("cancel"); }}>لغو</button>
+                  {(selectedDocument.status === "submitted" || selectedDocument.status === "approved") && (
+                    <button disabled={!canAct("reject")} onClick={() => { setError(""); setPendingAction("reject"); }}>برگشت به پیش‌نویس</button>
+                  )}
+                  {busy && <span role="status">در حال ثبت عملیات…</span>}
                 </div>
 
                 <div className="sales-summary">
@@ -266,8 +379,8 @@ export function SalesDocumentsPage() {
                             <td>{line.lineKind === "service" ? "خدمت" : "کالا"}</td>
                             <td dir="ltr">{terms?.quantity ?? "-"}</td>
                             <td dir="ltr">{terms ? numberFormatter.format(terms.unitPrice) : "-"}</td>
-                            <td>{terms?.discounts.length ?? 0}</td>
-                            <td>{terms?.taxes.length ?? 0}</td>
+                            <td>{terms ? numberFormatter.format(calculateSalesLineTotals(terms).discountAmount) : "—"}</td>
+                            <td>{terms ? numberFormatter.format(calculateSalesLineTotals(terms).taxAmount) : "—"}</td>
                             <td dir="ltr">{numberFormatter.format(calculateLineTotal(line))}</td>
                           </tr>
                         );
@@ -276,6 +389,18 @@ export function SalesDocumentsPage() {
                   </table>
                 </div>
 
+                {selectedDocument.lifecycle.transitions.length > 0 && (
+                  <details className="sales-history">
+                    <summary>تاریخچهٔ گردش سند</summary>
+                    <ol>{selectedDocument.lifecycle.transitions.map(transition => (
+                      <li key={transition.transitionId}>
+                        {ACTION_LABELS[transition.action]} — {STATUS_LABELS[transition.toStatus]}
+                        {" · "}{new Intl.DateTimeFormat("fa-IR", { dateStyle: "short", timeStyle: "short" }).format(new Date(transition.occurredAt))}
+                        {transition.reason && <span> · {transition.reason}</span>}
+                      </li>
+                    ))}</ol>
+                  </details>
+                )}
                 <details className="sales-history">
                   <summary>ردیابی و ارتباطات سند</summary>
                   <dl>

@@ -18,7 +18,15 @@ test("Sales workspace is Persian RTL with desktop inner-scroll layout",async()=>
 
 test("Sales workspace exposes lifecycle and permission-aware actions",async()=>{
  const page=await read("src/pages/sales/sales-documents-page.tsx");
- for(const permission of ["create","edit","submit","approve","finalize","cancel"])assert.match(page,new RegExp(`salesPermissions\\.${permission}`,"u"));
+ assert.match(page, /salesPermissions\.create/u);
+ assert.match(page, /hasPermission\(salesPermissions\[action\]\)/u);
+ for(const action of ["edit","submit","approve","finalize","cancel"]) {
+   assert.ok(page.includes(`canAct("${action}")`), `${action} must be gated by status and permission`);
+ }
+ assert.match(page, /onClick=\{openEdit\}/u);
+ for(const action of ["submit","approve","finalize"]) assert.ok(page.includes(`runAction("${action}")`));
+ assert.match(page, /setPendingAction\("cancel"\)/u);
+ assert.match(page, /STATUS_LABELS\[document\.status\]/u);
  for(const label of ["ارسال برای تأیید","تأیید","قطعی‌کردن","لغو"])assert.match(page,new RegExp(label,"u"));
 });
 
@@ -31,4 +39,10 @@ test("Sales detail keeps commercial and durable lineage visible",async()=>{
 test("Desktop declares Sales core and SQLite adapter dependencies",async()=>{
  const pkg=JSON.parse(await read("package.json")) as {dependencies:Record<string,string>};
  assert.equal(pkg.dependencies["@argin/sales"],"workspace:*");assert.equal(pkg.dependencies["@argin/sales-tauri"],"workspace:*");
+});
+
+test("New sales document button opens the draft form", async () => {
+ const page = await read("src/pages/sales/sales-documents-page.tsx");
+ assert.match(page, /<button[^>]*onClick=\{openNewDocument\}[^>]*>\s*سند فروش جدید/u);
+ assert.match(page, /<SalesDocumentForm/u);
 });
