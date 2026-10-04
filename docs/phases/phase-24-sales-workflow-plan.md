@@ -92,6 +92,10 @@ Party + Product/Service + Sales Pricing
 - Inventory quantity authority remains Phase 20.
 - Inventory cost/COGS authority remains Phase 21.
 - Stock fulfillment uses Inventory public application contracts; Sales must not write Inventory tables directly.
+- Finalizing a stock Sales Invoice stages exactly one Inventory Issue Draft; finalizing the Sales Invoice itself must not decrease stock.
+- Stock quantity decreases only at the Inventory-owned Issue confirmation/finalization point that creates the authoritative movement.
+- Phase 25 COGS/Inventory Relief posting must remain blocked until the related stock movement exists and Phase 21 valuation is resolved.
+- Finalizing a stock Sales Return stages exactly one Inventory Receipt Draft; stock restoration occurs only through the Inventory-owned receipt/movement lifecycle.
 - Services/non-stock items do not create Inventory issue movements solely because they are sold.
 - Finalized commercial facts are immutable in place; returns/corrections create explicit lineage.
 - Monetary calculations use shared Money/decimal rules and deterministic rounding.
