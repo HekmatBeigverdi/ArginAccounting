@@ -136,9 +136,15 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Product Master Data must not become a single mutable authoritative Sales-price store for all contexts.
    - Fixed 30-step implementation plan is frozen in [Phase 24 Sales Workflow Plan](docs/phases/phase-24-sales-workflow-plan.md); Step 1 baseline/scope/ownership is complete on `phase/24-sales-workflow`.
 25. ⏳ Sales Posting
-   - Post revenue/tax/receivable from Sales commercial facts.
-   - Post COGS/inventory relief from Inventory Valuation outputs, never from selling price.
-   - Join the commercial and costing accounting effects while preserving independent source provenance and correction chains.
+   - Canonical plan: [Phase 25 Sales Posting Plan](docs/phases/phase-25-sales-posting-plan.md); mandatory handoff: [Sales Fulfillment and Posting Handoff](docs/architecture/sales-fulfillment-posting-handoff.md).
+   - A finalized stock Sales Invoice stages exactly one Inventory Issue Draft through Inventory public contracts; invoice finalization itself MUST NOT decrease stock.
+   - Inventory quantity decreases only when the Inventory Issue is finalized/confirmed and creates the authoritative Inventory Movement.
+   - Post revenue/tax/receivable from immutable Sales commercial facts.
+   - Post COGS/inventory relief only from resolved Phase 21 FIFO/MWA valuation outputs, never from selling price; stock COGS posting is blocked until Issue -> Movement -> Valuation prerequisites are complete.
+   - Service-only invoices bypass Inventory fulfillment; mixed invoices preserve stock-line prerequisites without treating services as stock.
+   - Sales Return stages exactly one Inventory Receipt Draft for stock lines; stock restoration and return cost effects follow Inventory movement/valuation lineage.
+   - Join commercial and costing accounting effects while preserving independent source provenance, idempotency/exactly-once behavior, recovery and correction/reversal chains.
+   - Mandatory E2E gates cover stock-only, service-only, mixed, return, replay/no-duplicate and posting-before-valuation rejection scenarios.
 
 ## Treasury
 
