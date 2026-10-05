@@ -34,6 +34,7 @@ test("finalize path enforces guard and stages Inventory documents inside mutatio
   assert.match(source,/stageFinalizedSalesReturnReceipt/u);
   assert.match(source,/InventorySalesReturnReceiptGateway/u);
   assert.match(source,/requestKey: "sales-return-receipt:" \+ document\.documentId/u);
+  assert.match(source,/decisionKey: input\.submissionId/u);
 });
 
 test("Sales UI exposes policy management, warehouse routing and explicit below-cost acknowledgement",async()=>{
@@ -50,4 +51,15 @@ test("Sales UI exposes policy management, warehouse routing and explicit below-c
   assert.match(finalize,/canApproveBelowCost/u);
   assert.match(policy,/require-approval/u);
   assert.match(policy,/حداقل حاشیه سود/u);
+});
+
+test("security catalog registers independent below-cost permissions and decisions stay append-only",async()=>{
+  const [permissions,adapter]=await Promise.all([
+    read("../../packages/security/src/application/default-permissions.ts"),
+    read("../../packages/sales-tauri/src/sqlite-below-cost-sales.ts"),
+  ]);
+  assert.match(permissions,/sales\.below-cost-policy\.manage/u);
+  assert.match(permissions,/sales\.below-cost\.approve/u);
+  assert.match(adapter,/INSERT INTO sales_below_cost_decisions/u);
+  assert.doesNotMatch(adapter,/INSERT OR REPLACE INTO sales_below_cost_decisions/u);
 });
