@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SalesDocumentSnapshot, SalesDocumentStatus, SalesLifecycleAction } from "@argin/sales";
+import type { BelowCostLineRouting, BelowCostSalesPolicy, SalesDocumentSnapshot, SalesDocumentStatus, SalesLifecycleAction } from "@argin/sales";
 import { SalesDomainError, calculateSalesLineTotals, salesPermissions } from "@argin/sales";
 import { getDesktopDatabase } from "@argin/database-tauri";
 import { FiscalValidationError } from "@argin/fiscal";
 import { createSalesWorkspaceServices, type SalesWorkspaceDocument } from "../../composition/sales/create-sales-workspace-services";
 import { SalesActionDialog } from "./sales-action-dialog";
 import { SalesDocumentForm } from "./sales-document-form";
+import { SalesFinalizeDialog } from "./sales-finalize-dialog";
+import { SalesBelowCostPolicyDialog } from "./sales-below-cost-policy-dialog";
+import type { WarehouseListItemDto } from "@argin/warehouse";
 import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Page } from "../../components/layout";
@@ -70,6 +73,10 @@ function SalesDocumentsWorkspace() {
   const [newDocumentScope, setNewDocumentScope] = useState<string | null>(null);
   const [editingDocument, setEditingDocument] = useState<SalesWorkspaceDocument | null>(null);
   const [pendingAction, setPendingAction] = useState<"cancel" | "reject" | null>(null);
+  const [finalizeOpen, setFinalizeOpen] = useState(false);
+  const [warehouses, setWarehouses] = useState<readonly WarehouseListItemDto[]>([]);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [belowCostPolicy, setBelowCostPolicy] = useState<BelowCostSalesPolicy | null>(null);
   const [busy, setBusy] = useState(false);
   const mutationInFlight = useRef(false);
   const mutationRequests = useRef(new Map<string, string>());
@@ -190,7 +197,15 @@ function SalesDocumentsWorkspace() {
     setNewDocumentScope(scopeKey);
   }
 
-  async function runAction(action: SalesLifecycleAction, reason = "") {
+  async function runAction(
+    action: SalesLifecycleAction,
+    reason = "",
+    belowCost?: {
+      stockRouting: readonly BelowCostLineRouting[];
+      acknowledgeBelowCostWarning: boolean;
+      belowCostApprovalReason: string | null;
+    },
+  ) {
     if (!selectedDocument || !session || mutationInFlight.current || !canAct(action)) return;
     const target = selectedDocument;
     mutationInFlight.current = true;
@@ -204,7 +219,7 @@ function SalesDocumentsWorkspace() {
       const services = createSalesWorkspaceServices(await getDesktopDatabase(), session.user);
       const result = await services.transition({
         ...target.scope, documentId: target.documentId, expectedVersion: target.version,
-        submissionId, action, reason,
+        submissionId, action, reason, ...belowCost,
       });
       if (currentScope.current !== scopeKey) return;
       setDocuments(current => current.map(value => value.documentId === target.documentId
@@ -231,6 +246,52 @@ function SalesDocumentsWorkspace() {
     }
   }
 
+  async function openFinalize() {
+    if (!selectedDocument || !session || !canAct("finalize")) return;
+    setError("");
+    setMessage("");
+    setBusy(true);
+    try {
+      const services = createSalesWorkspaceServices(await getDesktopDatabase(), session.user);
+      const selectedWarehouses = await services.selectWarehouses(selectedDocument.scope.companyId, selectedDocument.scope.branchId);
+      setWarehouses(selectedWarehouses);
+      setFinalizeOpen(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "بارگذاری انبارهای مجاز ناموفق بود.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function openPolicy() {
+    if (!session || !activeContext.companyId || !activeContext.branchId) return;
+    setError("");
+    try {
+      const services = createSalesWorkspaceServices(await getDesktopDatabase(), session.user);
+      setBelowCostPolicy(await services.getBelowCostPolicy(
+        activeContext.companyId, activeContext.branchId, new Date().toISOString().slice(0, 10),
+      ));
+      setPolicyOpen(true);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "بارگذاری سیاست فروش ناموفق بود.");
+    }
+  }
+
+  async function savePolicy(input: { mode: BelowCostSalesPolicy["mode"]; minimumMarginBasisPoints: number; effectiveFrom: string }) {
+    if (!session || !activeContext.companyId || !activeContext.branchId) return;
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const services = createSalesWorkspaceServices(await getDesktopDatabase(), session.user);
+      const saved = await services.saveBelowCostPolicy({
+        companyId: activeContext.companyId, branchId: activeContext.branchId, ...input,
+      });
+      setBelowCostPolicy(saved); setPolicyOpen(false);
+      setMessage("نسخه جدید سیاست فروش زیر بهای تمام‌شده ثبت شد.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "ذخیره سیاست فروش ناموفق بود.");
+    } finally { setBusy(false); }
+  }
+
   return (
     <Page>
       <div className="sales-workspace" dir="rtl">
@@ -241,6 +302,9 @@ function SalesDocumentsWorkspace() {
             placeholder="جست‌وجو در شماره سند، مشتری یا نوع سند"
             aria-label="جست‌وجوی اسناد فروش"
           />
+          {hasPermission(salesPermissions.manageBelowCostPolicy) && (
+            <button disabled={busy} onClick={() => void openPolicy()}>سیاست فروش زیر بها</button>
+          )}
           <button className="primary" disabled={busy || !hasPermission(salesPermissions.create)} onClick={openNewDocument}>
             سند فروش جدید
           </button>
@@ -259,6 +323,32 @@ function SalesDocumentsWorkspace() {
             fiscalYearId={activeContext.fiscalYearId}
             onClose={() => { setNewDocumentScope(null); setEditingDocument(null); setRefreshRevision(value => value + 1); }}
             onCreated={documentCreated}
+          />
+        )}
+
+        {policyOpen && (
+          <SalesBelowCostPolicyDialog current={belowCostPolicy} busy={busy} onSave={input => void savePolicy(input)} onClose={() => setPolicyOpen(false)} />
+        )}
+
+        {finalizeOpen && selectedDocument && session && (
+          <SalesFinalizeDialog
+            document={selectedDocument}
+            warehouses={warehouses}
+            busy={busy}
+            canApproveBelowCost={hasPermission(salesPermissions.approveBelowCost)}
+            preview={async routing => {
+              const services = createSalesWorkspaceServices(await getDesktopDatabase(), session.user);
+              return services.previewBelowCost(selectedDocument, routing);
+            }}
+            onConfirm={input => {
+              setFinalizeOpen(false);
+              void runAction("finalize", "", {
+                stockRouting: input.routing,
+                acknowledgeBelowCostWarning: input.acknowledgeWarning,
+                belowCostApprovalReason: input.approvalReason,
+              });
+            }}
+            onClose={() => setFinalizeOpen(false)}
           />
         )}
 
@@ -326,7 +416,7 @@ function SalesDocumentsWorkspace() {
                   <button disabled={!canAct("edit")} onClick={openEdit}>ویرایش</button>
                   <button disabled={!canAct("submit")} onClick={() => void runAction("submit")}>ارسال برای تأیید</button>
                   <button disabled={!canAct("approve")} onClick={() => void runAction("approve")}>تأیید</button>
-                  <button disabled={!canAct("finalize")} onClick={() => void runAction("finalize")}>قطعی‌کردن</button>
+                  <button disabled={!canAct("finalize")} onClick={() => void openFinalize()}>قطعی‌کردن</button>
                   <button disabled={!canAct("cancel")} onClick={() => { setError(""); setPendingAction("cancel"); }}>لغو</button>
                   {(selectedDocument.status === "submitted" || selectedDocument.status === "approved") && (
                     <button disabled={!canAct("reject")} onClick={() => { setError(""); setPendingAction("reject"); }}>برگشت به پیش‌نویس</button>
