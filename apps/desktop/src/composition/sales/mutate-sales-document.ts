@@ -4,8 +4,8 @@ import {
   createSalesIdempotencyRecord, createSalesMutationContext, decideSalesReplay,
   replaySalesResult, salesPermissions, transitionSalesLifecycle,
   calculateSalesDocumentTotals, calculateSalesLineTotals, createSalesCommercialSnapshot, BelowCostSalesGuardService,
-  InventorySalesIssueGateway,
-  type SalesInvoice, type SalesLifecycleAction, type SalesPermission, type SalesPersistedDocument, type BelowCostLineRouting,
+  InventorySalesIssueGateway, InventorySalesReturnReceiptGateway,
+  type SalesInvoice, type SalesReturn, type SalesLifecycleAction, type SalesPermission, type SalesPersistedDocument, type BelowCostLineRouting,
 } from "@argin/sales";
 import {
   SqliteSalesDocumentRepository, SqliteSalesIdempotencyRepository,
@@ -180,6 +180,140 @@ async function stageFinalizedSalesIssue(
   });
 }
 
+
+async function stageFinalizedSalesReturnReceipt(
+  session: DatabaseSession,
+  actor: SalesDesktopActor,
+  before: SalesPersistedDocument,
+  after: SalesPersistedDocument,
+  input: SalesTransitionInput,
+): Promise<void> {
+  const document = after.document;
+  const stockLines = document.lines.filter(line => line.lineKind === "stock-product");
+  if (document.documentType !== "sales-return" || stockLines.length === 0) return;
+  if (!actor.permissions.includes("system.full-access") && !actor.permissions.includes(salesPermissions.stageReturnReceipt)) {
+    throw new Error("مجوز ایجاد رسید انبار مرتبط با برگشت فروش را ندارید.");
+  }
+
+  const routeMap = new Map((input.stockRouting ?? []).map(route => [route.salesLineId, route.warehouseId] as const));
+  if (routeMap.size !== stockLines.length) throw new Error("برای همه کالاهای برگشتی باید انبار دریافت تعیین شود.");
+
+  const products = new SqliteProductReader(session);
+  const warehouses = new SqliteWarehouseReader(session);
+  const lineRouting = [];
+  for (const line of stockLines) {
+    const warehouseId = routeMap.get(line.lineId);
+    if (!warehouseId) throw new Error("انبار دریافت یکی از ردیف‌های برگشت فروش مشخص نشده است.");
+    const product = await products.getById({ companyId: document.scope.companyId, productId: line.item.productId });
+    const warehouse = await warehouses.getById({ companyId: document.scope.companyId, warehouseId });
+    if (!product?.units?.baseUnitId || !warehouse || warehouse.status !== "active") {
+      throw new Error("کالا، واحد پایه یا انبار دریافت برای ایجاد رسید معتبر نیست.");
+    }
+    lineRouting.push({
+      salesReturnLineId: line.lineId,
+      unitId: product.units.baseUnitId,
+      warehouse: { warehouseId, zoneId: null, locationId: null },
+    });
+  }
+
+  const period = await session.queryOne<{ id: string }>(
+    "SELECT id FROM fiscal_periods WHERE fiscal_year_id=? AND status='open' AND start_date<=? AND end_date>=? ORDER BY sequence LIMIT 1",
+    [document.scope.fiscalYearId, document.businessDate, document.businessDate],
+  );
+  if (!period) throw new Error("برای تاریخ برگشت فروش دوره مالی باز و معتبر یافت نشد.");
+
+  const executor = sessionExecutor(session);
+  const drafts = new InventoryDraftService(new SqliteInventoryUnitOfWork(executor));
+  const inventoryPort: InventorySourceDocumentPort = {
+    async stageDraft(request) {
+      const lines = [];
+      for (let index = 0; index < request.lines.length; index += 1) {
+        const sourceLine = request.lines[index]!;
+        const product = await products.getById({ companyId: request.companyId, productId: sourceLine.productId });
+        const warehouse = await warehouses.getById({ companyId: request.companyId, warehouseId: sourceLine.warehouse.warehouseId });
+        if (!product || !warehouse) throw new Error("وابستگی کالا یا انبار برای رسید برگشت فروش معتبر نیست.");
+        const operation = createInventoryLineOperation({
+          companyId: request.companyId,
+          productId: sourceLine.productId,
+          product,
+          enteredQuantity: sourceLine.enteredQuantity,
+          unitId: sourceLine.unitId,
+          warehouse: sourceLine.warehouse,
+          resolvedWarehouse: { warehouse, zone: null, location: null },
+          destination: null,
+          resolvedDestination: null,
+        });
+        lines.push(createInventoryDocumentLine({
+          lineId: crypto.randomUUID(),
+          position: index + 1,
+          productId: sourceLine.productId,
+          operation,
+          description: sourceLine.description,
+          sourceReference: {
+            companyId: request.companyId,
+            sourceSystem: "sales",
+            documentType: request.sourceDocumentType,
+            documentId: request.sourceDocumentId,
+            lineId: sourceLine.sourceLineId,
+          },
+        }));
+      }
+      const result = await drafts.create({
+        companyId: request.companyId,
+        requestKey: request.requestKey,
+        payloadFingerprint: request.payloadFingerprint,
+        document: {
+          documentId: request.inventoryDocumentId,
+          companyId: request.companyId,
+          documentType: "receipt",
+          businessDate: request.businessDate,
+          description: request.description,
+          createdAt: after.updatedAt,
+          scope: {
+            branchId: document.scope.branchId,
+            destinationBranchId: null,
+            fiscalYearId: document.scope.fiscalYearId,
+            fiscalPeriodId: period.id,
+          },
+          sourceReference: {
+            companyId: request.companyId,
+            sourceSystem: "sales",
+            documentType: request.sourceDocumentType,
+            documentId: request.sourceDocumentId,
+            lineId: null,
+          },
+          lines,
+        },
+      });
+      return { inventoryDocumentId: result.document.documentId, status: result.document.status, version: result.document.version };
+    },
+  };
+
+  const commercialSnapshots = document.lines.map(line => createSalesCommercialSnapshot({
+    snapshotId: document.documentId + ":" + line.lineId + ":commercial",
+    line,
+    capturedAt: after.updatedAt,
+  }));
+  const salesReturn: SalesReturn = Object.freeze({
+    document: document as SalesReturn["document"],
+    commercialSnapshots: Object.freeze(commercialSnapshots),
+    totals: calculateSalesDocumentTotals(commercialSnapshots.map(snapshot => snapshot.totals)),
+  });
+
+  await new InventorySalesReturnReceiptGateway(inventoryPort).stage({
+    salesReturn,
+    lifecycle: after.lifecycle,
+    inventoryDocumentId: crypto.randomUUID(),
+    lineRouting,
+    requestKey: "sales-return-receipt:" + document.documentId,
+    payloadFingerprint: JSON.stringify({
+      sourceDocumentId: document.documentId,
+      sourceVersion: before.version,
+      routing: lineRouting.map(route => ({ lineId: route.salesReturnLineId, warehouseId: route.warehouse.warehouseId, unitId: route.unitId })),
+    }),
+  });
+}
+
 async function mutateSalesDocument(
   database: DatabaseExecutor,
   actor: SalesDesktopActor,
@@ -302,6 +436,7 @@ async function mutateSalesDocument(
         await documents.update(after, input.expectedVersion);
         if (action === "finalize" && transition) {
           await stageFinalizedSalesIssue(session, actor, before, after, transition);
+          await stageFinalizedSalesReturnReceipt(session, actor, before, after, transition);
         }
         await idempotency.add(createSalesIdempotencyRecord({
           context: mutation, outcomeKind: action === "edit" ? "sales-document" : "lifecycle",
