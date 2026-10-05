@@ -264,7 +264,7 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
               }}
             />
           </div>
-          {!loading && services && customers.length === 0 && <p>مشتری فعالی پیدا نشد؛ در بخش اشخاص، نقش «مشتری» را بررسی کنید یا عبارت جست‌وجو را تغییر دهید.</p>}
+          {!loading && services && !customer && !customerSearch.trim() && customers.length === 0 && <p>مشتری فعالی پیدا نشد؛ در بخش اشخاص، نقش «مشتری» را بررسی کنید.</p>}
           {needsReference && <label>فاکتور اصلی (قطعی)
             <select disabled={editing} value={relatedDocumentId} onChange={event => setRelatedDocumentId(event.target.value)} required>
               <option value="">انتخاب فاکتور همین مشتری</option>
@@ -274,7 +274,7 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
           <label>{needsReference ? "علت برگشت یا اصلاح" : "توضیحات"}
             <textarea value={description} onChange={event => setDescription(event.target.value)} required={needsReference} rows={2} />
           </label>
-                    {!needsReference && !loading && services && items.length === 0 && <p>کالا یا خدمت فعال و قابل فروش پیدا نشد؛ اطلاعات کالا یا عبارت جست‌وجو را بررسی کنید.</p>}
+                    {!needsReference && !loading && services && !itemSearch.trim() && items.length === 0 && <p>کالا یا خدمت فعال و قابل فروش پیدا نشد؛ اطلاعات کالا را بررسی کنید.</p>}
           {needsReference && <p>تخفیف، هزینه و مالیات هر ردیف از فاکتور اصلی حفظ می‌شود.</p>}
           {originalLoading && <p role="status">در حال بارگذاری اقلام فاکتور اصلی…</p>}
           <div className="sales-document-form__lines">
