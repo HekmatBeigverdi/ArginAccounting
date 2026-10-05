@@ -42,10 +42,10 @@ export class BelowCostSalesGuardService {
     }
     return Object.freeze({policy,results:Object.freeze(results)});
   }
-  async record(input:{companyId:string;documentId:string;actorId:string;approved:boolean;approvalReason?:string|null;evaluated:Awaited<ReturnType<BelowCostSalesGuardService["evaluate"]>>;decidedAt:string}){
+  async record(input:{companyId:string;documentId:string;decisionKey:string;actorId:string;approved:boolean;approvalReason?:string|null;evaluated:Awaited<ReturnType<BelowCostSalesGuardService["evaluate"]>>;decidedAt:string}){
     for(const item of input.evaluated.results){
       await this.decisions.add(Object.freeze({
-        decisionId:`${input.documentId}:${item.snapshot.lineId}:${input.evaluated.policy.revision}`,
+        decisionId:`${input.decisionKey}:${item.snapshot.lineId}`,
         companyId:input.companyId,documentId:input.documentId,lineId:item.snapshot.lineId,
         policyId:input.evaluated.policy.policyId,policyRevision:input.evaluated.policy.revision,outcome:item.evaluation.outcome,
         sellingUnitPrice:item.evaluation.sellingUnitPrice,quotedUnitCost:item.evaluation.costUnitPrice,
