@@ -13,6 +13,7 @@ drilldown
 extensionless
 filterbar
 finaliz
+frameless
 grni
 Inputهاست
 Inputهای
@@ -250,6 +251,7 @@ Vite
 پستی
 پشتیبانی
 پلاک
+پنجره
 پوشانی
 پولی
 پیاده
@@ -645,6 +647,7 @@ Vite
 کلیدی
 کمتر
 کمّی
+کمینه
 کنار
 کناری
 کنترل

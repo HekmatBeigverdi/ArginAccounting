@@ -2,6 +2,9 @@
 mod atomic_sqlite_commands;
 mod password_commands;
 
+#[cfg(test)]
+mod migration_tests;
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -64,6 +67,7 @@ fn database_migrations() -> Vec<Migration> {
         Migration { version: 32, description: "purchase_replay_safety", sql: include_str!("../migrations/0032_purchase_replay_safety.sql"), kind: MigrationKind::Up },
         Migration { version: 33, description: "purchase_posting", sql: include_str!("../migrations/0033_purchase_posting.sql"), kind: MigrationKind::Up },
         Migration { version: 34, description: "purchase_partial_receipts", sql: include_str!("../migrations/0034_purchase_partial_receipts.sql"), kind: MigrationKind::Up },
+        Migration { version: 35, description: "sales_workflow", sql: include_str!("../migrations/0035_sales_workflow.sql"), kind: MigrationKind::Up },
     ]
 }
 
