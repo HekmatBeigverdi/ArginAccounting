@@ -10,6 +10,7 @@ import {
   SqliteBelowCostSalesPolicyRepository,
   SqliteBelowCostSalesDecisionRepository,
   SqliteSalesInventoryCostQuotePort,
+  SqliteSalesOperationalTraceReader,
 } from "@argin/sales-tauri";
 import { SqliteWarehouseReader } from "@argin/warehouse-tauri";
 import {
@@ -204,6 +205,10 @@ export function createSalesWorkspaceServices(database: DatabaseExecutor, actor: 
         companyId: document.scope.companyId, documentId: document.documentId,
         businessDate: document.businessDate, snapshots, routing,
       });
+    },
+    async getOperationalTrace(companyId: string, branchId: string, documentId: string) {
+      await requireAccess(companyId, branchId, salesPermissions.traceView);
+      return new SqliteSalesOperationalTraceReader(database).read(companyId, documentId);
     },
     async listBelowCostDecisions(companyId: string, branchId: string, documentId: string) {
       await requireAccess(companyId, branchId, salesPermissions.view);
