@@ -344,8 +344,8 @@ function SalesDocumentsWorkspace() {
             placeholder="جست‌وجو در شماره سند، مشتری یا نوع سند"
             aria-label="جست‌وجوی اسناد فروش"
           />
-          {hasPermission(salesPermissions.import) && <button disabled={busy} onClick={()=>downloadSalesBytes(createSalesImportTemplateXlsx(),"الگوی-ورود-اسناد-فروش.xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}>الگوی ورود</button>}
-          {hasPermission(salesPermissions.import) && <label className="sales-import-button">ورود Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" disabled={busy} onChange={event=>void handleImportFile(event)} /></label>}
+          {hasPermission(salesPermissions.import) && hasPermission(salesPermissions.create) && <button disabled={busy} onClick={()=>downloadSalesBytes(createSalesImportTemplateXlsx(),"الگوی-ورود-اسناد-فروش.xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}>الگوی ورود</button>}
+          {hasPermission(salesPermissions.import) && hasPermission(salesPermissions.create) && <label className="sales-import-button">ورود Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" disabled={busy} onChange={event=>void handleImportFile(event)} /></label>}
           {hasPermission(salesPermissions.export) && <button disabled={busy||!selectedDocument} onClick={()=>exportSelected("xlsx")}>Excel</button>}
           {hasPermission(salesPermissions.export) && <button disabled={busy||!selectedDocument} onClick={()=>exportSelected("print")}>چاپ / PDF</button>}
           {hasPermission(salesPermissions.manageBelowCostPolicy) && (
