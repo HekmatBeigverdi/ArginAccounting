@@ -27,6 +27,8 @@ const OUTCOME:Record<BelowCostEvaluation["outcome"],string>={
 export function SalesFinalizeDialog({document,warehouses,busy,canApproveBelowCost,guardEnabled,preview,onConfirm,onClose}:Props){
   const dialog=useRef<HTMLDialogElement>(null);
   const stockLines=document.lines.filter(line=>line.lineKind==="stock-product");
+  const isReturn=document.documentType==="sales-return";
+  const warehouseLabel=isReturn?"انبار دریافت":"انبار خروج";
   const [routing,setRouting]=useState<Record<string,string>>(()=>Object.fromEntries(stockLines.map(line=>[line.lineId,warehouses.length===1?warehouses[0]!.warehouseId:""])));
   const [result,setResult]=useState<BelowCostPreviewResult|null>(null);
   const [error,setError]=useState("");
@@ -60,7 +62,7 @@ export function SalesFinalizeDialog({document,warehouses,busy,canApproveBelowCos
         ? "قبل از قطعی‌سازی، انبار خروج و سیاست فروش زیر بهای تمام‌شده بر اساس ارزش‌گذاری معتبر موجودی بررسی می‌شود."
         : "برای ردیف‌های کالای انبارشونده، انبار مرتبط را انتخاب کنید تا سند انبار متناظر ایجاد شود."}</p>
       {error&&<Feedback tone="error">{error}</Feedback>}
-      {stockLines.map(line=><label key={line.lineId}>انبار خروج — {line.description||line.item.productId}
+      {stockLines.map(line=><label key={line.lineId}>{warehouseLabel} — {line.description||line.item.productId}
         <select value={routing[line.lineId]??""} disabled={busy||loading} onChange={e=>{setRouting(v=>({...v,[line.lineId]:e.target.value}));setResult(null);}}>
           <option value="">انتخاب انبار…</option>
           {warehouses.map(w=><option key={w.warehouseId} value={w.warehouseId}>{w.code} — {w.title}</option>)}
@@ -69,7 +71,7 @@ export function SalesFinalizeDialog({document,warehouses,busy,canApproveBelowCos
       {guardEnabled&&!result&&<button type="button" onClick={()=>void runPreview()} disabled={busy||loading||incomplete}>{loading?"در حال بررسی…":"بررسی بهای تمام‌شده و سیاست فروش"}</button>}
       {result&&<div className="sales-below-cost-preview">
         <strong>سیاست: {result.policy.mode} · حداقل حاشیه {result.policy.minimumMarginBasisPoints/100}%</strong>
-        <table><thead><tr><th>ردیف</th><th>قیمت فروش</th><th>بهای مبنا</th><th>حاشیه</th><th>نتیجه</th></tr></thead>
+        <table><thead><tr><th>ردیف</th><th>قیمت خالص واحد (قبل از VAT)</th><th>بهای مبنا</th><th>حاشیه</th><th>نتیجه</th></tr></thead>
         <tbody>{result.results.map(item=><tr key={item.snapshot.lineId}>
           <td dir="ltr">{item.snapshot.productId}</td>
           <td dir="ltr">{money.format(item.evaluation.sellingUnitPrice)}</td>
