@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@argin/database": "workspace:*",
+    "@argin/inventory": "workspace:*",
     "@argin/sales": "workspace:*"
   },
   "devDependencies": {
