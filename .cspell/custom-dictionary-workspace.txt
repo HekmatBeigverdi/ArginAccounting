@@ -24,6 +24,8 @@ NOCASE
 noopener
 noreferrer
 nums
+officedocument
+openxmlformats
 passwordhash
 payables
 pgdata
@@ -35,6 +37,7 @@ rehydratable
 reparents
 reselects
 Sheetهای
+spreadsheetml
 Tadbir
 tauri
 topbar
@@ -211,6 +214,7 @@ Vite
 برای
 برچسب
 بررسی
+برطرف
 برقرار
 برگشت
 برگشتی
@@ -370,6 +374,7 @@ Vite
 حداقل
 حداکثر
 حدسی
+حرکت
 حروف
 حساب
 حسابرسی
@@ -394,6 +399,8 @@ Vite
 خرید
 خریدهای
 خریدی
+خطادار
+خطاست
 خطاهای
 خطای
 خلاصه
@@ -509,6 +516,7 @@ Vite
 سایر
 ستون
 سربار
+سربرگ
 سرمایه
 سرور
 سرویس
