@@ -225,3 +225,8 @@ export type {
 
 export { BELOW_COST_SALES_MODES, createBelowCostSalesPolicy, evaluateBelowCostSale, evaluateBelowCostSaleWithQuote } from "./domain/below-cost-sales-policy.ts";
 export type { BelowCostEvaluation, BelowCostSalesMode, BelowCostSalesPolicy, SalesInventoryCostQuote, SalesInventoryCostQuotePort } from "./domain/below-cost-sales-policy.ts";
+
+export { BelowCostSalesGuardService } from "./application/below-cost-sales-guard.ts";
+export type {
+  BelowCostDecision, BelowCostLineRouting, BelowCostSalesDecisionRepository, BelowCostSalesPolicyRepository,
+} from "./application/below-cost-sales-guard.ts";
