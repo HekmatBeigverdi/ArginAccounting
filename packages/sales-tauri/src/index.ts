@@ -9,3 +9,6 @@ export {
   SqliteBelowCostSalesDecisionRepository,
   SqliteSalesInventoryCostQuotePort,
 } from "./sqlite-below-cost-sales.ts";
+
+export { SqliteSalesOperationalTraceReader } from "./sqlite-sales-operational-trace-reader.ts";
+export type { SalesOperationalTrace } from "./sqlite-sales-operational-trace-reader.ts";
