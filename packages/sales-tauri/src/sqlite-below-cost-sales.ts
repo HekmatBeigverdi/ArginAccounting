@@ -52,7 +52,7 @@ export class SqliteBelowCostSalesDecisionRepository implements BelowCostSalesDec
   constructor(private readonly db:DatabaseSession){}
   async add(d:BelowCostDecision){
     await this.db.execute(
-      "INSERT OR REPLACE INTO sales_below_cost_decisions(decision_id,company_id,document_id,line_id,policy_id,policy_revision,outcome,selling_unit_price,quoted_unit_cost,margin_amount,margin_basis_points,quote_id,valuation_basis_revision,warehouse_id,approved_by,approval_reason,decided_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO sales_below_cost_decisions(decision_id,company_id,document_id,line_id,policy_id,policy_revision,outcome,selling_unit_price,quoted_unit_cost,margin_amount,margin_basis_points,quote_id,valuation_basis_revision,warehouse_id,approved_by,approval_reason,decided_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
       [d.decisionId,d.companyId,d.documentId,d.lineId,d.policyId,d.policyRevision,d.outcome,d.sellingUnitPrice,d.quotedUnitCost,d.marginAmount,d.marginBasisPoints,d.quoteId,d.valuationBasisRevision,d.warehouseId,d.approvedBy,d.approvalReason,d.decidedAt],
     );
   }
