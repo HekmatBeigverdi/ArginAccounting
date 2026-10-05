@@ -53,6 +53,8 @@ Journal Voucher / immutable posting lineage
 8. Retry/replay MUST NOT create a second Inventory Issue, second stock movement, second valuation effect or second Journal Voucher.
 9. A service/non-stock line does not require Inventory Issue/valuation solely because it is sold; its commercial posting may proceed under Phase 25 rules.
 10. Corrections/reversals MUST create explicit lineage. Finalized historical Sales, Inventory and Journal facts are not mutated in place.
+11. CR-24-01 below-cost policy is a commercial gate only. An allowed/approved negative-margin sale remains valid; Phase 25 MUST post its real valuation-derived COGS and MUST NOT replace cost with selling price.
+12. Posting trace should correlate the Sales policy/approval decision with the authoritative valuation revision actually consumed for COGS.
 
 ## Sales return flow
 
