@@ -8,7 +8,11 @@ Not started. This plan is prepared during Phase 24 to freeze the required Sales-
 
 Phase 25 converts authoritative Phase 24 Sales commercial facts and Phase 21 Inventory Valuation outputs into balanced, idempotent Accounting journal effects without duplicating Sales, Inventory or Valuation authority.
 
-Mandatory reference: [Phase 24 -> Phase 25 Sales Fulfillment and Posting Handoff](../architecture/sales-fulfillment-posting-handoff.md).
+Mandatory references:
+- [Phase 24 -> Phase 25 Sales Fulfillment and Posting Handoff](../architecture/sales-fulfillment-posting-handoff.md).
+- [CR-24-01 — Below-Cost Sales Policy & Guard](../architecture/cr-24-01-below-cost-sales-policy.md).
+
+Below-cost approval/warning is a commercial governance decision, not a cost source. Phase 25 must accept legitimate loss-making sales that were allowed/approved, calculate COGS only from authoritative valuation, preserve policy/approval trace, and report actual gross margin without rewriting Sales or Inventory facts.
 
 ## Non-negotiable dependency chain
 
@@ -93,3 +97,5 @@ Phase 25 cannot be released merely because a Journal Voucher can be generated. R
 - replay and recovery cannot duplicate Inventory or Journal effects;
 - service-only, mixed, stock-only and Sales Return paths are covered;
 - Journal lines retain Sales document/line and Inventory movement/valuation provenance sufficient for audit and reversal.
+- below-cost Sales that were allowed/approved can post a legitimate negative gross margin; COGS remains valuation-derived.
+- posting trace can correlate the Phase 24 below-cost policy revision/approval decision with the actual valuation revision used by Phase 25.
