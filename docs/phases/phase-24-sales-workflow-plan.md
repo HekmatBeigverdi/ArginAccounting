@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–27 are complete. Steps 28–30 are not started.
+Steps 1–28 are complete. Steps 29–30 are not started.
 
 ## Governance
 
@@ -153,9 +153,25 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 25 | Argin Bridge Contracts & Sync Readiness | Completed |
 | 26 | Permissions, Audit & Traceability | Completed |
 | 27 | Persian RTL Sales Workspace | Completed |
-| 28 | Import/Export, Print/PDF & Operational Trace | Not started |
+| 28 | Import/Export, Print/PDF & Operational Trace | Completed |
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 28 — Import/Export, Print/PDF & Operational Trace
+
+- Added XLSX/CSV Sales import with an explicit preview gate, required-column validation and customer/product code resolution to durable Party/Product IDs.
+- Import is Draft-only and intentionally supports Sales Invoice and Sales Order. Sales Return/Correction remain excluded because their source Invoice/line lineage must not be inferred from a flat file.
+- The same Sales Draft Application path remains authoritative for imported documents, so fiscal/scope/master-data/domain validation, Audit and idempotency are not bypassed.
+- Import identity is deterministic from SHA-256 file identity plus the file-local document key; replay of the same committed document does not intentionally create a second business effect.
+- Added independent `sales.documents.import` permission; Desktop import requires both import and create rights.
+- Added a downloadable RTL XLSX import template.
+- Added selected-document Excel export derived from persisted Sales commercial facts and deterministic totals.
+- Added full-screen Persian RTL Print/PDF preview with explicit A4 landscape output, Solar Hijri presentation and isolated LTR numeric cells.
+- Added `SqliteSalesOperationalTraceReader` and `sales.trace.view` to follow Sales document -> Inventory document -> confirmed Inventory movement -> FIFO/MWA valuation using durable source identity.
+- Missing downstream facts are explicit rather than fabricated: an Inventory Draft does not imply a stock movement, and a movement without resolved valuation does not imply COGS.
+- Operational trace deliberately stops at Inventory Valuation. Revenue/VAT/Receivable and COGS/Inventory Relief Journal trace belongs to Phase 25.
+- Added focused Desktop contract coverage in `sales-step28-transfer-trace-contract.test.ts`.
+- Added `docs/architecture/sales-import-export-print-trace.md` as the canonical Step 28 ownership and transfer contract.
 
 ## Step 27 — Persian RTL Sales Workspace
 
