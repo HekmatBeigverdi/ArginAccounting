@@ -1,15 +1,23 @@
-import type { DatabaseExecutor } from "@argin/database";
+import type { DatabaseExecutor, DatabaseSession } from "@argin/database";
 import {
   SalesDomainError, SecuredSalesMutationService, assertSalesExpectedVersion,
   createSalesIdempotencyRecord, createSalesMutationContext, decideSalesReplay,
   replaySalesResult, salesPermissions, transitionSalesLifecycle,
   calculateSalesDocumentTotals, calculateSalesLineTotals, createSalesCommercialSnapshot, BelowCostSalesGuardService,
-  type SalesLifecycleAction, type SalesPermission, type SalesPersistedDocument, type BelowCostLineRouting,
+  InventorySalesIssueGateway,
+  type SalesInvoice, type SalesLifecycleAction, type SalesPermission, type SalesPersistedDocument, type BelowCostLineRouting,
 } from "@argin/sales";
 import {
   SqliteSalesDocumentRepository, SqliteSalesIdempotencyRepository,
   SqliteBelowCostSalesPolicyRepository, SqliteBelowCostSalesDecisionRepository, SqliteSalesInventoryCostQuotePort,
 } from "@argin/sales-tauri";
+import {
+  InventoryDraftService, createInventoryDocumentLine, createInventoryLineOperation,
+  type InventorySourceDocumentPort,
+} from "@argin/inventory";
+import { SqliteInventoryUnitOfWork } from "@argin/inventory-tauri";
+import { SqliteProductReader } from "@argin/product-tauri";
+import { SqliteWarehouseReader } from "@argin/warehouse-tauri";
 import { prepareSalesDraft, type SalesDesktopActor, type SalesDraftInput, type SalesDraftPorts } from "./create-sales-draft.ts";
 
 export interface SalesDocumentMutationInput {
@@ -28,6 +36,149 @@ export type SalesTransitionInput = SalesDocumentMutationInput & {
   acknowledgeBelowCostWarning?: boolean;
   belowCostApprovalReason?: string | null;
 };
+
+
+function sessionExecutor(session: DatabaseSession): DatabaseExecutor {
+  return {
+    execute: (sql, parameters) => session.execute(sql, parameters),
+    query: <T>(sql: string, parameters?: readonly import("@argin/database").DatabaseValue[]) => session.query<T>(sql, parameters),
+    queryOne: <T>(sql: string, parameters?: readonly import("@argin/database").DatabaseValue[]) => session.queryOne<T>(sql, parameters),
+    transaction: <T>(operation: (transaction: DatabaseSession) => Promise<T>) => operation(session),
+    close: async () => {},
+  };
+}
+
+async function stageFinalizedSalesIssue(
+  session: DatabaseSession,
+  actor: SalesDesktopActor,
+  before: SalesPersistedDocument,
+  after: SalesPersistedDocument,
+  input: SalesTransitionInput,
+): Promise<void> {
+  const document = after.document;
+  const stockLines = document.lines.filter(line => line.lineKind === "stock-product");
+  if (document.documentType !== "sales-invoice" || stockLines.length === 0) return;
+  if (!actor.permissions.includes("system.full-access") && !actor.permissions.includes(salesPermissions.stageIssue)) {
+    throw new Error("مجوز ایجاد حواله خروج مرتبط با فروش را ندارید.");
+  }
+
+  const routeMap = new Map((input.stockRouting ?? []).map(route => [route.salesLineId, route.warehouseId] as const));
+  if (routeMap.size !== stockLines.length) throw new Error("برای همه کالاهای انبارشونده باید انبار خروج تعیین شود.");
+
+  const products = new SqliteProductReader(session);
+  const warehouses = new SqliteWarehouseReader(session);
+  const lineRouting = [];
+  for (const line of stockLines) {
+    const warehouseId = routeMap.get(line.lineId);
+    if (!warehouseId) throw new Error("انبار خروج یکی از ردیف‌های فروش مشخص نشده است.");
+    const product = await products.getById({ companyId: document.scope.companyId, productId: line.item.productId });
+    const warehouse = await warehouses.getById({ companyId: document.scope.companyId, warehouseId });
+    if (!product?.units?.baseUnitId || !warehouse || warehouse.status !== "active") {
+      throw new Error("کالا، واحد پایه یا انبار خروج برای ایجاد حواله معتبر نیست.");
+    }
+    lineRouting.push({
+      salesLineId: line.lineId,
+      unitId: product.units.baseUnitId,
+      warehouse: { warehouseId, zoneId: null, locationId: null },
+    });
+  }
+
+  const period = await session.queryOne<{ id: string }>(
+    "SELECT id FROM fiscal_periods WHERE fiscal_year_id=? AND status='open' AND start_date<=? AND end_date>=? ORDER BY sequence LIMIT 1",
+    [document.scope.fiscalYearId, document.businessDate, document.businessDate],
+  );
+  if (!period) throw new Error("برای تاریخ فاکتور فروش دوره مالی باز و معتبر یافت نشد.");
+
+  const executor = sessionExecutor(session);
+  const drafts = new InventoryDraftService(new SqliteInventoryUnitOfWork(executor));
+  const inventoryPort: InventorySourceDocumentPort = {
+    async stageDraft(request) {
+      const lines = [];
+      for (let index = 0; index < request.lines.length; index += 1) {
+        const sourceLine = request.lines[index]!;
+        const product = await products.getById({ companyId: request.companyId, productId: sourceLine.productId });
+        const warehouse = await warehouses.getById({ companyId: request.companyId, warehouseId: sourceLine.warehouse.warehouseId });
+        if (!product || !warehouse) throw new Error("وابستگی کالا یا انبار برای حواله خروج فروش معتبر نیست.");
+        const operation = createInventoryLineOperation({
+          companyId: request.companyId,
+          productId: sourceLine.productId,
+          product,
+          enteredQuantity: sourceLine.enteredQuantity,
+          unitId: sourceLine.unitId,
+          warehouse: sourceLine.warehouse,
+          resolvedWarehouse: { warehouse, zone: null, location: null },
+          destination: null,
+          resolvedDestination: null,
+        });
+        lines.push(createInventoryDocumentLine({
+          lineId: crypto.randomUUID(),
+          position: index + 1,
+          productId: sourceLine.productId,
+          operation,
+          description: sourceLine.description,
+          sourceReference: {
+            companyId: request.companyId,
+            sourceSystem: "sales",
+            documentType: request.sourceDocumentType,
+            documentId: request.sourceDocumentId,
+            lineId: sourceLine.sourceLineId,
+          },
+        }));
+      }
+      const result = await drafts.create({
+        companyId: request.companyId,
+        requestKey: request.requestKey,
+        payloadFingerprint: request.payloadFingerprint,
+        document: {
+          documentId: request.inventoryDocumentId,
+          companyId: request.companyId,
+          documentType: "issue",
+          businessDate: request.businessDate,
+          description: request.description,
+          createdAt: after.updatedAt,
+          scope: {
+            branchId: document.scope.branchId,
+            destinationBranchId: null,
+            fiscalYearId: document.scope.fiscalYearId,
+            fiscalPeriodId: period.id,
+          },
+          sourceReference: {
+            companyId: request.companyId,
+            sourceSystem: "sales",
+            documentType: request.sourceDocumentType,
+            documentId: request.sourceDocumentId,
+            lineId: null,
+          },
+          lines,
+        },
+      });
+      return { inventoryDocumentId: result.document.documentId, status: result.document.status, version: result.document.version };
+    },
+  };
+
+  const commercialSnapshots = document.lines.map(line => createSalesCommercialSnapshot({
+    snapshotId: document.documentId + ":" + line.lineId + ":commercial",
+    line,
+    capturedAt: after.updatedAt,
+  }));
+  const invoice: SalesInvoice = Object.freeze({
+    document: document as SalesInvoice["document"],
+    commercialSnapshots: Object.freeze(commercialSnapshots),
+    totals: calculateSalesDocumentTotals(commercialSnapshots.map(snapshot => snapshot.totals)),
+  });
+  await new InventorySalesIssueGateway(inventoryPort).stage({
+    invoice,
+    lifecycle: after.lifecycle,
+    inventoryDocumentId: crypto.randomUUID(),
+    lineRouting,
+    requestKey: "sales-issue:" + document.documentId,
+    payloadFingerprint: JSON.stringify({
+      sourceDocumentId: document.documentId,
+      sourceVersion: before.version,
+      routing: lineRouting.map(route => ({ lineId: route.salesLineId, warehouseId: route.warehouse.warehouseId, unitId: route.unitId })),
+    }),
+  });
+}
 
 async function mutateSalesDocument(
   database: DatabaseExecutor,
@@ -149,6 +300,9 @@ async function mutateSalesDocument(
       reason: input.reason, before,
       execute: async () => {
         await documents.update(after, input.expectedVersion);
+        if (action === "finalize" && transition) {
+          await stageFinalizedSalesIssue(session, actor, before, after, transition);
+        }
         await idempotency.add(createSalesIdempotencyRecord({
           context: mutation, outcomeKind: action === "edit" ? "sales-document" : "lifecycle",
           outcomeId: input.documentId, outcomeVersion: after.version, outcomeStatus: after.lifecycle.status,
