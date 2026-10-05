@@ -461,12 +461,13 @@ export function SalesDocumentForm({
               }}
             />
           </div>
-          {!loading && services && customers.length === 0 && (
-            <p>
-              مشتری فعالی پیدا نشد؛ در بخش اشخاص، نقش «مشتری» را بررسی کنید یا عبارت جست‌وجو را
-              تغییر دهید.
-            </p>
-          )}
+          {!loading &&
+            services &&
+            !customer &&
+            !customerSearch.trim() &&
+            customers.length === 0 && (
+              <p>مشتری فعالی پیدا نشد؛ در بخش اشخاص، نقش «مشتری» را بررسی کنید.</p>
+            )}
           {needsReference && (
             <label>
               فاکتور اصلی (قطعی)
@@ -495,10 +496,8 @@ export function SalesDocumentForm({
               rows={2}
             />
           </label>
-          {!needsReference && !loading && services && items.length === 0 && (
-            <p>
-              کالا یا خدمت فعال و قابل فروش پیدا نشد؛ اطلاعات کالا یا عبارت جست‌وجو را بررسی کنید.
-            </p>
+          {!needsReference && !loading && services && !itemSearch.trim() && items.length === 0 && (
+            <p>کالا یا خدمت فعال و قابل فروش پیدا نشد؛ اطلاعات کالا را بررسی کنید.</p>
           )}
           {needsReference && <p>تخفیف، هزینه و مالیات هر ردیف از فاکتور اصلی حفظ می‌شود.</p>}
           {originalLoading && <p role="status">در حال بارگذاری اقلام فاکتور اصلی…</p>}

@@ -5,7 +5,6 @@ export interface SearchableDropdownOption {
   readonly label: string;
   readonly meta?: string;
 }
-
 interface Props<T extends SearchableDropdownOption> {
   value: T | null;
   options: readonly T[];
@@ -18,8 +17,25 @@ interface Props<T extends SearchableDropdownOption> {
   loading?: boolean;
   disabled?: boolean;
   required?: boolean;
+  allowClear?: boolean;
   renderOption?: (option: T) => ReactNode;
 }
+const Chevron = ({ isOpen }: { isOpen: boolean }) => (
+  <svg className={isOpen ? "is-open" : undefined} viewBox="0 0 20 20" aria-hidden="true">
+    <path d="m6 8 4 4 4-4" />
+  </svg>
+);
+const SearchIcon = () => (
+  <svg viewBox="0 0 20 20" aria-hidden="true">
+    <circle cx="8.5" cy="8.5" r="5.5" />
+    <path d="m13 13 4 4" />
+  </svg>
+);
+const CheckIcon = () => (
+  <svg viewBox="0 0 20 20" aria-hidden="true">
+    <path d="m4 10 3.5 3.5L16 5.5" />
+  </svg>
+);
 
 export function SearchableDropdown<T extends SearchableDropdownOption>({
   value,
@@ -28,142 +44,178 @@ export function SearchableDropdown<T extends SearchableDropdownOption>({
   onSearchChange,
   onChange,
   label,
-  placeholder = "جست‌وجو و انتخاب…",
+  placeholder = "انتخاب کنید…",
   emptyText = "موردی یافت نشد.",
   loading = false,
   disabled = false,
   required = false,
+  allowClear = true,
   renderOption,
 }: Props<T>) {
-  const inputId = useId();
+  const controlId = useId();
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-
   useEffect(() => {
-    function handleOutsideMouseDown(event: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleOutsideMouseDown);
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideMouseDown);
+    const handleOutsideMouseDown = (event: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setIsOpen(false);
     };
+    document.addEventListener("mousedown", handleOutsideMouseDown);
+    return () => document.removeEventListener("mousedown", handleOutsideMouseDown);
   }, []);
-
   useEffect(() => {
     setActiveIndex(options.length ? 0 : -1);
   }, [options]);
-
+  useEffect(() => {
+    if (isOpen) requestAnimationFrame(() => searchRef.current?.focus());
+  }, [isOpen]);
   function selectOption(option: T) {
     onChange(option);
-    onSearchChange(option.label);
+    onSearchChange("");
     setIsOpen(false);
   }
-
-  function handleSearchChange(searchValue: string) {
-    onSearchChange(searchValue);
-    if (value && searchValue !== value.label) {
-      onChange(null);
-    }
-    setIsOpen(true);
-  }
-
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    switch (event.key) {
-      case "ArrowDown":
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((index) => Math.min(index + 1, options.length - 1));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((index) => Math.max(index - 1, 0));
+    } else if (event.key === "Enter" && activeIndex >= 0) {
+      const option = options[activeIndex];
+      if (option) {
         event.preventDefault();
-        setIsOpen(true);
-        setActiveIndex(index => Math.min(index + 1, options.length - 1));
-        break;
-      case "ArrowUp":
-        event.preventDefault();
-        setActiveIndex(index => Math.max(index - 1, 0));
-        break;
-      case "Enter": {
-        if (isOpen && activeIndex >= 0) {
-          const option = options[activeIndex];
-          if (option) {
-            event.preventDefault();
-            selectOption(option);
-          }
-        }
-        break;
+        selectOption(option);
       }
-      case "Escape":
-        setIsOpen(false);
-        break;
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setIsOpen(false);
     }
   }
 
   function renderPopoverContent() {
     if (loading) {
-      return <div className="ui-searchable-dropdown__state">در حال جست‌وجو…</div>;
+      return (
+        <div className="ui-combobox__state">
+          <span className="ui-combobox__spinner" />
+          در حال جست‌وجو…
+        </div>
+      );
     }
     if (options.length === 0) {
-      return <div className="ui-searchable-dropdown__state">{emptyText}</div>;
+      return <div className="ui-combobox__state">{emptyText}</div>;
     }
-
     return (
       <ul id={listId} role="listbox">
-        {options.map((option, index) => (
-          <li
-            key={option.id}
-            role="option"
-            aria-selected={value?.id === option.id}
-            className={index === activeIndex ? "is-active" : undefined}
-            onMouseDown={event => event.preventDefault()}
-            onMouseEnter={() => setActiveIndex(index)}
-            onClick={() => selectOption(option)}
-          >
-            {renderOption ? renderOption(option) : (
-              <>
-                <strong>{option.label}</strong>
-                {option.meta && <small>{option.meta}</small>}
-              </>
-            )}
-          </li>
-        ))}
+        {options.map((option, index) => {
+          const selected = value?.id === option.id;
+          return (
+            <li
+              key={option.id}
+              role="option"
+              aria-selected={selected}
+              className={[index === activeIndex ? "is-active" : "", selected ? "is-selected" : ""]
+                .filter(Boolean)
+                .join(" ")}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => selectOption(option)}
+            >
+              <span className="ui-combobox__option-content">
+                {renderOption ? (
+                  renderOption(option)
+                ) : (
+                  <>
+                    <strong>{option.label}</strong>
+                    {option.meta && <small>{option.meta}</small>}
+                  </>
+                )}
+              </span>
+              <span className="ui-combobox__check">{selected && <CheckIcon />}</span>
+            </li>
+          );
+        })}
       </ul>
     );
   }
-
   return (
-    <div className="ui-searchable-dropdown" ref={rootRef}>
-      <label htmlFor={inputId}>{label}</label>
-      <div className="ui-searchable-dropdown__control">
+    <div className="ui-combobox" ref={rootRef}>
+      <label className="ui-combobox__label" htmlFor={controlId}>
+        {label}
+      </label>
+      <button
+        id={controlId}
+        type="button"
+        className="ui-combobox__trigger"
+        disabled={disabled}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={listId}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <span className={value ? "ui-combobox__value" : "ui-combobox__placeholder"}>
+          {value?.label ?? placeholder}
+        </span>
+        <span className="ui-combobox__actions">
+          {allowClear && value && !disabled && (
+            <span
+              role="button"
+              tabIndex={0}
+              className="ui-combobox__clear"
+              aria-label="پاک کردن انتخاب"
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange(null);
+                onSearchChange("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onChange(null);
+                  onSearchChange("");
+                }
+              }}
+            >
+              ×
+            </span>
+          )}
+          <span className="ui-combobox__separator" />
+          <span className="ui-combobox__chevron">
+            <Chevron isOpen={isOpen} />
+          </span>
+        </span>
+      </button>
+      {required && !value && (
         <input
-          id={inputId}
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded={isOpen}
-          aria-controls={listId}
-          value={search}
-          placeholder={placeholder}
-          autoComplete="off"
-          disabled={disabled}
-          required={required && !value}
-          onFocus={() => setIsOpen(true)}
-          onKeyDown={handleKeyDown}
-          onChange={event => handleSearchChange(event.target.value)}
-        />
-        <button
-          type="button"
+          className="ui-combobox__required-proxy"
           tabIndex={-1}
-          aria-label="باز کردن فهرست"
-          disabled={disabled}
-          onMouseDown={event => event.preventDefault()}
-          onClick={() => setIsOpen(current => !current)}
-        >
-          ⌄
-        </button>
-      </div>
+          aria-hidden="true"
+          required
+          value=""
+          onChange={() => {}}
+        />
+      )}
       {isOpen && !disabled && (
-        <div className="ui-searchable-dropdown__popover">
-          {renderPopoverContent()}
+        <div className="ui-combobox__popover">
+          <div className="ui-combobox__search">
+            <SearchIcon />
+            <input
+              ref={searchRef}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded="true"
+              aria-controls={listId}
+              value={search}
+              placeholder="جست‌وجو…"
+              autoComplete="off"
+              onChange={(event) => onSearchChange(event.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+          </div>
+          <div className="ui-combobox__body">{renderPopoverContent()}</div>
         </div>
       )}
     </div>
