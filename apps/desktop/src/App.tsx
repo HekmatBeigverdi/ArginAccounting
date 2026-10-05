@@ -49,21 +49,21 @@ function App() {
       <DesktopTitleBar />
       <div className="desktop-root__content">
         <PlatformProvider>
-      <SecurityBootstrapProvider>
-        <AuthSessionProvider>
-          <AuditProvider>
-            <AccountingProvider>
-              <InventoryWarehouseIntegrationProvider>
-                <ActiveContextProvider>
-                  <DisplayDensityProvider>
-                    <AppRouter />
-                  </DisplayDensityProvider>
-                </ActiveContextProvider>
-              </InventoryWarehouseIntegrationProvider>
-            </AccountingProvider>
-          </AuditProvider>
-        </AuthSessionProvider>
-      </SecurityBootstrapProvider>
+          <SecurityBootstrapProvider>
+            <AuthSessionProvider>
+              <AuditProvider>
+                <AccountingProvider>
+                  <InventoryWarehouseIntegrationProvider>
+                    <ActiveContextProvider>
+                      <DisplayDensityProvider>
+                        <AppRouter />
+                      </DisplayDensityProvider>
+                    </ActiveContextProvider>
+                  </InventoryWarehouseIntegrationProvider>
+                </AccountingProvider>
+              </AuditProvider>
+            </AuthSessionProvider>
+          </SecurityBootstrapProvider>
         </PlatformProvider>
       </div>
     </div>
