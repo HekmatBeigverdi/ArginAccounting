@@ -250,6 +250,10 @@ function SalesDocumentsWorkspace() {
     if (!selectedDocument || !session || !canAct("finalize")) return;
     setError("");
     setMessage("");
+    if (selectedDocument.documentType !== "sales-invoice" && selectedDocument.documentType !== "sales-return") {
+      await runAction("finalize");
+      return;
+    }
     setBusy(true);
     try {
       const services = createSalesWorkspaceServices(await getDesktopDatabase(), session.user);
@@ -336,6 +340,7 @@ function SalesDocumentsWorkspace() {
             warehouses={warehouses}
             busy={busy}
             canApproveBelowCost={hasPermission(salesPermissions.approveBelowCost)}
+            guardEnabled={selectedDocument.documentType === "sales-invoice"}
             preview={async routing => {
               const services = createSalesWorkspaceServices(await getDesktopDatabase(), session.user);
               return services.previewBelowCost(selectedDocument, routing);
