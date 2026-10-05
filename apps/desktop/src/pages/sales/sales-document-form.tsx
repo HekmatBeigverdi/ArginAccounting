@@ -7,7 +7,10 @@ import { FiscalValidationError } from "@argin/fiscal";
 import { createSalesWorkspaceServices, type SalesWorkspaceServices } from "../../composition/sales/create-sales-workspace-services";
 import type { SalesDesktopActor, SalesDraftInput } from "../../composition/sales/create-sales-draft";
 import { Feedback } from "../../components/feedback";
-import { gregorianToJalali, jalaliToGregorian } from "../inventory/inventory-persian-date";
+import { PersianDatePicker, gregorianIsoToPersian } from "../../components/forms/persian-date-picker";
+import { SearchableDropdown, type SearchableDropdownOption } from "../../components/forms/searchable-dropdown";
+import "../../components/forms/searchable-dropdown.css";
+import { gregorianToJalali } from "../inventory/inventory-persian-date";
 import "./sales-document-form.css";
 
 interface Props {
@@ -70,9 +73,9 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
   const [items, setItems] = useState<readonly ProductSelectorItemDto[]>([]);
   const [customer, setCustomer] = useState<Pick<PartySelectorDto, "id" | "code" | "displayName"> | null>(() => initialDocument ? { id: initialDocument.customer.partyId, code: initialDocument.customer.code, displayName: initialDocument.customer.displayName } : null);
   const [documentType, setDocumentType] = useState<SalesDocumentType>(initialDocument?.documentType ?? "sales-invoice");
-  const [businessDate, setBusinessDate] = useState(() => gregorianToJalali(
-    initialDocument?.businessDate ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
-  ));
+  const [businessDate, setBusinessDate] = useState(() =>
+    initialDocument?.businessDate ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())
+  );
   const [description, setDescription] = useState(initialDocument?.description ?? "");
   const [relatedDocumentId, setRelatedDocumentId] = useState(initialDocument?.relatedDocumentReference?.documentId ?? "");
   const [originals, setOriginals] = useState<Awaited<ReturnType<SalesWorkspaceServices["selectOriginals"]>>>([]);
@@ -195,7 +198,7 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
       }
       const draft: Omit<SalesDraftInput, "submissionId"> = {
         companyId, branchId, fiscalYearId, documentType, customerId: customer.id,
-        businessDate: jalaliToGregorian(businessDate), description,
+        businessDate, description,
         relatedDocumentId: needsReference ? relatedDocumentId : "",
         lines: lines.map(line => ({
           lineId: line.lineId, preserveAdjustments: line.preserveAdjustments,
@@ -240,18 +243,25 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
               </select>
             </label>
             <label>تاریخ سند (شمسی)
-              <input value={businessDate} onChange={event => setBusinessDate(event.target.value)} dir="ltr" required placeholder="۱۴۰۵/۰۷/۱۲" />
+              <PersianDatePicker value={businessDate} onChange={setBusinessDate} disabled={saving} ariaLabel="تاریخ سند فروش" />
             </label>
-            <label>جست‌وجوی مشتری
-              <input value={customerSearch} onChange={event => setCustomerSearch(event.target.value)} placeholder="نام یا کد مشتری" />
-            </label>
-            <label>مشتری
-              <select disabled={editing && needsReference} value={customer?.id ?? ""} required onChange={event => { setCustomer(customers.find(value => value.id === event.target.value) ?? null); setRelatedDocumentId(""); if (needsReference) setLines([emptyLine()]); }}>
-                <option value="">انتخاب مشتری</option>
-                {customer && !customers.some(value => value.id === customer.id) && <option value={customer.id}>{customer.code} — {customer.displayName}</option>}
-                {customers.map(value => <option key={value.id} value={value.id}>{value.code} — {value.displayName}</option>)}
-              </select>
-            </label>
+            <SearchableDropdown
+              label="مشتری"
+              placeholder="نام یا کد مشتری را جست‌وجو کنید…"
+              emptyText="مشتری فعالی یافت نشد."
+              disabled={editing && needsReference}
+              required
+              value={customer ? { id: customer.id, label: `${customer.code} — ${customer.displayName}`, meta: customer.displayName } : null}
+              search={customerSearch}
+              options={customers.map(value => ({ id: value.id, label: `${value.code} — ${value.displayName}`, meta: value.displayName }))}
+              onSearchChange={setCustomerSearch}
+              onChange={option => {
+                const selected = option ? customers.find(value => value.id === option.id) : null;
+                setCustomer(selected ? { id: selected.id, code: selected.code, displayName: selected.displayName } : null);
+                setRelatedDocumentId("");
+                if (needsReference) setLines([emptyLine()]);
+              }}
+            />
           </div>
           {!loading && services && customers.length === 0 && <p>مشتری فعالی پیدا نشد؛ در بخش اشخاص، نقش «مشتری» را بررسی کنید یا عبارت جست‌وجو را تغییر دهید.</p>}
           {needsReference && <label>فاکتور اصلی (قطعی)
@@ -263,10 +273,7 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
           <label>{needsReference ? "علت برگشت یا اصلاح" : "توضیحات"}
             <textarea value={description} onChange={event => setDescription(event.target.value)} required={needsReference} rows={2} />
           </label>
-          {!needsReference && <label>جست‌وجوی کالا یا خدمت
-            <input value={itemSearch} onChange={event => setItemSearch(event.target.value)} placeholder="نام یا کد کالا / خدمت" />
-          </label>}
-          {!needsReference && !loading && services && items.length === 0 && <p>کالا یا خدمت فعال و قابل فروش پیدا نشد؛ اطلاعات کالا یا عبارت جست‌وجو را بررسی کنید.</p>}
+                    {!needsReference && !loading && services && items.length === 0 && <p>کالا یا خدمت فعال و قابل فروش پیدا نشد؛ اطلاعات کالا یا عبارت جست‌وجو را بررسی کنید.</p>}
           {needsReference && <p>تخفیف، هزینه و مالیات هر ردیف از فاکتور اصلی حفظ می‌شود.</p>}
           {originalLoading && <p role="status">در حال بارگذاری اقلام فاکتور اصلی…</p>}
           <div className="sales-document-form__lines">
@@ -279,14 +286,22 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
                 }}>
                   <option value="">انتخاب ردیف فاکتور اصلی</option>
                   {originalDocument?.lines.map(source => <option key={source.lineId} value={source.lineId}>{source.position} — {source.description ?? source.item.productId}</option>)}
-                </select> : <select aria-label={`کالا یا خدمت ردیف ${index + 1}`} value={line.productId} required onChange={event => {
-                  const item = items.find(value => value.productId === event.target.value);
-                  updateLine(line.id, { productId: item?.productId ?? "", title: item ? `${item.code} — ${item.title}` : "", preserveAdjustments: false });
-                }}>
-                  <option value="">انتخاب کالا / خدمت</option>
-                  {line.productId && !items.some(item => item.productId === line.productId) && <option value={line.productId}>{line.title}</option>}
-                  {items.map(item => <option key={item.productId} value={item.productId}>{item.code} — {item.title}</option>)}
-                </select>}
+                </select> : <SearchableDropdown
+                  label={`کالا یا خدمت ردیف ${index + 1}`}
+                  placeholder="نام یا کد کالا / خدمت…"
+                  required
+                  value={line.productId ? { id: line.productId, label: line.title || line.productId } : null}
+                  search={line.productId ? line.title : itemSearch}
+                  options={items.map(item => ({ id: item.productId, label: `${item.code} — ${item.title}`, meta: item.kind === "service" ? "خدمت" : "کالا" }))}
+                  onSearchChange={value => {
+                    setItemSearch(value);
+                    if (line.productId && value !== line.title) updateLine(line.id, { productId: "", title: "" });
+                  }}
+                  onChange={option => {
+                    const item = option ? items.find(value => value.productId === option.id) : null;
+                    updateLine(line.id, { productId: item?.productId ?? "", title: item ? `${item.code} — ${item.title}` : "", preserveAdjustments: false });
+                  }}
+                />}
                 {(needsReference || editing) && <small>هزینه: {originalAdjustments(line, "charges")}</small>}</td>
                 <td><input aria-label={`تعداد ردیف ${index + 1}`} dir="ltr" inputMode="decimal" required value={line.quantity} onChange={event => updateLine(line.id, { quantity: event.target.value })} /></td>
                 <td><input aria-label={`قیمت واحد ردیف ${index + 1}`} dir="ltr" inputMode="numeric" required value={line.unitPrice} onChange={event => updateLine(line.id, { unitPrice: event.target.value })} /></td>
