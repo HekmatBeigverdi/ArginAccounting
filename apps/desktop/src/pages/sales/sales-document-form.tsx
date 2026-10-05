@@ -7,8 +7,8 @@ import { FiscalValidationError } from "@argin/fiscal";
 import { createSalesWorkspaceServices, type SalesWorkspaceServices } from "../../composition/sales/create-sales-workspace-services";
 import type { SalesDesktopActor, SalesDraftInput } from "../../composition/sales/create-sales-draft";
 import { Feedback } from "../../components/feedback";
-import { PersianDatePicker, gregorianIsoToPersian } from "../../components/forms/persian-date-picker";
-import { SearchableDropdown, type SearchableDropdownOption } from "../../components/forms/searchable-dropdown";
+import { PersianDatePicker } from "../../components/forms/persian-date-picker";
+import { SearchableDropdown } from "../../components/forms/searchable-dropdown";
 import "../../components/forms/searchable-dropdown.css";
 import { gregorianToJalali } from "../inventory/inventory-persian-date";
 import "./sales-document-form.css";
@@ -67,8 +67,9 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerSearch, setCustomerSearch] = useState(() => initialDocument ? `${initialDocument.customer.code} — ${initialDocument.customer.displayName}` : "");
   const [itemSearch, setItemSearch] = useState("");
+  const [lineSearch, setLineSearch] = useState<Record<string,string>>({});
   const [customers, setCustomers] = useState<readonly PartySelectorDto[]>([]);
   const [items, setItems] = useState<readonly ProductSelectorItemDto[]>([]);
   const [customer, setCustomer] = useState<Pick<PartySelectorDto, "id" | "code" | "displayName"> | null>(() => initialDocument ? { id: initialDocument.customer.partyId, code: initialDocument.customer.code, displayName: initialDocument.customer.displayName } : null);
@@ -291,15 +292,18 @@ export function SalesDocumentForm({ actor, companyId, branchId, fiscalYearId, on
                   placeholder="نام یا کد کالا / خدمت…"
                   required
                   value={line.productId ? { id: line.productId, label: line.title || line.productId } : null}
-                  search={line.productId ? line.title : itemSearch}
+                  search={line.productId ? line.title : (lineSearch[line.id] ?? "")}
                   options={items.map(item => ({ id: item.productId, label: `${item.code} — ${item.title}`, meta: item.kind === "service" ? "خدمت" : "کالا" }))}
                   onSearchChange={value => {
                     setItemSearch(value);
+                    setLineSearch(current => ({ ...current, [line.id]: value }));
                     if (line.productId && value !== line.title) updateLine(line.id, { productId: "", title: "" });
                   }}
                   onChange={option => {
                     const item = option ? items.find(value => value.productId === option.id) : null;
-                    updateLine(line.id, { productId: item?.productId ?? "", title: item ? `${item.code} — ${item.title}` : "", preserveAdjustments: false });
+                    const title = item ? `${item.code} — ${item.title}` : "";
+                    updateLine(line.id, { productId: item?.productId ?? "", title, preserveAdjustments: false });
+                    setLineSearch(current => ({ ...current, [line.id]: title }));
                   }}
                 />}
                 {(needsReference || editing) && <small>هزینه: {originalAdjustments(line, "charges")}</small>}</td>
