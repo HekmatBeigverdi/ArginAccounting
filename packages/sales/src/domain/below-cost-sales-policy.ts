@@ -11,7 +11,7 @@ export interface BelowCostSalesPolicy {
   readonly revision: number;
   readonly effectiveFrom: string;
   readonly mode: BelowCostSalesMode;
-  /** Minimum gross margin in basis points. 0 means selling at cost is acceptable. */
+  /** Minimum margin-over-cost threshold in basis points. 0 means selling at cost is acceptable. */
   readonly minimumMarginBasisPoints: number;
 }
 
@@ -49,6 +49,19 @@ function moneyFromDecimal(value: string): number {
     return fail("valuation.unitCost");
   }
   return amount;
+}
+
+function netSellingUnitPrice(snapshot: SalesCommercialSnapshot): number {
+  const quantity = snapshot.terms.quantity;
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return fail("belowCostEvaluation.quantity");
+  }
+  const netAmountBeforeVat = snapshot.totals.taxBaseAmount;
+  const value = netAmountBeforeVat / quantity;
+  if (!Number.isFinite(value) || value < 0) {
+    return fail("belowCostEvaluation.netSellingUnitPrice");
+  }
+  return value;
 }
 
 export function createBelowCostSalesPolicy(input: BelowCostSalesPolicy): BelowCostSalesPolicy {
@@ -90,7 +103,7 @@ export function evaluateBelowCostSale(input: {
     return Object.freeze({
       outcome: "not-applicable",
       belowThreshold: false,
-      sellingUnitPrice: snapshot.terms.unitPrice,
+      sellingUnitPrice: netSellingUnitPrice(snapshot),
       costUnitPrice: null,
       marginAmount: null,
       marginBasisPoints: null,
@@ -111,7 +124,7 @@ export function evaluateBelowCostSale(input: {
     return Object.freeze({
       outcome: "cost-unavailable",
       belowThreshold: false,
-      sellingUnitPrice: snapshot.terms.unitPrice,
+      sellingUnitPrice: netSellingUnitPrice(snapshot),
       costUnitPrice: null,
       marginAmount: null,
       marginBasisPoints: null,
@@ -132,7 +145,7 @@ export function evaluateBelowCostSale(input: {
   }
 
   const costUnitPrice = moneyFromDecimal(valuation.unitCost);
-  const sellingUnitPrice = snapshot.terms.unitPrice;
+  const sellingUnitPrice = netSellingUnitPrice(snapshot);
   const marginAmount = sellingUnitPrice - costUnitPrice;
   const marginBasisPoints = costUnitPrice === 0
     ? 10000
