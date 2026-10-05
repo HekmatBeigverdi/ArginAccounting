@@ -10,12 +10,15 @@ import {
 import {
   SqliteSalesDocumentRepository, SqliteSalesIdempotencyRepository,
   SqliteBelowCostSalesPolicyRepository, SqliteBelowCostSalesDecisionRepository, SqliteSalesInventoryCostQuotePort,
+  ensureSalesNumberSeries, SALES_NUMBER_SERIES_TYPES,
 } from "@argin/sales-tauri";
 import {
   InventoryDraftService, createInventoryDocumentLine, createInventoryLineOperation,
   type InventorySourceDocumentPort,
 } from "@argin/inventory";
 import { SqliteInventoryUnitOfWork } from "@argin/inventory-tauri";
+import { generateDocumentNumber } from "@argin/fiscal";
+import { SqliteFiscalUnitOfWork } from "@argin/fiscal-tauri";
 import { SqliteProductReader } from "@argin/product-tauri";
 import { SqliteWarehouseReader } from "@argin/warehouse-tauri";
 import { prepareSalesDraft, type SalesDesktopActor, type SalesDraftInput, type SalesDraftPorts } from "./create-sales-draft.ts";
@@ -422,6 +425,23 @@ async function mutateSalesDocument(
       lifecycle = transitionSalesLifecycle(before.lifecycle, {
         transitionId: input.submissionId, action, actorId: actor.id, occurredAt, reason: input.reason,
       });
+      if (action === "finalize") {
+        if (document.documentNumber) throw new Error("سند فروش پیش از قطعی‌شدن دارای شماره رسمی است و وضعیت آن باید بررسی شود.");
+        await ensureSalesNumberSeries(session, {
+          companyId: document.scope.companyId,
+          branchId: document.scope.branchId,
+          fiscalYearId: document.scope.fiscalYearId,
+          documentType: document.documentType,
+        });
+        const fiscalUow = SqliteFiscalUnitOfWork.fromSession(session);
+        const documentNumber = await generateDocumentNumber(fiscalUow, {
+          companyId: document.scope.companyId,
+          branchId: document.scope.branchId,
+          fiscalYearId: document.scope.fiscalYearId,
+          entityType: SALES_NUMBER_SERIES_TYPES[document.documentType],
+        });
+        document = Object.freeze({ ...document, documentNumber });
+      }
     }
 
     const after: SalesPersistedDocument = { ...before, document, lifecycle, version: before.version + 1, updatedAt: occurredAt };

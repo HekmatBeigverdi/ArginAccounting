@@ -12,3 +12,5 @@ export {
 
 export { SqliteSalesOperationalTraceReader } from "./sqlite-sales-operational-trace-reader.ts";
 export type { SalesOperationalTrace } from "./sqlite-sales-operational-trace-reader.ts";
+
+export { ensureSalesNumberSeries, SALES_NUMBER_SERIES_TYPES } from "./ensure-sales-number-series.ts";
