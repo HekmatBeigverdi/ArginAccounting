@@ -54,7 +54,8 @@ Journal Voucher / immutable posting lineage
 9. A service/non-stock line does not require Inventory Issue/valuation solely because it is sold; its commercial posting may proceed under Phase 25 rules.
 10. Corrections/reversals MUST create explicit lineage. Finalized historical Sales, Inventory and Journal facts are not mutated in place.
 11. CR-24-01 below-cost policy is a commercial gate only. An allowed/approved negative-margin sale remains valid; Phase 25 MUST post its real valuation-derived COGS and MUST NOT replace cost with selling price.
-12. Posting trace should correlate the Sales policy/approval decision with the authoritative valuation revision actually consumed for COGS.
+12. Posting trace should correlate the Sales policy/approval decision and its pre-finalization cost-quote basis with the authoritative valuation entry/revision actually consumed for COGS.
+13. A Phase 24 cost quote is advisory/guard data only. It MUST NOT become the Phase 25 COGS source; the actual confirmed Issue and resolved FIFO/MWA valuation remain authoritative.
 
 ## Sales return flow
 
