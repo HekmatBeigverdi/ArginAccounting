@@ -15,8 +15,8 @@ import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Page } from "../../components/layout";
 import { Feedback } from "../../components/feedback";
-import { createSalesPrintModel, downloadSalesXlsx, openSalesPrintPreview } from "../../features/sales/sales-export-print";
-import { commitSalesImport, previewSalesImport, salesImportBatchId, type SalesImportPreview } from "../../features/sales/sales-import-controller";
+import { createSalesPrintModel, downloadSalesBytes, downloadSalesXlsx, openSalesPrintPreview } from "../../features/sales/sales-export-print";
+import { commitSalesImport, createSalesImportTemplateXlsx, previewSalesImport, salesImportBatchId, type SalesImportPreview } from "../../features/sales/sales-import-controller";
 import "./sales-documents-page.css";
 
 const TYPE_LABELS: Record<SalesDocumentSnapshot["documentType"], string> = {
@@ -344,6 +344,7 @@ function SalesDocumentsWorkspace() {
             placeholder="جست‌وجو در شماره سند، مشتری یا نوع سند"
             aria-label="جست‌وجوی اسناد فروش"
           />
+          {hasPermission(salesPermissions.import) && <button disabled={busy} onClick={()=>downloadSalesBytes(createSalesImportTemplateXlsx(),"الگوی-ورود-اسناد-فروش.xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}>الگوی ورود</button>}
           {hasPermission(salesPermissions.import) && <label className="sales-import-button">ورود Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" disabled={busy} onChange={event=>void handleImportFile(event)} /></label>}
           {hasPermission(salesPermissions.export) && <button disabled={busy||!selectedDocument} onClick={()=>exportSelected("xlsx")}>Excel</button>}
           {hasPermission(salesPermissions.export) && <button disabled={busy||!selectedDocument} onClick={()=>exportSelected("print")}>چاپ / PDF</button>}
