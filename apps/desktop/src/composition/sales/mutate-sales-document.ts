@@ -410,6 +410,7 @@ async function mutateSalesDocument(
         await guard.record({
           companyId: document.scope.companyId,
           documentId: document.documentId,
+          decisionKey: input.submissionId,
           actorId: actor.id,
           approved: approvalRequired,
           approvalReason: transition?.belowCostApprovalReason ?? null,
