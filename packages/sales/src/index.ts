@@ -222,3 +222,6 @@ export { SecuredSalesMutationService } from "./application/secured-sales-mutatio
 export type {
   SalesSecuredMutationInput, SecuredSalesMutationDependencies,
 } from "./application/secured-sales-mutation-service.ts";
+
+export { BELOW_COST_SALES_MODES, createBelowCostSalesPolicy, evaluateBelowCostSale } from "./domain/below-cost-sales-policy.ts";
+export type { BelowCostEvaluation, BelowCostSalesMode, BelowCostSalesPolicy } from "./domain/below-cost-sales-policy.ts";
