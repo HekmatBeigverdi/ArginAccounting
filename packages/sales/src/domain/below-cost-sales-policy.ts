@@ -164,3 +164,42 @@ export function evaluateBelowCostSale(input: {
     reason: belowThreshold ? "below-cost-policy" : "within-policy",
   });
 }
+
+
+export interface SalesInventoryCostQuote {
+  readonly quoteId:string;
+  readonly companyId:string;
+  readonly productId:string;
+  readonly warehouseId:string;
+  readonly businessDate:string;
+  readonly quantity:string;
+  readonly currency:string;
+  readonly unitCost:string;
+  readonly totalCost:number;
+  readonly method:"fifo"|"moving_average";
+  readonly strategyVersion:number;
+  /** Deterministic revision/fingerprint of the valuation state/layers used for this quote. */
+  readonly valuationBasisRevision:string;
+  readonly quotedAt:string;
+}
+
+export interface SalesInventoryCostQuotePort {
+  quote(input:{
+    readonly companyId:string;readonly productId:string;readonly warehouseId:string;
+    readonly businessDate:string;readonly quantity:string;readonly currency:string;
+  }):Promise<SalesInventoryCostQuote|null>;
+}
+
+export function evaluateBelowCostSaleWithQuote(input:{
+  readonly policy:BelowCostSalesPolicy;readonly snapshot:SalesCommercialSnapshot;readonly quote:SalesInventoryCostQuote|null;
+}):BelowCostEvaluation{
+  const {policy,snapshot,quote}=input;
+  if(snapshot.lineKind!=="stock-product")return Object.freeze({outcome:"not-applicable",belowThreshold:false,sellingUnitPrice:snapshot.terms.unitPrice,costUnitPrice:null,marginAmount:null,marginBasisPoints:null,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:null,valuationRevision:null,reason:"service-or-non-stock"});
+  if(!quote)return Object.freeze({outcome:"cost-unavailable",belowThreshold:false,sellingUnitPrice:snapshot.terms.unitPrice,costUnitPrice:null,marginAmount:null,marginBasisPoints:null,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:null,valuationRevision:null,reason:"valuation-unresolved"});
+  if(quote.companyId!==policy.companyId||quote.productId!==snapshot.productId||quote.currency!==snapshot.terms.currency)return fail("belowCostEvaluation.costQuoteLineage");
+  const cost=moneyFromDecimal(quote.unitCost),selling=snapshot.terms.unitPrice,margin=selling-cost;
+  const marginBp=cost===0?10000:Math.round((margin/cost)*10000);
+  const below=marginBp<policy.minimumMarginBasisPoints;
+  const outcome:BelowCostEvaluation["outcome"]=!below||policy.mode==="allow"?"allowed":policy.mode==="warn"?"warning":policy.mode==="require-approval"?"approval-required":"blocked";
+  return Object.freeze({outcome,belowThreshold:below,sellingUnitPrice:selling,costUnitPrice:quote.unitCost,marginAmount:margin,marginBasisPoints:marginBp,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:quote.quoteId,valuationRevision:null,reason:below?"below-cost-policy":"within-policy"});
+}
