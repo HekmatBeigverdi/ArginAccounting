@@ -46,3 +46,21 @@ test("New sales document button opens the draft form", async () => {
  assert.match(page, /<button[^>]*onClick=\{openNewDocument\}[^>]*>\s*سند فروش جدید/u);
  assert.match(page, /<SalesDocumentForm/u);
 });
+
+
+test("Sales draft uses searchable customer/product dropdowns and the shared Persian date picker",async()=>{
+ const [form,dropdown,datePicker]=await Promise.all([
+   read("src/pages/sales/sales-document-form.tsx"),
+   read("src/components/forms/searchable-dropdown.tsx"),
+   read("src/components/forms/persian-date-picker.tsx"),
+ ]);
+ assert.match(form,/PersianDatePicker/u);
+ assert.match(form,/SearchableDropdown/u);
+ assert.doesNotMatch(form,/جست‌وجوی مشتری/u);
+ assert.doesNotMatch(form,/جست‌وجوی کالا یا خدمت/u);
+ assert.match(form,/placeholder="نام یا کد مشتری را جست‌وجو کنید…"/u);
+ assert.match(form,/placeholder="نام یا کد کالا \/ خدمت…"/u);
+ assert.match(dropdown,/role="combobox"/u);
+ assert.match(dropdown,/aria-autocomplete="list"/u);
+ assert.match(datePicker,/aria-label="باز کردن تقویم شمسی"/u);
+});
