@@ -194,10 +194,10 @@ export function evaluateBelowCostSaleWithQuote(input:{
   readonly policy:BelowCostSalesPolicy;readonly snapshot:SalesCommercialSnapshot;readonly quote:SalesInventoryCostQuote|null;
 }):BelowCostEvaluation{
   const {policy,snapshot,quote}=input;
-  if(snapshot.lineKind!=="stock-product")return Object.freeze({outcome:"not-applicable",belowThreshold:false,sellingUnitPrice:snapshot.terms.unitPrice,costUnitPrice:null,marginAmount:null,marginBasisPoints:null,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:null,valuationRevision:null,reason:"service-or-non-stock"});
-  if(!quote)return Object.freeze({outcome:"cost-unavailable",belowThreshold:false,sellingUnitPrice:snapshot.terms.unitPrice,costUnitPrice:null,marginAmount:null,marginBasisPoints:null,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:null,valuationRevision:null,reason:"valuation-unresolved"});
+  if(snapshot.lineKind!=="stock-product")return Object.freeze({outcome:"not-applicable",belowThreshold:false,sellingUnitPrice:netSellingUnitPrice(snapshot),costUnitPrice:null,marginAmount:null,marginBasisPoints:null,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:null,valuationRevision:null,reason:"service-or-non-stock"});
+  if(!quote)return Object.freeze({outcome:"cost-unavailable",belowThreshold:false,sellingUnitPrice:netSellingUnitPrice(snapshot),costUnitPrice:null,marginAmount:null,marginBasisPoints:null,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:null,valuationRevision:null,reason:"valuation-unresolved"});
   if(quote.companyId!==policy.companyId||quote.productId!==snapshot.productId||quote.currency!==snapshot.terms.currency)return fail("belowCostEvaluation.costQuoteLineage");
-  const cost=moneyFromDecimal(quote.unitCost),selling=snapshot.terms.unitPrice,margin=selling-cost;
+  const cost=moneyFromDecimal(quote.unitCost),selling=netSellingUnitPrice(snapshot),margin=selling-cost;
   const marginBp=cost===0?10000:Math.round((margin/cost)*10000);
   const below=marginBp<policy.minimumMarginBasisPoints;
   const outcome:BelowCostEvaluation["outcome"]=!below||policy.mode==="allow"?"allowed":policy.mode==="warn"?"warning":policy.mode==="require-approval"?"approval-required":"blocked";
