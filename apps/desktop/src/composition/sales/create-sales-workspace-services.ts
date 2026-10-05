@@ -5,8 +5,17 @@ import { validateOperationDate } from "@argin/fiscal";
 import { SqliteFiscalYearRepository, SqliteFiscalPeriodRepository, SqliteHistoricalLockRepository } from "@argin/fiscal-tauri";
 import { SqlitePartyReader } from "@argin/party-tauri";
 import { SqliteProductReader, SqliteProductSelectorReader } from "@argin/product-tauri";
-import { SqliteSalesDocumentRepository } from "@argin/sales-tauri";
-import { salesPermissions, type SalesPermission, type SalesDocumentSnapshot, type SalesPersistedDocument } from "@argin/sales";
+import {
+  SqliteSalesDocumentRepository,
+  SqliteBelowCostSalesPolicyRepository,
+  SqliteBelowCostSalesDecisionRepository,
+  SqliteSalesInventoryCostQuotePort,
+} from "@argin/sales-tauri";
+import { SqliteWarehouseReader } from "@argin/warehouse-tauri";
+import {
+  BelowCostSalesGuardService, createBelowCostSalesPolicy, createSalesCommercialSnapshot, salesPermissions,
+  type BelowCostLineRouting, type BelowCostSalesMode, type SalesPermission, type SalesDocumentSnapshot, type SalesPersistedDocument,
+} from "@argin/sales";
 import { editSalesDraft, transitionSalesDocument, type SalesDraftEditInput, type SalesTransitionInput } from "./mutate-sales-document";
 import { createSalesDraft, type SalesDesktopActor, type SalesDraftInput, type SalesDraftPorts } from "./create-sales-draft";
 
@@ -117,6 +126,53 @@ export function createSalesWorkspaceServices(database: DatabaseExecutor, actor: 
         throw new Error("فاکتور اصلی معتبر نیست.");
       }
       return state.document;
+    },
+    async selectWarehouses(companyId: string, branchId: string) {
+      await requireAccess(companyId, branchId, salesPermissions.view);
+      return new SqliteWarehouseReader(database).select({
+        companyId, branchId, includeCompanyWide: true, statuses: ["active"], limit: 100,
+      });
+    },
+    async getBelowCostPolicy(companyId: string, branchId: string, businessDate: string) {
+      await requireAccess(companyId, branchId, salesPermissions.view);
+      return new SqliteBelowCostSalesPolicyRepository(database).findEffective(companyId, businessDate);
+    },
+    async saveBelowCostPolicy(input: {
+      companyId: string; branchId: string; mode: BelowCostSalesMode;
+      minimumMarginBasisPoints: number; effectiveFrom: string;
+    }) {
+      await requireAccess(input.companyId, input.branchId, salesPermissions.manageBelowCostPolicy);
+      const repository = new SqliteBelowCostSalesPolicyRepository(database);
+      const history = await repository.list(input.companyId);
+      const revision = (history.at(-1)?.revision ?? 0) + 1;
+      const policy = createBelowCostSalesPolicy({
+        policyId: crypto.randomUUID(), companyId: input.companyId, revision,
+        effectiveFrom: input.effectiveFrom, mode: input.mode,
+        minimumMarginBasisPoints: input.minimumMarginBasisPoints,
+      });
+      await repository.save(policy, actor.id, new Date().toISOString());
+      return policy;
+    },
+    async previewBelowCost(document: SalesWorkspaceDocument, routing: readonly BelowCostLineRouting[]) {
+      await requireAccess(document.scope.companyId, document.scope.branchId, salesPermissions.finalize);
+      const guard = new BelowCostSalesGuardService(
+        new SqliteBelowCostSalesPolicyRepository(database),
+        new SqliteSalesInventoryCostQuotePort(database),
+        new SqliteBelowCostSalesDecisionRepository(database),
+      );
+      const capturedAt = new Date().toISOString();
+      const snapshots = document.lines.filter(line => line.commercialTerms).map(line => createSalesCommercialSnapshot({
+        snapshotId: "preview:" + document.documentId + ":" + line.lineId + ":" + document.version,
+        line, capturedAt,
+      }));
+      return guard.evaluate({
+        companyId: document.scope.companyId, documentId: document.documentId,
+        businessDate: document.businessDate, snapshots, routing,
+      });
+    },
+    async listBelowCostDecisions(companyId: string, branchId: string, documentId: string) {
+      await requireAccess(companyId, branchId, salesPermissions.view);
+      return new SqliteBelowCostSalesDecisionRepository(database).listByDocument(companyId, documentId);
     },
     edit: (input: SalesDraftEditInput) => editSalesDraft(database, actor, input, salesDraftPorts),
     transition: (input: SalesTransitionInput) => transitionSalesDocument(database, actor, input, salesDraftPorts),
