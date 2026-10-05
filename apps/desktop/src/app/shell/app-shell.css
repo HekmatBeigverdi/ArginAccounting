@@ -40,7 +40,7 @@
 .app-shell__brand {
   display: grid;
   gap: var(--ui-space-1);
-  padding: var(--ui-density-panel-padding) var(--ui-space-5);
+  padding: var(--ui-density-panel-padding);
   border-bottom: 1px solid var(--ui-border);
   background: var(--ui-surface);
 }
