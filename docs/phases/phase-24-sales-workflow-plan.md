@@ -157,6 +157,17 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 29 | Automated & E2E Validation | Not started |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
 
+## Step 28A — Finalization Numbering Completion
+
+- Closed the Phase 24 numbering gap before Step 29: an official Sales document number is allocated only when the lifecycle transition reaches Finalized.
+- Reused the shared Fiscal Number Series engine; Sales does not implement an independent counter.
+- Default Sales series are scoped by Company + Branch + Fiscal Year + Sales document type, with `SO-`, `SI-`, `SR-` and `SC-` prefixes and six-digit numeric parts.
+- Replay is resolved before number reservation. Number reservation, lifecycle finalization, Sales persistence, Inventory draft staging and idempotency outcome remain inside the same database transaction; rollback therefore does not commit a consumed number.
+- The existing Sales unique index remains the final persistence guard for Company + Fiscal Year + Branch + document type + document number.
+- Draft/Submitted/Approved documents remain intentionally unnumbered; the UI now says «در انتظار شماره قطعی» instead of «بدون شماره».
+- Phase 25 consumes the finalized Sales number as a reference only; Accounting does not own Sales numbering.
+- Added `sales-finalization-numbering-contract.test.ts` to freeze the transaction/replay/scope contract.
+
 ## Step 28 — Import/Export, Print/PDF & Operational Trace
 
 - Added XLSX/CSV Sales import with an explicit preview gate, required-column validation and customer/product code resolution to durable Party/Product IDs.
