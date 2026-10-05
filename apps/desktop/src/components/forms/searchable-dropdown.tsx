@@ -30,6 +30,7 @@ interface Props<T extends SearchableDropdownOption> {
   required?: boolean;
   allowClear?: boolean;
   renderOption?: (option: T) => ReactNode;
+  portalTarget?: HTMLElement | null;
 }
 
 interface PopupPosition {
@@ -71,6 +72,7 @@ export function SearchableDropdown<T extends SearchableDropdownOption>({
   required = false,
   allowClear = true,
   renderOption,
+  portalTarget: customPortalTarget,
 }: Props<T>) {
   const controlId = useId();
   const listId = useId();
@@ -215,6 +217,8 @@ export function SearchableDropdown<T extends SearchableDropdownOption>({
     );
   }
 
+  const portalTarget = customPortalTarget ?? rootRef.current?.closest("dialog");
+
   const popupNode =
     isOpen && !disabled && position ? (
       <div
@@ -312,7 +316,7 @@ export function SearchableDropdown<T extends SearchableDropdownOption>({
         />
       )}
       {/* Keep the popup in the modal's top layer, outside any scrolling form fields. */}
-      {popupNode && createPortal(popupNode, rootRef.current?.closest("dialog") ?? document.body)}
+      {popupNode && createPortal(popupNode, portalTarget ?? document.body)}
     </div>
   );
 }

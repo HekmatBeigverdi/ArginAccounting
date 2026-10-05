@@ -64,3 +64,13 @@ test("Sales draft uses searchable customer/product dropdowns and the shared Pers
  assert.match(dropdown,/aria-autocomplete="list"/u);
  assert.match(datePicker,/aria-label="باز کردن تقویم شمسی"/u);
 });
+
+
+test("sales modal combobox portals stay inside the dialog top layer",async()=>{
+ const [form,dropdown]=await Promise.all([
+  read("src/pages/sales/sales-document-form.tsx"),
+  read("src/components/forms/searchable-dropdown.tsx"),
+ ]);
+ assert.match(form,/portalTarget=\{dialog\.current\}/u);
+ assert.match(dropdown,/portalTarget \?\? document\.body/u);
+});
