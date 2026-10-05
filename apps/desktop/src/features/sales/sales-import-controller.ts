@@ -1,8 +1,9 @@
-import type { InventoryTabularData } from "@argin/inventory-tauri";
+import { createInventoryXlsx, type InventoryTabularData } from "@argin/inventory-tauri";
 import type { SalesDocumentType } from "@argin/sales";
 import type { SalesWorkspaceServices } from "../../composition/sales/create-sales-workspace-services";
 
 export const SALES_IMPORT_HEADERS=Object.freeze(["کلید سند","نوع سند","تاریخ","کد مشتری","شرح سند","کد کالا","تعداد","قیمت واحد","تخفیف درصد","مالیات درصد"]);
+export function createSalesImportTemplateXlsx():Uint8Array{return createInventoryXlsx([Object.fromEntries(SALES_IMPORT_HEADERS.map(h=>[h,""]))],"ورود اسناد فروش");}
 export interface SalesImportPreviewDocument {readonly key:string;readonly valid:boolean;readonly issues:readonly string[];readonly input:null|{documentType:SalesDocumentType;customerId:string;businessDate:string;description:string;lines:readonly {productId:string;quantity:number;unitPrice:number;discountRateBasisPoints:number;taxRateBasisPoints:number}[]};}
 export interface SalesImportPreview {readonly batchId:string;readonly totalRows:number;readonly documents:readonly SalesImportPreviewDocument[];readonly invalidCount:number;}
 export async function previewSalesImport(input:{data:InventoryTabularData;batchId:string;services:SalesWorkspaceServices;companyId:string;branchId:string}):Promise<SalesImportPreview>{
