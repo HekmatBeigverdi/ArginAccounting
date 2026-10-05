@@ -18,6 +18,7 @@ function setup() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec("CREATE TABLE companies (id TEXT PRIMARY KEY); INSERT INTO companies VALUES ('company-1'); CREATE TABLE test_audit (action TEXT)");
   sqlite.exec(readFileSync(new URL("../src-tauri/migrations/0035_sales_workflow.sql", import.meta.url), "utf8"));
+  sqlite.exec(readFileSync(new URL("../src-tauri/migrations/0036_sales_below_cost_guard.sql", import.meta.url), "utf8"));
   const params = (values: readonly DatabaseValue[]) => values.map(value => typeof value === "boolean" ? Number(value) : value);
   const session: DatabaseSession = {
     async execute(sql, values = []) { return { rowsAffected: Number(sqlite.prepare(sql).run(...params(values)).changes) }; },
@@ -132,10 +133,17 @@ test("return drafts preserve original discounts, charges and taxes with durable 
   } finally { await database.close(); }
 });
 
-test("lifecycle persists submit, approve, finalize and terminal-state restrictions", async () => {
+test("service invoice lifecycle persists submit, approve, finalize and terminal-state restrictions", async () => {
   const { transitionSalesDocument } = await import("../src/composition/sales/mutate-sales-document.ts");
   const { database, ports, sqlite } = setup();
   const operator = { ...actor, permissions: ["system.full-access"] };
+  // This fixture exercises the sales lifecycle without requiring inventory valuation or issue staging.
+  const getProduct = ports.getProduct;
+  ports.getProduct = async (...args) => {
+    const product = await getProduct(...args);
+    assert.ok(product);
+    return { ...product, kind: "service", stockTracking: false };
+  };
   try {
     const created = await createSalesDraft(database, actor, input, ports);
     const scope = { companyId: input.companyId, branchId: input.branchId, fiscalYearId: input.fiscalYearId, documentId: created.documentId };
@@ -152,6 +160,35 @@ test("lifecycle persists submit, approve, finalize and terminal-state restrictio
     assert.equal(sqlite.prepare("SELECT status FROM sales_documents").get()?.status, "finalized");
     await assert.rejects(transitionSalesDocument(database, operator, { ...scope, action: "cancel", expectedVersion: version, submissionId: "cancel-final" }, ports));
     assert.equal(sqlite.prepare("SELECT count(*) n FROM test_audit").get()?.n, 4);
+    assert.equal(sqlite.prepare("SELECT count(*) n FROM sales_below_cost_decisions").get()?.n, 1);
+    assert.equal(sqlite.prepare("SELECT outcome FROM sales_below_cost_decisions").get()?.outcome, "not-applicable");
+  } finally { await database.close(); }
+});
+
+test("stock invoice finalization requires warehouse routing and leaves no partial decision", async () => {
+  const { transitionSalesDocument } = await import("../src/composition/sales/mutate-sales-document.ts");
+  const { database, ports, sqlite } = setup();
+  const operator = { ...actor, permissions: ["system.full-access"] };
+  try {
+    const created = await createSalesDraft(database, actor, input, ports);
+    const scope = { companyId: input.companyId, branchId: input.branchId, fiscalYearId: input.fiscalYearId, documentId: created.documentId };
+    let version = 1;
+    for (const action of ["submit", "approve"] as const) {
+      await transitionSalesDocument(database, operator, {
+        ...scope, action, expectedVersion: version++, submissionId: action,
+      }, ports);
+    }
+
+    await assert.rejects(transitionSalesDocument(database, operator, {
+      ...scope, action: "finalize", expectedVersion: version, submissionId: "finalize",
+    }, ports), /sales\.below_cost_warehouse_required/u);
+
+    const persisted = await new SqliteSalesDocumentRepository(database).findById(input.companyId, created.documentId);
+    assert.equal(persisted?.lifecycle.status, "approved");
+    assert.equal(persisted?.version, version);
+    assert.equal(sqlite.prepare("SELECT count(*) n FROM sales_below_cost_decisions").get()?.n, 0);
+    assert.equal(sqlite.prepare("SELECT count(*) n FROM sales_idempotency WHERE request_id='finalize'").get()?.n, 0);
+    assert.equal(sqlite.prepare("SELECT count(*) n FROM test_audit").get()?.n, 3);
   } finally { await database.close(); }
 });
 
