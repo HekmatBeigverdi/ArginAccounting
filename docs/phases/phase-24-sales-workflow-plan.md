@@ -119,7 +119,8 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 
 ## Approved Change Requests
 
-- [CR-24-01 — Below-Cost Sales Policy & Guard](../architecture/cr-24-01-below-cost-sales-policy.md): company-level `allow / warn / require-approval / block` policy with minimum gross-margin threshold. Stock-product evaluation consumes authoritative Phase 21 valuation lineage; unresolved cost is explicit and services are excluded. The frozen 30-step numbering is unchanged.
+- [CR-24-01 — Below-Cost Sales Policy & Guard](../architecture/cr-24-01-below-cost-sales-policy.md): implemented end-to-end without renumbering the frozen 30-step plan. It provides versioned company `allow / warn / require-approval / block` policy, minimum margin-over-cost threshold, net pre-VAT Sales evaluation after discounts/charges, Phase 21 FIFO/MWA pre-finalization cost quotes, explicit unavailable-cost blocking, permission/approval controls, append-only decision trace, SQLite persistence, Desktop settings/preview, and transactional enforcement at Finalize.
+- The same CR operationalizes the existing Step 18/19 handoff: finalizing a stock Sales Invoice stages exactly one Inventory Issue Draft and finalizing a stock Sales Return stages exactly one Inventory Receipt Draft. Inventory confirmation/finalization remains the only stock-quantity authority.
 
 ## Fixed 30-Step Plan
 
