@@ -1,0 +1,109 @@
+.desktop-titlebar {
+  position: relative;
+  z-index: 1500;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  min-height: 2.35rem;
+  direction: ltr;
+  user-select: none;
+  -webkit-user-select: none;
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+
+.desktop-titlebar__identity {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: .55rem;
+  min-width: 0;
+  padding: 0 .8rem;
+  overflow: hidden;
+}
+
+.desktop-titlebar__identity strong {
+  flex: 0 0 auto;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.desktop-titlebar__identity span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-text-muted);
+  font-size: .7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+}
+
+.desktop-titlebar__controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+}
+
+.desktop-titlebar__button {
+  display: grid;
+  place-items: center;
+  width: 2.9rem;
+  min-width: 2.9rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ui-text);
+  font: inherit;
+  cursor: default;
+}
+
+.desktop-titlebar__button:hover {
+  background: var(--ui-surface-subtle);
+}
+
+.desktop-titlebar__button:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--ui-focus-ring);
+  outline-offset: -2px;
+}
+
+.desktop-titlebar__button--close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
+.desktop-titlebar__maximize-icon {
+  width: .7rem;
+  height: .7rem;
+  border: 1px solid currentColor;
+}
+
+.desktop-titlebar__restore-icon {
+  position: relative;
+  width: .65rem;
+  height: .65rem;
+  border: 1px solid currentColor;
+}
+
+.desktop-titlebar__restore-icon::before {
+  position: absolute;
+  inset: -.22rem auto auto .18rem;
+  width: .65rem;
+  height: .65rem;
+  border: 1px solid currentColor;
+  background: var(--ui-surface);
+  content: "";
+}
+
+.desktop-titlebar__button:hover .desktop-titlebar__restore-icon::before {
+  background: var(--ui-surface-subtle);
+}
+
+@media print {
+  .desktop-titlebar {
+    display: none;
+  }
+}
