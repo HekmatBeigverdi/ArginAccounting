@@ -11,7 +11,9 @@ export const salesPermissions = Object.freeze({
   cancel: "sales.documents.cancel",
   stageIssue: "sales.inventory-issues.stage",
   stageReturnReceipt: "sales.return-receipts.stage",
+  import: "sales.documents.import",
   export: "sales.reports.export",
+  traceView: "sales.trace.view",
   manageBelowCostPolicy: "sales.below-cost-policy.manage",
   approveBelowCost: "sales.below-cost.approve",
 } as const);
