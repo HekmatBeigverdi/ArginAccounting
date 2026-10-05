@@ -5,7 +5,7 @@ export interface SearchableDropdownOption{readonly id:string;readonly label:stri
 interface Props<T extends SearchableDropdownOption>{
  value:T|null;options:readonly T[];search:string;onSearchChange(value:string):void;onChange(value:T|null):void;
  label:string;placeholder?:string;emptyText?:string;loading?:boolean;disabled?:boolean;required?:boolean;
- allowClear?:boolean;renderOption?:(option:T)=>ReactNode;
+ allowClear?:boolean;renderOption?:(option:T)=>ReactNode;portalTarget?:HTMLElement|null;
 }
 interface PopupPosition{left:number;top:number;width:number;maxHeight:number;placement:"bottom"|"top";}
 const Chevron=({open}:{open:boolean})=><svg className={open?"is-open":undefined} viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg>;
@@ -14,7 +14,7 @@ const CheckIcon=()=> <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 
 
 export function SearchableDropdown<T extends SearchableDropdownOption>({
  value,options,search,onSearchChange,onChange,label,placeholder="انتخاب کنید…",emptyText="موردی یافت نشد.",
- loading=false,disabled=false,required=false,allowClear=true,renderOption,
+ loading=false,disabled=false,required=false,allowClear=true,renderOption,portalTarget,
 }:Props<T>){
  const controlId=useId(),listId=useId(),root=useRef<HTMLDivElement>(null),trigger=useRef<HTMLButtonElement>(null),popup=useRef<HTMLDivElement>(null),searchRef=useRef<HTMLInputElement>(null);
  const [open,setOpen]=useState(false),[active,setActive]=useState(-1),[position,setPosition]=useState<PopupPosition|null>(null);
@@ -73,6 +73,6 @@ export function SearchableDropdown<T extends SearchableDropdownOption>({
    </span>
   </button>
   {required&&!value&&<input className="ui-combobox__required-proxy" tabIndex={-1} aria-hidden="true" required value="" onChange={()=>{}}/>}
-  {popupNode&&createPortal(popupNode,document.body)}
+  {popupNode&&createPortal(popupNode,portalTarget ?? document.body)}
  </div>;
 }
