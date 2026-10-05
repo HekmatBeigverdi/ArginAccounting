@@ -3,10 +3,13 @@ import {
   SalesDomainError, SecuredSalesMutationService, assertSalesExpectedVersion,
   createSalesIdempotencyRecord, createSalesMutationContext, decideSalesReplay,
   replaySalesResult, salesPermissions, transitionSalesLifecycle,
-  calculateSalesDocumentTotals, calculateSalesLineTotals,
-  type SalesLifecycleAction, type SalesPermission, type SalesPersistedDocument,
+  calculateSalesDocumentTotals, calculateSalesLineTotals, createSalesCommercialSnapshot, BelowCostSalesGuardService,
+  type SalesLifecycleAction, type SalesPermission, type SalesPersistedDocument, type BelowCostLineRouting,
 } from "@argin/sales";
-import { SqliteSalesDocumentRepository, SqliteSalesIdempotencyRepository } from "@argin/sales-tauri";
+import {
+  SqliteSalesDocumentRepository, SqliteSalesIdempotencyRepository,
+  SqliteBelowCostSalesPolicyRepository, SqliteBelowCostSalesDecisionRepository, SqliteSalesInventoryCostQuotePort,
+} from "@argin/sales-tauri";
 import { prepareSalesDraft, type SalesDesktopActor, type SalesDraftInput, type SalesDraftPorts } from "./create-sales-draft.ts";
 
 export interface SalesDocumentMutationInput {
@@ -19,7 +22,12 @@ export interface SalesDocumentMutationInput {
   reason?: string;
 }
 export type SalesDraftEditInput = SalesDraftInput & SalesDocumentMutationInput;
-export type SalesTransitionInput = SalesDocumentMutationInput & { action: SalesLifecycleAction };
+export type SalesTransitionInput = SalesDocumentMutationInput & {
+  action: SalesLifecycleAction;
+  stockRouting?: readonly BelowCostLineRouting[];
+  acknowledgeBelowCostWarning?: boolean;
+  belowCostApprovalReason?: string | null;
+};
 
 async function mutateSalesDocument(
   database: DatabaseExecutor,
@@ -28,6 +36,7 @@ async function mutateSalesDocument(
   action: SalesLifecycleAction | "edit",
   ports: SalesDraftPorts,
   edit?: SalesDraftEditInput,
+  transition?: SalesTransitionInput,
 ): Promise<SalesPersistedDocument> {
   const permission: SalesPermission = salesPermissions[action];
   const authorization = {
@@ -76,6 +85,54 @@ async function mutateSalesDocument(
         calculateSalesDocumentTotals(document.lines.map(line => calculateSalesLineTotals(line.commercialTerms!)));
       }
       if (action === "edit") throw new SalesDomainError("sales.input_invalid", "edit");
+
+      if (action === "finalize" && document.documentType === "sales-invoice") {
+        const guard = new BelowCostSalesGuardService(
+          new SqliteBelowCostSalesPolicyRepository(session),
+          new SqliteSalesInventoryCostQuotePort(session),
+          new SqliteBelowCostSalesDecisionRepository(session),
+        );
+        const snapshots = document.lines
+          .filter(line => line.commercialTerms)
+          .map(line => createSalesCommercialSnapshot({
+            snapshotId: "finalize:" + document.documentId + ":" + line.lineId + ":" + before.version,
+            line,
+            capturedAt: occurredAt,
+          }));
+        const evaluated = await guard.evaluate({
+          companyId: document.scope.companyId,
+          documentId: document.documentId,
+          businessDate: document.businessDate,
+          snapshots,
+          routing: transition?.stockRouting ?? [],
+        });
+        const outcomes = evaluated.results.map(item => item.evaluation.outcome);
+        if (outcomes.includes("cost-unavailable")) {
+          throw new Error("برای یکی از کالاهای انباری، بهای معتبر از ارزش‌گذاری موجودی در دسترس نیست؛ فاکتور تا رفع وضعیت ارزش‌گذاری قطعی نمی‌شود.");
+        }
+        if (outcomes.includes("blocked")) {
+          throw new Error("فروش زیر حداقل حاشیه مجاز شرکت است و طبق سیاست جاری امکان قطعی‌کردن فاکتور وجود ندارد.");
+        }
+        if (outcomes.includes("warning") && !transition?.acknowledgeBelowCostWarning) {
+          throw new Error("فروش زیر حداقل حاشیه مجاز است؛ هشدار باید پیش از قطعی‌کردن صریحاً تأیید شود.");
+        }
+        const approvalRequired = outcomes.includes("approval-required");
+        if (approvalRequired) {
+          const canApprove = actor.permissions.includes("system.full-access") || actor.permissions.includes(salesPermissions.approveBelowCost);
+          if (!canApprove) throw new Error("این فاکتور زیر حد مجاز است و به مجوز تأیید فروش زیر بهای تمام‌شده نیاز دارد.");
+          if (!transition?.belowCostApprovalReason?.trim()) throw new Error("برای تأیید فروش زیر حد مجاز، ثبت دلیل الزامی است.");
+        }
+        await guard.record({
+          companyId: document.scope.companyId,
+          documentId: document.documentId,
+          actorId: actor.id,
+          approved: approvalRequired,
+          approvalReason: transition?.belowCostApprovalReason ?? null,
+          evaluated,
+          decidedAt: occurredAt,
+        });
+      }
+
       lifecycle = transitionSalesLifecycle(before.lifecycle, {
         transitionId: input.submissionId, action, actorId: actor.id, occurredAt, reason: input.reason,
       });
@@ -107,4 +164,4 @@ export const editSalesDraft = (database: DatabaseExecutor, actor: SalesDesktopAc
   mutateSalesDocument(database, actor, input, "edit", ports, input);
 
 export const transitionSalesDocument = (database: DatabaseExecutor, actor: SalesDesktopActor, input: SalesTransitionInput, ports: SalesDraftPorts) =>
-  mutateSalesDocument(database, actor, input, input.action, ports);
+  mutateSalesDocument(database, actor, input, input.action, ports, undefined, input);
