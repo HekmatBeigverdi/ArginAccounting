@@ -18,6 +18,8 @@ import {
   AppRouter
 } from "./app/router/app-router";
 
+import { DesktopTitleBar } from "./components/desktop/desktop-title-bar";
+
 import {
   AuditProvider
 } from "./composition/audit";
@@ -43,7 +45,10 @@ import "./pages/product/products-page-tokens.css";
 
 function App() {
   return (
-    <PlatformProvider>
+    <div className="desktop-root">
+      <DesktopTitleBar />
+      <div className="desktop-root__content">
+        <PlatformProvider>
       <SecurityBootstrapProvider>
         <AuthSessionProvider>
           <AuditProvider>
@@ -59,7 +64,9 @@ function App() {
           </AuditProvider>
         </AuthSessionProvider>
       </SecurityBootstrapProvider>
-    </PlatformProvider>
+        </PlatformProvider>
+      </div>
+    </div>
   );
 }
 
