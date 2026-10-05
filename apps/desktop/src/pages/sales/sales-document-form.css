@@ -29,7 +29,7 @@
   background: var(--color-surface, #fff);
   color: inherit;
 }
-.sales-document-form__lines { overflow-x: auto; overflow-y: visible; padding-bottom: 18rem; margin-bottom: -18rem; position: relative; z-index: 2; }
+.sales-document-form__lines { overflow-x: auto; overflow-y: hidden; position: relative; }
 .sales-document-form table { width: 100%; min-width: 780px; border-collapse: collapse; }
 .sales-document-form th,
 .sales-document-form td { padding: var(--ui-density-cell-y) var(--ui-density-cell-x); text-align: right; }
@@ -42,5 +42,3 @@
 
 .sales-document-form__lines td { overflow: visible; }
 .sales-document-form__lines tbody tr { position: relative; }
-.sales-document-form__lines tbody tr:focus-within { z-index: 20; }
-.sales-document-form fieldset { overflow: visible; }
