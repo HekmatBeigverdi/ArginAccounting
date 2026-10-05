@@ -12,6 +12,11 @@
 @media(max-width:900px){.sales-workspace{height:auto}.sales-workspace__grid{grid-template-columns:1fr;overflow:visible}.sales-list__scroll{max-height:320px}.sales-summary{grid-template-columns:1fr}.sales-detail{max-height:none}}
 
 .sales-action-dialog{max-width:480px}
+.sales-list__row {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
 .sales-history li{padding-block:4px}
 
 @media(min-width:1500px){.sales-workspace__grid{grid-template-columns:minmax(380px,500px) minmax(0,1fr)}.sales-detail{padding-inline:calc(var(--ui-density-panel-padding) * 1.15)}}
