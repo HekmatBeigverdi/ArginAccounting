@@ -428,6 +428,7 @@ export function SalesDocumentForm({
               />
             </label>
             <SearchableDropdown
+              portalTarget={dialog.current}
               label="مشتری"
               placeholder="نام یا کد مشتری را جست‌وجو کنید…"
               emptyText="مشتری فعالی یافت نشد."
