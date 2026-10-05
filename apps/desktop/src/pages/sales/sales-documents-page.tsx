@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import type { BelowCostLineRouting, BelowCostSalesPolicy, SalesDocumentSnapshot, SalesDocumentStatus, SalesLifecycleAction } from "@argin/sales";
 import { SalesDomainError, calculateSalesLineTotals, salesPermissions } from "@argin/sales";
 import { getDesktopDatabase } from "@argin/database-tauri";
+import { parseInventoryCsv, parseInventoryXlsx } from "@argin/inventory-tauri";
+import type { SalesOperationalTrace } from "@argin/sales-tauri";
 import { FiscalValidationError } from "@argin/fiscal";
 import { createSalesWorkspaceServices, type SalesWorkspaceDocument } from "../../composition/sales/create-sales-workspace-services";
 import { SalesActionDialog } from "./sales-action-dialog";
@@ -13,6 +15,8 @@ import { useActiveContext } from "../../app/providers/active-context-provider";
 import { useAuthSession } from "../../app/providers/auth-session-provider";
 import { Page } from "../../components/layout";
 import { Feedback } from "../../components/feedback";
+import { createSalesPrintModel, downloadSalesXlsx, openSalesPrintPreview } from "../../features/sales/sales-export-print";
+import { commitSalesImport, previewSalesImport, salesImportBatchId, type SalesImportPreview } from "../../features/sales/sales-import-controller";
 import "./sales-documents-page.css";
 
 const TYPE_LABELS: Record<SalesDocumentSnapshot["documentType"], string> = {
@@ -82,6 +86,8 @@ function SalesDocumentsWorkspace() {
   const mutationRequests = useRef(new Map<string, string>());
   const [message, setMessage] = useState("");
   const [refreshRevision, setRefreshRevision] = useState(0);
+  const [trace, setTrace] = useState<SalesOperationalTrace | null>(null);
+  const [importPreview, setImportPreview] = useState<SalesImportPreview | null>(null);
   const scopeKey = JSON.stringify([activeContext.companyId, activeContext.branchId, activeContext.fiscalYearId, session?.user.id]);
   const currentScope = useRef(scopeKey);
   currentScope.current = scopeKey;
@@ -296,6 +302,38 @@ function SalesDocumentsWorkspace() {
     } finally { setBusy(false); }
   }
 
+
+  useEffect(() => {
+    let cancelled=false; setTrace(null);
+    if (!selectedDocument || !session || !activeContext.companyId || !hasPermission(salesPermissions.traceView)) return;
+    void getDesktopDatabase().then(db=>createSalesWorkspaceServices(db,session.user)
+      .getOperationalTrace(activeContext.companyId,activeContext.branchId,selectedDocument.documentId))
+      .then(value=>{if(!cancelled)setTrace(value);}).catch(()=>{if(!cancelled)setTrace(null);});
+    return()=>{cancelled=true;};
+  },[selectedDocument?.documentId,selectedDocument?.version,session,activeContext.companyId,activeContext.branchId]);
+
+  function exportSelected(kind:"xlsx"|"print"){
+    if(!selectedDocument||!hasPermission(salesPermissions.export))return;
+    const model=createSalesPrintModel({document:selectedDocument,companyName:activeContext.activeCompany?.legalName??"شرکت فعال",branchName:activeContext.activeBranch?.name??"شعبه فعال"});
+    if(kind==="xlsx")downloadSalesXlsx(model);else openSalesPrintPreview(model);
+  }
+
+  async function handleImportFile(event:ChangeEvent<HTMLInputElement>){
+    const file=event.target.files?.[0];event.target.value="";
+    if(!file||!session||!activeContext.companyId||!activeContext.branchId||!hasPermission(salesPermissions.import))return;
+    setBusy(true);setError("");setMessage("");
+    try{const bytes=new Uint8Array(await file.arrayBuffer()),data=file.name.toLowerCase().endsWith(".csv")?parseInventoryCsv(new TextDecoder().decode(bytes)):parseInventoryXlsx(bytes);
+      const services=createSalesWorkspaceServices(await getDesktopDatabase(),session.user);
+      setImportPreview(await previewSalesImport({data,batchId:await salesImportBatchId(bytes),services,companyId:activeContext.companyId,branchId:activeContext.branchId}));
+    }catch(reason){setImportPreview(null);setError(reason instanceof Error?reason.message:"خواندن فایل فروش ناموفق بود.");}finally{setBusy(false);}
+  }
+  async function commitImport(){
+    if(!importPreview||!session||!activeContext.companyId||!activeContext.branchId||!activeContext.fiscalYearId)return;
+    setBusy(true);setError("");
+    try{const services=createSalesWorkspaceServices(await getDesktopDatabase(),session.user);const result=await commitSalesImport({preview:importPreview,services,companyId:activeContext.companyId,branchId:activeContext.branchId,fiscalYearId:activeContext.fiscalYearId});setImportPreview(null);setMessage(numberFormatter.format(result.created)+" پیش‌نویس فروش وارد شد.");setRefreshRevision(x=>x+1);}
+    catch(reason){setError(reason instanceof Error?reason.message:"ورود اسناد فروش ناموفق بود.");}finally{setBusy(false);}
+  }
+
   return (
     <Page>
       <div className="sales-workspace" dir="rtl">
@@ -306,6 +344,9 @@ function SalesDocumentsWorkspace() {
             placeholder="جست‌وجو در شماره سند، مشتری یا نوع سند"
             aria-label="جست‌وجوی اسناد فروش"
           />
+          {hasPermission(salesPermissions.import) && <label className="sales-import-button">ورود Excel / CSV<input type="file" accept=".xlsx,.xls,.csv" disabled={busy} onChange={event=>void handleImportFile(event)} /></label>}
+          {hasPermission(salesPermissions.export) && <button disabled={busy||!selectedDocument} onClick={()=>exportSelected("xlsx")}>Excel</button>}
+          {hasPermission(salesPermissions.export) && <button disabled={busy||!selectedDocument} onClick={()=>exportSelected("print")}>چاپ / PDF</button>}
           {hasPermission(salesPermissions.manageBelowCostPolicy) && (
             <button disabled={busy} onClick={() => void openPolicy()}>سیاست فروش زیر بها</button>
           )}
@@ -316,6 +357,7 @@ function SalesDocumentsWorkspace() {
 
         {error && <Feedback tone="error">{error}</Feedback>}
         {message && <Feedback tone="success">{message}</Feedback>}
+        {importPreview && <section className="sales-import-preview"><strong>پیش‌نمایش ورود فروش</strong><span>ردیف فایل: {numberFormatter.format(importPreview.totalRows)}</span><span>سند: {numberFormatter.format(importPreview.documents.length)}</span><span>خطادار: {numberFormatter.format(importPreview.invalidCount)}</span><div>{importPreview.documents.slice(0,100).map(doc=><p key={doc.key} className={doc.valid?"":"is-error"}><b dir="ltr">{doc.key}</b> — {doc.valid?"معتبر":doc.issues.join("؛ ")}</p>)}</div><button className="primary" disabled={busy||importPreview.invalidCount>0||!importPreview.documents.length} onClick={()=>void commitImport()}>ایجاد پیش‌نویس‌ها</button><button disabled={busy} onClick={()=>setImportPreview(null)}>انصراف</button></section>}
         {newDocumentScope === scopeKey && session && (
           <SalesDocumentForm
             key={scopeKey + (editingDocument?.documentId ?? "new")}
@@ -505,6 +547,7 @@ function SalesDocumentsWorkspace() {
                     <dd dir="ltr">{selectedDocument.relatedDocumentReference?.documentId ?? "—"}</dd>
                     <dt>منبع سند</dt>
                     <dd dir="ltr">{selectedDocument.sourceReference?.sourceDocumentId ?? "—"}</dd>
+                    {hasPermission(salesPermissions.traceView) && <><dt>سند انبار مرتبط</dt><dd>{trace?.inventoryDocument ? (trace.inventoryDocument.number ?? trace.inventoryDocument.id)+" — "+trace.inventoryDocument.status : "هنوز ایجاد نشده"}</dd><dt>حرکت موجودی</dt><dd>{trace ? numberFormatter.format(trace.movements.length) : "…"}</dd><dt>ارزش‌گذاری</dt><dd>{trace ? (trace.valuations.length ? trace.valuations.map(v=>v.costState+" / "+v.method+" / r"+v.revision).join("، ") : "هنوز ایجاد نشده") : "…"}</dd></>}
                   </dl>
                 </details>
               </>
