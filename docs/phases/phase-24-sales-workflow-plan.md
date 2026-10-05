@@ -117,6 +117,10 @@ Argin Desktop -> SQLite -> Argin Bridge -> .NET API / PostgreSQL -> Synchronizat
 
 The phase therefore preserves stable IDs, source/external references, version/change metadata, operation/idempotency identity, immutable commercial snapshots and correction lineage. It does not implement live remote synchronization.
 
+## Approved Change Requests
+
+- [CR-24-01 — Below-Cost Sales Policy & Guard](../architecture/cr-24-01-below-cost-sales-policy.md): company-level `allow / warn / require-approval / block` policy with minimum gross-margin threshold. Stock-product evaluation consumes authoritative Phase 21 valuation lineage; unresolved cost is explicit and services are excluded. The frozen 30-step numbering is unchanged.
+
 ## Fixed 30-Step Plan
 
 | Step | Title | Status |
