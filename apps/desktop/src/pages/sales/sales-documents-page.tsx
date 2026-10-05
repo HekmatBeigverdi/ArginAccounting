@@ -426,7 +426,7 @@ function SalesDocumentsWorkspace() {
                   >
                     <span>{formatBusinessDate(document.businessDate)}</span>
                     <span>
-                      <strong>{document.documentNumber ?? "بدون شماره"}</strong>
+                      <strong>{document.documentNumber ?? "در انتظار شماره قطعی"}</strong>
                       <small>
                         {TYPE_LABELS[document.documentType]} · {document.customer.displayName}
                       </small>
