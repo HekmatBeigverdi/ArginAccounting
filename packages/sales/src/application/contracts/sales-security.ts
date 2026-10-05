@@ -12,6 +12,8 @@ export const salesPermissions = Object.freeze({
   stageIssue: "sales.inventory-issues.stage",
   stageReturnReceipt: "sales.return-receipts.stage",
   export: "sales.reports.export",
+  manageBelowCostPolicy: "sales.below-cost-policy.manage",
+  approveBelowCost: "sales.below-cost.approve",
 } as const);
 
 export type SalesPermission = (typeof salesPermissions)[keyof typeof salesPermissions];

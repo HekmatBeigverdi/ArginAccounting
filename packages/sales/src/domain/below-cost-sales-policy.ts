@@ -203,16 +203,83 @@ export interface SalesInventoryCostQuotePort {
   }):Promise<SalesInventoryCostQuote|null>;
 }
 
-export function evaluateBelowCostSaleWithQuote(input:{
-  readonly policy:BelowCostSalesPolicy;readonly snapshot:SalesCommercialSnapshot;readonly quote:SalesInventoryCostQuote|null;
-}):BelowCostEvaluation{
-  const {policy,snapshot,quote}=input;
-  if(snapshot.lineKind!=="stock-product")return Object.freeze({outcome:"not-applicable",belowThreshold:false,sellingUnitPrice:netSellingUnitPrice(snapshot),costUnitPrice:null,marginAmount:null,marginBasisPoints:null,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:null,valuationRevision:null,reason:"service-or-non-stock"});
-  if(!quote)return Object.freeze({outcome:"cost-unavailable",belowThreshold:false,sellingUnitPrice:netSellingUnitPrice(snapshot),costUnitPrice:null,marginAmount:null,marginBasisPoints:null,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:null,valuationRevision:null,reason:"valuation-unresolved"});
-  if(quote.companyId!==policy.companyId||quote.productId!==snapshot.productId||quote.currency!==snapshot.terms.currency)return fail("belowCostEvaluation.costQuoteLineage");
-  const cost=moneyFromDecimal(quote.unitCost),selling=netSellingUnitPrice(snapshot),margin=selling-cost;
-  const marginBp=cost===0?10000:Math.round((margin/cost)*10000);
-  const below=marginBp<policy.minimumMarginBasisPoints;
-  const outcome:BelowCostEvaluation["outcome"]=!below||policy.mode==="allow"?"allowed":policy.mode==="warn"?"warning":policy.mode==="require-approval"?"approval-required":"blocked";
-  return Object.freeze({outcome,belowThreshold:below,sellingUnitPrice:selling,costUnitPrice:quote.unitCost,marginAmount:margin,marginBasisPoints:marginBp,policyId:policy.policyId,policyRevision:policy.revision,valuationEntryId:quote.quoteId,valuationRevision:null,reason:below?"below-cost-policy":"within-policy"});
+export function evaluateBelowCostSaleWithQuote(input: {
+  readonly policy: BelowCostSalesPolicy;
+  readonly snapshot: SalesCommercialSnapshot;
+  readonly quote: SalesInventoryCostQuote | null;
+}): BelowCostEvaluation {
+  const { policy, snapshot, quote } = input;
+
+  if (snapshot.lineKind !== "stock-product") {
+    return Object.freeze({
+      outcome: "not-applicable",
+      belowThreshold: false,
+      sellingUnitPrice: netSellingUnitPrice(snapshot),
+      costUnitPrice: null,
+      marginAmount: null,
+      marginBasisPoints: null,
+      policyId: policy.policyId,
+      policyRevision: policy.revision,
+      valuationEntryId: null,
+      valuationRevision: null,
+      reason: "service-or-non-stock",
+    });
+  }
+
+  if (!quote) {
+    return Object.freeze({
+      outcome: "cost-unavailable",
+      belowThreshold: false,
+      sellingUnitPrice: netSellingUnitPrice(snapshot),
+      costUnitPrice: null,
+      marginAmount: null,
+      marginBasisPoints: null,
+      policyId: policy.policyId,
+      policyRevision: policy.revision,
+      valuationEntryId: null,
+      valuationRevision: null,
+      reason: "valuation-unresolved",
+    });
+  }
+
+  if (
+    quote.companyId !== policy.companyId
+    || quote.productId !== snapshot.productId
+    || quote.currency !== snapshot.terms.currency
+  ) {
+    return fail("belowCostEvaluation.costQuoteLineage");
+  }
+
+  const costUnitPrice = moneyFromDecimal(quote.unitCost);
+  const sellingUnitPrice = netSellingUnitPrice(snapshot);
+  const marginAmount = sellingUnitPrice - costUnitPrice;
+  const marginBasisPoints = costUnitPrice === 0
+    ? 10000
+    : Math.round((marginAmount / costUnitPrice) * 10000);
+  const belowThreshold = marginBasisPoints < policy.minimumMarginBasisPoints;
+
+  let outcome: BelowCostEvaluation["outcome"];
+  if (!belowThreshold || policy.mode === "allow") {
+    outcome = "allowed";
+  } else if (policy.mode === "warn") {
+    outcome = "warning";
+  } else if (policy.mode === "require-approval") {
+    outcome = "approval-required";
+  } else {
+    outcome = "blocked";
+  }
+
+  return Object.freeze({
+    outcome,
+    belowThreshold,
+    sellingUnitPrice,
+    costUnitPrice: quote.unitCost,
+    marginAmount,
+    marginBasisPoints,
+    policyId: policy.policyId,
+    policyRevision: policy.revision,
+    valuationEntryId: quote.quoteId,
+    valuationRevision: null,
+    reason: belowThreshold ? "below-cost-policy" : "within-policy",
+  });
 }
