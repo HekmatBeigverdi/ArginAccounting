@@ -145,7 +145,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Sales Return stages exactly one Inventory Receipt Draft for stock lines; stock restoration and return cost effects follow Inventory movement/valuation lineage.
    - Join commercial and costing accounting effects while preserving independent source provenance, idempotency/exactly-once behavior, recovery and correction/reversal chains.
    - Mandatory E2E gates cover stock-only, service-only, mixed, return, replay/no-duplicate and posting-before-valuation rejection scenarios.
-   - CR-24-01 adds company-level below-cost governance (`allow / warn / require-approval / block` + minimum margin threshold). It uses Phase 21 valuation cost only; Phase 25 must preserve legitimate negative margin and must never substitute selling price for COGS.
+   - CR-24-01 adds company-level below-cost governance (`allow / warn / require-approval / block` + minimum margin-over-cost threshold). Phase 24 uses a Phase 21 pre-finalization cost quote against net pre-VAT Sales value, persists the decision/approval trace, and stages the Inventory document transactionally. Phase 25 must use the actual resolved outbound valuation for COGS, preserve legitimate negative margin, and never substitute selling price or the quote for COGS.
 
 ## Treasury
 
