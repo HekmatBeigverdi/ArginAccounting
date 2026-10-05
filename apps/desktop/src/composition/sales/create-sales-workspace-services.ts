@@ -142,49 +142,51 @@ export function createSalesWorkspaceServices(database: DatabaseExecutor, actor: 
       minimumMarginBasisPoints: number; effectiveFrom: string;
     }) {
       await requireAccess(input.companyId, input.branchId, salesPermissions.manageBelowCostPolicy);
-      const repository = new SqliteBelowCostSalesPolicyRepository(database);
-      const history = await repository.list(input.companyId);
-      const revision = (history.at(-1)?.revision ?? 0) + 1;
-      const policy = createBelowCostSalesPolicy({
-        policyId: crypto.randomUUID(), companyId: input.companyId, revision,
-        effectiveFrom: input.effectiveFrom, mode: input.mode,
-        minimumMarginBasisPoints: input.minimumMarginBasisPoints,
+      return database.transaction(async session => {
+        const repository = new SqliteBelowCostSalesPolicyRepository(session);
+        const history = await repository.list(input.companyId);
+        const revision = (history.at(-1)?.revision ?? 0) + 1;
+        const policy = createBelowCostSalesPolicy({
+          policyId: crypto.randomUUID(), companyId: input.companyId, revision,
+          effectiveFrom: input.effectiveFrom, mode: input.mode,
+          minimumMarginBasisPoints: input.minimumMarginBasisPoints,
+        });
+        const changedAt = new Date().toISOString();
+        await repository.save(policy, actor.id, changedAt);
+        const audit = new SqliteAuditRepository({
+          execute: (sql, parameters) => session.execute(sql, parameters as DatabaseValue[] | undefined),
+          select: async <T>(sql: string, parameters?: unknown[]) =>
+            await session.query(sql, parameters as DatabaseValue[] | undefined) as T,
+        });
+        await audit.create({
+          id: "sales:below-cost-policy:" + policy.policyId,
+          occurredAt: changedAt,
+          action: "update",
+          outcome: "success",
+          source: "desktop",
+          actor: { type: "user", id: actor.id, displayName: actor.displayName },
+          scope: { companyId: input.companyId, branchId: input.branchId, fiscalYearId: null },
+          target: { entityType: "sales-below-cost-policy", entityId: policy.policyId, entityDisplayName: null },
+          message: "sales.below-cost-policy.update",
+          reason: null,
+          before: history.at(-1) ? {
+            policyId: history.at(-1)!.policyId,
+            revision: history.at(-1)!.revision,
+            mode: history.at(-1)!.mode,
+            minimumMarginBasisPoints: history.at(-1)!.minimumMarginBasisPoints,
+          } : null,
+          after: {
+            policyId: policy.policyId,
+            revision: policy.revision,
+            mode: policy.mode,
+            minimumMarginBasisPoints: policy.minimumMarginBasisPoints,
+            effectiveFrom: policy.effectiveFrom,
+          },
+          correlationId: policy.policyId,
+          metadata: { policyRevision: policy.revision, effectiveFrom: policy.effectiveFrom },
+        });
+        return policy;
       });
-      const changedAt = new Date().toISOString();
-      await repository.save(policy, actor.id, changedAt);
-      const audit = new SqliteAuditRepository({
-        execute: (sql, parameters) => database.execute(sql, parameters as DatabaseValue[] | undefined),
-        select: async <T>(sql: string, parameters?: unknown[]) =>
-          await database.query(sql, parameters as DatabaseValue[] | undefined) as T,
-      });
-      await audit.create({
-        id: "sales:below-cost-policy:" + policy.policyId,
-        occurredAt: changedAt,
-        action: "update",
-        outcome: "success",
-        source: "desktop",
-        actor: { type: "user", id: actor.id, displayName: actor.displayName },
-        scope: { companyId: input.companyId, branchId: input.branchId, fiscalYearId: null },
-        target: { entityType: "sales-below-cost-policy", entityId: policy.policyId, entityDisplayName: null },
-        message: "sales.below-cost-policy.update",
-        reason: null,
-        before: history.at(-1) ? {
-          policyId: history.at(-1)!.policyId,
-          revision: history.at(-1)!.revision,
-          mode: history.at(-1)!.mode,
-          minimumMarginBasisPoints: history.at(-1)!.minimumMarginBasisPoints,
-        } : null,
-        after: {
-          policyId: policy.policyId,
-          revision: policy.revision,
-          mode: policy.mode,
-          minimumMarginBasisPoints: policy.minimumMarginBasisPoints,
-          effectiveFrom: policy.effectiveFrom,
-        },
-        correlationId: policy.policyId,
-        metadata: { policyRevision: policy.revision, effectiveFrom: policy.effectiveFrom },
-      });
-      return policy;
     },
     async previewBelowCost(document: SalesWorkspaceDocument, routing: readonly BelowCostLineRouting[]) {
       await requireAccess(document.scope.companyId, document.scope.branchId, salesPermissions.finalize);
