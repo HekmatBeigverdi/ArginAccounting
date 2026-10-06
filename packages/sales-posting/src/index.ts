@@ -64,3 +64,16 @@ export type {
   SalesAccountsReceivableResolution,
   SalesAccountsReceivableResolutionContext,
 } from "./domain/sales-accounts-receivable-resolution.ts";
+
+export {
+  SALES_OUTPUT_VAT_ACCOUNT_ROLE,
+  createSalesOutputVatAccountRule,
+  resolveSalesOutputVatAccount,
+  selectSalesOutputVatAccountRule,
+} from "./domain/sales-output-vat-account-resolution.ts";
+export type {
+  SalesOutputVatAccountResolution,
+  SalesOutputVatAccountRole,
+  SalesOutputVatAccountRule,
+  SalesOutputVatResolutionContext,
+} from "./domain/sales-output-vat-account-resolution.ts";
