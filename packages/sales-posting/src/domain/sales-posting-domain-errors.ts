@@ -18,6 +18,9 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   commercialPostingUnbalanced: "sales_posting.commercial_posting_unbalanced",
   stockFulfillmentInvalid: "sales_posting.stock_fulfillment_invalid",
   stockFulfillmentBlocked: "sales_posting.stock_fulfillment_blocked",
+  inventoryIssueLineageInvalid: "sales_posting.inventory_issue_lineage_invalid",
+  inventoryIssueLineageMissing: "sales_posting.inventory_issue_lineage_missing",
+  inventoryIssueLineageAmbiguous: "sales_posting.inventory_issue_lineage_ambiguous",
 } as const);
 
 export type SalesPostingDomainErrorCode =
