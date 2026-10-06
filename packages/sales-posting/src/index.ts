@@ -101,3 +101,12 @@ export type {
   SalesStockFulfillmentLineStatus,
   SalesStockFulfillmentPrerequisiteResult,
 } from "./domain/sales-stock-fulfillment-prerequisite.ts";
+
+export {
+  resolveSalesInventoryIssueLineage,
+} from "./domain/sales-inventory-issue-lineage.ts";
+export type {
+  SalesInventoryIssueDocumentReader,
+  SalesInventoryIssueLineage,
+  SalesInventoryIssueLineageResult,
+} from "./domain/sales-inventory-issue-lineage.ts";
