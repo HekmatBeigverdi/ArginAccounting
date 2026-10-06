@@ -8,6 +8,11 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   timestampInvalid: "sales_posting.timestamp_invalid",
   timestampOrderInvalid: "sales_posting.timestamp_order_invalid",
   scopeMismatch: "sales_posting.scope_mismatch",
+  postingRuleInvalid: "sales_posting.posting_rule_invalid",
+  postingRuleAmbiguous: "sales_posting.posting_rule_ambiguous",
+  accountMappingMissing: "sales_posting.account_mapping_missing",
+  accountInvalid: "sales_posting.account_invalid",
+  accountNotPostable: "sales_posting.account_not_postable",
 } as const);
 
 export type SalesPostingDomainErrorCode =
