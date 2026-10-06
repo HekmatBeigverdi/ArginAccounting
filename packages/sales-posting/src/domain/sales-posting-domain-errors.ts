@@ -13,6 +13,9 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   accountMappingMissing: "sales_posting.account_mapping_missing",
   accountInvalid: "sales_posting.account_invalid",
   accountNotPostable: "sales_posting.account_not_postable",
+  accountResolutionMismatch: "sales_posting.account_resolution_mismatch",
+  commercialPostingInvalid: "sales_posting.commercial_posting_invalid",
+  commercialPostingUnbalanced: "sales_posting.commercial_posting_unbalanced",
 } as const);
 
 export type SalesPostingDomainErrorCode =
