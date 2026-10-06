@@ -90,3 +90,14 @@ export type {
   SalesOutputVatResolutionForLine,
   SalesRevenueResolutionForLine,
 } from "./domain/sales-commercial-posting-calculation.ts";
+
+export {
+  assertSalesStockFulfillmentEligible,
+  evaluateSalesStockFulfillmentPrerequisite,
+} from "./domain/sales-stock-fulfillment-prerequisite.ts";
+export type {
+  SalesStockFulfillmentEvidence,
+  SalesStockFulfillmentLinePrerequisite,
+  SalesStockFulfillmentLineStatus,
+  SalesStockFulfillmentPrerequisiteResult,
+} from "./domain/sales-stock-fulfillment-prerequisite.ts";
