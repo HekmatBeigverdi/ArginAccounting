@@ -36,3 +36,18 @@ export type {
   SalesCommercialPostingInput,
   SalesCommercialPostingLineInput,
 } from "./domain/sales-commercial-posting-input.ts";
+
+export {
+  SALES_REVENUE_ACCOUNT_ROLE,
+  createSalesRevenueAccountRule,
+  resolveSalesRevenueAccount,
+  selectSalesRevenueAccountRule,
+} from "./domain/sales-revenue-account-resolution.ts";
+export type {
+  SalesPostingAccountReader,
+  SalesPostingAccountSnapshot,
+  SalesRevenueAccountResolution,
+  SalesRevenueAccountResolutionContext,
+  SalesRevenueAccountRole,
+  SalesRevenueAccountRule,
+} from "./domain/sales-revenue-account-resolution.ts";
