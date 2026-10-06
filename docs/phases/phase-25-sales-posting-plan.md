@@ -149,7 +149,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 6 | Output VAT Account Resolution | Completed |
 | 7 | Commercial Posting Calculation & Balancing | Completed |
 | 8 | Stock-Fulfillment Prerequisite Contract | Completed |
-| 9 | Inventory Issue Lineage Resolution | Planned |
+| 9 | Inventory Issue Lineage Resolution | Completed |
 | 10 | Outbound Inventory Movement Lineage Resolution | Planned |
 | 11 | Resolved FIFO/MWA Valuation Prerequisite | Planned |
 | 12 | COGS Account Resolution | Planned |
@@ -1138,3 +1138,144 @@ The implementation was reviewed against the canonical Phase 24 -> Phase 25 Sales
 ## Next Step
 
 Step 9 — Inventory Issue Lineage Resolution.
+
+## Step 9 — Inventory Issue Lineage Resolution
+
+### Completed work
+
+- Added `resolveSalesInventoryIssueLineage()` to resolve the actual confirmed Inventory Issue behind each stock Sales line.
+- Resolution uses the Inventory document repository contract through the persistence-neutral `SalesInventoryIssueDocumentReader`; Sales Posting does not read SQLite directly.
+- The resolver starts only from a Step 8 prerequisite result that is already COGS-eligible.
+- Every stock line must resolve to an Inventory document that is:
+  - in the same Company;
+  - `documentType = issue`;
+  - `status = confirmed`;
+  - sourced from `sales`;
+  - sourced from `sales-invoice`;
+  - sourced from the same durable Sales Invoice ID.
+- Inventory document-level source reference must remain document-scoped (`lineId = null`).
+- Exact Sales-line lineage is resolved through each Inventory line's immutable `sourceReference.lineId`.
+- Sales Posting deliberately does not assume `InventoryLineId == SalesLineId`; Inventory owns its own durable line identity.
+- Product identity must match between the Sales stock line and the resolved Inventory Issue line.
+- Missing matching Inventory line fails as `inventory_issue_lineage_missing`.
+- Multiple Inventory lines claiming the same Sales line fail as `inventory_issue_lineage_ambiguous`.
+- Prerequisite `inventoryLineId` must match the actual resolved Inventory line.
+- Duplicate reuse of one Inventory line by multiple Sales stock lines is rejected.
+- The resulting lineage preserves:
+  - Sales line ID;
+  - Product ID;
+  - Inventory Issue document ID;
+  - Inventory document version;
+  - Inventory Issue line ID;
+  - authoritative confirmation timestamp.
+- Service-only Sales documents return an empty Issue-lineage set and do not invoke Inventory lookup.
+- No Stock Movement is resolved here; Step 10 owns the Movement lineage.
+- No FIFO/MWA amount is resolved here; Step 11 owns valuation readiness.
+- No COGS amount is created here.
+
+### Lineage model
+
+```text
+Sales stock line
+  salesLineId
+  productId
+       ↓
+Step 8 eligible prerequisite
+  inventoryDocumentId
+  inventoryLineId
+       ↓
+Load authoritative Inventory Issue
+       ↓
+Issue:
+  same Company
+  type = issue
+  status = confirmed
+  source = sales / sales-invoice / same invoice
+       ↓
+Inventory line sourceReference
+  documentId = same Sales Invoice
+  lineId = exact Sales line
+       ↓
+Resolved Issue Lineage
+```
+
+Important:
+
+```text
+SalesLineId != InventoryLineId
+```
+
+They are related through immutable source lineage, not identity equality.
+
+### Argin Bridge compliance
+
+- Sales document/line identity and Inventory document/line identity remain independent durable identities.
+- Cross-module linkage uses explicit immutable source references.
+- Inventory document version is preserved for later replay/concurrency/provenance use.
+- Confirmation time is retained as business lineage evidence.
+- No SQLite row ID or display/document number is used for linkage.
+- No monetary Sales or Inventory valuation amount enters Step 9.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-inventory-issue-lineage.test.ts
+```
+
+Coverage includes:
+
+- successful confirmed Issue resolution;
+- exact Sales line -> Inventory sourceReference matching;
+- service-only bypass;
+- missing Inventory document;
+- wrong Inventory document type;
+- non-confirmed Inventory document;
+- cross-company Issue rejection;
+- wrong Sales source document rejection;
+- missing line source lineage;
+- ambiguous duplicate line source lineage;
+- Product mismatch;
+- Step 8 prerequisite Inventory-line mismatch;
+- blocked prerequisite rejection.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was reviewed against the actual Phase 24 Sales -> Inventory staging composition, where Inventory creates its own line ID and stores the originating Sales line in `sourceReference.lineId`. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Actual Inventory Issue document is resolved through a persistence-neutral reader.
+- [x] Only confirmed Issue documents are accepted.
+- [x] Company and Sales document source lineage are exact.
+- [x] Sales line lineage is resolved through Inventory line source references.
+- [x] Inventory line identity remains independent from Sales line identity.
+- [x] Product identity must match.
+- [x] Missing/ambiguous line lineage fails closed.
+- [x] Step 8 prerequisite IDs must agree with authoritative Inventory facts.
+- [x] Service-only documents bypass Issue resolution.
+- [x] No Movement/Valuation/COGS responsibility leaked into Step 9.
+- [x] Durable provenance remains Bridge-ready.
+
+## Next Step
+
+Step 10 — Outbound Inventory Movement Lineage Resolution.
