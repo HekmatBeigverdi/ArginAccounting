@@ -147,7 +147,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 4 | Revenue Account Resolution | Completed |
 | 5 | Accounts Receivable Account Resolution | Completed |
 | 6 | Output VAT Account Resolution | Completed |
-| 7 | Commercial Posting Calculation & Balancing | Planned |
+| 7 | Commercial Posting Calculation & Balancing | Completed |
 | 8 | Stock-Fulfillment Prerequisite Contract | Planned |
 | 9 | Inventory Issue Lineage Resolution | Planned |
 | 10 | Outbound Inventory Movement Lineage Resolution | Planned |
@@ -852,3 +852,156 @@ The implementation was reviewed against the existing Purchase Posting account-re
 ## Next Step
 
 Step 7 — Commercial Posting Calculation & Balancing.
+
+## Step 7 — Commercial Posting Calculation & Balancing
+
+### Completed work
+
+- Added `calculateSalesCommercialPosting()` to convert immutable Sales commercial facts plus the resolved Step 4–6 accounts into deterministic commercial accounting components.
+- The commercial accounting equation is now frozen as:
+
+```text
+Accounts Receivable    Dr = grandTotal
+    Sales Revenue          Cr = taxBaseAmount
+    Output VAT             Cr = taxAmount
+```
+
+- Revenue is calculated per Sales line from the authoritative Phase 24 `taxBaseAmount`.
+- Output VAT is calculated per taxed Sales line from the authoritative Phase 24 `taxAmount`.
+- Accounts Receivable uses authoritative document `grandTotal`.
+- Step 7 never recalculates tax rates, tax bases, discounts, charges or selling prices; all monetary values are consumed from the immutable Step 3 input.
+- Every Sales line must have exactly one compatible Revenue account resolution.
+- Taxed lines must have Output VAT resolutions covering every immutable Sales tax fact.
+- Tax resolution provenance is validated against the exact upstream `taxId`, `taxCode` and `rateBasisPoints`.
+- Multiple tax facts on one Sales line are supported without recalculating their individual amounts when all resolve to the same Output VAT account; their tax IDs/codes remain attached to the resulting aggregate VAT component.
+- If multiple tax facts on one line resolve to different Output VAT accounts, Step 7 fails closed because Phase 24 currently exposes only the authoritative aggregate line `taxAmount`, not immutable per-tax monetary allocations. Phase 25 will not invent a split.
+- Zero-tax lines generate no synthetic VAT component.
+- AR resolution must match the same Company and Customer Party as the commercial input.
+- Revenue/VAT account resolutions must belong to the same Company and match the line/tax provenance.
+- All money arithmetic and balance controls use safe-integer / `BigInt` accumulation.
+- Added explicit balance assertions:
+  - total Debit = total Credit;
+  - total Debit = document `grandTotal`;
+  - total Revenue = document `taxBaseAmount`;
+  - total VAT = document `taxAmount`;
+  - Revenue + VAT = AR.
+- Commercial components retain durable Sales line, Customer Party and tax provenance for later Journal construction.
+- No COGS or Inventory component is introduced here. Stock cost remains owned by Steps 8–14 and Phase 21 actual valuation.
+- No Journal Voucher or Journal Line is created. Step 24 remains the Journal creation boundary.
+
+### Calculation model
+
+```text
+Immutable Sales Commercial Input
+            +
+Resolved Revenue Accounts
+            +
+Resolved AR Control Account
+            +
+Resolved Output VAT Accounts
+            ↓
+Commercial Posting Calculation
+            ↓
+AR Debit
+Revenue Credit(s)
+Output VAT Credit(s)
+            ↓
+Balance Control
+Debit == Credit
+```
+
+Example:
+
+```text
+Goods revenue base       2,000,000
+Service revenue base       500,000
+Output VAT                  50,000
+----------------------------------
+Accounts Receivable      2,550,000
+
+Dr Accounts Receivable   2,550,000
+    Cr Goods Revenue     2,000,000
+    Cr Service Revenue     500,000
+    Cr Output VAT           50,000
+```
+
+This is only the commercial leg. A stock sale may later add:
+
+```text
+Dr COGS
+    Cr Inventory
+```
+
+from authoritative Phase 21 outbound valuation; that cost leg is deliberately absent from Step 7.
+
+### Argin Bridge compliance
+
+- Components use durable account IDs, Sales source line IDs, Customer Party ID and Sales tax IDs/codes.
+- Commercial amounts remain derived deterministically from immutable synchronized Sales facts.
+- No SQLite row identity or UI/display identifier becomes accounting identity.
+- The same immutable facts and resolved mappings produce the same commercial component set.
+- Live Bridge transport remains deferred.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-commercial-posting-calculation.test.ts
+```
+
+Coverage includes:
+
+- balanced AR / Revenue / Output VAT construction;
+- mixed stock + service commercial posting;
+- exact Revenue/VAT/AR monetary reconciliation;
+- zero-tax invoices;
+- Customer/Company AR resolution mismatch;
+- missing Revenue mapping;
+- Revenue line-kind mismatch;
+- missing/duplicate/mismatched VAT provenance;
+- multi-tax provenance with one aggregate VAT account;
+- fail-closed behavior when one aggregate tax amount would need splitting across different accounts;
+- explicit proof that Step 7 creates no COGS/Inventory components.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was structurally reviewed against the immutable Phase 24 Sales pricing/tax contracts and the Phase 23 Purchase Posting separation between calculation components and Journal creation. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain the owner-side executable acceptance evidence.
+
+### Exit criteria
+
+- [x] AR debit equals authoritative Sales `grandTotal`.
+- [x] Revenue credit uses authoritative `taxBaseAmount`.
+- [x] Output VAT credit uses authoritative `taxAmount`.
+- [x] Debit and Credit reconcile exactly.
+- [x] Sales pricing and tax rates are not recalculated.
+- [x] Revenue resolution is complete for every Sales line.
+- [x] VAT resolution preserves immutable tax provenance.
+- [x] Zero-tax lines do not create synthetic VAT entries.
+- [x] Unsupported per-tax monetary splitting fails closed instead of being guessed.
+- [x] Customer Party and Sales line provenance are preserved.
+- [x] COGS/Inventory remain excluded from the commercial leg.
+- [x] Journal Voucher creation remains deferred to Step 24.
+- [x] Calculation remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 8 — Stock-Fulfillment Prerequisite Contract.
