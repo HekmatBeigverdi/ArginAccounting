@@ -45,11 +45,11 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Current implementation target: [Phase 24 — Sales Workflow](phases/phase-24-sales-workflow-plan.md).
-- Phase 24 Step 1 is complete; the baseline, scope, ownership boundaries, Argin Bridge boundary and fixed 30-step plan are frozen.
-- Phase 24 is based on `main` commit `91a1dc43fa7c341493d92b7e9457c1ecf0a117a8`, which includes the Phase 23 merge.
-- Sales owns selling-price/commercial facts; Inventory owns quantity, Valuation owns FIFO/MWA cost, and Phase 25 will own Sales accounting posting.
-- Phase 23 Steps 1–36 are complete and promoted to `develop`/`main`; semantic release publication remains manual.
+- Current implementation target: [Phase 25 — Sales Posting](phases/phase-25-sales-posting-plan.md).
+- Phase 25 Step 1 is complete; the exact baseline, fixed 30-step plan, handoff contract, ownership boundaries and Argin Bridge boundary are frozen.
+- Phase 25 is based on `main` commit `044a3ed1abbd847da7675c6bf70dcd9510f6f648`, the completed Phase 24 merge baseline, on branch `phase/25-sales-posting`.
+- Sales owns selling-price/commercial facts; Inventory owns quantity/movement; Phase 21 owns FIFO/MWA cost; Phase 25 owns Sales-specific accounting orchestration; Accounting owns Journal lifecycle.
+- Phase 24 is complete on `main`; semantic `v0.24.0` tag/GitHub Release publication remains manual.
 - Canonical roadmap: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Source-of-Truth Policy
