@@ -15,6 +15,7 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added the Step 3 immutable commercial posting-input boundary consuming Phase 24 Sales document/line snapshots and authoritative totals with source matching, tamper detection and exact reconciliation.
 - Added Step 4 deterministic Revenue account resolution with Company/Branch/line-kind specificity, fail-closed missing/ambiguous mapping behavior, and active/postable account validation.
 - Added Step 5 Accounts Receivable control-account resolution with Company/Branch policy, durable Customer Party provenance, and fail-closed account validation.
+- Added Step 6 Output VAT account resolution with Company/Branch/tax-code specificity, preserved Phase 24 tax provenance, and fail-closed account validation.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
