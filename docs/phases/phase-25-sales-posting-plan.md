@@ -144,7 +144,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 1 | Baseline, Handoff Contract & Ownership Verification | Completed |
 | 2 | Sales Posting Domain & Durable Posting Identity | Completed |
 | 3 | Commercial Posting Input from Immutable Sales Snapshots | Completed |
-| 4 | Revenue Account Resolution | Planned |
+| 4 | Revenue Account Resolution | Completed |
 | 5 | Accounts Receivable Account Resolution | Planned |
 | 6 | Output VAT Account Resolution | Planned |
 | 7 | Commercial Posting Calculation & Balancing | Planned |
@@ -448,3 +448,133 @@ The repository implementation and type contracts were reviewed against the curre
 ## Next Step
 
 Step 4 — Revenue Account Resolution.
+
+## Step 4 — Revenue Account Resolution
+
+### Completed work
+
+- Added the dedicated Sales Posting account role `sales-revenue`.
+- Added `SalesRevenueAccountRule` as a persistence-neutral account-mapping contract.
+- Added deterministic Revenue account selection with three mapping dimensions:
+  - mandatory Company scope;
+  - optional Branch scope;
+  - optional Sales line classification: `stock-product`, `non-stock-product`, or `service`.
+- A more specific rule always outranks a less-specific rule before numeric priority is considered.
+- Numeric `priority` is used only between rules with equal specificity.
+- Inactive rules and rules belonging to another Company are ignored.
+- Missing mapping fails explicitly with `sales_posting.account_mapping_missing`; Phase 25 never silently selects or invents a Revenue account.
+- Equally specific/equal-priority matches fail explicitly as `sales_posting.posting_rule_ambiguous`.
+- Added `SalesPostingAccountReader` so account lookup remains behind an Application/persistence-neutral port.
+- Revenue resolution verifies that the resolved Account:
+  - exists;
+  - belongs to the requested Company;
+  - matches the mapped durable `accountId`;
+  - is active;
+  - allows direct posting.
+- Missing, inactive or non-postable accounts fail closed.
+- Product Master remains outside accounting ownership; Product/Service records do not carry the authoritative Revenue account.
+- No Accounts Receivable or Output VAT role is introduced in this step; Steps 5–6 own those mappings.
+- No accounting amount calculation is introduced in this step; Step 7 owns commercial debit/credit calculation and balancing.
+- No generic Posting Rules platform is introduced; Phase 29 remains the owner of the general-purpose Posting Rules engine.
+
+### Resolution model
+
+```text
+Sales commercial line
+       ↓
+companyId + branchId + lineKind
+       ↓
+Revenue mapping candidates
+       ↓
+specificity
+  Branch + LineKind
+  Branch
+  LineKind
+  Company default
+       ↓
+priority
+       ↓
+exactly one rule
+       ↓
+accountId
+       ↓
+active + postingAllowed Account
+```
+
+This supports, for example:
+
+```text
+stock-product      -> Sales Revenue - Goods
+non-stock-product  -> Sales Revenue - Non-stock
+service            -> Service Revenue
+```
+
+while still allowing a Company-wide default Revenue account where the accounting policy does not need separate classifications.
+
+### Argin Bridge compliance
+
+- Rules use durable `ruleId`, Company/Branch identity, line classification and durable Accounting `accountId`.
+- Account code/name are returned only as account snapshots; they are not used as relational identity.
+- No SQLite row identifier or server-specific persistence key leaks into the Domain contract.
+- The resolver is deterministic, so the same authoritative rule set/context yields the same Revenue account on replay.
+- Live Bridge transport remains deferred.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-revenue-account-resolution.test.ts
+```
+
+Coverage includes:
+
+- most-specific Revenue mapping selection;
+- service vs stock vs Company default mappings;
+- specificity taking precedence over numeric priority;
+- inactive-rule exclusion;
+- Company-scope isolation;
+- missing-mapping fail-closed behavior;
+- ambiguous mapping rejection;
+- active/postable Accounting account resolution;
+- missing Account rejection;
+- inactive Account rejection.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was reviewed against the existing Purchase Posting fail-closed account-resolution pattern while keeping Phase 25 ownership narrower. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain the executable owner-side acceptance evidence.
+
+### Exit criteria
+
+- [x] Sales Revenue has an explicit account role.
+- [x] Resolution is Company-scoped and deterministic.
+- [x] Branch-specific Revenue mapping is supported.
+- [x] Goods/non-stock/service Revenue separation is supported without putting accounting ownership in Product Master.
+- [x] Specificity outranks priority.
+- [x] Missing and ambiguous mappings fail explicitly.
+- [x] Resolved accounts must be active and postable.
+- [x] Account identity is durable `accountId`, not code/name.
+- [x] No AR/VAT/balancing/Journal responsibility leaked into Step 4.
+- [x] Resolver remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 5 — Accounts Receivable Account Resolution.
