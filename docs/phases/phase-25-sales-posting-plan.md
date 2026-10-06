@@ -1,74 +1,126 @@
-# Phase 25 — Sales Posting — Implementation Plan
+# Phase 25 — Sales Posting — Fixed Implementation Plan
 
 ## Status
 
-Not started. This plan is prepared during Phase 24 to freeze the required Sales-to-Inventory-to-Accounting handoff before implementation begins.
+Step 1 is complete. Phase 25 has formally started on `phase/25-sales-posting`; the 30-step plan, handoff contract, ownership boundaries, Argin Bridge boundary and release target are frozen.
+
+## Governance
+
+The 30 step titles, order, scope and ownership boundaries are frozen at Phase 25 start. Any change requires an explicitly approved Change Request recorded in this canonical phase record. Owner acceptance and executable validation evidence remain separate.
+
+Mandatory references:
+
+- [Documentation Governance](../development/documentation-governance.md)
+- [Phase Definition of Done](../development/phase-definition-of-done.md)
+- [Roadmap](../../ROADMAP.md)
+- [Phase 24 — Sales Workflow](phase-24-sales-workflow-plan.md)
+- [Phase 24 -> Phase 25 Sales Fulfillment and Posting Handoff](../architecture/sales-fulfillment-posting-handoff.md)
+- [CR-24-01 — Below-Cost Sales Policy & Guard](../architecture/cr-24-01-below-cost-sales-policy.md)
+- [Phase 21 — Inventory Valuation](phase-21-inventory-valuation-plan.md)
+- [Phase 13 — Journal Voucher Engine](phase-13-journal-voucher-engine.md)
+- [Phase 15 — Journal Lifecycle](phase-15-journal-lifecycle.md)
+
+## Baseline and Release Target
+
+- Baseline branch: `main`.
+- Baseline commit: `044a3ed1abbd847da7675c6bf70dcd9510f6f648`.
+- Baseline commit message: `merge: release phase 24 sales workflow`.
+- Baseline includes the completed Phase 24 Sales Workflow merge to `main`.
+- Phase branch: `phase/25-sales-posting`.
+- Target version: `0.25.0` / `v0.25.0`.
+- Release title: `ArginAccounting v0.25.0 — Sales Posting`.
 
 ## Mission
 
-Phase 25 converts authoritative Phase 24 Sales commercial facts and Phase 21 Inventory Valuation outputs into balanced, idempotent Accounting journal effects without duplicating Sales, Inventory or Valuation authority.
+Phase 25 converts authoritative Phase 24 Sales commercial facts and Phase 21 Inventory Valuation outputs into balanced, idempotent Accounting journal effects without duplicating Sales, Inventory, Valuation or Journal authority.
 
-Mandatory references:
-- [Phase 24 -> Phase 25 Sales Fulfillment and Posting Handoff](../architecture/sales-fulfillment-posting-handoff.md).
-- [CR-24-01 — Below-Cost Sales Policy & Guard](../architecture/cr-24-01-below-cost-sales-policy.md).
+Below-cost approval/warning is a commercial governance decision, not a cost source. Phase 24 evaluates a pre-finalization Phase 21 cost quote against the net Sales amount before VAT and persists its policy/approval trace. Phase 25 accepts legitimate loss-making sales that were allowed/approved, calculates COGS only from the actual resolved outbound valuation entry, preserves both quote/basis and actual valuation provenance, and reports actual gross margin without rewriting Sales or Inventory facts.
 
-Below-cost approval/warning is a commercial governance decision, not a cost source. Phase 24 evaluates a **pre-finalization Phase 21 cost quote** against the net Sales amount before VAT and persists its policy/approval trace. Phase 25 must accept legitimate loss-making sales that were allowed/approved, calculate COGS only from the **actual resolved outbound valuation entry**, preserve both quote/basis and actual valuation provenance, and report actual gross margin without rewriting Sales or Inventory facts. The quote and final valuation may legitimately differ if authoritative Inventory state changes before Issue confirmation.
-
-## Non-negotiable dependency chain
+Canonical dependency direction:
 
 ```text
 Finalized Sales Invoice
- -> Inventory Issue Draft
- -> Inventory Issue finalized/confirmed
- -> Inventory Movement
- -> quantity decrease
- -> resolved FIFO/MWA valuation
- -> Sales Posting
- -> Journal Voucher
+        ↓
+Inventory Issue Draft
+        ↓
+Inventory Issue Finalized / Confirmed
+        ↓
+Authoritative Inventory Movement
+        ↓
+Phase 21 FIFO / MWA Valuation
+        ↓
+Phase 25 Sales Posting
+        ↓
+Journal Voucher
 ```
 
-For stock products, Phase 25 MUST NOT post COGS/Inventory Relief before the related Inventory movement exists and its valuation is resolved.
+## Ownership Boundaries
 
-Commercial posting uses Sales facts; cost posting uses Inventory Valuation facts. Selling price is never a cost input.
+### Phase 25 owns
 
-## Planned scope
+- Sales-specific accounting orchestration from authoritative upstream facts.
+- Revenue, Accounts Receivable and Output VAT posting effects derived from immutable Sales commercial facts.
+- COGS and Inventory Relief posting effects derived from resolved Phase 21 outbound valuation facts.
+- Durable Sales Posting identity, status, replay safety, recovery and posting provenance.
+- Correlation of Sales document/line lineage with Inventory movement/valuation lineage and Journal source provenance.
+- Sales Return accounting reversal/adjustment orchestration using explicit lineage.
+- Sales Correction/replacement/reversal accounting lineage.
+- Persian RTL Sales Posting status/recovery surfaces and operational trace.
 
-1. Baseline, handoff contract and ownership verification.
-2. Sales Posting domain and durable posting identity.
-3. Commercial posting input from immutable Sales snapshots.
-4. Revenue account resolution.
-5. Accounts Receivable account resolution.
-6. Output VAT account resolution.
-7. Commercial posting calculation and balancing.
-8. Stock-fulfillment prerequisite contract.
-9. Inventory Issue lineage resolution.
-10. Outbound Inventory Movement lineage resolution.
-11. Resolved FIFO/MWA valuation prerequisite.
-12. COGS account resolution.
-13. Inventory account resolution.
-14. COGS / Inventory Relief posting calculation.
-15. Mixed stock + service invoice orchestration.
-16. Service-only invoice posting path.
-17. Automatic post-finalization orchestration and resumable pending state.
-18. Idempotency and exactly-once Journal effect.
-19. Optimistic concurrency and posting CAS.
-20. Atomic Unit of Work / outbox boundary where cross-module work cannot share one local transaction.
-21. Sales Return commercial reversal.
-22. Sales Return Inventory Receipt / valuation cost restoration.
-23. Sales Correction and replacement/reversal lineage.
-24. Journal Voucher creation and immutable source provenance.
-25. Posting status, recovery and deterministic retry.
-26. Permissions, approval/audit and operational trace.
-27. Persian RTL posting status/recovery UI.
-28. Automated integration and E2E stock/service/return scenarios.
-29. Documentation, reconciliation and accounting examples.
-30. Quality Gate, merge and release.
+### Phase 25 consumes but does not own
 
-Step numbering is provisional until Phase 25 formally starts; the scope/invariants in this document and the handoff document are mandatory unless changed by an explicit approved Change Request.
+- Customer, Product/Service and Sales commercial facts from Phase 24 and upstream Master Data.
+- Inventory Issue/Receipt lifecycle and quantity movement authority from Phase 20.
+- FIFO/MWA valuation and actual inventory cost authority from Phase 21.
+- Journal Voucher aggregate/lifecycle rules from Phases 13 and 15.
+- shared Money, Audit, Security, Approval, optimistic concurrency, Unit of Work and background/platform infrastructure.
 
-## Required accounting effects
+### Explicitly out of scope
 
-Commercial leg (illustrative):
+- Recalculating or rewriting Sales selling prices, discounts, charges, tax inputs or finalized commercial snapshots.
+- Treating selling price, Product master price or Phase 24 pre-finalization cost quote as COGS.
+- Direct writes to Inventory quantity/movement/valuation tables from Sales Posting.
+- Duplicating Journal Voucher lifecycle/business rules inside Sales Posting.
+- Treasury settlement, receipts, bank/cash operations and cheque workflows.
+- General-purpose Posting Rules engine; Phase 29 owns that platform.
+- Iranian Taxpayer submission/signing/inquiry.
+- Live Argin Bridge transport, acknowledgement, remote apply, conflict resolution or server synchronization.
+- PostgreSQL/server persistence implementation for Sales Posting in this phase.
+
+## Core Invariants
+
+- Commercial posting uses immutable Phase 24 Sales facts.
+- Cost posting uses actual resolved Phase 21 FIFO/MWA valuation facts.
+- Selling price is never Inventory Cost and never COGS.
+- The Phase 24 cost quote is a governance input only and cannot override actual valuation.
+- Finalizing a stock Sales Invoice stages exactly one Inventory Issue Draft; Invoice finalization itself does not decrease stock.
+- Stock quantity decreases only when Inventory finalizes/confirms the Issue and creates the authoritative movement.
+- Stock COGS/Inventory Relief cannot post before Issue -> Movement -> resolved Valuation prerequisites exist.
+- Service-only invoices bypass Inventory fulfillment and cost posting.
+- Mixed invoices preserve stock-line prerequisites while allowing service-line commercial posting.
+- Allowed/approved below-cost sales may legitimately produce negative gross margin.
+- Journal effects are exactly-once per durable business effect despite replay, retry, restart or worker concurrency.
+- Same posting identity with incompatible source payload/version conflicts rather than silently overwriting.
+- Historical posted facts are not mutated in place; corrections, returns and reversals preserve explicit lineage.
+- Journal lines retain sufficient Sales/Inventory/Valuation provenance for audit, reconciliation and deterministic reversal.
+- Phase 25 remains persistence-neutral above adapters and offline-first on SQLite.
+- New durable identities, source references, versions and change metadata remain compatible with future Argin Bridge synchronization.
+
+## Argin Bridge Boundary
+
+Phase 25 prepares durable, persistence-neutral posting contracts for the future path:
+
+```text
+Argin Desktop -> SQLite -> Argin Bridge -> .NET API / PostgreSQL -> Synchronization
+```
+
+The phase preserves stable posting IDs, source/external references, operation/request identity, version/change metadata, idempotency evidence, immutable source provenance and reversal lineage. It does not implement live remote synchronization.
+
+This follows the permanent bridge rule: **sync-ready contracts now; live transport later**.
+
+## Required Accounting Effects
+
+Commercial leg:
 
 ```text
 Accounts Receivable    Dr
@@ -83,9 +135,93 @@ COGS                   Dr
     Inventory              Cr
 ```
 
-Sales Return reverses/adjusts the corresponding commercial and inventory-cost effects using explicit source lineage, not mutable historical edits.
+Sales Return reverses or adjusts the corresponding commercial and inventory-cost effects through explicit source lineage rather than mutable historical edits.
 
-## Definition of Done additions
+## Fixed 30-Step Plan
+
+| Step | Title | Status |
+| ---: | --- | --- |
+| 1 | Baseline, Handoff Contract & Ownership Verification | Completed |
+| 2 | Sales Posting Domain & Durable Posting Identity | Planned |
+| 3 | Commercial Posting Input from Immutable Sales Snapshots | Planned |
+| 4 | Revenue Account Resolution | Planned |
+| 5 | Accounts Receivable Account Resolution | Planned |
+| 6 | Output VAT Account Resolution | Planned |
+| 7 | Commercial Posting Calculation & Balancing | Planned |
+| 8 | Stock-Fulfillment Prerequisite Contract | Planned |
+| 9 | Inventory Issue Lineage Resolution | Planned |
+| 10 | Outbound Inventory Movement Lineage Resolution | Planned |
+| 11 | Resolved FIFO/MWA Valuation Prerequisite | Planned |
+| 12 | COGS Account Resolution | Planned |
+| 13 | Inventory Account Resolution | Planned |
+| 14 | COGS / Inventory Relief Posting Calculation | Planned |
+| 15 | Mixed Stock + Service Invoice Orchestration | Planned |
+| 16 | Service-Only Invoice Posting Path | Planned |
+| 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Planned |
+| 18 | Idempotency & Exactly-Once Journal Effect | Planned |
+| 19 | Optimistic Concurrency & Posting CAS | Planned |
+| 20 | Atomic Unit of Work / Outbox Boundary | Planned |
+| 21 | Sales Return Commercial Reversal | Planned |
+| 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Planned |
+| 23 | Sales Correction & Replacement/Reversal Lineage | Planned |
+| 24 | Journal Voucher Creation & Immutable Source Provenance | Planned |
+| 25 | Posting Status, Recovery & Deterministic Retry | Planned |
+| 26 | Permissions, Approval/Audit & Operational Trace | Planned |
+| 27 | Persian RTL Posting Status/Recovery UI | Planned |
+| 28 | Automated Integration & E2E Stock/Service/Return Scenarios | Planned |
+| 29 | Documentation, Reconciliation & Accounting Examples | Planned |
+| 30 | Quality Gate, Merge & Release | Planned |
+
+## Step 1 — Baseline, Handoff Contract & Ownership Verification
+
+### Completed work
+
+- Verified the canonical Roadmap and confirmed Phase 25 is Sales Posting.
+- Verified Phase 24 is merged into `main` at commit `044a3ed1abbd847da7675c6bf70dcd9510f6f648`.
+- Pinned that exact `main` commit as the Phase 25 baseline.
+- Created `phase/25-sales-posting` from that exact baseline.
+- Froze the 30-step implementation plan and removed provisional numbering.
+- Froze the non-negotiable Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal handoff.
+- Froze Sales/Inventory/Valuation/Journal ownership boundaries.
+- Froze the below-cost rule: Phase 24 cost quote remains governance evidence only; actual Phase 21 valuation remains the sole COGS authority.
+- Froze the exactly-once/replay requirement for Journal business effects.
+- Froze the Argin Bridge rule: durable sync-ready identities/contracts now; live transport later.
+- Set semantic release target to `0.25.0` / `v0.25.0`.
+- No Sales Posting domain implementation is introduced in Step 1; Step 2 owns the first posting domain model.
+
+### Local verification
+
+Repository/documentation checks for this baseline step:
+
+```bash
+git checkout phase/25-sales-posting
+git rev-parse HEAD
+git merge-base --is-ancestor 044a3ed1abbd847da7675c6bf70dcd9510f6f648 HEAD
+
+node scripts/check-doc-links.mjs
+```
+
+Expected baseline SHA at branch creation:
+
+```text
+044a3ed1abbd847da7675c6bf70dcd9510f6f648
+```
+
+Step 1 intentionally has no runtime/domain test because it introduces no executable business code.
+
+### Exit criteria
+
+- [x] Phase 24 merge is present in the selected baseline.
+- [x] Phase 25 branch exists from the exact baseline.
+- [x] 30-step plan is fixed.
+- [x] Handoff dependency chain is frozen.
+- [x] Authority boundaries are explicit.
+- [x] Selling price/cost quote cannot become COGS.
+- [x] Argin Bridge boundary is explicit.
+- [x] Release target is fixed.
+- [x] Step 2 is the first executable/domain implementation step.
+
+## Definition of Done Additions
 
 Phase 25 cannot be released merely because a Journal Voucher can be generated. Release requires proof that:
 
@@ -96,8 +232,12 @@ Phase 25 cannot be released merely because a Journal Voucher can be generated. R
 - revenue/VAT/receivable and COGS/inventory amounts come from their separate authoritative sources;
 - replay and recovery cannot duplicate Inventory or Journal effects;
 - service-only, mixed, stock-only and Sales Return paths are covered;
-- Journal lines retain Sales document/line and Inventory movement/valuation provenance sufficient for audit and reversal.
-- below-cost Sales that were allowed/approved can post a legitimate negative gross margin; COGS remains valuation-derived.
-- posting trace can correlate the Phase 24 below-cost policy revision/approval decision and pre-finalization valuation-basis revision with the actual valuation entry/revision used by Phase 25;
-- the Phase 24 cost quote is never posted as COGS and is never allowed to override the actual FIFO/MWA valuation;
-- negative gross margin remains a legitimate accounting result when the Phase 24 policy allowed or approved the transaction.
+- Journal lines retain Sales document/line and Inventory movement/valuation provenance sufficient for audit and reversal;
+- below-cost Sales that were allowed/approved can post a legitimate negative gross margin;
+- posting trace can correlate Phase 24 policy/approval and valuation-basis evidence with the actual valuation entry/revision used by Phase 25;
+- the Phase 24 cost quote is never posted as COGS and never overrides actual FIFO/MWA valuation;
+- negative gross margin remains a legitimate accounting result when Phase 24 policy allowed or approved the transaction.
+
+## Next Step
+
+Step 2 — Sales Posting Domain & Durable Posting Identity.
