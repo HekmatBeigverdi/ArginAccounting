@@ -143,7 +143,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | ---: | --- | --- |
 | 1 | Baseline, Handoff Contract & Ownership Verification | Completed |
 | 2 | Sales Posting Domain & Durable Posting Identity | Completed |
-| 3 | Commercial Posting Input from Immutable Sales Snapshots | Planned |
+| 3 | Commercial Posting Input from Immutable Sales Snapshots | Completed |
 | 4 | Revenue Account Resolution | Planned |
 | 5 | Accounts Receivable Account Resolution | Planned |
 | 6 | Output VAT Account Resolution | Planned |
@@ -333,3 +333,118 @@ The repository changes were structurally reviewed against the existing monorepo 
 ## Next Step
 
 Step 3 — Commercial Posting Input from Immutable Sales Snapshots.
+
+## Step 3 — Commercial Posting Input from Immutable Sales Snapshots
+
+### Completed work
+
+- Added `SalesCommercialPostingInput` as the Phase 25 boundary for consuming authoritative Phase 24 commercial facts.
+- Phase 25 now depends on `@argin/sales` public contracts rather than duplicating Sales commercial models.
+- Added `createSalesCommercialPostingInput()` to consume:
+  - durable Sales source identity/version;
+  - immutable `SalesDocumentSnapshot`;
+  - immutable per-line `SalesCommercialSnapshot` facts;
+  - authoritative `SalesDocumentTotals`.
+- Preserved Company, Branch and Fiscal Year scope, Customer `partyId`, business date, currency, line/product identity, line classification, commercial terms and calculated Sales totals.
+- Added source/document matching so a Posting source cannot point at another Sales document or a mismatched document type.
+- Added line completeness validation: every Sales document line must have exactly one commercial snapshot; missing, duplicate or unknown line facts fail explicitly.
+- Added immutable commercial snapshot verification through the Phase 24 `verifySalesCommercialSnapshot()` contract.
+- Added exact document-total reconciliation against the supplied immutable line snapshots using integer-safe `BigInt` comparison.
+- Preserved Phase 24 price origin, price-list revision lineage, discounts, charges, tax facts and line totals as upstream facts; Phase 25 does not re-run pricing policy.
+- Preserved the boundary that Selling Price is commercial evidence only and is not Inventory cost or COGS.
+- No Revenue/AR/VAT account mapping is introduced here; those remain Steps 4–6.
+- No Journal balancing or Journal Voucher creation is introduced here; those remain Steps 7 and 24.
+- No Inventory movement/valuation dependency is introduced here; those remain Steps 8–14.
+
+### Commercial input contract
+
+```text
+Phase 24 Sales
+  SalesDocumentSnapshot
+  SalesCommercialSnapshot[]
+  SalesDocumentTotals
+          ↓
+Phase 25
+  SalesCommercialPostingInput
+    source
+    companyId
+    branchId
+    fiscalYearId
+    customerPartyId
+    businessDate
+    currency
+    lines[]
+      snapshotId
+      lineId
+      productId
+      lineKind
+      capturedAt
+      terms
+      totals
+    documentTotals
+```
+
+The Posting input is a provenance boundary, not a second editable source of Sales truth.
+
+### Argin Bridge compliance
+
+- Sales `documentId` and source version remain the authoritative upstream reference.
+- Sales Posting does not replace them with local SQLite row IDs.
+- Commercial snapshots retain immutable business provenance suitable for future replay/reconciliation across Argin Bridge.
+- Display-oriented document number, customer name and product name are not used as business identity.
+- Future synchronization may transport this provenance, but Step 3 adds no live transport or remote persistence.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-commercial-posting-input.test.ts
+```
+
+Coverage includes:
+
+- creation from an authoritative Sales Invoice snapshot;
+- mixed stock/service commercial facts;
+- price/tax fact preservation without policy recomputation;
+- source/document identity mismatch rejection;
+- missing and duplicate commercial snapshot rejection;
+- tampered line-total rejection;
+- document-total mismatch rejection;
+- Sales Order rejection as an accounting source.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The repository implementation and type contracts were reviewed against the current Phase 24 Sales public API. Successful local runtime/typecheck execution is not claimed from this environment; the commands above are the required owner-side executable verification.
+
+### Exit criteria
+
+- [x] Phase 25 consumes Phase 24 public Sales contracts instead of duplicating them.
+- [x] Immutable line commercial facts are required and verified.
+- [x] Source/document identity mismatch fails explicitly.
+- [x] Every commercial document line has exactly one posting input snapshot.
+- [x] Document totals reconcile exactly with the supplied line snapshots.
+- [x] Price, discounts, charges and tax remain Sales-owned facts.
+- [x] Selling price remains excluded from COGS authority.
+- [x] No account resolution, Journal creation, Inventory valuation or UI responsibility leaked into Step 3.
+- [x] Bridge-ready immutable provenance is preserved.
+
+## Next Step
+
+Step 4 — Revenue Account Resolution.
