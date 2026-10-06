@@ -27,3 +27,12 @@ export type {
   RehydrateSalesPostingInput,
   SalesPostingAggregate,
 } from "./domain/sales-posting.ts";
+
+export {
+  createSalesCommercialPostingInput,
+} from "./domain/sales-commercial-posting-input.ts";
+export type {
+  CreateSalesCommercialPostingInputArgs,
+  SalesCommercialPostingInput,
+  SalesCommercialPostingLineInput,
+} from "./domain/sales-commercial-posting-input.ts";
