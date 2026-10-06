@@ -145,7 +145,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 2 | Sales Posting Domain & Durable Posting Identity | Completed |
 | 3 | Commercial Posting Input from Immutable Sales Snapshots | Completed |
 | 4 | Revenue Account Resolution | Completed |
-| 5 | Accounts Receivable Account Resolution | Planned |
+| 5 | Accounts Receivable Account Resolution | Completed |
 | 6 | Output VAT Account Resolution | Planned |
 | 7 | Commercial Posting Calculation & Balancing | Planned |
 | 8 | Stock-Fulfillment Prerequisite Contract | Planned |
@@ -578,3 +578,139 @@ The implementation was reviewed against the existing Purchase Posting fail-close
 ## Next Step
 
 Step 5 — Accounts Receivable Account Resolution.
+
+## Step 5 — Accounts Receivable Account Resolution
+
+### Completed work
+
+- Added the dedicated Sales Posting account role `accounts-receivable`.
+- Added `SalesAccountsReceivableAccountRule` as the persistence-neutral AR control-account mapping contract.
+- AR account selection is scoped by:
+  - mandatory Company;
+  - optional Branch override.
+- Customer identity is explicitly carried as `customerPartyId`, but is not used to select a different control account per customer.
+- This preserves the accounting architecture where:
+  - the AR control account belongs to the Chart of Accounts/accounting policy;
+  - the Customer remains a durable Party identity for detailed/subledger/Dimension provenance.
+- Branch-specific AR mappings outrank the Company default.
+- Priority is evaluated only between rules with equal specificity.
+- Missing mapping fails closed with `sales_posting.account_mapping_missing`.
+- Equally specific/equal-priority mappings fail with `sales_posting.posting_rule_ambiguous`.
+- Inactive and cross-company mappings are ignored.
+- Resolution uses the existing persistence-neutral `SalesPostingAccountReader`.
+- Resolved AR accounts must:
+  - exist;
+  - match the mapped durable `accountId`;
+  - belong to the requested Company;
+  - be active;
+  - allow direct posting.
+- Missing, wrong-company, inactive or non-postable accounts fail explicitly.
+- No customer-specific Chart-of-Accounts account is created or inferred in this step.
+- No Customer Dimension materialization or Journal-line dimension assignment is implemented here; this step only preserves the durable `customerPartyId` needed by downstream posting/provenance.
+- Output VAT remains Step 6.
+- Debit/Credit amount calculation and balancing remain Step 7.
+- Journal Voucher creation remains Step 24.
+
+### Resolution model
+
+```text
+Sales commercial document
+        ↓
+companyId + branchId + customerPartyId
+        ↓
+AR mapping candidates
+        ↓
+Branch-specific rule
+        ↓
+Company default rule
+        ↓
+Accounts Receivable control account
+        +
+customerPartyId provenance
+```
+
+Example:
+
+```text
+Accounts Receivable Control Account = 1201
+
+Customer A -> PARTY(customer-a)
+Customer B -> PARTY(customer-b)
+Customer C -> PARTY(customer-c)
+```
+
+The customers do not require three separate control accounts. Their durable Party identities remain available for subsidiary/detail accounting while the AR control account remains governed centrally.
+
+### Argin Bridge compliance
+
+- Rules use durable `ruleId`, Company/Branch identity and durable Accounting `accountId`.
+- Customer provenance uses durable `customerPartyId`.
+- Account code/name remain descriptive snapshot data rather than identity.
+- No local SQLite row ID is used.
+- Resolution is deterministic under the same rule set/context.
+- Live Bridge synchronization remains deferred.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-accounts-receivable-resolution.test.ts
+```
+
+Coverage includes:
+
+- Branch-specific AR override;
+- Company-default AR mapping;
+- Customer identity not altering the control-account mapping;
+- priority within equal specificity;
+- missing mapping fail-closed behavior;
+- ambiguous mapping rejection;
+- required Customer Party identity;
+- active/postable account resolution;
+- preservation of `customerPartyId`;
+- missing account rejection;
+- wrong-company account rejection;
+- inactive account rejection;
+- non-postable account rejection.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm --filter @argin/party typecheck
+pnpm --filter @argin/party test
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation follows the existing Purchase Posting control-account pattern while preserving Customer Party identity separately from the AR control account. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain the owner-side executable validation.
+
+### Exit criteria
+
+- [x] Accounts Receivable has an explicit Sales Posting role.
+- [x] Company-level AR mapping is supported.
+- [x] Branch-specific AR override is supported.
+- [x] Customer Party identity is required and preserved.
+- [x] Customer identity does not create or select a separate AR control account.
+- [x] Missing/ambiguous mappings fail explicitly.
+- [x] Resolved AR account must be active, postable and Company-correct.
+- [x] Durable `accountId` is used instead of code/name identity.
+- [x] No VAT/calculation/Journal responsibility leaked into Step 5.
+- [x] Resolver remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 6 — Output VAT Account Resolution.
