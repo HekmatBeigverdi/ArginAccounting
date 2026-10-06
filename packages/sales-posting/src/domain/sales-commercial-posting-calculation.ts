@@ -1,5 +1,3 @@
-import type { SalesLineKind } from "@argin/sales";
-
 import {
   SALES_POSTING_DOMAIN_ERROR_CODES,
   SalesPostingDomainError,
@@ -34,8 +32,8 @@ export interface SalesCommercialPostingComponent {
   readonly currency: string;
   readonly sourceLineId: string | null;
   readonly customerPartyId: string | null;
-  readonly taxId: string | null;
-  readonly taxCode: string | null;
+  readonly taxIds: readonly string[];
+  readonly taxCodes: readonly string[];
 }
 
 export interface SalesRevenueResolutionForLine {
@@ -82,7 +80,10 @@ function assertSafeMoney(value: number, field: string): number {
 }
 
 function sumMoney(values: readonly number[], field: string): number {
-  const total = values.reduce((sum, value) => sum + BigInt(assertSafeMoney(value, field)), 0n);
+  const total = values.reduce(
+    (sum, value) => sum + BigInt(assertSafeMoney(value, field)),
+    0n,
+  );
   if (total > BigInt(Number.MAX_SAFE_INTEGER)) {
     return fail(SALES_POSTING_DOMAIN_ERROR_CODES.commercialPostingInvalid, field);
   }
@@ -96,13 +97,37 @@ function resolutionMap<T extends { readonly lineId: string }>(
   if (!Array.isArray(entries)) {
     return fail(SALES_POSTING_DOMAIN_ERROR_CODES.commercialPostingInvalid, field);
   }
+
   const result = new Map<string, T>();
   for (const entry of entries) {
     const lineId = required(entry.lineId, `${field}.lineId`);
     if (result.has(lineId)) {
-      return fail(SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch, `${field}.lineId`);
+      return fail(
+        SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+        `${field}.lineId`,
+      );
     }
     result.set(lineId, entry);
+  }
+  return result;
+}
+
+function vatResolutionGroups(
+  entries: readonly SalesOutputVatResolutionForLine[],
+): Map<string, SalesOutputVatResolutionForLine[]> {
+  if (!Array.isArray(entries)) {
+    return fail(
+      SALES_POSTING_DOMAIN_ERROR_CODES.commercialPostingInvalid,
+      "outputVatByLine",
+    );
+  }
+
+  const result = new Map<string, SalesOutputVatResolutionForLine[]>();
+  for (const entry of entries) {
+    const lineId = required(entry.lineId, "outputVatByLine.lineId");
+    const group = result.get(lineId) ?? [];
+    group.push(entry);
+    result.set(lineId, group);
   }
   return result;
 }
@@ -113,45 +138,89 @@ function assertRevenueResolution(
   entry: SalesRevenueResolutionForLine | undefined,
 ): SalesRevenueAccountResolution {
   if (!entry) {
-    return fail(SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch, "revenueByLine");
+    return fail(
+      SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+      "revenueByLine",
+    );
   }
+
   const resolution = entry.resolution;
   if (
     resolution.accountRole !== "sales-revenue"
     || resolution.lineKind !== line.lineKind
     || resolution.account.companyId !== companyId
   ) {
-    return fail(SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch, "revenueByLine.resolution");
+    return fail(
+      SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+      "revenueByLine.resolution",
+    );
   }
+
   return resolution;
 }
 
-function assertVatResolution(
+function assertVatResolutions(
   line: SalesCommercialPostingLineInput,
   companyId: string,
-  entry: SalesOutputVatResolutionForLine | undefined,
-): SalesOutputVatAccountResolution {
-  if (!entry) {
-    return fail(SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch, "outputVatByLine");
-  }
-  const resolution = entry.resolution;
-  if (
-    resolution.accountRole !== "output-vat"
-    || resolution.account.companyId !== companyId
-  ) {
-    return fail(SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch, "outputVatByLine.resolution");
+  entries: readonly SalesOutputVatResolutionForLine[] | undefined,
+): readonly SalesOutputVatAccountResolution[] {
+  if (!entries || entries.length !== line.terms.taxes.length) {
+    return fail(
+      SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+      "outputVatByLine",
+    );
   }
 
-  const sourceTax = line.terms.taxes.find((tax) => tax.taxId === resolution.taxId);
+  const seenTaxIds = new Set<string>();
+  const resolutions = entries.map((entry) => {
+    const resolution = entry.resolution;
+
+    if (
+      resolution.accountRole !== "output-vat"
+      || resolution.account.companyId !== companyId
+    ) {
+      return fail(
+        SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+        "outputVatByLine.resolution",
+      );
+    }
+
+    if (seenTaxIds.has(resolution.taxId)) {
+      return fail(
+        SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+        "outputVatByLine.taxId",
+      );
+    }
+    seenTaxIds.add(resolution.taxId);
+
+    const sourceTax = line.terms.taxes.find(
+      (tax) => tax.taxId === resolution.taxId,
+    );
+    if (
+      !sourceTax
+      || sourceTax.rateBasisPoints !== resolution.rateBasisPoints
+      || (sourceTax.taxCode ?? null)?.toUpperCase() !== resolution.taxCode
+    ) {
+      return fail(
+        SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+        "outputVatByLine.tax",
+      );
+    }
+
+    return resolution;
+  });
+
   if (
-    !sourceTax
-    || sourceTax.rateBasisPoints !== resolution.rateBasisPoints
-    || (sourceTax.taxCode ?? null)?.toUpperCase() !== resolution.taxCode
+    new Set(resolutions.map((resolution) => resolution.account.accountId)).size
+    !== 1
   ) {
-    return fail(SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch, "outputVatByLine.tax");
+    return fail(
+      SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+      "outputVatByLine.account",
+    );
   }
 
-  return resolution;
+  return Object.freeze(resolutions);
 }
 
 function revenueComponent(
@@ -159,7 +228,10 @@ function revenueComponent(
   line: SalesCommercialPostingLineInput,
   resolution: SalesRevenueAccountResolution,
 ): SalesCommercialPostingComponent | null {
-  const amount = assertSafeMoney(line.totals.taxBaseAmount, "line.totals.taxBaseAmount");
+  const amount = assertSafeMoney(
+    line.totals.taxBaseAmount,
+    "line.totals.taxBaseAmount",
+  );
   if (amount === 0) return null;
 
   return Object.freeze({
@@ -171,30 +243,37 @@ function revenueComponent(
     currency: commercial.currency,
     sourceLineId: line.lineId,
     customerPartyId: null,
-    taxId: null,
-    taxCode: null,
+    taxIds: Object.freeze([]),
+    taxCodes: Object.freeze([]),
   });
 }
 
 function vatComponent(
   commercial: SalesCommercialPostingInput,
   line: SalesCommercialPostingLineInput,
-  resolution: SalesOutputVatAccountResolution,
+  resolutions: readonly SalesOutputVatAccountResolution[],
 ): SalesCommercialPostingComponent | null {
-  const amount = assertSafeMoney(line.totals.taxAmount, "line.totals.taxAmount");
+  const amount = assertSafeMoney(
+    line.totals.taxAmount,
+    "line.totals.taxAmount",
+  );
   if (amount === 0) return null;
 
   return Object.freeze({
     componentId: `commercial:output-vat:${line.lineId}`,
     role: "output-vat",
     side: "credit",
-    accountId: resolution.account.accountId,
+    accountId: resolutions[0]!.account.accountId,
     amount,
     currency: commercial.currency,
     sourceLineId: line.lineId,
     customerPartyId: null,
-    taxId: resolution.taxId,
-    taxCode: resolution.taxCode,
+    taxIds: Object.freeze(resolutions.map((resolution) => resolution.taxId)),
+    taxCodes: Object.freeze(
+      resolutions.flatMap((resolution) =>
+        resolution.taxCode === null ? [] : [resolution.taxCode],
+      ),
+    ),
   });
 }
 
@@ -202,19 +281,24 @@ export function calculateSalesCommercialPosting(
   input: CalculateSalesCommercialPostingInput,
 ): SalesCommercialPostingCalculation {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
-    return fail(SALES_POSTING_DOMAIN_ERROR_CODES.commercialPostingInvalid, "input");
+    return fail(
+      SALES_POSTING_DOMAIN_ERROR_CODES.commercialPostingInvalid,
+      "input",
+    );
   }
 
   const commercial = input.commercial;
   const ar = input.accountsReceivable;
-
   if (
     !commercial
     || typeof commercial !== "object"
     || !ar
     || typeof ar !== "object"
   ) {
-    return fail(SALES_POSTING_DOMAIN_ERROR_CODES.commercialPostingInvalid, "input");
+    return fail(
+      SALES_POSTING_DOMAIN_ERROR_CODES.commercialPostingInvalid,
+      "input",
+    );
   }
 
   if (
@@ -229,7 +313,7 @@ export function calculateSalesCommercialPosting(
   }
 
   const revenueMap = resolutionMap(input.revenueByLine, "revenueByLine");
-  const vatMap = resolutionMap(input.outputVatByLine, "outputVatByLine");
+  const vatGroups = vatResolutionGroups(input.outputVatByLine);
 
   if (revenueMap.size !== commercial.lines.length) {
     return fail(
@@ -257,28 +341,14 @@ export function calculateSalesCommercialPosting(
         );
       }
 
-      const vat = assertVatResolution(
+      const vatResolutions = assertVatResolutions(
         line,
         commercial.companyId,
-        vatMap.get(line.lineId),
+        vatGroups.get(line.lineId),
       );
-
-      const distinctTaxAccounts = new Set(
-        line.terms.taxes.map((tax) => {
-          if (tax.taxId === vat.taxId) return vat.account.accountId;
-          return vat.account.accountId;
-        }),
-      );
-      if (distinctTaxAccounts.size !== 1) {
-        return fail(
-          SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
-          "outputVatByLine.account",
-        );
-      }
-
-      const vatPart = vatComponent(commercial, line, vat);
+      const vatPart = vatComponent(commercial, line, vatResolutions);
       if (vatPart) components.push(vatPart);
-    } else if (vatMap.has(line.lineId)) {
+    } else if (vatGroups.has(line.lineId)) {
       return fail(
         SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
         "outputVatByLine",
@@ -288,12 +358,18 @@ export function calculateSalesCommercialPosting(
 
   for (const lineId of revenueMap.keys()) {
     if (!commercial.lines.some((line) => line.lineId === lineId)) {
-      return fail(SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch, "revenueByLine.lineId");
+      return fail(
+        SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+        "revenueByLine.lineId",
+      );
     }
   }
-  for (const lineId of vatMap.keys()) {
+  for (const lineId of vatGroups.keys()) {
     if (!commercial.lines.some((line) => line.lineId === lineId)) {
-      return fail(SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch, "outputVatByLine.lineId");
+      return fail(
+        SALES_POSTING_DOMAIN_ERROR_CODES.accountResolutionMismatch,
+        "outputVatByLine.lineId",
+      );
     }
   }
 
@@ -301,6 +377,7 @@ export function calculateSalesCommercialPosting(
     commercial.documentTotals.grandTotal,
     "documentTotals.grandTotal",
   );
+
   if (receivableAmount > 0) {
     components.unshift(Object.freeze({
       componentId: "commercial:accounts-receivable",
@@ -311,17 +388,21 @@ export function calculateSalesCommercialPosting(
       currency: commercial.currency,
       sourceLineId: null,
       customerPartyId: commercial.customerPartyId,
-      taxId: null,
-      taxCode: null,
+      taxIds: Object.freeze([]),
+      taxCodes: Object.freeze([]),
     }));
   }
 
   const totalDebit = sumMoney(
-    components.filter((component) => component.side === "debit").map((component) => component.amount),
+    components
+      .filter((component) => component.side === "debit")
+      .map((component) => component.amount),
     "totalDebit",
   );
   const totalCredit = sumMoney(
-    components.filter((component) => component.side === "credit").map((component) => component.amount),
+    components
+      .filter((component) => component.side === "credit")
+      .map((component) => component.amount),
     "totalCredit",
   );
 
@@ -332,16 +413,20 @@ export function calculateSalesCommercialPosting(
     );
   }
 
+  const revenueTotal = sumMoney(
+    commercial.lines.map((line) => line.totals.taxBaseAmount),
+    "revenueTotal",
+  );
+  const vatTotal = sumMoney(
+    commercial.lines.map((line) => line.totals.taxAmount),
+    "vatTotal",
+  );
+
   if (
     totalDebit !== commercial.documentTotals.grandTotal
-    || sumMoney(
-      commercial.lines.map((line) => line.totals.taxBaseAmount),
-      "revenueTotal",
-    ) !== commercial.documentTotals.taxBaseAmount
-    || sumMoney(
-      commercial.lines.map((line) => line.totals.taxAmount),
-      "vatTotal",
-    ) !== commercial.documentTotals.taxAmount
+    || revenueTotal !== commercial.documentTotals.taxBaseAmount
+    || vatTotal !== commercial.documentTotals.taxAmount
+    || BigInt(revenueTotal) + BigInt(vatTotal) !== BigInt(totalDebit)
   ) {
     return fail(
       SALES_POSTING_DOMAIN_ERROR_CODES.commercialPostingUnbalanced,
