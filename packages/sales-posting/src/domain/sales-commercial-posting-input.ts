@@ -75,7 +75,7 @@ function assertSnapshotMatchesLine(
 ): void {
   const line = document.lines.find((candidate) => candidate.lineId === snapshot.lineId);
   if (!line) {
-    fail(SALES_POSTING_DOMAIN_ERROR_CODES.sourceInvalid, "commercialSnapshots.lineId");
+    return fail(SALES_POSTING_DOMAIN_ERROR_CODES.sourceInvalid, "commercialSnapshots.lineId");
   }
   if (line.item.productId !== snapshot.productId || line.lineKind !== snapshot.lineKind) {
     fail(SALES_POSTING_DOMAIN_ERROR_CODES.sourceInvalid, "commercialSnapshots.line");
