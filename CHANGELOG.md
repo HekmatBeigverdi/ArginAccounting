@@ -12,6 +12,7 @@ The project follows Semantic Versioning where practical during phased developmen
 
 - Started Phase 25 — Sales Posting from `main` baseline `044a3ed1abbd847da7675c6bf70dcd9510f6f648` on branch `phase/25-sales-posting`.
 - Added the persistence-neutral `@argin/sales-posting` domain foundation with durable Posting/source identity, source versioning, Bridge-ready metadata and focused Step 2 tests.
+- Added the Step 3 immutable commercial posting-input boundary consuming Phase 24 Sales document/line snapshots and authoritative totals with source matching, tamper detection and exact reconciliation.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
