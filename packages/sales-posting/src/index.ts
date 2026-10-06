@@ -51,3 +51,16 @@ export type {
   SalesRevenueAccountRole,
   SalesRevenueAccountRule,
 } from "./domain/sales-revenue-account-resolution.ts";
+
+export {
+  SALES_ACCOUNTS_RECEIVABLE_ACCOUNT_ROLE,
+  createSalesAccountsReceivableAccountRule,
+  resolveSalesAccountsReceivableAccount,
+  selectSalesAccountsReceivableAccountRule,
+} from "./domain/sales-accounts-receivable-resolution.ts";
+export type {
+  SalesAccountsReceivableAccountRole,
+  SalesAccountsReceivableAccountRule,
+  SalesAccountsReceivableResolution,
+  SalesAccountsReceivableResolutionContext,
+} from "./domain/sales-accounts-receivable-resolution.ts";
