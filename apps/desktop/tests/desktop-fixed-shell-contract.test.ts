@@ -5,11 +5,13 @@ import { readFile } from "node:fs/promises";
 const appCss = await readFile(new URL("../src/App.css", import.meta.url), "utf8");
 const shellCss = await readFile(new URL("../src/app/shell/app-shell.css", import.meta.url), "utf8");
 
-test("desktop shell owns the viewport instead of scrolling the document", () => {
+test("desktop shell fills the space below the title bar instead of scrolling the document", () => {
   assert.match(appCss, /html,[\s\S]*body,[\s\S]*#root[\s\S]*height:\s*100%/u);
   assert.match(appCss, /html,[\s\S]*body,[\s\S]*#root[\s\S]*overflow:\s*hidden/u);
-  assert.match(shellCss, /\.app-shell\s*\{[\s\S]*height:\s*100dvh/u);
-  assert.match(shellCss, /\.app-shell\s*\{[\s\S]*overflow:\s*hidden/u);
+  assert.match(appCss, /\.desktop-root\s*\{[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\)/u);
+  assert.match(appCss, /\.desktop-root__content\s*\{[^}]*min-height:\s*0;[^}]*overflow:\s*hidden/u);
+  assert.match(shellCss, /\.app-shell\s*\{[^}]*height:\s*100%/u);
+  assert.match(shellCss, /\.app-shell\s*\{[^}]*overflow-x:\s*clip;[^}]*overflow-y:\s*hidden/u);
 });
 
 test("header footer and user identity stay fixed while content regions scroll", () => {

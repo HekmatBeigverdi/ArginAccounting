@@ -29,6 +29,7 @@ import { InventoryTransferCenterPage } from "../../pages/inventory/inventory-tra
 import { InventoryValuationWorkspacePage } from "../../pages/inventory/inventory-valuation-workspace-page";
 import { PurchaseDocumentsPage } from "../../pages/purchase/purchase-documents-page";
 import { PurchaseOperationalReportsPage } from "../../pages/purchase/purchase-operational-reports-page";
+import { SalesDocumentsPage } from "../../pages/sales/sales-documents-page";
 
 export function AppRouter() {
   return (
@@ -51,6 +52,7 @@ export function AppRouter() {
           <Route path="/inventory/transfer-center" element={<InventoryTransferCenterPage />} />
           <Route path="/purchases/documents" element={<PurchaseDocumentsPage />} />
           <Route path="/purchases/reports" element={<PurchaseOperationalReportsPage />} />
+          <Route path="/sales/documents" element={<SalesDocumentsPage />} />
           <Route path="/fiscal/years" element={<FiscalYearsPage />} />
           <Route path="/fiscal/years/new" element={<NewFiscalYearPage />} />
           <Route path="/approval/requests" element={<ApprovalRequestsPage />} />
