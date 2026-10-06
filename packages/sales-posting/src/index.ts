@@ -77,3 +77,16 @@ export type {
   SalesOutputVatAccountRule,
   SalesOutputVatResolutionContext,
 } from "./domain/sales-output-vat-account-resolution.ts";
+
+export {
+  calculateSalesCommercialPosting,
+} from "./domain/sales-commercial-posting-calculation.ts";
+export type {
+  CalculateSalesCommercialPostingInput,
+  SalesCommercialPostingCalculation,
+  SalesCommercialPostingComponent,
+  SalesCommercialPostingComponentRole,
+  SalesCommercialPostingSide,
+  SalesOutputVatResolutionForLine,
+  SalesRevenueResolutionForLine,
+} from "./domain/sales-commercial-posting-calculation.ts";
