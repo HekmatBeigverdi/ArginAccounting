@@ -140,17 +140,21 @@ export function createSalesCommercialPostingInput(
     fail(SALES_POSTING_DOMAIN_ERROR_CODES.sourceInvalid, "documentTotals");
   }
 
-  const expected = {
-    grossAmount: lines.reduce((sum, line) => sum + line.totals.grossAmount, 0),
-    discountAmount: lines.reduce((sum, line) => sum + line.totals.discountAmount, 0),
-    netAfterDiscount: lines.reduce((sum, line) => sum + line.totals.netAfterDiscount, 0),
-    chargeAmount: lines.reduce((sum, line) => sum + line.totals.chargeAmount, 0),
-    taxBaseAmount: lines.reduce((sum, line) => sum + line.totals.taxBaseAmount, 0),
-    taxAmount: lines.reduce((sum, line) => sum + line.totals.taxAmount, 0),
-    grandTotal: lines.reduce((sum, line) => sum + line.totals.grandTotal, 0),
-  };
-  for (const [key, value] of Object.entries(expected)) {
-    if (totals[key as keyof typeof expected] !== value) {
+  const amountKeys = [
+    "grossAmount",
+    "discountAmount",
+    "netAfterDiscount",
+    "chargeAmount",
+    "taxBaseAmount",
+    "taxAmount",
+    "grandTotal",
+  ] as const;
+  for (const key of amountKeys) {
+    const expected = lines.reduce(
+      (sum, line) => sum + BigInt(line.totals[key]),
+      0n,
+    );
+    if (BigInt(totals[key]) !== expected) {
       fail(SALES_POSTING_DOMAIN_ERROR_CODES.sourceInvalid, `documentTotals.${key}`);
     }
   }
