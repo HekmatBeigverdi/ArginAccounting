@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–28 are complete. Steps 29–30 are not started.
+Steps 1–29 are complete. Step 30 is not started.
 
 ## Governance
 
@@ -154,8 +154,20 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 26 | Permissions, Audit & Traceability | Completed |
 | 27 | Persian RTL Sales Workspace | Completed |
 | 28 | Import/Export, Print/PDF & Operational Trace | Completed |
-| 29 | Automated & E2E Validation | Not started |
+| 29 | Automated & E2E Validation | Completed |
 | 30 | Documentation, Quality Gate, Merge & Release | Not started |
+
+## Step 29 — Automated & E2E Validation
+
+- Added a Phase 24 end-to-end workflow contract suite covering the critical Sales -> Finalization -> official Number Series -> Inventory staging -> movement/valuation trace boundary.
+- The quality contracts freeze replay-before-version behavior, optimistic concurrency, atomic finalization numbering, Invoice Issue staging, Return Receipt staging and the absence of Accounting posting ownership in Phase 24.
+- Below-cost validation coverage requires explicit handling of unavailable cost, blocked sales, warning acknowledgement and approval-required decisions.
+- Bulk import remains Draft-only and cannot bypass lifecycle finalization, Number Series allocation or Inventory staging.
+- The existing scoped unique index remains a database-level guard for official Sales document numbers.
+- Export/Print regression coverage verifies persisted commercial facts, deterministic totals, Persian RTL output and explicit A4 landscape print layout.
+- Added the canonical repository quality gate `pnpm validate:phase24`, covering Sales, Sales SQLite adapter, Inventory, Valuation dependencies, Fiscal/NumberSeries, Security, Desktop, documentation links, monorepo typecheck/tests/build/lint and Tauri Rust compilation.
+- Step 29 does not introduce Accounting posting; Phase 25 remains the owner of Revenue/VAT/Receivable and COGS/Inventory Relief journals.
+- Local execution of the canonical gate remains owner evidence for Step 30 release closure; this completion record does not claim that the assistant executed the user's local toolchain.
 
 ## Step 28A — Finalization Numbering Completion
 
