@@ -72,9 +72,15 @@ function commercial() {
 
 function confirmedIssue() {
   let issue = createInventoryDocument({
+    scope: {
+      branchId: "branch-001",
+      fiscalYearId: "fy-1405",
+      fiscalPeriodId: "fp-07",
+    },
     documentId: "issue-001",
     companyId: "company-001",
     documentType: "issue",
+    documentNumber: "1405-000001",
     businessDate: "2026-10-06",
     createdAt: "2026-10-06T12:10:00.000Z",
     sourceReference: {
@@ -94,6 +100,35 @@ function confirmedIssue() {
         documentType: "sales-invoice",
         documentId: "sales-invoice-001",
         lineId: "stock-1",
+      },
+      operation: {
+        companyId: "company-001",
+        productId: "product-001",
+        productVersion: 1,
+        quantity: {
+          enteredQuantity: "2",
+          baseQuantity: "2",
+          enteredUnit: {
+            unitId: "unit-001",
+            code: "EA",
+            title: "Each",
+            ratioToBase: "1",
+            precision: 0,
+            roundingMode: "half-up",
+            taxpayerUnitCode: null,
+          },
+          baseUnit: {
+            unitId: "unit-001",
+            code: "EA",
+            title: "Each",
+            ratioToBase: "1",
+            precision: 0,
+            roundingMode: "half-up",
+            taxpayerUnitCode: null,
+          },
+        },
+        warehouse: { warehouseId: "warehouse-001" },
+        destination: null,
       },
     }],
   });

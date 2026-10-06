@@ -797,6 +797,9 @@ importers:
 
   packages/sales-posting:
     dependencies:
+      '@argin/inventory':
+        specifier: workspace:*
+        version: link:../inventory
       '@argin/sales':
         specifier: workspace:*
         version: link:../sales
