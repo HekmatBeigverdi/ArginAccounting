@@ -148,7 +148,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 5 | Accounts Receivable Account Resolution | Completed |
 | 6 | Output VAT Account Resolution | Completed |
 | 7 | Commercial Posting Calculation & Balancing | Completed |
-| 8 | Stock-Fulfillment Prerequisite Contract | Planned |
+| 8 | Stock-Fulfillment Prerequisite Contract | Completed |
 | 9 | Inventory Issue Lineage Resolution | Planned |
 | 10 | Outbound Inventory Movement Lineage Resolution | Planned |
 | 11 | Resolved FIFO/MWA Valuation Prerequisite | Planned |
@@ -1005,3 +1005,136 @@ The implementation was structurally reviewed against the immutable Phase 24 Sale
 ## Next Step
 
 Step 8 — Stock-Fulfillment Prerequisite Contract.
+
+## Step 8 — Stock-Fulfillment Prerequisite Contract
+
+### Completed work
+
+- Added the persistence-neutral stock-fulfillment gate that separates commercial posting from Inventory cost eligibility.
+- Added `SalesStockFulfillmentEvidence` for durable Inventory Issue evidence without importing mutable stock balances or valuation amounts into Sales Posting.
+- Stock lines require exact lineage to:
+  - the same Company;
+  - Sales source system;
+  - `sales-invoice` source document type;
+  - the same Sales Invoice durable ID;
+  - the exact Sales line ID;
+  - the exact Product ID;
+  - durable Inventory Issue document and line IDs.
+- Added line-level prerequisite states:
+  - `waiting-for-issue`;
+  - `waiting-for-confirmation`;
+  - `eligible`;
+  - `not-required`.
+- A stock line becomes COGS-eligible only when its Inventory Issue evidence is `confirmed`.
+- Draft, Submitted, Approved, Cancelled or Reversed Inventory Issue evidence never satisfies the stock-cost prerequisite.
+- Missing Issue evidence blocks COGS and reports `waiting-for-issue`.
+- Service and non-stock lines never require Inventory fulfillment solely because they are sold and are marked `not-required`.
+- Service-only invoices therefore bypass this Inventory prerequisite completely.
+- Mixed invoices evaluate the prerequisite only for stock lines.
+- Inventory evidence attached to a service/non-stock Sales line is rejected as a lineage error instead of being silently consumed.
+- Duplicate, unknown-line, cross-company, wrong-document or wrong-product evidence is rejected fail-closed.
+- Added `assertSalesStockFulfillmentEligible()` as an explicit guard before downstream cost-posting work.
+- The prerequisite result deliberately contains no selling price, unit price, cost quote, COGS or valuation amount.
+- Step 8 does not resolve the authoritative Inventory Issue object itself; Step 9 owns Issue Lineage Resolution.
+- Step 8 does not resolve Inventory Movement; Step 10 owns Movement Lineage Resolution.
+- Step 8 does not consume FIFO/MWA valuation; Step 11 owns the Valuation prerequisite.
+
+### Prerequisite model
+
+```text
+Sales commercial line
+        |
+        +-- service/non-stock
+        |      -> Inventory prerequisite not required
+        |
+        +-- stock-product
+               ↓
+        Inventory Issue exists?
+               |
+          no -> waiting-for-issue
+               |
+          yes
+               ↓
+        exact Sales/Company/Product lineage?
+               |
+          no -> fail closed
+               |
+          yes
+               ↓
+        Inventory Issue confirmed?
+               |
+          no -> waiting-for-confirmation
+               |
+          yes -> eligible for Step 9/10/11 cost lineage
+```
+
+This step only opens the door to cost posting. It does not yet prove Movement or Valuation readiness.
+
+### Argin Bridge compliance
+
+- Durable Sales document/line IDs and Inventory document/line IDs form the prerequisite provenance.
+- Company identity is validated explicitly across boundaries.
+- No SQLite row IDs, stock-balance projections or UI identifiers are used.
+- No monetary Sales facts are copied into Inventory fulfillment evidence.
+- The same immutable evidence produces the same prerequisite state.
+- Live Bridge transport remains deferred.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-stock-fulfillment-prerequisite.test.ts
+```
+
+Coverage includes:
+
+- missing Issue -> waiting-for-issue;
+- Approved but unconfirmed Issue -> waiting-for-confirmation;
+- Confirmed Issue -> eligible;
+- explicit COGS guard rejection while blocked;
+- service-only Invoice bypass;
+- mixed stock/service behavior;
+- rejection of Inventory evidence on non-stock/service lines;
+- cross-company/source-document/product lineage mismatch rejection;
+- duplicate/unknown-line evidence rejection;
+- explicit proof that the prerequisite contract contains no selling-price/COGS data.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was reviewed against the canonical Phase 24 -> Phase 25 Sales Fulfillment handoff and the actual Inventory lifecycle contract where only `confirmed` makes quantity effects authoritative. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable evidence.
+
+### Exit criteria
+
+- [x] Stock lines require Inventory Issue evidence.
+- [x] Only confirmed Issue evidence makes the stock prerequisite eligible.
+- [x] Missing/unconfirmed fulfillment blocks COGS.
+- [x] Service/non-stock lines bypass Inventory fulfillment.
+- [x] Mixed invoices wait only on stock-line prerequisites.
+- [x] Company/Sales document/Sales line/Product lineage is validated.
+- [x] Inventory evidence on non-stock lines is rejected.
+- [x] No selling-price/cost-quote data enters the prerequisite contract.
+- [x] Issue/Movement/Valuation resolution remains deferred to Steps 9–11.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 9 — Inventory Issue Lineage Resolution.
