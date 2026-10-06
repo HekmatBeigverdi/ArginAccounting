@@ -128,13 +128,15 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
 
 ## Sales
 
-24. 🚧 Sales Workflow
+24. ✅ Sales Workflow
+   - All 30 fixed steps are complete and owner-accepted; final promotion, semantic tag and GitHub Release publication remain manual.
+   - Release target: `v0.24.0` — `ArginAccounting v0.24.0 — Sales Workflow`.
    - Own Sales price lists and actual Sales invoice-line prices separately from inventory cost.
    - Support extensible price-list policy: base/default, wholesale, customer/segment-specific, effective dates, currency and future tier/discount rules.
    - The final Sales invoice-line price is a Sales commercial fact and never becomes an Inventory Cost Input.
    - Confirmed stock sales create/consume Inventory issue movements; FIFO/MWA independently determines cost of goods sold.
    - Product Master Data must not become a single mutable authoritative Sales-price store for all contexts.
-   - Fixed 30-step implementation plan is frozen in [Phase 24 Sales Workflow Plan](docs/phases/phase-24-sales-workflow-plan.md); Step 1 baseline/scope/ownership is complete on `phase/24-sales-workflow`.
+   - Fixed 30-step implementation and closure record: [Phase 24 Sales Workflow Plan](docs/phases/phase-24-sales-workflow-plan.md); release notes: [Phase 24 Release Notes](docs/phases/phase-24-release-notes.md).
 25. ⏳ Sales Posting
    - Canonical plan: [Phase 25 Sales Posting Plan](docs/phases/phase-25-sales-posting-plan.md); mandatory handoff: [Sales Fulfillment and Posting Handoff](docs/architecture/sales-fulfillment-posting-handoff.md).
    - A finalized stock Sales Invoice stages exactly one Inventory Issue Draft through Inventory public contracts; invoice finalization itself MUST NOT decrease stock.
