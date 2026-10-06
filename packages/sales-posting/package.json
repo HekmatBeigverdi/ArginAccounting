@@ -19,6 +19,7 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
-    "@argin/sales": "workspace:*"
+    "@argin/sales": "workspace:*",
+    "@argin/inventory": "workspace:*"
   }
 }
