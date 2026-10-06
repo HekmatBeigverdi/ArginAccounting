@@ -142,7 +142,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | Step | Title | Status |
 | ---: | --- | --- |
 | 1 | Baseline, Handoff Contract & Ownership Verification | Completed |
-| 2 | Sales Posting Domain & Durable Posting Identity | Planned |
+| 2 | Sales Posting Domain & Durable Posting Identity | Completed |
 | 3 | Commercial Posting Input from Immutable Sales Snapshots | Planned |
 | 4 | Revenue Account Resolution | Planned |
 | 5 | Accounts Receivable Account Resolution | Planned |
@@ -241,3 +241,95 @@ Phase 25 cannot be released merely because a Journal Voucher can be generated. R
 ## Next Step
 
 Step 2 — Sales Posting Domain & Durable Posting Identity.
+
+## Step 2 — Sales Posting Domain & Durable Posting Identity
+
+### Completed work
+
+- Added the independent `@argin/sales-posting` package at version `0.25.0`.
+- Established a persistence-neutral `SalesPostingAggregate` without coupling the Domain to React/Tauri, SQLite, Journal persistence or remote transport.
+- Added durable `postingId`, Company/Branch scope, independent aggregate `version`, and canonical UTC `createdAtUtc` / `updatedAtUtc` metadata.
+- Added immutable Sales source identity with fixed source system `sales`, durable `sourceDocumentId`, authoritative `sourceVersion`, optional external reference and the allowed accounting-source kinds `sales-invoice`, `sales-return`, and `sales-correction`.
+- Explicitly excluded `sales-order` from Sales Posting source types because an Order is not itself an accounting-recognition source.
+- Added deterministic `salesPostingSourceIdentityKey()` based only on durable source identity/version, never document number, customer/product display names or other mutable presentation metadata.
+- Added domain validation for required/bounded identities, source type, positive safe versions, canonical UTC timestamps and timestamp chronology.
+- Added rehydration support that remains independent from SQLite row IDs or future PostgreSQL/server identities.
+- Kept commercial snapshot contents in Step 3; account resolution in Steps 4–6; orchestration state in Step 17; idempotency in Step 18; CAS transitions in Step 19; Journal linkage in Step 24; and recovery state in Step 25.
+- No migration or UI change is introduced in Step 2.
+
+### Argin Bridge compliance
+
+The Step 2 identity boundary is transport-neutral:
+
+```text
+SalesPosting
+  postingId
+  companyId
+  branchId
+  source:
+    sourceSystem = sales
+    sourceType
+    sourceDocumentId
+    sourceVersion
+    externalReference?
+  version
+  createdAtUtc
+  updatedAtUtc
+```
+
+This gives future Argin Bridge synchronization a stable aggregate identity and stable source identity without making Desktop persistence or remote transport part of the Domain model.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-posting-domain.test.ts
+```
+
+Coverage includes:
+
+- aggregate creation and immutability;
+- identity normalization;
+- supported Sales source document kinds;
+- rejection of Sales Order as an accounting source;
+- deterministic source identity key;
+- persistence-neutral rehydration;
+- missing identity rejection;
+- source/aggregate version validation;
+- canonical UTC validation;
+- timestamp chronology validation.
+
+Local commands:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Full repository regression may also be run with:
+
+```bash
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The repository changes were structurally reviewed against the existing monorepo and Purchase Posting package conventions. This environment cannot execute the repository locally because direct network cloning is unavailable, so successful runtime/typecheck execution is not claimed here; the commands above are the required local verification for owner acceptance.
+
+### Exit criteria
+
+- [x] Independent Sales Posting package exists.
+- [x] Durable Posting identity is explicit and separate from display/document numbering.
+- [x] Company/Branch scope is explicit.
+- [x] Durable Sales source identity and source version are explicit.
+- [x] Sales Order is not accepted as a posting source.
+- [x] Aggregate version/change timestamps are persistence-neutral and Bridge-ready.
+- [x] Domain has no SQLite, PostgreSQL, UI or transport dependency.
+- [x] Step-specific automated tests are present.
+- [x] Step 3 remains owner of immutable Sales commercial posting inputs.
+
+## Next Step
+
+Step 3 — Commercial Posting Input from Immutable Sales Snapshots.
