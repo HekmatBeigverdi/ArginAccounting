@@ -137,7 +137,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Confirmed stock sales create/consume Inventory issue movements; FIFO/MWA independently determines cost of goods sold.
    - Product Master Data must not become a single mutable authoritative Sales-price store for all contexts.
    - Fixed 30-step implementation and closure record: [Phase 24 Sales Workflow Plan](docs/phases/phase-24-sales-workflow-plan.md); release notes: [Phase 24 Release Notes](docs/phases/phase-24-release-notes.md).
-25. ⏳ Sales Posting
+25. 🚧 Sales Posting
    - Canonical plan: [Phase 25 Sales Posting Plan](docs/phases/phase-25-sales-posting-plan.md); mandatory handoff: [Sales Fulfillment and Posting Handoff](docs/architecture/sales-fulfillment-posting-handoff.md).
    - A finalized stock Sales Invoice stages exactly one Inventory Issue Draft through Inventory public contracts; invoice finalization itself MUST NOT decrease stock.
    - Inventory quantity decreases only when the Inventory Issue is finalized/confirmed and creates the authoritative Inventory Movement.
@@ -210,7 +210,7 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 24 — Sales Workflow is now the current implementation target. Step 1 is complete on `phase/24-sales-workflow`, based on `main` commit `91a1dc43fa7c341493d92b7e9457c1ecf0a117a8`. The fixed 30-step plan freezes Sales pricing/document ownership, Inventory/Valuation boundaries and Argin Bridge-ready durable identity. Phase 23 is merged to `develop`/`main`; semantic `v0.23.0` publication remains a manual repository-owner action.
+Phase 25 — Sales Posting is now the current implementation target. Step 1 is complete on `phase/25-sales-posting`, based on `main` commit `044a3ed1abbd847da7675c6bf70dcd9510f6f648`, which is the completed Phase 24 merge baseline. The fixed 30-step plan freezes the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal handoff, source-authority boundaries, exactly-once Journal-effect requirement and Argin Bridge-ready durable posting contracts. Step 2 is the first executable/domain implementation step. Phase 24 is complete on `main`; semantic `v0.24.0` tag/GitHub Release publication remains a manual repository-owner action.
 
 ## Latest Completed Inventory Milestone
 
