@@ -45,12 +45,11 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 
 ## Current Project State
 
-- Current implementation target: [Phase 23 — Purchase Posting & Accounting Integration](phases/phase-23-purchase-posting-plan.md).
-- Phase 23 Steps 1–36 are complete; the final GitHub Actions validation gate passed and release promotion/publication is prepared.
-- Prepared release notes: [Phase 23 Release Notes](phases/phase-23-release-notes.md).
-- Phase 23 consumes authoritative Purchase/Inventory/Valuation facts and creates deterministic Accounting-owned Journal drafts without commercial/accounting re-entry.
-- Manual Desktop acceptance and post-Step-34 corrections are recorded in [Phase 23 Manual Desktop Acceptance Evidence](testing/phase-23-manual-desktop-acceptance.md).
-- Phase 20 Inventory, Phase 21 Valuation and Phase 22 Purchase remain upstream authority boundaries; Phase 23 does not rewrite their historical facts.
+- Current implementation target: [Phase 24 — Sales Workflow](phases/phase-24-sales-workflow-plan.md).
+- Phase 24 Step 1 is complete; the baseline, scope, ownership boundaries, Argin Bridge boundary and fixed 30-step plan are frozen.
+- Phase 24 is based on `main` commit `91a1dc43fa7c341493d92b7e9457c1ecf0a117a8`, which includes the Phase 23 merge.
+- Sales owns selling-price/commercial facts; Inventory owns quantity, Valuation owns FIFO/MWA cost, and Phase 25 will own Sales accounting posting.
+- Phase 23 Steps 1–36 are complete and promoted to `develop`/`main`; semantic release publication remains manual.
 - Canonical roadmap: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Source-of-Truth Policy

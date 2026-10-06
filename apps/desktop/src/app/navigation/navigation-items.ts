@@ -20,6 +20,7 @@ export const navigationItems: NavigationItem[] = [
   { label: "انبارها", path: "/inventory/warehouses", group: "انبار و موجودی", requiredPermission: "inventory.warehouses.view" },
   { label: "اسناد خرید", path: "/purchases/documents", group: "خرید و تدارکات", requiredPermission: "purchases.documents.view" },
   { label: "گزارش‌های خرید", path: "/purchases/reports", group: "خرید و تدارکات", requiredPermission: "purchases.documents.view" },
+  { label: "اسناد فروش", path: "/sales/documents", group: "فروش", requiredPermission: "sales.documents.view" },
   { label: "سال‌های مالی", path: "/fiscal/years", group: "مدیریت مالی" },
   { label: "اسناد حسابداری", path: "/accounting/journal-vouchers", group: "حسابداری", requiredPermission: "accounting.journal-vouchers.view" },
   { label: "گزارش‌های حسابداری", path: "/accounting/reports", group: "حسابداری", requiredAnyPermissions: ["accounting.reports.trial-balance.view", "accounting.reports.general-ledger.view", "accounting.reports.subsidiary-ledger.view", "accounting.reports.journal.view", "accounting.reports.dimensions.view"] },

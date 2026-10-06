@@ -6,6 +6,39 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.24.0] - Unreleased
+
+### Added
+
+- Complete Sales Workflow bounded context for Sales Order, Invoice, Return and Correction with deterministic commercial snapshots, pricing, discounts, charges and tax inputs.
+- Versioned Sales price lists with effective dating and customer/segment-aware resolution.
+- Lifecycle, approval, replay safety, optimistic concurrency, granular permissions, Audit and Argin Bridge-ready durable identity.
+- Atomic official Sales Number Series allocation at Finalize, scoped by Company, Branch, Fiscal Year and document type.
+- Stock Sales Invoice to Inventory Issue Draft and Sales Return to Inventory Receipt Draft staging through Inventory-owned contracts.
+- CR-24-01 below-cost governance with allow/warn/require-approval/block modes and Phase 21 authoritative pre-finalization cost quotes.
+- Persian RTL Sales workspace, Draft-only XLSX/CSV import, Excel export, A4 landscape Print/PDF and operational Sales-to-Valuation trace.
+
+### Integrity
+
+- Selling price remains a Sales commercial fact and never becomes Inventory Cost Input or COGS.
+- Inventory remains the quantity/movement authority; Phase 21 FIFO/MWA remains valuation authority.
+- Phase 24 stops before accounting posting; Revenue, Output VAT, Accounts Receivable and COGS/Inventory Relief posting belong to Phase 25.
+- Finalized Sales commercial history is immutable in place and returns/corrections preserve explicit lineage.
+
+### Tests and Validation
+
+- Added automated/E2E contracts for lifecycle, replay, concurrency, below-cost policy, finalization numbering, Inventory staging, import/output and operational trace boundaries.
+- Added canonical `pnpm validate:phase24` quality gate.
+- Step 29 validation was owner-accepted before Phase 24 closure.
+
+### Release
+
+- Target semantic tag: `v0.24.0`.
+- Release title: `ArginAccounting v0.24.0 — Sales Workflow`.
+- Final promotion, semantic tag and GitHub Release publication remain manual.
+
+---
+
 ## [0.23.0] - Unreleased
 
 ### Added
