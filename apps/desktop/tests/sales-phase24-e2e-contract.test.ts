@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 const read=(path:string)=>readFile(new URL("../"+path,import.meta.url),"utf8");
+const mutationBody=(source:string)=>source.slice(source.indexOf("return database.transaction"));
 
 test("Phase 24 finalize stays atomic from replay through numbering, persistence and Inventory staging",async()=>{
- const source=await read("src/composition/sales/mutate-sales-document.ts");
+ const source=mutationBody(await read("src/composition/sales/mutate-sales-document.ts"));
  const order=["decideSalesReplay","assertSalesExpectedVersion","BelowCostSalesGuardService","generateDocumentNumber(fiscalUow","await documents.update(after","stageFinalizedSalesIssue","stageFinalizedSalesReturnReceipt","idempotency.add"];
  let cursor=-1;for(const token of order){const next=source.indexOf(token);assert.ok(next>cursor,token+" must remain after the previous finalization gate");cursor=next;}
  assert.match(source,/return database\.transaction\(async session/u);
@@ -41,7 +42,7 @@ test("below-cost guard blocks unavailable cost and requires explicit warning or 
 });
 
 test("optimistic concurrency and idempotent replay remain first-class mutation gates",async()=>{
- const source=await read("src/composition/sales/mutate-sales-document.ts");
+ const source=mutationBody(await read("src/composition/sales/mutate-sales-document.ts"));
  assert.match(source,/decideSalesReplay/u);assert.match(source,/assertSalesExpectedVersion/u);assert.match(source,/createSalesIdempotencyRecord/u);
  assert.ok(source.indexOf("decideSalesReplay")<source.indexOf("assertSalesExpectedVersion"));
 });

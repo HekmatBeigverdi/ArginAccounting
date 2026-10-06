@@ -1,10 +1,22 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { registerHooks } from "node:module";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import type { DatabaseExecutor, DatabaseSession, DatabaseValue } from "@argin/database";
 import { SqliteSalesDocumentRepository } from "@argin/sales-tauri";
 import { createSalesDraft, type SalesDraftInput, type SalesDraftPorts } from "../src/composition/sales/create-sales-draft.ts";
+
+// Fiscal modules use extensionless relative imports under Vite.
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.startsWith(".") && context.parentURL) {
+      const candidate = new URL(specifier + ".ts", context.parentURL);
+      if (existsSync(candidate)) return nextResolve(candidate.href, context);
+    }
+    return nextResolve(specifier, context);
+  },
+});
 
 const input: SalesDraftInput = {
   submissionId: "submission-1", companyId: "company-1", branchId: "branch-1", fiscalYearId: "year-1",
@@ -16,9 +28,11 @@ const actor = { id: "user-1", displayName: "کاربر", permissions: ["sales.do
 
 function setup() {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec("CREATE TABLE companies (id TEXT PRIMARY KEY); INSERT INTO companies VALUES ('company-1'); CREATE TABLE test_audit (action TEXT)");
+  sqlite.exec("CREATE TABLE companies (id TEXT PRIMARY KEY); INSERT INTO companies VALUES ('company-1'); CREATE TABLE branches (id TEXT PRIMARY KEY); INSERT INTO branches VALUES ('branch-1'); CREATE TABLE fiscal_years (id TEXT PRIMARY KEY); INSERT INTO fiscal_years VALUES ('year-1'); CREATE TABLE test_audit (action TEXT)");
   sqlite.exec(readFileSync(new URL("../src-tauri/migrations/0035_sales_workflow.sql", import.meta.url), "utf8"));
   sqlite.exec(readFileSync(new URL("../src-tauri/migrations/0036_sales_below_cost_guard.sql", import.meta.url), "utf8"));
+  const fiscalMigration = readFileSync(new URL("../src-tauri/migrations/0003_fiscal_management.sql", import.meta.url), "utf8");
+  sqlite.exec(fiscalMigration.slice(fiscalMigration.indexOf("CREATE TABLE number_series")));
   const params = (values: readonly DatabaseValue[]) => values.map(value => typeof value === "boolean" ? Number(value) : value);
   const session: DatabaseSession = {
     async execute(sql, values = []) { return { rowsAffected: Number(sqlite.prepare(sql).run(...params(values)).changes) }; },
