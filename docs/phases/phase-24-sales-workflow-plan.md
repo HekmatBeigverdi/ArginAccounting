@@ -2,7 +2,7 @@
 
 ## Status
 
-Steps 1–29 are complete. Step 30 is not started.
+All 30 fixed steps are complete. Phase 24 implementation and owner acceptance are closed; promotion/tag/release publication remain manual repository-owner actions.
 
 ## Governance
 
@@ -155,7 +155,35 @@ The phase therefore preserves stable IDs, source/external references, version/ch
 | 27 | Persian RTL Sales Workspace | Completed |
 | 28 | Import/Export, Print/PDF & Operational Trace | Completed |
 | 29 | Automated & E2E Validation | Completed |
-| 30 | Documentation, Quality Gate, Merge & Release | Not started |
+| 30 | Documentation, Quality Gate, Merge & Release | Completed |
+
+## Step 30 — Documentation, Quality Gate, Merge & Release
+
+### Completed work
+
+- Reconciled the canonical Phase 24 plan with the completed 30-step implementation and the owner-accepted Step 29 validation.
+- Added final release notes at `docs/phases/phase-24-release-notes.md`.
+- The canonical release-quality command remains `pnpm validate:phase24`; Step 29 owner acceptance is the validation evidence used for Phase 24 closure.
+- Release target is frozen at `0.24.0` / `v0.24.0` with title `ArginAccounting v0.24.0 — Sales Workflow`.
+- Phase 25 remains the next owner of Sales accounting posting; Phase 24 does not create Revenue/VAT/Receivable or COGS/Inventory Relief journals.
+- Promotion to `develop` and `main`, semantic tag creation and GitHub Release publication are intentionally left as manual repository-owner actions.
+
+### Exit criteria
+
+- [x] All 30 fixed Phase 24 steps are complete.
+- [x] CR-24-01 is incorporated without renumbering the frozen plan.
+- [x] Official Sales numbering is part of Finalize and protected by replay/transaction/uniqueness contracts.
+- [x] Sales -> Inventory -> Movement -> Valuation ownership and trace boundaries are documented and tested.
+- [x] Persian RTL workspace and operational import/export/print surfaces are complete.
+- [x] Dedicated Phase 24 automated/E2E contracts exist.
+- [x] Canonical `pnpm validate:phase24` release gate exists.
+- [x] Step 29 validation is owner-accepted.
+- [x] Final release notes are prepared.
+- [x] Manual merge/tag/GitHub Release commands are prepared for the repository owner.
+
+### Closure rule
+
+Phase 24 implementation is closed. Promotion and publication do not reopen implementation scope. Any later defect is handled through the normal fix/change workflow. Phase 25 consumes finalized Sales commercial and valuation facts without changing Phase 24 ownership.
 
 ## Step 29 — Automated & E2E Validation
 
