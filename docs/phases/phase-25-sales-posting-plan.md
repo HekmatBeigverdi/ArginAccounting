@@ -146,7 +146,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 3 | Commercial Posting Input from Immutable Sales Snapshots | Completed |
 | 4 | Revenue Account Resolution | Completed |
 | 5 | Accounts Receivable Account Resolution | Completed |
-| 6 | Output VAT Account Resolution | Planned |
+| 6 | Output VAT Account Resolution | Completed |
 | 7 | Commercial Posting Calculation & Balancing | Planned |
 | 8 | Stock-Fulfillment Prerequisite Contract | Planned |
 | 9 | Inventory Issue Lineage Resolution | Planned |
@@ -714,3 +714,141 @@ The implementation follows the existing Purchase Posting control-account pattern
 ## Next Step
 
 Step 6 — Output VAT Account Resolution.
+
+## Step 6 — Output VAT Account Resolution
+
+### Completed work
+
+- Added the dedicated Sales Posting account role `output-vat`.
+- Added `SalesOutputVatAccountRule` as the persistence-neutral Output VAT mapping contract.
+- Output VAT account selection is scoped by:
+  - mandatory Company;
+  - optional Branch override;
+  - optional Sales `taxCode` specialization.
+- Phase 25 consumes Phase 24 tax facts exactly as upstream commercial evidence:
+  - `taxId`;
+  - `taxCode`;
+  - `rateBasisPoints`.
+- `taxCode` is normalized only for deterministic matching; `rateBasisPoints` is preserved and never recomputed by Step 6.
+- A Branch + taxCode rule outranks Branch-only/taxCode-only/Company-default mappings.
+- Specificity outranks numeric priority.
+- Priority is evaluated only between equally specific rules.
+- Missing mapping fails closed with `sales_posting.account_mapping_missing`.
+- Equally specific/equal-priority mappings fail with `sales_posting.posting_rule_ambiguous`.
+- Inactive and cross-company mappings are ignored.
+- Resolved VAT accounts must:
+  - exist;
+  - match the mapped durable `accountId`;
+  - belong to the requested Company;
+  - be active;
+  - allow direct posting.
+- Missing, wrong-company, inactive or non-postable accounts fail explicitly.
+- No VAT amount calculation is implemented here; Step 7 owns commercial debit/credit amount construction and balancing.
+- No tax policy/re-rate logic is introduced; Sales remains owner of the authoritative commercial tax facts.
+- No Journal Voucher creation is introduced; Step 24 remains the Journal creation boundary.
+
+### Resolution model
+
+```text
+Phase 24 SalesTax fact
+  taxId
+  taxCode
+  rateBasisPoints
+        ↓
+Company + Branch + taxCode
+        ↓
+Output VAT mapping candidates
+        ↓
+Most-specific rule
+        ↓
+Output VAT account
+```
+
+Example:
+
+```text
+Company default VAT
+  -> Output VAT Control
+
+taxCode = VAT
+  -> Output VAT Standard
+
+Branch A + taxCode = VAT
+  -> Branch A Output VAT
+```
+
+The authoritative tax percentage itself remains the Sales fact. The mapping resolves only the Accounting account.
+
+### Argin Bridge compliance
+
+- Rules use durable `ruleId`, Company/Branch identity, normalized tax-code key and durable `accountId`.
+- The upstream `taxId` is preserved as immutable provenance.
+- Account code/name remain descriptive snapshots, not identity.
+- No SQLite row identity enters the Domain contract.
+- Resolution is deterministic for the same rule set and tax context.
+- Live Bridge transport remains deferred.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-output-vat-account-resolution.test.ts
+```
+
+Coverage includes:
+
+- Branch + taxCode most-specific resolution;
+- taxCode-specific fallback;
+- Company-default fallback;
+- deterministic tax-code normalization;
+- preservation of authoritative tax rate;
+- specificity before priority;
+- missing mapping fail-closed behavior;
+- ambiguous mapping rejection;
+- required `taxId`;
+- tax-rate shape validation;
+- missing account rejection;
+- wrong-company account rejection;
+- inactive account rejection;
+- non-postable account rejection.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was reviewed against the existing Purchase Posting account-resolution pattern and the actual Phase 24 `SalesTax` contract. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain the owner-side executable acceptance evidence.
+
+### Exit criteria
+
+- [x] Output VAT has an explicit Sales Posting role.
+- [x] Company-level Output VAT mapping is supported.
+- [x] Branch-specific override is supported.
+- [x] taxCode-specific mapping is supported.
+- [x] Phase 24 `taxId/taxCode/rateBasisPoints` provenance is preserved.
+- [x] Step 6 does not recalculate VAT rate or amount.
+- [x] Missing/ambiguous mappings fail explicitly.
+- [x] Resolved VAT account must be active, postable and Company-correct.
+- [x] Durable `accountId` is used rather than code/name identity.
+- [x] No balancing/Journal responsibility leaked into Step 6.
+- [x] Resolver remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 7 — Commercial Posting Calculation & Balancing.
