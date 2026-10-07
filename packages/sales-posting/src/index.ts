@@ -127,3 +127,16 @@ export type {
   SalesResolvedValuationLineage,
   SalesResolvedValuationPrerequisiteResult,
 } from "./domain/sales-resolved-valuation-prerequisite.ts";
+
+export {
+  SALES_COGS_ACCOUNT_ROLE,
+  createSalesCogsAccountRule,
+  resolveSalesCogsAccount,
+  selectSalesCogsAccountRule,
+} from "./domain/sales-cogs-account-resolution.ts";
+export type {
+  SalesCogsAccountResolution,
+  SalesCogsAccountResolutionContext,
+  SalesCogsAccountRole,
+  SalesCogsAccountRule,
+} from "./domain/sales-cogs-account-resolution.ts";
