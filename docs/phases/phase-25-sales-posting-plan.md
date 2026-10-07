@@ -153,7 +153,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 10 | Outbound Inventory Movement Lineage Resolution | Completed |
 | 11 | Resolved FIFO/MWA Valuation Prerequisite | Completed |
 | 12 | COGS Account Resolution | Completed |
-| 13 | Inventory Account Resolution | Planned |
+| 13 | Inventory Account Resolution | Completed |
 | 14 | COGS / Inventory Relief Posting Calculation | Planned |
 | 15 | Mixed Stock + Service Invoice Orchestration | Planned |
 | 16 | Service-Only Invoice Posting Path | Planned |
@@ -1709,3 +1709,134 @@ The implementation follows the existing Sales Posting account-resolution pattern
 ## Next Step
 
 Step 13 — Inventory Account Resolution.
+
+## Step 13 — Inventory Account Resolution
+
+### Completed work
+
+- Added the explicit Sales Posting account role `inventory-asset`.
+- Added `SalesInventoryAccountRule` as the persistence-neutral Inventory GL mapping contract.
+- Inventory account selection is scoped by:
+  - mandatory Company;
+  - optional Branch override.
+- Branch-specific mapping outranks Company default mapping.
+- Priority is evaluated only between equally specific rules.
+- Equal-specificity/equal-priority rules fail as ambiguous.
+- Missing mapping fails closed with `sales_posting.account_mapping_missing`.
+- Added `SalesInventoryAccountResolutionContext` preserving the exact stock-cost provenance that caused resolution:
+  - Sales line ID;
+  - Product ID;
+  - outbound Movement ID;
+  - Phase 21 Valuation Entry ID;
+  - Warehouse ID.
+- Warehouse/Movement/Valuation identity is provenance only and does not silently become a new account-mapping dimension in Phase 25.
+- Product Master does not own Inventory GL account mapping.
+- Warehouse Master does not own Inventory GL account mapping.
+- Resolved accounts must:
+  - exist;
+  - match the configured durable `accountId`;
+  - belong to the requested Company;
+  - be active;
+  - allow posting.
+- Missing, cross-company, inactive and non-postable accounts fail explicitly.
+- Account code/name remain display snapshots only.
+- No inventory relief amount is calculated in Step 13.
+- No Credit component is created in Step 13.
+- Step 14 remains responsible for combining the COGS account from Step 12, Inventory account from Step 13 and resolved valuation amount from Step 11 into balanced COGS / Inventory Relief components.
+
+### Resolution model
+
+```text
+Resolved stock lineage
+  salesLineId
+  productId
+  movementId
+  valuationEntryId
+  warehouseId
+        ↓
+Company + Branch
+        ↓
+Inventory Asset mapping
+        ↓
+Inventory GL account
+```
+
+Accounting separation:
+
+```text
+Movement / Valuation / Warehouse -> provenance
+Company / Branch mapping         -> GL destination
+Phase 21 valuation               -> monetary cost
+```
+
+### Argin Bridge compliance
+
+- Durable Sales line, Product, Movement, Valuation Entry and Warehouse IDs are preserved.
+- Durable `ruleId` and `accountId` determine the accounting mapping.
+- Account code/name remain non-authoritative display fields.
+- No SQLite row identity or UI selection becomes accounting identity.
+- No mutable Product or Warehouse master field owns historical GL mapping.
+- Future Posting Rules can extend mapping dimensions without rewriting the Phase 21 valuation authority boundary.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-inventory-account-resolution.test.ts
+```
+
+Coverage includes:
+
+- Branch-specific Inventory mapping outranking Company default;
+- Company default fallback;
+- priority between equal-specificity rules;
+- missing mapping fail-closed behavior;
+- ambiguous mapping rejection;
+- required Sales line/Product/Movement/Valuation/Warehouse provenance;
+- active/postable account resolution;
+- provenance preservation;
+- missing account rejection;
+- cross-company account rejection;
+- inactive account rejection;
+- non-postable account rejection;
+- explicit proof that Warehouse/Movement/Valuation facts remain provenance and do not silently become account-selection dimensions.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation follows the existing Purchase Posting `inventory-asset` role and the Sales Posting Step 12 account-resolution pattern while preserving Inventory/Valuation ownership. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Inventory Asset has an explicit Sales Posting account role.
+- [x] Company-level mapping is supported.
+- [x] Branch override is supported.
+- [x] Missing/ambiguous mappings fail explicitly.
+- [x] Resolved account must be active, postable and Company-correct.
+- [x] Sales line/Product/Movement/Valuation/Warehouse provenance is preserved.
+- [x] Warehouse/Product masters do not own the GL mapping.
+- [x] Warehouse/Valuation facts do not silently become mapping dimensions.
+- [x] No monetary calculation or Journal component leaked into Step 13.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 14 — COGS / Inventory Relief Posting Calculation.
