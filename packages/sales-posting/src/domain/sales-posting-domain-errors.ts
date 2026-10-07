@@ -56,6 +56,11 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   journalDraftInvalid: "sales_posting.journal_draft_invalid",
   journalProvenanceInvalid: "sales_posting.journal_provenance_invalid",
   journalBalanceMismatch: "sales_posting.journal_balance_mismatch",
+  recoveryInvalid: "sales_posting.recovery_invalid",
+  recoveryConflict: "sales_posting.recovery_conflict",
+  unauthorized: "sales_posting.unauthorized",
+  approvalRequired: "sales_posting.approval_required",
+  traceMismatch: "sales_posting.trace_mismatch",
 } as const);
 
 export type SalesPostingDomainErrorCode =
