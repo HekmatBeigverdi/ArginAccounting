@@ -165,8 +165,8 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Completed |
 | 23 | Sales Correction & Replacement/Reversal Lineage | Completed |
 | 24 | Journal Voucher Creation & Immutable Source Provenance | Completed |
-| 25 | Posting Status, Recovery & Deterministic Retry | Planned |
-| 26 | Permissions, Approval/Audit & Operational Trace | Planned |
+| 25 | Posting Status, Recovery & Deterministic Retry | Completed |
+| 26 | Permissions, Approval/Audit & Operational Trace | Completed |
 | 27 | Persian RTL Posting Status/Recovery UI | Planned |
 | 28 | Automated Integration & E2E Stock/Service/Return Scenarios | Planned |
 | 29 | Documentation, Reconciliation & Accounting Examples | Planned |
@@ -3588,3 +3588,207 @@ Journal creation is now implemented against the real Accounting domain contract 
 ## Next Step
 
 Step 25 — Posting Status, Recovery & Deterministic Retry.
+
+## Step 25 — Posting Status, Recovery & Deterministic Retry
+
+### Completed work
+
+- Reconciled the previously accepted Step 25 into the repository after detecting that the canonical plan had advanced only through Step 24.
+- Added deterministic recovery projection with statuses:
+  - `pending`;
+  - `ready`;
+  - `committed`;
+  - `blocked`.
+- Added retry decisions:
+  - `wait` for unresolved future dependencies;
+  - `retry` for retriable CAS/atomic conflicts;
+  - `replay` for an already committed idempotent outcome;
+  - `manual-review` for structural/accounting configuration failures;
+  - `none` as an explicit terminal/no-action vocabulary member.
+- Added `projectSalesPostingRecovery()`.
+- Existing orchestration pending reasons from Step 17 remain authoritative for dependency waiting.
+- Existing Step 18 Idempotency outcome is authoritative for `committed/replay`.
+- Concurrency/atomic conflicts can be deterministically retried from current authoritative facts.
+- Structural mapping/accounting failures are never hidden behind automatic retry.
+- Added `assertDeterministicRecoveryTransition()`.
+- A committed outcome cannot regress to Ready/Pending/Blocked.
+- A committed outcome cannot later point at a different Journal Voucher.
+- Recovery remains a projection/decision layer; it does not invent a second source of truth or mutate Sales/Inventory/Valuation facts.
+
+### Recovery model
+
+```text
+Pending dependency
+    -> wait
+
+Ready + no committed effect
+    -> retry
+
+CAS / atomic conflict
+    -> reload authoritative state
+    -> retry
+
+Committed idempotent effect
+    -> replay same Journal outcome
+
+Structural/mapping conflict
+    -> blocked
+    -> manual review
+```
+
+### Validation
+
+Recovery coverage is included in:
+
+```text
+packages/sales-posting/tests/sales-posting-security.test.ts
+```
+
+and covers waiting, retry, replay, blocked/manual-review and committed non-regression.
+
+## Step 26 — Permissions, Approval/Audit & Operational Trace
+
+### Completed work
+
+- Added dedicated Sales Posting permissions:
+  - `sales.posting.view`;
+  - `sales.posting.execute`;
+  - `sales.posting.recover`;
+  - `sales.posting.trace.view`.
+- Added persistence-neutral authorization policy and security context contracts.
+- Added `SecuredSalesPostingService` as the Application boundary for consequential Sales Posting operations.
+- Execute authorization is enforced before Journal mutation/UoW execution.
+- Recovery requires its own independent permission.
+- Operational trace viewing requires its own independent permission.
+- Company/Branch/Posting scope is revalidated against the persisted Posting aggregate before authorization/action.
+- Added explicit approval evidence contract:
+  - approval ID;
+  - approver actor ID;
+  - approval UTC timestamp.
+- When an upstream Sales policy/workflow marks posting execution as approval-required, missing/invalid approval evidence fails with `sales_posting.approval_required`.
+- Sales Posting does not create a parallel generic approval engine; it consumes approval evidence while Accounting retains Journal lifecycle/approval ownership.
+- Added audit actions:
+  - `sales-posting.execute`;
+  - `sales-posting.replay`;
+  - `sales-posting.recover`;
+  - `sales-posting.trace.view`.
+- Audit events retain:
+  - actor;
+  - Company/Branch;
+  - Posting and Journal IDs;
+  - request/operation/correlation/causation IDs;
+  - source document/version;
+  - before/after Posting version;
+  - approval evidence when applicable;
+  - recovery state when applicable;
+  - replay/fingerprint/source-version metadata.
+- Added deterministic `salesPostingAuditIdentity()` for append-only audit persistence.
+- Added `SalesPostingTraceSnapshot` and `SalesPostingTraceReader`.
+- Trace surfaces preserve the operational chain from Sales source through Posting/recovery to Journal identity without exposing mutable UI state as authority.
+- Trace access is itself audited.
+- Authorization denial occurs before mutation and does not emit a false success audit event.
+
+### Security / trace model
+
+```text
+Actor
+  ↓ permission + company/branch scope
+Sales Posting operation
+  ↓ requestId / operationId / correlationId / causationId
+Approval evidence (when required)
+  ↓
+Atomic Posting / Journal effect
+  ↓
+Audit event
+  ↓
+Operational Trace
+```
+
+### Approval ownership
+
+```text
+Sales workflow/policy
+    -> determines whether approval evidence is required
+
+Sales Posting
+    -> validates/retains approval evidence
+
+Accounting Journal lifecycle
+    -> remains Accounting-owned
+```
+
+Step 26 therefore does not duplicate the Accounting approval engine.
+
+### Argin Bridge compliance
+
+- Audit/trace uses durable actor, source, Posting and Journal identities.
+- Request/operation/correlation/causation IDs are stable synchronization/diagnostic references.
+- Authorization scope is based on Company/Branch business identity, not local database row IDs.
+- Recovery and replay are observable without changing immutable source facts.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-posting-security.test.ts
+```
+
+Coverage includes:
+
+- deterministic recovery states/actions;
+- committed recovery non-regression;
+- dedicated recovery permission enforcement;
+- authorization denial before action;
+- recovery audit trace;
+- dedicated trace-view permission;
+- trace-view auditing;
+- deterministic audit identity;
+- mandatory approval evidence before an approval-required execute operation.
+
+### Local verification
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The connected GitHub environment was used to implement and review the contracts, but local runtime/typecheck PASS is not claimed.
+
+### Exit criteria
+
+- [x] Step 25 recovery status is explicit and deterministic.
+- [x] Pending dependency uses wait rather than blind retry.
+- [x] CAS/atomic conflict is explicitly retryable.
+- [x] Committed result converges on replay.
+- [x] Structural failures require manual review.
+- [x] Committed result cannot regress or switch Journal identity.
+- [x] Execute permission exists independently.
+- [x] Recover permission exists independently.
+- [x] Trace-view permission exists independently.
+- [x] Company/Branch scope is validated before action.
+- [x] Approval-required execution validates durable approval evidence.
+- [x] Journal approval ownership remains Accounting-owned.
+- [x] Execute/replay/recover/trace-view are auditable.
+- [x] Request/operation/correlation/causation trace is preserved.
+- [x] Trace access is itself audited.
+- [x] Contracts remain persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 27 — Persian RTL Posting Status/Recovery UI.
