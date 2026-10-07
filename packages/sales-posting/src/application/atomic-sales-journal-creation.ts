@@ -166,7 +166,7 @@ export async function commitSalesPostingJournalAtomic(
       {
         postingId: input.postingId,
         companyId: input.companyId,
-        branchId: input.branchId ?? "",
+        branchId: required(input.branchId ?? "", "branchId"),
         source: identity.source,
         expectedPostingVersion: input.expectedPostingVersion,
       },
@@ -185,7 +185,7 @@ export async function commitSalesPostingJournalAtomic(
       fiscalPeriodId: input.fiscalPeriodId,
       createdAtUtc: input.createdAtUtc,
       components: input.components,
-      requestId: input.requestId ?? key,
+      requestId: input.requestId ?? input.postingId,
       causationId: input.causationId,
     });
 
