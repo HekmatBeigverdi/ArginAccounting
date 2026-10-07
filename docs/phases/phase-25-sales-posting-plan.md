@@ -154,7 +154,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 11 | Resolved FIFO/MWA Valuation Prerequisite | Completed |
 | 12 | COGS Account Resolution | Completed |
 | 13 | Inventory Account Resolution | Completed |
-| 14 | COGS / Inventory Relief Posting Calculation | Planned |
+| 14 | COGS / Inventory Relief Posting Calculation | Completed |
 | 15 | Mixed Stock + Service Invoice Orchestration | Planned |
 | 16 | Service-Only Invoice Posting Path | Planned |
 | 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Planned |
@@ -1840,3 +1840,171 @@ The implementation follows the existing Purchase Posting `inventory-asset` role 
 ## Next Step
 
 Step 14 — COGS / Inventory Relief Posting Calculation.
+
+## Step 14 — COGS / Inventory Relief Posting Calculation
+
+### Completed work
+
+- Added `calculateSalesCostPosting()` to convert resolved Phase 21 outbound valuation facts plus Step 12/13 account resolutions into deterministic Sales cost-posting components.
+- The authoritative monetary input is `valuation.totalCost` from Step 11.
+- Phase 21 outbound valuation keeps its signed convention; Step 14 converts the absolute value into accounting amount without recalculating cost.
+- For each non-zero stock valuation line, Step 14 creates exactly two accounting components:
+
+```text
+COGS             Debit
+Inventory Asset  Credit
+```
+
+- Debit and Credit amounts are identical and equal to the absolute authoritative outbound valuation total.
+- FIFO and Moving Average produce the same accounting direction; only the authoritative valuation amount/method provenance differs.
+- Zero resolved valuation cost produces no synthetic zero-value accounting components.
+- Service-only/no-stock valuation input returns an empty balanced cost leg.
+- Every valuation line must have exactly one COGS account resolution and exactly one Inventory account resolution.
+- COGS resolution must match:
+  - Sales line ID;
+  - Product ID;
+  - Valuation Entry ID.
+- Inventory resolution must match:
+  - Sales line ID;
+  - Product ID;
+  - Movement ID;
+  - Valuation Entry ID.
+- Both resolved accounts must belong to the same Company as the valuation prerequisite.
+- Missing, duplicate, extra or mismatched account resolutions fail closed.
+- Positive outbound valuation cost is rejected because it violates the Phase 21 outbound sign convention.
+- Multiple valuation currencies in one cost calculation fail closed instead of being summed without an explicit FX/accounting policy.
+- Exact balance controls use safe-integer money and BigInt accumulation to prevent floating-point or overflow drift.
+- Step 14 verifies:
+
+```text
+Total COGS Debit == Total Inventory Credit
+Total Debit       == Sum(abs(resolved outbound valuation totalCost))
+Total Credit      == Sum(abs(resolved outbound valuation totalCost))
+```
+
+- Each component preserves:
+  - Sales line ID;
+  - Product ID;
+  - Movement ID;
+  - Valuation Entry ID;
+  - valuation method;
+  - valuation revision;
+  - currency.
+- Step 14 produces posting components only. It does not create JournalLine or JournalVoucher entities; Step 24 owns Journal creation/provenance.
+
+### Accounting model
+
+For an authoritative Phase 21 outbound valuation:
+
+```text
+totalCost = -1,200,000 IRR
+```
+
+Step 14 produces:
+
+```text
+COGS               Dr  1,200,000
+    Inventory          Cr  1,200,000
+```
+
+The absolute value is an accounting presentation transformation only; the original signed valuation fact remains unchanged and is retained by Valuation provenance.
+
+### Authority boundary
+
+```text
+Phase 21 Valuation
+  signed totalCost
+        ↓
+Step 12
+  COGS account
+        ↓
+Step 13
+  Inventory account
+        ↓
+Step 14
+  balanced cost posting components
+```
+
+Step 14 never derives cost from:
+
+- Sales selling price;
+- Revenue amount;
+- Product master price;
+- Phase 24 pre-finalization cost quote.
+
+### Argin Bridge compliance
+
+- Durable Sales Line, Movement and Valuation Entry IDs remain on every component.
+- Valuation revision and method are preserved for audit/replay.
+- Account identity remains durable `accountId`.
+- Signed upstream valuation is not rewritten.
+- Calculation is deterministic and persistence-neutral.
+- No SQLite row identity or UI state is used.
+- Future remote replay can verify the exact valuation revision/account mapping consumed by the accounting effect.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-cost-posting-calculation.test.ts
+```
+
+Coverage includes:
+
+- balanced FIFO COGS/Inventory effect;
+- balanced Moving Average effect;
+- zero-cost valuation;
+- service/no-stock empty cost leg;
+- missing account resolution;
+- duplicate resolution;
+- extra unknown-line resolution;
+- COGS valuation provenance mismatch;
+- Inventory Movement provenance mismatch;
+- cross-company account rejection;
+- positive outbound valuation rejection;
+- mixed valuation-currency rejection;
+- preservation of Sales/Movement/Valuation provenance;
+- explicit proof that no JournalLine/JournalVoucher responsibility leaks into Step 14.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was reviewed against the actual Phase 21 outbound sign convention and the completed Step 11/12/13 contracts. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Authoritative Phase 21 total cost is the sole monetary source.
+- [x] Signed outbound cost is transformed to positive accounting amount without rewriting valuation.
+- [x] COGS is Debit and Inventory Asset is Credit.
+- [x] FIFO/MWA accounting direction is identical.
+- [x] Every stock valuation line has exact COGS and Inventory resolutions.
+- [x] Account/provenance mismatch fails closed.
+- [x] Zero-cost lines do not create synthetic entries.
+- [x] Service/no-stock cost leg is empty and balanced.
+- [x] Multiple currencies are not summed without policy.
+- [x] Debit/Credit and valuation totals reconcile exactly.
+- [x] Sales/Movement/Valuation provenance remains attached.
+- [x] No Journal creation leaked into Step 14.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 15 — Mixed Stock + Service Invoice Orchestration.
