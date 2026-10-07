@@ -85,12 +85,14 @@ export function createSalesPostingJournalProvenance(input: {
     );
   }
 
-  const journalLineIds = new Set(input.journal.lines.map((line) => line.id));
+  const journalLineIds = new Set<string>(
+    input.journal.lines.map((line) => String(line.id)),
+  );
   const seen = new Set<string>();
 
   const lineProvenance = input.lineProvenance.map((raw) => {
     const journalLineId = required(raw.journalLineId, "journalLineId");
-    if (!journalLineIds.has(journalLineId as never) || seen.has(journalLineId)) {
+    if (!journalLineIds.has(journalLineId) || seen.has(journalLineId)) {
       return fail(
         SALES_POSTING_DOMAIN_ERROR_CODES.journalProvenanceInvalid,
         "journalLineId",
