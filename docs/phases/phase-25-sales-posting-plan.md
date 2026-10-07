@@ -155,7 +155,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 12 | COGS Account Resolution | Completed |
 | 13 | Inventory Account Resolution | Completed |
 | 14 | COGS / Inventory Relief Posting Calculation | Completed |
-| 15 | Mixed Stock + Service Invoice Orchestration | Planned |
+| 15 | Mixed Stock + Service Invoice Orchestration | Completed |
 | 16 | Service-Only Invoice Posting Path | Planned |
 | 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Planned |
 | 18 | Idempotency & Exactly-Once Journal Effect | Planned |
@@ -2008,3 +2008,139 @@ The implementation was reviewed against the actual Phase 21 outbound sign conven
 ## Next Step
 
 Step 15 — Mixed Stock + Service Invoice Orchestration.
+
+## Step 15 — Mixed Stock + Service Invoice Orchestration
+
+### Completed work
+
+- Added `orchestrateMixedSalesInvoicePosting()` as a deterministic composition boundary for invoices containing both stock and non-stock/service lines.
+- The orchestrator consumes already-calculated, already-balanced:
+  - commercial posting from Step 7;
+  - cost posting from Step 14.
+- Step 15 does not re-price Sales, re-resolve Inventory lineage, re-run valuation or create Journal entities.
+- The commercial leg remains authoritative for the whole invoice and may contain AR, Revenue and Output VAT components for stock and service/non-stock lines.
+- The cost leg is restricted strictly to `stock-product` lines.
+- Service/non-stock lines are prohibited from receiving COGS or Inventory Relief components.
+- Mixed path requires at least one stock line and at least one non-stock/service line.
+- Stock-only and service-only documents are deliberately outside Step 15; service-only becomes Step 16.
+- Commercial component source-line references must point to actual Sales lines.
+- Cost component Sales-line references must point only to actual stock lines.
+- A non-zero stock cost line must preserve the expected two-component shape:
+  - `cogs` debit;
+  - `inventory-asset` credit.
+- Commercial currency must equal the immutable Sales commercial-input currency.
+- Cost currency, when present, must equal the commercial currency.
+- Commercial and cost legs remain separately balanced rather than being mathematically netted into one opaque total.
+- Step 15 returns both legs and their provenance explicitly so later Journal generation can preserve commercial-vs-cost meaning.
+- No pending/retry/status state is added here; Step 17 owns resumable automatic orchestration.
+- No Journal Voucher or Journal Line is created here; Step 24 owns Journal creation.
+
+### Mixed invoice model
+
+```text
+Mixed Sales Invoice
+  ├─ Stock product line
+  │     ├─ Commercial leg
+  │     │    Revenue / VAT / AR
+  │     └─ Cost leg
+  │          COGS / Inventory Relief
+  │
+  └─ Service / non-stock line
+        └─ Commercial leg only
+             Revenue / VAT / AR
+```
+
+Important:
+
+```text
+Commercial leg applies to all Sales lines.
+Cost leg applies only to stock-product lines.
+```
+
+### Authority boundary
+
+```text
+Phase 24 Sales facts
+        ↓
+Step 7 commercial posting
+        ┐
+        ├─ Step 15 mixed orchestration
+        ┘
+Step 8-14 stock/valuation chain
+        ↓
+Step 14 cost posting
+```
+
+Step 15 composes these effects but does not replace either source of truth.
+
+### Argin Bridge compliance
+
+- Durable Sales document/line provenance remains explicit.
+- Cost components retain Movement/Valuation provenance from the stock path.
+- Commercial and cost effects remain independently reconstructable/replayable.
+- No local database row IDs, UI state or transient orchestration identifiers become business identity.
+- The composition result is deterministic and persistence-neutral.
+- Future Bridge replay can distinguish commercial recognition from inventory-cost recognition.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-mixed-invoice-orchestration.test.ts
+```
+
+Coverage includes:
+
+- successful mixed stock + service orchestration;
+- commercial coverage for both stock and service lines;
+- cost components only for stock lines;
+- stock-only input rejection from the mixed path;
+- service-only input rejection from the mixed path;
+- service/non-stock cost leakage rejection;
+- unknown commercial Sales-line reference rejection;
+- commercial/cost currency mismatch rejection;
+- independent commercial-leg and cost-leg balance preservation;
+- explicit proof that Step 15 does not create Journal or retry/status state.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation composes the completed Step 7 and Step 14 contracts without moving retry/persistence/Journal ownership forward from their frozen steps. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Mixed invoice requires stock plus service/non-stock content.
+- [x] Commercial leg remains whole-invoice.
+- [x] Cost leg is stock-only.
+- [x] Service/non-stock lines cannot receive COGS/Inventory Relief.
+- [x] Unknown Sales-line references fail closed.
+- [x] Commercial and cost currency compatibility is enforced.
+- [x] Commercial and cost balance remains independently visible.
+- [x] No valuation or commercial recalculation is introduced.
+- [x] No retry/status orchestration leaked from Step 17.
+- [x] No Journal creation leaked from Step 24.
+- [x] Result remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 16 — Service-Only Invoice Posting Path.
