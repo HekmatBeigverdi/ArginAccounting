@@ -279,3 +279,33 @@ export type {
   SalesCorrectionLineageLine,
   SalesCorrectionReplacementPlan,
 } from "./domain/sales-correction-lineage.ts";
+
+export {
+  createSalesPostingJournalDraft,
+  salesJournalComponentsFromInvoice,
+  salesJournalComponentsFromReturn,
+} from "./domain/sales-journal-draft.ts";
+export type {
+  CreateSalesPostingJournalDraftInput,
+  SalesPostingJournalComponent,
+  SalesPostingJournalDraftResult,
+  SalesPostingJournalRole,
+} from "./domain/sales-journal-draft.ts";
+
+export {
+  createSalesPostingJournalProvenance,
+} from "./domain/sales-journal-provenance.ts";
+export type {
+  SalesJournalLineProvenance,
+  SalesPostingJournalProvenance,
+} from "./domain/sales-journal-provenance.ts";
+
+export {
+  commitSalesPostingJournalAtomic,
+} from "./application/atomic-sales-journal-creation.ts";
+export type {
+  CommitSalesPostingJournalInput,
+  CommitSalesPostingJournalResult,
+  SalesPostingJournalAtomicSession,
+  SalesPostingJournalAtomicUnitOfWork,
+} from "./application/atomic-sales-journal-creation.ts";
