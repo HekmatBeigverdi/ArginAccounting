@@ -167,7 +167,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 24 | Journal Voucher Creation & Immutable Source Provenance | Completed |
 | 25 | Posting Status, Recovery & Deterministic Retry | Completed |
 | 26 | Permissions, Approval/Audit & Operational Trace | Completed |
-| 27 | Persian RTL Posting Status/Recovery UI | Planned |
+| 27 | Persian RTL Posting Status/Recovery UI | Completed |
 | 28 | Automated Integration & E2E Stock/Service/Return Scenarios | Planned |
 | 29 | Documentation, Reconciliation & Accounting Examples | Planned |
 | 30 | Quality Gate, Merge & Release | Planned |
@@ -3792,3 +3792,163 @@ The connected GitHub environment was used to implement and review the contracts,
 ## Next Step
 
 Step 27 — Persian RTL Posting Status/Recovery UI.
+
+## Step 27 — Persian RTL Posting Status/Recovery UI
+
+### Completed work
+
+- Added a dedicated Persian RTL Sales Posting recovery/status presentation layer for Desktop.
+- Added `createSalesPostingRecoveryViewModel()` as a pure UI projection over the authoritative Step 25 `SalesPostingRecoverySnapshot`.
+- UI does not recompute posting readiness, retryability or accounting rules.
+- Added Persian presentation for the four canonical recovery states:
+  - `pending` -> «در انتظار تکمیل پیش‌نیازها»;
+  - `ready` -> «آماده ثبت حسابداری»;
+  - `committed` -> «ثبت حسابداری ایجاد شده»;
+  - `blocked` -> «نیازمند بررسی».
+- Added Persian action labels:
+  - retry -> «تلاش مجدد»;
+  - replay -> «بازخوانی نتیجه ثبت‌شده»;
+  - manual-review -> «بررسی دستی»;
+  - wait/none -> no misleading action button.
+- Added human-readable Pending reason labels for:
+  - waiting for Inventory Issue;
+  - waiting for Issue confirmation;
+  - waiting for Inventory Movement;
+  - waiting for Valuation/COGS.
+- Added human-readable structural/retry messages for common Sales Posting errors such as account mapping, non-postable account, ambiguous rules and optimistic-concurrency/atomic conflicts.
+- Added `SalesPostingRecoveryPanel`:
+  - explicit RTL direction;
+  - current status;
+  - recommended action;
+  - Journal Voucher identity;
+  - committed Posting version;
+  - waiting Sales line IDs;
+  - reason/explanation;
+  - permission-aware recovery action;
+  - optional refresh action;
+  - operational trace details when `sales.posting.trace.view` is available.
+- Operational trace UI exposes durable:
+  - Posting ID/version;
+  - Sales source document/version;
+  - Journal Voucher ID;
+  - Request ID;
+  - Operation ID;
+  - Correlation ID;
+  - Causation ID.
+- Trace identifiers use bidi-safe presentation rather than being mixed into Persian text.
+- Added responsive Desktop styles matching the existing Sales workspace density/panel conventions.
+- Pending/Ready/Committed/Blocked states have distinct semantic visual treatments without moving domain truth into CSS/React.
+- The UI does not fabricate a Posting status from Sales document status, Inventory trace or local component state. It requires the authoritative Application recovery snapshot.
+- Added `@argin/sales-posting` to Desktop workspace dependencies and updated the lockfile.
+
+### UI model
+
+```text
+SalesPostingRecoverySnapshot
+        ↓
+pure Persian view model
+        ↓
+SalesPostingRecoveryPanel
+        ↓
+Status + reason + next action + trace
+```
+
+Examples:
+
+```text
+pending / waiting-for-valuation
+→ در انتظار تکمیل پیش‌نیازها
+→ علت: در انتظار محاسبه بهای تمام‌شده
+→ no blind retry button
+```
+
+```text
+ready / retry
+→ آماده ثبت حسابداری
+→ تلاش مجدد
+```
+
+```text
+committed / replay
+→ ثبت حسابداری ایجاد شده
+→ Journal ID + Posting version
+→ بازخوانی نتیجه ثبت‌شده
+```
+
+```text
+blocked / manual-review
+→ نیازمند بررسی
+→ علت تنظیماتی/ساختاری
+→ بررسی دستی
+```
+
+### Files
+
+Added:
+
+```text
+apps/desktop/src/features/sales/sales-posting-recovery-view.ts
+apps/desktop/src/pages/sales/sales-posting-recovery-panel.tsx
+apps/desktop/src/pages/sales/sales-posting-recovery-panel.css
+apps/desktop/tests/sales-posting-recovery-view.test.ts
+```
+
+Updated:
+
+```text
+apps/desktop/package.json
+pnpm-lock.yaml
+```
+
+### Automated tests
+
+Focused Desktop tests cover:
+
+- Pending valuation -> Persian wait guidance;
+- Ready concurrency conflict -> retry action;
+- Committed -> replay + exact Journal identity/version;
+- Structural account mapping failure -> manual review rather than blind retry.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The UI contract is implemented and tested as a data-driven projection over the Step 25 Application snapshot. It intentionally does not derive/fabricate authoritative posting state from the Sales document UI. End-to-end source -> Posting -> UI scenario wiring and automated integration coverage remains Step 28. Successful local runtime/typecheck execution is not claimed from the connected GitHub environment.
+
+### Exit criteria
+
+- [x] Persian RTL Posting status UI exists.
+- [x] Pending/Ready/Committed/Blocked are clearly distinguishable.
+- [x] Pending dependency reasons are human-readable.
+- [x] Retry/replay/manual-review actions match Step 25 decisions.
+- [x] Wait state does not expose a blind retry action.
+- [x] Journal identity/version are shown for committed outcomes.
+- [x] Waiting Sales line IDs are visible.
+- [x] Operational trace is permission-aware.
+- [x] Request/operation/correlation/causation IDs are displayable.
+- [x] UI does not duplicate domain recovery logic.
+- [x] UI does not fabricate posting state from document status.
+- [x] Desktop dependency/lockfile are updated.
+- [x] Responsive RTL styling follows current Sales workspace conventions.
+
+## Next Step
+
+Step 28 — Automated Integration & E2E Stock/Service/Return Scenarios.
