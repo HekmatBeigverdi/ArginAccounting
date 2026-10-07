@@ -34,6 +34,7 @@ import {
   createInventoryWorkspaceServices,
   type InventoryWorkspaceServices,
 } from "../../composition/inventory/create-inventory-workspace-services";
+import { createSalesPostingWorkspaceServices } from "../../composition/sales-posting/create-sales-posting-workspace-services";
 import { Feedback } from "../../components/feedback";
 import { Page } from "../../components/layout";
 import "./inventory-documents-page.css";
@@ -583,7 +584,45 @@ export function InventoryDocumentsPage() {
     try {
       if (action === "submit") await services.submit(selected, reason);
       else if (action === "approve") await services.approve(selected, reason);
-      else if (action === "confirm") await services.confirm(selected, reason?.trim() ?? null);
+      else if (action === "confirm") {
+        await services.confirm(selected, reason?.trim() ?? null);
+
+        if (
+          selected.documentType === "issue"
+          && selected.sourceReference?.sourceSystem === "sales"
+          && selected.sourceReference.documentType === "sales-invoice"
+          && selected.sourceReference.documentId
+          && session
+        ) {
+          try {
+            const posting = createSalesPostingWorkspaceServices({
+              database: await getDesktopDatabase(),
+              actor: {
+                permissions: session.user.permissions,
+                branchIds: session.user.branchIds,
+              },
+            });
+            if (posting.canExecute) {
+              const recovery = await posting.evaluateAndPost({
+                companyId: selected.companyId,
+                branchId: selected.scope.branchId,
+                sourceId: selected.sourceReference.documentId,
+              });
+              if (recovery.status === "committed") {
+                setMessage("حواله قطعی شد و سند حسابداری فروش نیز به‌صورت خودکار ایجاد شد.");
+              } else if (recovery.status === "pending") {
+                setMessage("حواله قطعی شد؛ ثبت حسابداری فروش در انتظار تکمیل ارزش‌گذاری است.");
+              }
+            }
+          } catch (postingError) {
+            setError(
+              postingError instanceof Error
+                ? "حواله قطعی شد، اما ایجاد ثبت حسابداری فروش نیاز به بررسی دارد: " + postingError.message
+                : "حواله قطعی شد، اما ایجاد ثبت حسابداری فروش نیاز به بررسی دارد.",
+            );
+          }
+        }
+      }
       else if (action === "cancel") await services.cancel(selected, reason);
       else await services.reverse(selected, reason!.trim());
       await openDocument(selected.documentId);
@@ -596,7 +635,7 @@ export function InventoryDocumentsPage() {
         setReverseOpen(false);
         setReverseReason("");
       }
-      setMessage("عملیات با موفقیت انجام شد.");
+      setMessage((current) => current || "عملیات با موفقیت انجام شد.");
     } catch (e) {
       if (
         action === "submit" ||
