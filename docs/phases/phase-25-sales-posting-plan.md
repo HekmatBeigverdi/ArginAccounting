@@ -151,7 +151,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 8 | Stock-Fulfillment Prerequisite Contract | Completed |
 | 9 | Inventory Issue Lineage Resolution | Completed |
 | 10 | Outbound Inventory Movement Lineage Resolution | Completed |
-| 11 | Resolved FIFO/MWA Valuation Prerequisite | Planned |
+| 11 | Resolved FIFO/MWA Valuation Prerequisite | Completed |
 | 12 | COGS Account Resolution | Planned |
 | 13 | Inventory Account Resolution | Planned |
 | 14 | COGS / Inventory Relief Posting Calculation | Planned |
@@ -1419,3 +1419,161 @@ The implementation was reviewed against the Inventory confirmation workflow, whe
 ## Next Step
 
 Step 11 — Resolved FIFO/MWA Valuation Prerequisite.
+
+## Step 11 — Resolved FIFO/MWA Valuation Prerequisite
+
+### Completed work
+
+- Added `resolveSalesResolvedValuationPrerequisite()` to bind each outbound Movement from Step 10 to the authoritative Phase 21 valuation entry.
+- Reused the existing persistence-neutral `InventoryValuationEntryRepository.findByMovement()` contract instead of adding Sales-specific SQLite access.
+- Every stock Movement must resolve to exactly one valuation entry for the same durable `movementId`.
+- The valuation entry must match:
+  - Company;
+  - Product;
+  - Inventory Issue document ID;
+  - Inventory Issue line ID;
+  - Movement ID;
+  - Warehouse/Zone/Location StockKey;
+  - business date;
+  - business order.
+- Only `kind = outbound` valuation entries are accepted.
+- Transfer and reversal valuation sources are rejected for the normal Sales Invoice COGS path.
+- Both supported Phase 21 valuation methods are accepted:
+  - `fifo`;
+  - `moving_average`.
+- The valuation must have `costState = resolved`.
+- A resolved valuation must provide:
+  - `unitCost`;
+  - `totalCost`;
+  - `valuedAt`;
+  - null `unresolvedReason`.
+- Missing valuation fails with `valuation_prerequisite_missing`.
+- Unresolved valuation fails with `valuation_prerequisite_unresolved`.
+- Cross-lineage/method/source inconsistencies fail closed with `valuation_prerequisite_invalid`.
+- Outbound valuation `totalCost` is preserved with its authoritative Phase 21 sign convention; positive outbound total cost is rejected.
+- The result preserves:
+  - Sales line ID;
+  - Product ID;
+  - Movement ID;
+  - Valuation Entry ID;
+  - valuation method;
+  - strategy version;
+  - currency;
+  - valued quantity;
+  - unit cost;
+  - signed total cost;
+  - valued timestamp;
+  - valuation revision.
+- Service-only/no-stock movement lineage bypasses valuation lookup and is immediately ready with an empty valuation set.
+- No account resolution is introduced here; COGS and Inventory accounts remain Steps 12–13.
+- No Debit/Credit or Journal component is created here; Step 14 owns the COGS / Inventory Relief calculation.
+
+### Prerequisite model
+
+```text
+Outbound Inventory Movement (Step 10)
+        ↓
+InventoryValuationEntryRepository
+        ↓
+findByMovement(companyId, movementId)
+        ↓
+Valuation exists?
+   no -> blocked / missing
+        ↓
+costState = resolved?
+   no -> blocked / unresolved
+        ↓
+kind = outbound
+source/document/line/product/stockKey exact
+        ↓
+method = FIFO or Moving Average
+        ↓
+Resolved Valuation Prerequisite
+```
+
+Critical authority rule:
+
+```text
+Sales selling price
+    !=
+Phase 24 pre-finalization cost quote
+    !=
+Phase 21 resolved valuation cost
+
+COGS authority = Phase 21 resolved outbound valuation only
+```
+
+### Argin Bridge compliance
+
+- Durable `movementId` is the authoritative cross-module join key.
+- Durable `valuationEntryId`, `revision`, `strategyVersion` and `valuedAt` are preserved for replay/audit provenance.
+- Sales Posting consumes the valuation contract rather than copying Inventory persistence behavior.
+- StockKey identity is validated but no balance projection is used.
+- No SQLite row ID, display code or mutable Product/Sales price is used as valuation identity.
+- Future remote Bridge replay can verify the exact valuation revision consumed by accounting.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-resolved-valuation-prerequisite.test.ts
+```
+
+Coverage includes:
+
+- resolved FIFO valuation;
+- resolved Moving Average valuation;
+- service-only/no-stock bypass;
+- missing valuation;
+- unresolved valuation;
+- Movement ID mismatch;
+- document/line mismatch;
+- Product mismatch;
+- Warehouse/StockKey mismatch;
+- non-outbound valuation rejection;
+- Transfer/Reversal valuation rejection;
+- positive outbound cost rejection;
+- preservation of strategy version, valuation revision and valued timestamp;
+- explicit proof that no account/debit/credit responsibility leaks into Step 11.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was reviewed against the actual Phase 21 Inventory valuation domain and the existing `InventoryValuationEntryRepository.findByMovement()` persistence contract. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Every stock Movement resolves through durable Movement identity.
+- [x] Missing valuation blocks cost posting.
+- [x] Unresolved valuation blocks cost posting.
+- [x] FIFO and Moving Average are both supported.
+- [x] Only outbound valuation entries are accepted.
+- [x] Company/Product/Document/Line/StockKey chronology is validated.
+- [x] Transfer/Reversal valuation sources are excluded from the normal Sales Invoice path.
+- [x] Signed Phase 21 total cost is preserved without reinterpretation.
+- [x] Strategy/revision/valued-at provenance is preserved.
+- [x] Service-only/no-stock path bypasses valuation lookup.
+- [x] No COGS/Inventory account or Debit/Credit responsibility leaked into Step 11.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 12 — COGS Account Resolution.
