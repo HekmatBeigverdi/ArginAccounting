@@ -512,7 +512,7 @@ function SalesDocumentsWorkspace() {
     }
 
     void getDesktopDatabase()
-      .then((database) => {
+      .then(async (database) => {
         const posting = createSalesPostingWorkspaceServices({
           database,
           actor: {
@@ -520,20 +520,30 @@ function SalesDocumentsWorkspace() {
             branchIds: session.user.branchIds,
           },
         });
-        return Promise.all([
-          posting.getRecovery({
+        let recovery = await posting.getRecovery({
+          companyId: selectedDocument.scope.companyId,
+          branchId: selectedDocument.scope.branchId,
+          sourceId: selectedDocument.documentId,
+        });
+
+        // Catch up finalized invoices created before Sales Posting persistence/wiring.
+        if (recovery === null && posting.canExecute) {
+          recovery = await posting.evaluateAndPost({
             companyId: selectedDocument.scope.companyId,
             branchId: selectedDocument.scope.branchId,
             sourceId: selectedDocument.documentId,
-          }),
-          posting.canTrace
-            ? posting.getTrace({
-                companyId: selectedDocument.scope.companyId,
-                branchId: selectedDocument.scope.branchId,
-                sourceId: selectedDocument.documentId,
-              })
-            : Promise.resolve(null),
-        ]);
+          });
+        }
+
+        const postingTraceValue = posting.canTrace
+          ? await posting.getTrace({
+              companyId: selectedDocument.scope.companyId,
+              branchId: selectedDocument.scope.branchId,
+              sourceId: selectedDocument.documentId,
+            })
+          : null;
+
+        return [recovery, postingTraceValue] as const;
       })
       .then(([recovery, postingTraceValue]) => {
         if (cancelled) return;
