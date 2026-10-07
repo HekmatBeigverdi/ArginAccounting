@@ -150,7 +150,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 7 | Commercial Posting Calculation & Balancing | Completed |
 | 8 | Stock-Fulfillment Prerequisite Contract | Completed |
 | 9 | Inventory Issue Lineage Resolution | Completed |
-| 10 | Outbound Inventory Movement Lineage Resolution | Planned |
+| 10 | Outbound Inventory Movement Lineage Resolution | Completed |
 | 11 | Resolved FIFO/MWA Valuation Prerequisite | Planned |
 | 12 | COGS Account Resolution | Planned |
 | 13 | Inventory Account Resolution | Planned |
@@ -1279,3 +1279,143 @@ The implementation was reviewed against the actual Phase 24 Sales -> Inventory s
 ## Next Step
 
 Step 10 — Outbound Inventory Movement Lineage Resolution.
+
+## Step 10 — Outbound Inventory Movement Lineage Resolution
+
+### Completed work
+
+- Added `resolveSalesOutboundInventoryMovementLineage()` to resolve the authoritative stock movement created by each confirmed Inventory Issue line.
+- Added the persistence-neutral `SalesInventoryMovementReader` contract; Sales Posting does not query SQLite movement tables directly.
+- Movement lookup is performed by Inventory Issue document and then narrowed to the exact Inventory Issue line from Step 9.
+- Exactly one movement must exist for every resolved stock Issue line.
+- The movement must match:
+  - Company;
+  - Inventory Issue document ID;
+  - Inventory Issue line ID;
+  - Product ID;
+  - Sales business date;
+  - Issue confirmation timestamp.
+- Inventory Issue movement direction must be outbound: `quantityDelta < 0`.
+- Zero or positive movement quantity is rejected.
+- Issue movements used for Sales COGS must not be transfer movements.
+- Issue movements used for Sales COGS must not themselves be reversal movements.
+- Ambiguous multiple movements for one Inventory Issue line fail closed.
+- Duplicate reuse of one Movement ID across multiple lineage entries fails closed.
+- Resolved movement lineage preserves:
+  - Sales line ID;
+  - Product ID;
+  - Inventory Issue document ID;
+  - Inventory Issue line ID;
+  - durable Movement ID;
+  - business date/order;
+  - recorded timestamp;
+  - exact signed quantity delta;
+  - Warehouse/Zone/Location identity.
+- Service-only/no-stock lineage returns an empty movement set without invoking the movement reader.
+- No Inventory balance projection is used; immutable Movement facts remain authoritative.
+- No FIFO/MWA cost or valuation amount is introduced in Step 10; Step 11 remains the sole valuation prerequisite.
+
+### Lineage model
+
+```text
+Sales stock line
+      ↓
+Confirmed Inventory Issue line (Step 9)
+      ↓
+Inventory Movement repository
+      ↓
+exact documentId + lineId
+      ↓
+exactly one immutable Movement
+      ↓
+company/product/date/time validation
+      ↓
+quantityDelta < 0
+transferId = null
+reversalOfMovementId = null
+      ↓
+Resolved Outbound Movement Lineage
+```
+
+Important separation:
+
+```text
+Sales selling quantity/price
+        !=
+Inventory valuation amount
+```
+
+Step 10 consumes quantity Movement facts only. It does not infer cost from price or quantity.
+
+### Argin Bridge compliance
+
+- Durable Movement ID is preserved as downstream valuation provenance.
+- Inventory document/line and Sales line identities remain independently durable.
+- Warehouse/Zone/Location provenance is retained.
+- Business chronology (`businessDate`, `businessOrder`, `recordedAt`) is preserved.
+- No balance projection, SQLite row ID or UI identifier is used as authoritative lineage.
+- No valuation amount is duplicated into this contract.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-inventory-movement-lineage.test.ts
+```
+
+Coverage includes:
+
+- exact outbound Movement resolution;
+- durable Movement/Warehouse provenance;
+- empty no-stock path;
+- missing Movement;
+- ambiguous multiple Movements;
+- positive/inbound quantity rejection;
+- Product mismatch;
+- business-date mismatch;
+- confirmation-time mismatch;
+- Transfer movement rejection;
+- reversal movement rejection;
+- cross-company/source lineage rejection;
+- explicit proof that no valuation/cost amount is introduced.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was reviewed against the Inventory confirmation workflow, where an Issue creates one immutable negative-quantity Stock Movement per Inventory line using the same confirmation action timestamp. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Authoritative Movement is resolved through a persistence-neutral reader.
+- [x] Movement must match exact Issue document and line.
+- [x] Movement Company/Product lineage is exact.
+- [x] Only outbound negative quantity is accepted.
+- [x] Transfer/reversal movement facts are excluded.
+- [x] Business chronology is preserved.
+- [x] Missing/ambiguous movement lineage fails closed.
+- [x] Service-only/no-stock path bypasses movement lookup.
+- [x] No balance projection is treated as authoritative.
+- [x] No valuation/COGS amount leaked into Step 10.
+- [x] Durable Movement provenance remains Bridge-ready.
+
+## Next Step
+
+Step 11 — Resolved FIFO/MWA Valuation Prerequisite.
