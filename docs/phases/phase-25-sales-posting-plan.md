@@ -161,7 +161,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 18 | Idempotency & Exactly-Once Journal Effect | Completed |
 | 19 | Optimistic Concurrency & Posting CAS | Completed |
 | 20 | Atomic Unit of Work / Outbox Boundary | Completed |
-| 21 | Sales Return Commercial Reversal | Planned |
+| 21 | Sales Return Commercial Reversal | Completed |
 | 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Planned |
 | 23 | Sales Correction & Replacement/Reversal Lineage | Planned |
 | 24 | Journal Voucher Creation & Immutable Source Provenance | Planned |
@@ -2882,3 +2882,137 @@ This step defines the atomic persistence contract and verifies rollback semantic
 ## Next Step
 
 Step 21 — Sales Return Commercial Reversal.
+
+## Step 21 — Sales Return Commercial Reversal
+
+### Completed work
+
+- Added explicit Sales Return commercial reversal support.
+- Added `createSalesReturnCommercialLineage()` to validate immutable return-to-original-invoice lineage from the Phase 24 Sales Return document.
+- Sales Return must reference an original `sales-invoice` through `relatedDocumentReference`.
+- Every return line must point to an original invoice line through its Sales `sourceReference`.
+- Return-line Product identity must remain compatible with the posting commercial facts.
+- Added `reverseSalesReturnCommercialPosting()`.
+- Commercial amount authority remains the immutable Sales Return commercial snapshot/totals; Step 21 does not recalculate the return amount from the original invoice.
+- Original invoice identity is retained strictly as lineage/audit provenance.
+- The normal commercial direction is reversed exactly:
+  - Accounts Receivable: Debit -> Credit;
+  - Sales Revenue: Credit -> Debit;
+  - Output VAT: Credit -> Debit.
+- Component amounts and account identities are preserved while debit/credit sides are inverted.
+- Each line-level reversal component retains:
+  - return Sales line ID;
+  - original invoice ID;
+  - original invoice line ID.
+- Document-level AR reversal retains the original invoice ID while line ID remains null.
+- Commercial reversal remains independently balanced.
+- Step 21 does not create Inventory Receipt effects, valuation restoration, COGS reversal or Inventory restoration; those remain Step 22.
+- Step 21 does not create Journal Voucher/Journal Lines; Step 24 remains Journal creation owner.
+
+### Accounting model
+
+Original sale:
+
+```text
+Accounts Receivable    Dr  110
+    Sales Revenue          Cr  100
+    Output VAT             Cr   10
+```
+
+Sales Return commercial reversal:
+
+```text
+Sales Revenue          Dr  100
+Output VAT             Dr   10
+    Accounts Receivable    Cr  110
+```
+
+The return amount is sourced from the authoritative Sales Return commercial facts, not from mutable current price/tax master data.
+
+### Lineage model
+
+```text
+Sales Return
+  relatedDocumentReference
+        ↓
+Original Sales Invoice
+
+Return Line
+  sourceReference.sourceLineId
+        ↓
+Original Invoice Line
+```
+
+This lineage is preserved alongside reversal components so later Journal provenance can show exactly which original invoice/line was reversed.
+
+### Argin Bridge compliance
+
+- Return document ID and source version remain durable business identities.
+- Original invoice and original invoice-line IDs remain immutable lineage.
+- No mutable Product/price/tax master is used to reconstruct historical return amounts.
+- Return posting can be deterministically replayed from synchronized Sales Return commercial facts.
+- No SQLite row IDs or UI-only references participate in lineage.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-return-commercial-reversal.test.ts
+```
+
+Coverage includes:
+
+- valid return-to-original-invoice lineage;
+- AR reversal to Credit;
+- Revenue reversal to Debit;
+- Output VAT reversal to Debit;
+- amount preservation;
+- original invoice provenance;
+- original invoice-line provenance;
+- invalid original-invoice reference rejection;
+- invalid line source-reference rejection;
+- Product/lineage mismatch rejection;
+- explicit proof that Inventory/Valuation/Journal responsibilities do not leak into Step 21.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+Step 21 intentionally separates commercial reversal from stock-cost restoration. The Sales Return document is the amount authority; the original invoice is lineage authority. Successful local runtime/typecheck execution is not claimed from this environment.
+
+### Exit criteria
+
+- [x] Sales Return must reference an original Sales Invoice.
+- [x] Each return line preserves original invoice-line lineage.
+- [x] Return commercial amounts come from immutable return facts.
+- [x] Accounts Receivable is reversed to Credit.
+- [x] Revenue is reversed to Debit.
+- [x] Output VAT is reversed to Debit.
+- [x] Reversal remains balanced.
+- [x] Original invoice/document provenance is preserved.
+- [x] Inventory/valuation restoration remains Step 22.
+- [x] Journal creation remains Step 24.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 22 — Sales Return Inventory Receipt / Valuation Cost Restoration.
