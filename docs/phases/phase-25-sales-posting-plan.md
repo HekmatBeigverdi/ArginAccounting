@@ -152,7 +152,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 9 | Inventory Issue Lineage Resolution | Completed |
 | 10 | Outbound Inventory Movement Lineage Resolution | Completed |
 | 11 | Resolved FIFO/MWA Valuation Prerequisite | Completed |
-| 12 | COGS Account Resolution | Planned |
+| 12 | COGS Account Resolution | Completed |
 | 13 | Inventory Account Resolution | Planned |
 | 14 | COGS / Inventory Relief Posting Calculation | Planned |
 | 15 | Mixed Stock + Service Invoice Orchestration | Planned |
@@ -1577,3 +1577,135 @@ The implementation was reviewed against the actual Phase 21 Inventory valuation 
 ## Next Step
 
 Step 12 — COGS Account Resolution.
+
+## Step 12 — COGS Account Resolution
+
+### Completed work
+
+- Added the explicit Sales Posting account role `cogs`.
+- Added `SalesCogsAccountRule` as the persistence-neutral COGS mapping contract.
+- COGS account selection is scoped by:
+  - mandatory Company;
+  - optional Branch override.
+- Branch-specific mapping outranks Company default mapping.
+- Priority is evaluated only between equally specific rules.
+- Equal-specificity/equal-priority rules fail as ambiguous.
+- Missing mapping fails closed with `sales_posting.account_mapping_missing`.
+- Added `SalesCogsAccountResolutionContext` preserving the stock-cost provenance that caused the resolution:
+  - Sales line ID;
+  - Product ID;
+  - Phase 21 Valuation Entry ID.
+- The valuation method (`fifo` / `moving_average`) deliberately does not participate in account selection; valuation method determines cost amount, not GL account identity.
+- Valuation `unitCost` / `totalCost` deliberately do not participate in account selection.
+- Product Master does not own the COGS GL account mapping in Step 12.
+- Resolved accounts must:
+  - exist;
+  - match the configured durable `accountId`;
+  - belong to the requested Company;
+  - be active;
+  - allow posting.
+- Missing, cross-company, inactive and non-postable accounts fail explicitly.
+- Account code/name are descriptive snapshots only and are not used as durable identity.
+- No COGS amount is calculated in Step 12.
+- No Debit/Credit component is created in Step 12.
+- Step 13 remains responsible for Inventory account resolution.
+- Step 14 remains responsible for converting authoritative signed valuation cost into balanced COGS/Inventory Relief components.
+
+### Resolution model
+
+```text
+Resolved Phase 21 valuation lineage
+  salesLineId
+  productId
+  valuationEntryId
+        ↓
+Company + Branch
+        ↓
+COGS mapping candidates
+        ↓
+Most-specific rule
+        ↓
+COGS GL account
+```
+
+Accounting separation:
+
+```text
+Valuation method / amount -> determines cost value
+COGS mapping             -> determines GL destination
+
+These are independent concerns.
+```
+
+### Argin Bridge compliance
+
+- Durable `ruleId`, Company/Branch identity and durable `accountId` are used.
+- Sales line, Product and Valuation Entry IDs are preserved as provenance.
+- Account code/name remain non-authoritative display fields.
+- No SQLite row identity, UI identifier or valuation method becomes account identity.
+- The same mapping context resolves deterministically.
+- Live Bridge transport remains deferred.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-cogs-account-resolution.test.ts
+```
+
+Coverage includes:
+
+- Branch-specific rule outranking Company default;
+- Company default fallback;
+- priority only between equal-specificity rules;
+- missing mapping fail-closed behavior;
+- ambiguous mapping rejection;
+- required Sales line/Product/Valuation Entry provenance;
+- active/postable account resolution;
+- provenance preservation;
+- missing account rejection;
+- cross-company account rejection;
+- inactive account rejection;
+- non-postable account rejection;
+- explicit proof that valuation method and valuation amount do not participate in COGS account selection.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation follows the existing Sales Posting account-resolution pattern while preserving the Phase 21 authority boundary: valuation determines cost, account mapping determines ledger destination. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] COGS has an explicit Sales Posting account role.
+- [x] Company-level mapping is supported.
+- [x] Branch override is supported.
+- [x] Missing/ambiguous mappings fail explicitly.
+- [x] Resolved account must be active, postable and Company-correct.
+- [x] Stock Sales line, Product and Valuation Entry provenance are preserved.
+- [x] FIFO/MWA method does not alter GL account selection.
+- [x] Valuation amount does not alter GL account selection.
+- [x] Product Master does not own the COGS account mapping.
+- [x] No cost calculation or Journal component leaked into Step 12.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 13 — Inventory Account Resolution.
