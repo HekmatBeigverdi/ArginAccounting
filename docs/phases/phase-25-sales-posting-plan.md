@@ -163,7 +163,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 20 | Atomic Unit of Work / Outbox Boundary | Completed |
 | 21 | Sales Return Commercial Reversal | Completed |
 | 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Completed |
-| 23 | Sales Correction & Replacement/Reversal Lineage | Planned |
+| 23 | Sales Correction & Replacement/Reversal Lineage | Completed |
 | 24 | Journal Voucher Creation & Immutable Source Provenance | Planned |
 | 25 | Posting Status, Recovery & Deterministic Retry | Planned |
 | 26 | Permissions, Approval/Audit & Operational Trace | Planned |
@@ -3198,3 +3198,155 @@ Step 22 deliberately treats the Sales Return Receipt as a new authoritative inbo
 ## Next Step
 
 Step 23 — Sales Correction & Replacement/Reversal Lineage.
+
+## Step 23 — Sales Correction & Replacement/Reversal Lineage
+
+### Completed work
+
+- Added explicit Sales Correction lineage for accounting replacement/reversal.
+- Added `createSalesCorrectionLineage()`.
+- A Sales Correction must:
+  - be a `sales-correction` document;
+  - reference one originating `sales-invoice`;
+  - give every correction line a durable Sales source reference to a concrete line of that same invoice.
+- Correction document/line identities remain distinct from the original invoice/document identities.
+- One correction line cannot silently claim the same original invoice line twice inside the same correction document.
+- Lineage retains:
+  - Correction document ID;
+  - original Sales Invoice ID;
+  - Correction line ID;
+  - original invoice-line ID;
+  - Product ID;
+  - line kind.
+- Added `createSalesCorrectionReplacementPlan()`.
+- The accounting semantics are explicitly `reverse-and-replace`, not in-place mutation.
+- The plan binds two independent durable Sales Posting source identities:
+  - `originalSource` must be the exact referenced `sales-invoice` source/version;
+  - `replacementSource` must be the exact `sales-correction` source/version.
+- Original and replacement documents cannot collapse to the same business identity.
+- The original invoice remains immutable historical fact.
+- The original Posting/Journal remains immutable historical accounting fact.
+- Later accounting processing must create compensating reversal/replacement effects through explicit lineage rather than editing old Journal lines.
+- Step 23 deliberately does not create the reversal Journal or replacement Journal; Step 24 owns Journal Voucher creation/provenance.
+- Inventory quantity/valuation correction is not inferred from commercial differences here; any required downstream Inventory compensation must follow Inventory-owned immutable movement workflows rather than rewriting prior movements.
+
+### Correction model
+
+```text
+Original Sales Invoice v5
+        ↓ immutable historical fact
+Original Sales Posting / Journal
+        ↓
+explicit reversal lineage
+        ↓
+Sales Correction v2
+        ↓ independent replacement fact
+Replacement Sales Posting / Journal
+```
+
+Accounting history is therefore append-only:
+
+```text
+Original Effect
++ Compensating Reversal
++ Replacement Effect
+= Corrected Net Position
+```
+
+No original commercial snapshot, Inventory movement, Valuation entry or posted Journal line is edited in place.
+
+### Line-level lineage
+
+```text
+Sales Correction Line
+        ↓ sourceReference
+Original Sales Invoice Line
+```
+
+The lineage keeps Product/line classification alongside durable line IDs so a later accounting or Inventory correction cannot accidentally compensate a different line.
+
+### Source-version identity
+
+A Correction replacement plan preserves both revisions independently:
+
+```text
+originalSource
+  sales-invoice / invoice-001 / sourceVersion 5
+
+replacementSource
+  sales-correction / correction-001 / sourceVersion 2
+```
+
+This allows Step 18 idempotency and Step 19 CAS to distinguish historical original recognition from the new replacement effect.
+
+### Argin Bridge compliance
+
+- Original and replacement Sales source identities/versions remain durable and independent.
+- Correction lineage is append-only and survives synchronization without relying on SQLite row IDs.
+- Replay can reconstruct which historical invoice effect is being compensated and which correction effect replaces it.
+- Last-write-wins mutation of historical Sales/Journal facts is explicitly prohibited.
+- Future Bridge synchronization can carry original/replacement lineage as durable business references.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-correction-lineage.test.ts
+```
+
+Coverage includes:
+
+- valid Correction -> original Invoice lineage;
+- valid Correction Line -> original Invoice Line lineage;
+- preservation of Product/line-kind trace;
+- explicit `reverse-and-replace` plan;
+- preservation of independent original/replacement source versions;
+- missing original invoice rejection;
+- cross-invoice correction-line rejection;
+- duplicate original-line replacement rejection;
+- wrong original Posting source rejection;
+- wrong replacement source type/document rejection.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+Step 23 freezes the immutable correction/replacement lineage and does not prematurely create Journal Vouchers. The actual controlled reversal/replacement Journal provenance is wired in Step 24. Successful local runtime/typecheck execution is not claimed from this environment.
+
+### Exit criteria
+
+- [x] Correction is a new durable Sales fact.
+- [x] Original invoice remains immutable.
+- [x] Every Correction line has exact original Invoice-line lineage.
+- [x] Duplicate original-line replacement inside one Correction is rejected.
+- [x] Original and replacement source versions are independent durable identities.
+- [x] Accounting strategy is explicit reverse-and-replace.
+- [x] Historical Posting/Journal facts are never edited in place.
+- [x] Inventory/Valuation history is never rewritten by commercial correction logic.
+- [x] Step 18 idempotency identities remain usable for original/replacement effects.
+- [x] Step 19 CAS can target each Posting aggregate independently.
+- [x] Journal creation/provenance remains Step 24.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 24 — Journal Voucher Creation & Immutable Source Provenance.
