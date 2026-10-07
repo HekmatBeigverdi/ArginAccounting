@@ -119,3 +119,11 @@ export type {
   SalesOutboundInventoryMovementLineage,
   SalesOutboundInventoryMovementLineageResult,
 } from "./domain/sales-inventory-movement-lineage.ts";
+
+export {
+  resolveSalesResolvedValuationPrerequisite,
+} from "./domain/sales-resolved-valuation-prerequisite.ts";
+export type {
+  SalesResolvedValuationLineage,
+  SalesResolvedValuationPrerequisiteResult,
+} from "./domain/sales-resolved-valuation-prerequisite.ts";
