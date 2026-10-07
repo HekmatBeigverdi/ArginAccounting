@@ -166,3 +166,10 @@ export type {
   SalesCostPostingSide,
   SalesInventoryResolutionForLine,
 } from "./domain/sales-cost-posting-calculation.ts";
+
+export {
+  orchestrateMixedSalesInvoicePosting,
+} from "./domain/sales-mixed-invoice-orchestration.ts";
+export type {
+  SalesMixedInvoicePostingResult,
+} from "./domain/sales-mixed-invoice-orchestration.ts";
