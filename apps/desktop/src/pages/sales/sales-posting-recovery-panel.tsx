@@ -6,6 +6,7 @@ import type {
 import {
   createSalesPostingRecoveryViewModel,
 } from "../../features/sales/sales-posting-recovery-view";
+import "./sales-posting-recovery-panel.css";
 
 export interface SalesPostingRecoveryPanelProps {
   readonly recovery: SalesPostingRecoverySnapshot;
