@@ -153,3 +153,16 @@ export type {
   SalesInventoryAccountRole,
   SalesInventoryAccountRule,
 } from "./domain/sales-inventory-account-resolution.ts";
+
+export {
+  calculateSalesCostPosting,
+} from "./domain/sales-cost-posting-calculation.ts";
+export type {
+  CalculateSalesCostPostingInput,
+  SalesCogsResolutionForLine,
+  SalesCostPostingCalculation,
+  SalesCostPostingComponent,
+  SalesCostPostingComponentRole,
+  SalesCostPostingSide,
+  SalesInventoryResolutionForLine,
+} from "./domain/sales-cost-posting-calculation.ts";
