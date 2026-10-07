@@ -50,6 +50,9 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   salesReturnInventoryMissing: "sales_posting.sales_return_inventory_missing",
   salesReturnValuationUnresolved: "sales_posting.sales_return_valuation_unresolved",
   salesReturnCostUnbalanced: "sales_posting.sales_return_cost_unbalanced",
+  salesCorrectionInvalid: "sales_posting.sales_correction_invalid",
+  salesCorrectionLineageInvalid: "sales_posting.sales_correction_lineage_invalid",
+  salesCorrectionReplacementConflict: "sales_posting.sales_correction_replacement_conflict",
 } as const);
 
 export type SalesPostingDomainErrorCode =
