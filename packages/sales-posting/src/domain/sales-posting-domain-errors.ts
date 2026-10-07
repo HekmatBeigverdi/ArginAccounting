@@ -53,6 +53,9 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   salesCorrectionInvalid: "sales_posting.sales_correction_invalid",
   salesCorrectionLineageInvalid: "sales_posting.sales_correction_lineage_invalid",
   salesCorrectionReplacementConflict: "sales_posting.sales_correction_replacement_conflict",
+  journalDraftInvalid: "sales_posting.journal_draft_invalid",
+  journalProvenanceInvalid: "sales_posting.journal_provenance_invalid",
+  journalBalanceMismatch: "sales_posting.journal_balance_mismatch",
 } as const);
 
 export type SalesPostingDomainErrorCode =
