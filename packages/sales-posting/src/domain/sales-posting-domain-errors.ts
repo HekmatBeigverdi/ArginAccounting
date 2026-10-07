@@ -43,6 +43,9 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   atomicCommitInvalid: "sales_posting.atomic_commit_invalid",
   atomicCommitConflict: "sales_posting.atomic_commit_conflict",
   outboxInvalid: "sales_posting.outbox_invalid",
+  salesReturnInvalid: "sales_posting.sales_return_invalid",
+  salesReturnLineageInvalid: "sales_posting.sales_return_lineage_invalid",
+  salesReturnCommercialUnbalanced: "sales_posting.sales_return_commercial_unbalanced",
 } as const);
 
 export type SalesPostingDomainErrorCode =
