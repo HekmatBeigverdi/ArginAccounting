@@ -113,6 +113,25 @@ test("creates balanced Accounting Journal draft with source-owned metadata", () 
   assert.equal(result.journal.lines.length, 3);
 });
 
+
+test("scopes Journal line identities to the voucher so different Sales invoices cannot collide", () => {
+  const first = createSalesPostingJournalDraft(journalInput());
+  const second = createSalesPostingJournalDraft({
+    ...journalInput(),
+    journalVoucherId: "journal-002",
+    journalNumber: "JV-002",
+    postingId: "posting-002",
+    source: {
+      ...source,
+      sourceDocumentId: "invoice-002",
+    },
+  });
+
+  assert.notEqual(first.journal.lines[0]?.id, second.journal.lines[0]?.id);
+  assert.equal(first.journal.lines[0]?.id, "journal-001:line:1");
+  assert.equal(second.journal.lines[0]?.id, "journal-002:line:1");
+});
+
 test("creates readable Persian line descriptions instead of hash-only text", () => {
   const result = createSalesPostingJournalDraft(journalInput());
 
