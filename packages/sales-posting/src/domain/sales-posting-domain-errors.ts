@@ -33,6 +33,8 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   mixedInvoiceMismatch: "sales_posting.mixed_invoice_mismatch",
   serviceOnlyInvalid: "sales_posting.service_only_invalid",
   serviceOnlyMismatch: "sales_posting.service_only_mismatch",
+  orchestrationInvalid: "sales_posting.orchestration_invalid",
+  orchestrationMismatch: "sales_posting.orchestration_mismatch",
 } as const);
 
 export type SalesPostingDomainErrorCode =
