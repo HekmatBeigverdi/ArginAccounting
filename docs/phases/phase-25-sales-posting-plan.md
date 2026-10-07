@@ -164,7 +164,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 21 | Sales Return Commercial Reversal | Completed |
 | 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Completed |
 | 23 | Sales Correction & Replacement/Reversal Lineage | Completed |
-| 24 | Journal Voucher Creation & Immutable Source Provenance | Planned |
+| 24 | Journal Voucher Creation & Immutable Source Provenance | Completed |
 | 25 | Posting Status, Recovery & Deterministic Retry | Planned |
 | 26 | Permissions, Approval/Audit & Operational Trace | Planned |
 | 27 | Persian RTL Posting Status/Recovery UI | Planned |
@@ -3350,3 +3350,241 @@ Step 23 freezes the immutable correction/replacement lineage and does not premat
 ## Next Step
 
 Step 24 — Journal Voucher Creation & Immutable Source Provenance.
+
+## Step 24 — Journal Voucher Creation & Immutable Source Provenance
+
+### Completed work
+
+- Added actual Accounting Journal Draft creation for Sales Posting by consuming the existing `@argin/accounting/journal` public contract rather than inventing a Sales-owned Journal model.
+- Added `createSalesPostingJournalDraft()`.
+- Added adapters that convert completed Phase 25 posting outputs into Journal-ready components:
+  - ordinary Sales Invoice commercial posting;
+  - ordinary stock COGS / Inventory Relief posting;
+  - Sales Return commercial reversal;
+  - Sales Return Inventory / COGS restoration.
+- Correction replacement postings can use the same normalized component contract while Step 23 preserves original/replacement source identity.
+- Journal Voucher is created as:
+  - `status = draft`;
+  - `source.type = source_document`;
+  - source document ID = durable Sales source document ID;
+  - correlation ID = durable Sales Posting ID;
+  - request ID retained for replay trace;
+  - voucher Version starts at 1.
+- Journal date, Fiscal Year and Fiscal Period remain explicit inputs; Sales Posting does not bypass Accounting/Fiscal ownership.
+- Journal total Debit/Credit must reconcile before Accounting creation is invoked.
+- Mixed commercial + cost lines remain one balanced Journal draft while preserving their independent component provenance.
+- Added readable Persian Journal line descriptions:
+  - حساب دریافتنی فروش;
+  - درآمد فروش;
+  - مالیات بر ارزش افزوده فروش;
+  - بهای تمام‌شده کالای فروش‌رفته;
+  - موجودی کالا.
+- Raw hash/component identifiers are no longer used as user-facing Journal descriptions.
+- Added dedicated immutable `SalesPostingJournalProvenance` because Accounting Journal Line does not own Sales/Inventory/Valuation source metadata.
+- Every Journal Line must have exactly one provenance record.
+- Provenance preserves, when applicable:
+  - Sales Posting ID;
+  - Sales source document/type/version;
+  - component ID and accounting role;
+  - Sales line ID;
+  - Customer Party ID;
+  - Product ID;
+  - Inventory Receipt/Issue document and line IDs;
+  - Movement ID;
+  - Valuation Entry ID;
+  - FIFO/MWA method;
+  - Valuation revision;
+  - original Sales Invoice/document-line lineage for returns/corrections;
+  - Tax IDs/Codes.
+- Valuation provenance is fail-closed: a Valuation Entry cannot be recorded without Movement, Product, method and revision provenance.
+- Added `commitSalesPostingJournalAtomic()`.
+- Step 20 Atomic UoW is now operationally extended so a genuinely new accounting recognition effect commits:
+  - Sales Posting CAS;
+  - Accounting-owned Journal Draft;
+  - immutable Sales Journal provenance;
+  - Idempotency evidence;
+  - Outbox event;
+  inside one transaction boundary.
+- Compatible replay loads and returns the already committed Posting/Journal/provenance and performs no duplicate writes.
+- Atomic replay validates stored Journal + provenance consistency before returning the historical outcome.
+- The Outbox event references the actual Accounting Journal Voucher created in the same transaction.
+- Added `@argin/accounting` as an explicit Sales Posting workspace dependency and updated the pnpm lockfile.
+- Journal posting/lifecycle approval remains Accounting-owned; Step 24 creates the source-owned draft and immutable provenance but does not bypass Accounting lifecycle controls.
+
+### Journal model
+
+Ordinary Sales Invoice:
+
+```text
+Accounts Receivable    Dr
+COGS                   Dr
+    Sales Revenue          Cr
+    Output VAT             Cr
+    Inventory              Cr
+```
+
+Service-only Sales Invoice:
+
+```text
+Accounts Receivable    Dr
+    Service Revenue        Cr
+    Output VAT             Cr
+```
+
+Sales Return:
+
+```text
+Sales Revenue          Dr
+Output VAT             Dr
+Inventory              Dr
+    Accounts Receivable    Cr
+    COGS                   Cr
+```
+
+The exact lines depend on authoritative commercial and valuation components; no amount is recalculated inside Journal creation.
+
+### Ownership model
+
+```text
+Sales / Inventory / Valuation
+        ↓ authoritative facts
+Sales Posting
+        ↓ balanced components + provenance
+Accounting
+        ↓ create Journal Voucher Draft
+Journal Lifecycle
+        ↓ Accounting-owned approval/posting/reversal
+```
+
+Sales Posting references Accounting-owned Journal identity; it does not copy or mutate Accounting Journal lifecycle state.
+
+### Immutable provenance model
+
+```text
+Journal Voucher
+  Journal Line A
+      ↓
+  SalesPostingJournalProvenance
+      Sales Line / Customer / Tax
+
+  Journal Line B
+      ↓
+  SalesPostingJournalProvenance
+      Sales Line / Product
+      Inventory Movement
+      Valuation Entry / Method / Revision
+```
+
+This avoids overloading generic Accounting Journal Line with module-specific Sales/Inventory/Valuation fields while preserving full audit trace.
+
+### Atomic model
+
+```text
+BEGIN UOW
+
+Replay lookup
+    ↓
+if replay:
+    load Posting
+    load Journal
+    load Provenance
+    return historical outcome
+
+otherwise:
+    Sales Posting CAS
+    create Accounting Journal Draft
+    save immutable Journal provenance
+    save Idempotency outcome
+    append Outbox event
+
+COMMIT
+```
+
+Any persistence failure is required to roll back the whole Unit of Work.
+
+### Correction / replacement compatibility
+
+Step 23 established:
+
+```text
+Original Invoice Posting
++ compensating reversal
++ Correction replacement posting
+```
+
+Step 24 now provides the Journal/provenance primitive required for each append-only accounting effect. It does not edit the original Journal.
+
+### Argin Bridge compliance
+
+- Journal trace uses durable Sales Posting, Sales source, Movement and Valuation identities.
+- No SQLite row IDs participate in source provenance.
+- Exact sourceVersion and Valuation revision remain traceable.
+- Idempotent replay returns the same durable Journal identity.
+- Outbox references the same Journal committed inside the UoW.
+- Generic Accounting Journal remains authoritative for ledger state while Sales provenance remains source-module trace evidence.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-journal-draft.test.ts
+```
+
+Coverage includes:
+
+- balanced Accounting Journal draft creation;
+- source-owned Journal metadata;
+- Persian readable line descriptions;
+- exact one-to-one Journal-line provenance;
+- Sales source version preservation;
+- Sales line / Tax provenance;
+- unbalanced component rejection;
+- incomplete Valuation provenance rejection;
+- atomic Journal + Posting CAS + provenance + Idempotency + Outbox commit contract;
+- exact replay with no duplicate Journal/provenance/Outbox writes.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+Journal creation is now implemented against the real Accounting domain contract and wired to the Sales Posting atomic boundary. Executable local/CI success is not claimed from this connected environment; the commands above remain owner-side validation.
+
+### Exit criteria
+
+- [x] Sales Posting creates a real Accounting Journal Voucher Draft.
+- [x] Accounting remains Journal owner.
+- [x] Journal source is the durable Sales source document.
+- [x] Journal is balanced before persistence.
+- [x] Commercial and cost components retain separate provenance.
+- [x] Every Journal line has immutable source provenance.
+- [x] Sales/Inventory/Valuation IDs are retained without modifying Accounting Journal Line schema.
+- [x] Valuation Method/Revision provenance is retained.
+- [x] Sales Return original-invoice lineage is retained.
+- [x] Correction reverse-and-replace lineage is compatible with append-only Journals.
+- [x] Journal + provenance + Posting CAS + Idempotency + Outbox share an atomic boundary.
+- [x] Compatible replay creates no duplicate Journal effect.
+- [x] Persian Journal descriptions are human-readable.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 25 — Posting Status, Recovery & Deterministic Retry.
