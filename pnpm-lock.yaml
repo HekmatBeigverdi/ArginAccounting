@@ -247,6 +247,9 @@ importers:
       '@argin/sales':
         specifier: workspace:*
         version: link:../../packages/sales
+      '@argin/sales-posting':
+        specifier: workspace:*
+        version: link:../../packages/sales-posting
       '@argin/sales-tauri':
         specifier: workspace:*
         version: link:../../packages/sales-tauri
