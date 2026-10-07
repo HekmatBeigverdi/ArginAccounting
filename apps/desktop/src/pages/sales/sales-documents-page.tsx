@@ -7,6 +7,11 @@ import type {
   SalesLifecycleAction,
 } from "@argin/sales";
 import { SalesDomainError, calculateSalesLineTotals, salesPermissions } from "@argin/sales";
+import {
+  salesPostingPermissions,
+  type SalesPostingRecoverySnapshot,
+  type SalesPostingTraceSnapshot,
+} from "@argin/sales-posting";
 import { getDesktopDatabase } from "@argin/database-tauri";
 import { parseInventoryCsv, parseInventoryXlsx } from "@argin/inventory-tauri";
 import type { SalesOperationalTrace } from "@argin/sales-tauri";
@@ -37,6 +42,8 @@ import {
   salesImportBatchId,
   type SalesImportPreview,
 } from "../../features/sales/sales-import-controller";
+import { createSalesPostingWorkspaceServices } from "../../composition/sales-posting/create-sales-posting-workspace-services";
+import { SalesPostingRecoveryPanel } from "./sales-posting-recovery-panel";
 import "./sales-documents-page.css";
 
 const TYPE_LABELS: Record<SalesDocumentSnapshot["documentType"], string> = {
@@ -140,6 +147,9 @@ function SalesDocumentsWorkspace() {
   const [message, setMessage] = useState("");
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [trace, setTrace] = useState<SalesOperationalTrace | null>(null);
+  const [postingRecovery, setPostingRecovery] = useState<SalesPostingRecoverySnapshot | null>(null);
+  const [postingTrace, setPostingTrace] = useState<SalesPostingTraceSnapshot | null>(null);
+  const [postingBusy, setPostingBusy] = useState(false);
   const [importPreview, setImportPreview] = useState<SalesImportPreview | null>(null);
   const scopeKey = JSON.stringify([
     activeContext.companyId,
@@ -324,6 +334,37 @@ function SalesDocumentsWorkspace() {
       );
       setPendingAction(null);
       setMessage(ACTION_MESSAGES[action]);
+
+      if (action === "finalize" && result.document.documentType === "sales-invoice") {
+        try {
+          const posting = createSalesPostingWorkspaceServices({
+            database: await getDesktopDatabase(),
+            actor: {
+              permissions: session.user.permissions,
+              branchIds: session.user.branchIds,
+            },
+          });
+          if (posting.canExecute) {
+            const recovery = await posting.evaluateAndPost({
+              companyId: result.document.scope.companyId,
+              branchId: result.document.scope.branchId,
+              sourceId: result.document.documentId,
+            });
+            setPostingRecovery(recovery);
+            if (recovery.status === "committed") {
+              setMessage("فاکتور قطعی شد و سند حسابداری فروش به‌صورت خودکار ایجاد شد.");
+            } else if (recovery.status === "pending") {
+              setMessage("فاکتور قطعی شد؛ ثبت حسابداری پس از قطعی‌شدن حواله و تکمیل ارزش‌گذاری ادامه می‌یابد.");
+            }
+          }
+        } catch (postingError) {
+          setError(
+            postingError instanceof Error
+              ? "فاکتور قطعی شد، اما ثبت حسابداری خودکار نیاز به بررسی دارد: " + postingError.message
+              : "فاکتور قطعی شد، اما ثبت حسابداری خودکار نیاز به بررسی دارد.",
+          );
+        }
+      }
     } catch (error) {
       if (currentScope.current !== scopeKey) return;
       if (error instanceof SalesDomainError && error.code === "sales.concurrency_conflict") {
@@ -454,6 +495,112 @@ function SalesDocumentsWorkspace() {
     activeContext.companyId,
     activeContext.branchId,
   ]);
+
+
+  useEffect(() => {
+    let cancelled = false;
+    setPostingRecovery(null);
+    setPostingTrace(null);
+
+    if (
+      !selectedDocument
+      || !session
+      || selectedDocument.documentType !== "sales-invoice"
+      || selectedDocument.status !== "finalized"
+    ) {
+      return;
+    }
+
+    void getDesktopDatabase()
+      .then((database) => {
+        const posting = createSalesPostingWorkspaceServices({
+          database,
+          actor: {
+            permissions: session.user.permissions,
+            branchIds: session.user.branchIds,
+          },
+        });
+        return Promise.all([
+          posting.getRecovery({
+            companyId: selectedDocument.scope.companyId,
+            branchId: selectedDocument.scope.branchId,
+            sourceId: selectedDocument.documentId,
+          }),
+          posting.canTrace
+            ? posting.getTrace({
+                companyId: selectedDocument.scope.companyId,
+                branchId: selectedDocument.scope.branchId,
+                sourceId: selectedDocument.documentId,
+              })
+            : Promise.resolve(null),
+        ]);
+      })
+      .then(([recovery, postingTraceValue]) => {
+        if (cancelled) return;
+        setPostingRecovery(recovery);
+        setPostingTrace(postingTraceValue);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPostingRecovery(null);
+          setPostingTrace(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selectedDocument?.documentId,
+    selectedDocument?.status,
+    selectedDocument?.version,
+    session,
+  ]);
+
+  async function retrySalesPosting() {
+    if (!selectedDocument || !session || postingBusy) return;
+    setPostingBusy(true);
+    setError("");
+    try {
+      const posting = createSalesPostingWorkspaceServices({
+        database: await getDesktopDatabase(),
+        actor: {
+          permissions: session.user.permissions,
+          branchIds: session.user.branchIds,
+        },
+      });
+      const recovery = await posting.evaluateAndPost({
+        companyId: selectedDocument.scope.companyId,
+        branchId: selectedDocument.scope.branchId,
+        sourceId: selectedDocument.documentId,
+      });
+      setPostingRecovery(recovery);
+      setPostingTrace(
+        posting.canTrace
+          ? await posting.getTrace({
+              companyId: selectedDocument.scope.companyId,
+              branchId: selectedDocument.scope.branchId,
+              sourceId: selectedDocument.documentId,
+            })
+          : null,
+      );
+      setMessage(
+        recovery.status === "committed"
+          ? "سند حسابداری فروش ایجاد و در بخش اسناد حسابداری قابل مشاهده شد."
+          : recovery.status === "pending"
+            ? "ثبت حسابداری هنوز در انتظار تکمیل پیش‌نیازها است."
+            : "وضعیت ثبت حسابداری بازخوانی شد.",
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "تلاش مجدد برای ثبت حسابداری فروش ناموفق بود.",
+      );
+    } finally {
+      setPostingBusy(false);
+    }
+  }
 
   function exportSelected(kind: "xlsx" | "print") {
     if (!selectedDocument || !hasPermission(salesPermissions.export)) return;
@@ -791,6 +938,20 @@ function SalesDocumentsWorkspace() {
                     </strong>
                   </div>
                 </div>
+
+                {selectedDocument.documentType === "sales-invoice" &&
+                  selectedDocument.status === "finalized" &&
+                  postingRecovery && (
+                    <SalesPostingRecoveryPanel
+                      recovery={postingRecovery}
+                      trace={postingTrace}
+                      canRecover={hasPermission(salesPostingPermissions.recover) || hasPermission(salesPostingPermissions.execute)}
+                      canViewTrace={hasPermission(salesPostingPermissions.viewTrace)}
+                      busy={postingBusy}
+                      onRecover={() => void retrySalesPosting()}
+                      onRefresh={() => void retrySalesPosting()}
+                    />
+                  )}
 
                 <div className="sales-lines-wrap">
                   <table className="sales-lines">
