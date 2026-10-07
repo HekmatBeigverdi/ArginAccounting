@@ -269,3 +269,13 @@ export type {
   SalesReturnReceiptMovementLineage,
   SalesReturnResolvedValuationLineage,
 } from "./domain/sales-return-cost-restoration.ts";
+
+export {
+  createSalesCorrectionLineage,
+  createSalesCorrectionReplacementPlan,
+} from "./domain/sales-correction-lineage.ts";
+export type {
+  SalesCorrectionLineage,
+  SalesCorrectionLineageLine,
+  SalesCorrectionReplacementPlan,
+} from "./domain/sales-correction-lineage.ts";
