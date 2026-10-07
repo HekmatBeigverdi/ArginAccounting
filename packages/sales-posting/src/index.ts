@@ -309,3 +309,46 @@ export type {
   SalesPostingJournalAtomicSession,
   SalesPostingJournalAtomicUnitOfWork,
 } from "./application/atomic-sales-journal-creation.ts";
+
+export {
+  SALES_POSTING_RECOVERY_STATUSES,
+  SALES_POSTING_RETRY_ACTIONS,
+  assertDeterministicRecoveryTransition,
+  projectSalesPostingRecovery,
+} from "./application/posting-status-recovery.ts";
+export type {
+  SalesPostingRecoverySnapshot,
+  SalesPostingRecoveryStatus,
+  SalesPostingRetryAction,
+} from "./application/posting-status-recovery.ts";
+
+export {
+  salesPostingPermissions,
+} from "./application/contracts/sales-posting-security.ts";
+export type {
+  SalesPostingApprovalEvidence,
+  SalesPostingAuditAction,
+  SalesPostingAuditEvent,
+  SalesPostingAuditSink,
+  SalesPostingAuthorizationContext,
+  SalesPostingAuthorizationPolicy,
+  SalesPostingPermission,
+  SalesPostingScopeReader,
+  SalesPostingSecurityContext,
+  SalesPostingTraceReader,
+  SalesPostingTraceSnapshot,
+} from "./application/contracts/sales-posting-security.ts";
+
+export {
+  SecuredSalesPostingService,
+} from "./application/secured-sales-posting-service.ts";
+export type {
+  ExecuteSecuredSalesPostingInput,
+  RecoverSecuredSalesPostingInput,
+  SalesPostingOperationTrace,
+  SecuredSalesPostingServiceDependencies,
+} from "./application/secured-sales-posting-service.ts";
+
+export {
+  salesPostingAuditIdentity,
+} from "./application/sales-posting-audit.ts";
