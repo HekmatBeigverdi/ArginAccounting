@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   createSalesPostingRecoveryViewModel,
-} from "../src/features/sales/sales-posting-recovery-view";
+} from "../src/features/sales/sales-posting-recovery-view.ts";
 
 test("maps pending valuation state to Persian wait guidance", () => {
   const view = createSalesPostingRecoveryViewModel({
