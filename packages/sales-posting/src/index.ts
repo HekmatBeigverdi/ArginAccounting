@@ -173,3 +173,10 @@ export {
 export type {
   SalesMixedInvoicePostingResult,
 } from "./domain/sales-mixed-invoice-orchestration.ts";
+
+export {
+  orchestrateServiceOnlySalesInvoicePosting,
+} from "./domain/sales-service-only-posting.ts";
+export type {
+  SalesServiceOnlyPostingResult,
+} from "./domain/sales-service-only-posting.ts";
