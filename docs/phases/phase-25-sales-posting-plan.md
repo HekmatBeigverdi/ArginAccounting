@@ -160,7 +160,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Completed |
 | 18 | Idempotency & Exactly-Once Journal Effect | Completed |
 | 19 | Optimistic Concurrency & Posting CAS | Completed |
-| 20 | Atomic Unit of Work / Outbox Boundary | Planned |
+| 20 | Atomic Unit of Work / Outbox Boundary | Completed |
 | 21 | Sales Return Commercial Reversal | Planned |
 | 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Planned |
 | 23 | Sales Correction & Replacement/Reversal Lineage | Planned |
@@ -2753,3 +2753,132 @@ The implementation follows the Phase 24 Sales concurrency rule: replay/idempoten
 ## Next Step
 
 Step 20 — Atomic Unit of Work / Outbox Boundary.
+
+## Step 20 — Atomic Unit of Work / Outbox Boundary
+
+### Completed work
+
+- Added `SalesPostingAtomicUnitOfWork` and `SalesPostingAtomicSession` as persistence-neutral transaction contracts.
+- Added `commitSalesPostingAccountingEffectAtomic()`.
+- New accounting effect commit now coordinates, inside one Unit of Work:
+  - replay/idempotency lookup;
+  - current Posting load;
+  - optimistic CAS transition;
+  - durable Idempotency record;
+  - durable Outbox event.
+- CAS adapters must return `false` when the expected version no longer matches; this becomes `sales_posting.atomic_commit_conflict`.
+- A compatible existing Idempotency record returns the stored outcome and does not intentionally perform a second CAS or append a second Outbox event.
+- An incompatible replay still fails through the Step 18 fingerprint conflict contract.
+- Added `SalesPostingOutboxEvent` with durable provenance:
+  - event ID;
+  - event type;
+  - Posting aggregate ID;
+  - Company ID;
+  - Sales source document ID/version;
+  - committed Posting version;
+  - Journal Voucher ID;
+  - occurred-at UTC.
+- Event type is fixed to `sales-posting.accounting-recognition.committed`.
+- The Outbox event is created in the same transaction boundary as Posting CAS and Idempotency evidence.
+- If Outbox persistence fails, the Unit of Work must roll back the Posting mutation and Idempotency record.
+- If CAS fails, no Idempotency or Outbox evidence may remain.
+- Journal Voucher creation itself is still deferred to Step 24; Step 20 only reserves the atomic persistence boundary that will include the Journal write when Step 24 is implemented.
+
+### Atomic model
+
+```text
+BEGIN UOW
+  replay lookup
+  if replay -> return prior outcome
+
+  load Posting
+  CAS UPDATE expectedVersion
+  save Idempotency record
+  append Outbox event
+COMMIT
+```
+
+Failure at any write stage:
+
+```text
+ROLLBACK
+```
+
+### Outbox model
+
+```text
+sales-posting.accounting-recognition.committed
+  eventId
+  aggregateId
+  companyId
+  sourceDocumentId
+  sourceVersion
+  postingVersion
+  journalVoucherId
+  occurredAtUtc
+```
+
+The Outbox is local durable integration evidence. Live Bridge transport/acknowledgement remains outside Phase 25.
+
+### Argin Bridge compliance
+
+- Outbox payload uses only durable business identities.
+- Posting version and Sales source version are preserved.
+- Replay and Outbox creation converge on one committed accounting effect.
+- Transport is decoupled from the local transaction.
+- No in-memory event dispatch is treated as durable integration evidence.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/atomic-posting-unit-of-work.test.ts
+```
+
+Coverage includes:
+
+- atomic Posting CAS + Idempotency + Outbox success;
+- CAS zero-row conflict;
+- rollback when Outbox persistence fails;
+- compatible replay with no duplicate CAS/Outbox;
+- incompatible fingerprint conflict without extra side effects;
+- durable source/Posting/Journal provenance in the Outbox event.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+This step defines the atomic persistence contract and verifies rollback semantics with a transactional in-memory test harness. A concrete SQLite adapter/migration is not introduced by this step because the frozen Phase 25 plan assigns the cross-module Journal write to Step 24; the same Unit-of-Work contract is prepared to include that write atomically. Successful local runtime/typecheck execution is not claimed from this environment.
+
+### Exit criteria
+
+- [x] Posting CAS, Idempotency evidence and Outbox event share one UoW boundary.
+- [x] CAS failure leaves no partial evidence.
+- [x] Outbox failure requires rollback.
+- [x] Compatible replay creates no duplicate Outbox event.
+- [x] Incompatible replay fails closed.
+- [x] Outbox event preserves durable Sales/Posting/Journal provenance.
+- [x] Live transport remains outside the local transaction.
+- [x] Step 24 Journal creation ownership remains intact.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 21 — Sales Return Commercial Reversal.
