@@ -156,7 +156,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 13 | Inventory Account Resolution | Completed |
 | 14 | COGS / Inventory Relief Posting Calculation | Completed |
 | 15 | Mixed Stock + Service Invoice Orchestration | Completed |
-| 16 | Service-Only Invoice Posting Path | Planned |
+| 16 | Service-Only Invoice Posting Path | Completed |
 | 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Planned |
 | 18 | Idempotency & Exactly-Once Journal Effect | Planned |
 | 19 | Optimistic Concurrency & Posting CAS | Planned |
@@ -2144,3 +2144,142 @@ The implementation composes the completed Step 7 and Step 14 contracts without m
 ## Next Step
 
 Step 16 — Service-Only Invoice Posting Path.
+
+## Step 16 — Service-Only Invoice Posting Path
+
+### Completed work
+
+- Added `orchestrateServiceOnlySalesInvoicePosting()` as the dedicated path for Sales Invoices containing only `service` lines.
+- Service-only posting consumes the already-balanced commercial posting from Step 7.
+- The path explicitly bypasses:
+  - Inventory Issue creation/lookup;
+  - Inventory Movement lineage;
+  - FIFO/MWA valuation;
+  - COGS account resolution;
+  - Inventory account resolution;
+  - COGS / Inventory Relief posting.
+- The returned contract explicitly states:
+  - `inventoryRequired = false`;
+  - `costPostingRequired = false`.
+- Service-only is defined strictly: every Sales line must have `lineKind = service`.
+- `stock-product` and `non-stock-product` lines are rejected from this path rather than silently treated as services.
+- The source must be a `sales-invoice`; Sales Return and correction flows remain in their frozen later steps.
+- Commercial posting currency must match the immutable Sales commercial-input currency.
+- Commercial Debit/Credit must remain balanced and must reconcile to the authoritative Sales document grand total.
+- Commercial component line references must point only to actual service lines in the invoice.
+- Every non-zero service line must retain its Revenue component coverage.
+- AR remains document-level while Revenue/VAT remain line-provenance aware.
+- No synthetic zero cost leg is created: Inventory/Valuation/COGS are absent, not merely empty work executed unnecessarily.
+- No pending/retry/status state is added; Step 17 owns resumable automatic orchestration.
+- No Journal Voucher/Journal Line is created; Step 24 owns Journal creation.
+
+### Service-only model
+
+```text
+Service-Only Sales Invoice
+        ↓
+Immutable Sales commercial facts
+        ↓
+Commercial Posting
+  Accounts Receivable    Dr
+      Service Revenue       Cr
+      Output VAT            Cr
+        ↓
+No Inventory Issue
+No Inventory Movement
+No FIFO/MWA Valuation
+No COGS
+No Inventory Relief
+```
+
+Important:
+
+```text
+Service Revenue recognition != Inventory fulfillment
+```
+
+A service invoice becomes accounting-ready from its commercial facts without waiting on stock prerequisites.
+
+### Boundary with non-stock products
+
+Step 16 is intentionally strict:
+
+```text
+service            -> Service-only path
+non-stock-product  -> not classified as service-only
+stock-product      -> not classified as service-only
+```
+
+This prevents a future non-stock-product accounting policy from being accidentally collapsed into service behavior.
+
+### Argin Bridge compliance
+
+- Durable Sales document and service-line identities remain the source provenance.
+- No Inventory/Valuation identity is fabricated for services.
+- No local row IDs or UI state become business identity.
+- The result is deterministic and persistence-neutral.
+- Future replay can reproduce the commercial effect without inventing stock effects.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-service-only-posting.test.ts
+```
+
+Coverage includes:
+
+- successful multi-line service-only posting;
+- explicit Inventory bypass;
+- explicit Cost Posting bypass;
+- stock-product rejection;
+- non-stock-product rejection;
+- non-invoice source rejection;
+- commercial currency mismatch rejection;
+- commercial total mismatch rejection;
+- unknown Sales-line reference rejection;
+- required Revenue coverage for non-zero service lines;
+- explicit proof that Inventory, Movement, Valuation, COGS, Journal and retry/status artifacts do not leak into Step 16.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation was reviewed against the completed commercial posting contract and the Phase 25 ownership rule that service-only invoices bypass Inventory/Valuation/COGS entirely. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Service-only path requires only `service` lines.
+- [x] Sales Invoice source is enforced.
+- [x] Commercial posting remains authoritative and balanced.
+- [x] Commercial totals reconcile to Sales grand total.
+- [x] Service line provenance is validated.
+- [x] Inventory Issue is not required.
+- [x] Inventory Movement is not required.
+- [x] FIFO/MWA Valuation is not required.
+- [x] COGS and Inventory Relief are not created.
+- [x] Non-stock-product is not silently treated as service.
+- [x] No retry/status ownership leaked from Step 17.
+- [x] No Journal creation leaked from Step 24.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 17 — Automatic Post-Finalization Orchestration & Resumable Pending State.
