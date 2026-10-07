@@ -9,8 +9,18 @@ import {
 
 function commercial(path:"service"|"stock"|"mixed") {
   const lines:any[]=[];
-  if(path!=="service") lines.push({lineId:"stock-1",productId:"p1",lineKind:"stock-product"});
-  if(path!=="stock") lines.push({lineId:"service-1",productId:"s1",lineKind:"service"});
+  const totals = {
+    currency: "IRR",
+    grossAmount: 0,
+    discountAmount: 0,
+    netAfterDiscount: 0,
+    chargeAmount: 0,
+    taxBaseAmount: 0,
+    taxAmount: 0,
+    grandTotal: 0,
+  };
+  if(path!=="service") lines.push({lineId:"stock-1",productId:"p1",lineKind:"stock-product",totals});
+  if(path!=="stock") lines.push({lineId:"service-1",productId:"s1",lineKind:"service",totals});
   return {
     source:{sourceSystem:"sales",sourceType:"sales-invoice",sourceDocumentId:"inv-1",sourceVersion:1,externalReference:null},
     companyId:"c1",branchId:"b1",fiscalYearId:"fy",customerPartyId:"cust",businessDate:"2026-10-07",currency:"IRR",
