@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@argin/sales": "workspace:*",
-    "@argin/inventory": "workspace:*"
+    "@argin/inventory": "workspace:*",
+    "@argin/accounting": "workspace:*"
   }
 }
