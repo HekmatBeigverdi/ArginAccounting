@@ -22,6 +22,7 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added Step 10 outbound Inventory Movement lineage resolution with exact Issue document/line matching, negative quantity enforcement, chronology/warehouse provenance, and fail-closed rejection of transfer/reversal or ambiguous movements.
 - Added Step 11 resolved FIFO/MWA valuation prerequisite using authoritative Movement-linked Phase 21 valuation entries, preserving valuation method/revision/strategy provenance and blocking COGS on missing or unresolved cost.
 - Added Step 12 COGS account resolution with Company/Branch mapping, durable stock/valuation provenance, deterministic specificity/priority rules, and fail-closed active/postable account validation.
+- Added Step 13 Inventory Asset account resolution with Company/Branch mapping, preserved Sales/Movement/Valuation/Warehouse provenance, and fail-closed active/postable account validation without making Warehouse/Product masters own GL mappings.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
