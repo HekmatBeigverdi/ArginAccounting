@@ -40,6 +40,9 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   replayOutcomeInvalid: "sales_posting.replay_outcome_invalid",
   concurrencyConflict: "sales_posting.concurrency_conflict",
   concurrencyStateMismatch: "sales_posting.concurrency_state_mismatch",
+  atomicCommitInvalid: "sales_posting.atomic_commit_invalid",
+  atomicCommitConflict: "sales_posting.atomic_commit_conflict",
+  outboxInvalid: "sales_posting.outbox_invalid",
 } as const);
 
 export type SalesPostingDomainErrorCode =
