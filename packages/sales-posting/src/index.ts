@@ -245,3 +245,13 @@ export type {
   SalesPostingAtomicUnitOfWork,
   SalesPostingOutboxEvent,
 } from "./application/atomic-posting-unit-of-work.ts";
+
+export {
+  createSalesReturnCommercialLineage,
+  reverseSalesReturnCommercialPosting,
+} from "./domain/sales-return-commercial-reversal.ts";
+export type {
+  SalesReturnCommercialLineage,
+  SalesReturnCommercialReversal,
+  SalesReturnCommercialReversalComponent,
+} from "./domain/sales-return-commercial-reversal.ts";
