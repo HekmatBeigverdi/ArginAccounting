@@ -158,7 +158,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 15 | Mixed Stock + Service Invoice Orchestration | Completed |
 | 16 | Service-Only Invoice Posting Path | Completed |
 | 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Completed |
-| 18 | Idempotency & Exactly-Once Journal Effect | Planned |
+| 18 | Idempotency & Exactly-Once Journal Effect | Completed |
 | 19 | Optimistic Concurrency & Posting CAS | Planned |
 | 20 | Atomic Unit of Work / Outbox Boundary | Planned |
 | 21 | Sales Return Commercial Reversal | Planned |
@@ -2425,3 +2425,170 @@ The design follows the existing Purchase Posting principle that finalized commer
 ## Next Step
 
 Step 18 — Idempotency & Exactly-Once Journal Effect.
+
+## Step 18 — Idempotency & Exactly-Once Journal Effect
+
+### Completed work
+
+- Added the Sales Posting idempotency contract for the accounting-recognition business effect.
+- The canonical idempotency identity is now:
+
+```text
+Sales source identity
+  sourceSystem
+  sourceType
+  sourceDocumentId
+  sourceVersion
+        +
+purpose = accounting-recognition
+        +
+payloadFingerprint (SHA-256)
+```
+
+- Added deterministic `createSalesPostingIdempotencyKey()`.
+- The durable key includes the exact Sales source version and posting purpose.
+- Added SHA-256 payload fingerprint validation using 64 lowercase hexadecimal characters.
+- Added `SalesPostingIdempotencyRecord` preserving the committed outcome:
+  - idempotency key;
+  - Sales source identity/version;
+  - purpose;
+  - payload fingerprint;
+  - Posting ID;
+  - Journal Voucher ID;
+  - committed Posting version;
+  - committed UTC timestamp.
+- Added `assertSalesPostingReplayCompatible()`.
+- An exact compatible retry reuses the stored outcome.
+- A retry using the same business identity but a different payload fingerprint fails with `sales_posting.idempotency_conflict`.
+- A new Sales source version receives a distinct business-effect identity.
+- Added application-level `resolveSalesPostingJournalEffect()` against a persistence-neutral replay-store port.
+- The first compatible execution records one outcome.
+- Subsequent compatible retries return:
+  - the original Posting ID;
+  - the original Journal Voucher ID;
+  - `replayed = true`.
+- Compatible replay does not intentionally save a second business effect.
+- Stored outcome validation fails closed if Posting/Journal identity, committed version or committed timestamp is malformed.
+- Step 18 establishes the exactly-once business-effect identity and replay semantics without pulling forward CAS or transaction ownership.
+- Step 19 remains responsible for optimistic concurrency/CAS.
+- Step 20 remains responsible for the atomic Unit of Work / database uniqueness / outbox boundary that closes storage races.
+- Step 24 remains responsible for creating the actual Accounting Journal Voucher against this durable idempotent identity.
+
+### Exactly-once model
+
+```text
+sales:sales-invoice:<documentId>:v<sourceVersion>
+        +
+purpose:accounting-recognition
+        ↓
+Idempotency Key
+        ↓
+Existing record?
+   no  -> commit one canonical outcome
+   yes
+        ↓
+Fingerprint equal?
+   yes -> replay original Posting/Journal outcome
+   no  -> conflict
+```
+
+Example:
+
+```text
+Invoice INV-100 / sourceVersion 7
+payloadFingerprint A
+        ↓
+Posting P-1 / Journal J-1
+
+Retry:
+INV-100 / version 7 / fingerprint A
+        ↓
+Replay P-1 / J-1
+
+Conflicting retry:
+INV-100 / version 7 / fingerprint B
+        ↓
+IDEMPOTENCY CONFLICT
+
+New authoritative version:
+INV-100 / version 8
+        ↓
+new business-effect identity
+```
+
+### Replay ordering rule
+
+Idempotency/replay is resolved before a genuinely new business effect proceeds to later mutation/concurrency handling.
+
+This preserves the same principle already established in Sales Workflow and Purchase Posting: an exact retry may replay its historical committed result even when later aggregate state has advanced, while an incompatible request cannot silently overwrite the previous outcome.
+
+### Argin Bridge compliance
+
+- Idempotency identity is based only on durable Sales source identity/version and purpose.
+- Payload fingerprint protects replay compatibility across retries, restarts and future Bridge delivery.
+- Stored outcome carries durable Posting/Journal identities rather than local row IDs.
+- Replay can be reconstructed after process restart from persistent idempotency data.
+- A synchronized retry with the same source/version/payload converges on the same accounting effect.
+- Incompatible payload for the same effect becomes an explicit conflict rather than last-write-wins mutation.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/replay-safe-journal-effect.test.ts
+```
+
+Coverage includes:
+
+- deterministic source-version idempotency key;
+- first execution stores exactly one canonical outcome;
+- compatible retry replays the original Posting/Journal IDs;
+- compatible retry does not save a second record;
+- same identity with different fingerprint conflicts;
+- new source version creates a distinct business-effect identity;
+- malformed fingerprint rejection;
+- malformed committed outcome rejection;
+- restart-safe preservation of Posting ID, Journal ID and committed Posting version.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+Step 18 defines and tests the deterministic exactly-once business-effect/replay contract. It intentionally does not claim that an unimplemented persistence adapter can defeat a simultaneous insert race by itself; the database transaction, uniqueness and Unit-of-Work boundary is owned by Step 20. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Accounting-recognition purpose is explicit.
+- [x] Idempotency key is deterministic by durable Sales source version.
+- [x] Payload compatibility is protected by SHA-256 fingerprint.
+- [x] Compatible retry replays original outcome.
+- [x] Compatible retry does not intentionally create a second business effect.
+- [x] Incompatible same-identity payload fails as conflict.
+- [x] New source version is a distinct business effect.
+- [x] Posting and Journal outcome identities are retained for restart replay.
+- [x] No local row identity participates in replay identity.
+- [x] Step 19 CAS ownership remains intact.
+- [x] Step 20 atomic/uniqueness ownership remains intact.
+- [x] Step 24 Journal creation ownership remains intact.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 19 — Optimistic Concurrency & Posting CAS.
