@@ -3949,6 +3949,87 @@ The UI contract is implemented and tested as a data-driven projection over the S
 - [x] Desktop dependency/lockfile are updated.
 - [x] Responsive RTL styling follows current Sales workspace conventions.
 
+## Pre-Step 28 Runtime Integration Closure — Automatic Sales Journal Wiring
+
+A manual acceptance test after Step 27 exposed a runtime integration gap: Sales Invoice finalization correctly staged an Inventory Issue and Inventory confirmation correctly generated Movement/Valuation facts, but the Desktop runtime did not invoke Sales Posting persistence/Journal creation. The Phase 25 Domain/Application contracts existed, but the final Desktop/SQLite composition boundary was not wired.
+
+### Completed corrective work
+
+- Added migration `0037_sales_posting.sql` and registered migration version 37.
+- Added durable SQLite persistence for:
+  - Sales Posting aggregate/status;
+  - Sales Posting account rules;
+  - append-only idempotency outcomes;
+  - append-only Journal line provenance;
+  - transactional Outbox evidence.
+- Added Desktop Sales Posting composition:
+  - rebuilds commercial facts from the persisted finalized Sales document;
+  - validates them through `createSalesCommercialPostingInput()`;
+  - resolves exact Inventory Issue/Movement/Valuation facts;
+  - resolves AR/Revenue/VAT/COGS/Inventory accounts;
+  - creates the real Accounting Journal Draft;
+  - persists Posting/Journal/provenance/idempotency/outbox in one SQLite transaction.
+- Added default mapping bootstrap from built-in Argin coding-template logical accounts when no explicit Sales Posting rule exists.
+- Missing/invalid account mapping now becomes visible `blocked/manual-review` state rather than silent failure.
+- Sales Invoice finalization now invokes Sales Posting immediately:
+  - service-only invoices can create Journal immediately;
+  - stock invoices persist a Pending reason until Issue/Valuation becomes ready.
+- Confirming a Sales-origin Inventory Issue now invokes Sales Posting after Inventory confirmation and synchronous valuation catch-up.
+- Existing finalized invoices created before this runtime wiring are automatically caught up when opened in Sales Documents if no Sales Posting state exists.
+- Wired the Step 27 Persian RTL Recovery Panel into the actual Sales Documents page.
+- Added explicit retry/refresh from the Sales UI.
+- Added the Sales Posting permissions to the default Security permission catalog.
+- Fixed Journal Line identity generation so different Sales Journals cannot reuse globally identical line IDs.
+- Added migration/runtime wiring tests and Journal-line collision coverage.
+
+### Expected runtime flow after closure
+
+```text
+Finalized Sales Invoice
+        ↓
+Inventory Issue Draft
+        ↓
+Issue confirmed
+        ↓
+Inventory Movement
+        ↓
+FIFO/MWA valuation catch-up
+        ↓
+Sales Posting evaluateAndPost
+        ↓
+Accounting Journal Draft
+        ↓
+visible in Accounting Documents
+```
+
+For service-only invoices:
+
+```text
+Finalized Sales Invoice
+        ↓
+Sales Posting evaluateAndPost
+        ↓
+Accounting Journal Draft
+```
+
+### Historical catch-up
+
+A finalized invoice from before this correction is not abandoned. Opening it in Sales Documents performs:
+
+```text
+no Sales Posting state
+        ↓
+authoritative finalized Sales facts reloaded
+        ↓
+existing Issue/Movement/Valuation inspected
+        ↓
+idempotent catch-up
+        ↓
+Journal Draft created once
+```
+
+This closure does not change the frozen Step 28 title/order. Step 28 now has the required real runtime boundary available for automated E2E validation.
+
 ## Next Step
 
 Step 28 — Automated Integration & E2E Stock/Service/Return Scenarios.
