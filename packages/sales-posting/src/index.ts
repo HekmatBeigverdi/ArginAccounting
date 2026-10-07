@@ -195,3 +195,25 @@ export type {
   SalesPostingPostFinalizationState,
   SalesPostingReadyState,
 } from "./application/post-finalization-orchestrator.ts";
+
+export {
+  SALES_POSTING_PURPOSES,
+  assertSalesPostingReplayCompatible,
+  createSalesPostingIdempotencyIdentity,
+  createSalesPostingIdempotencyKey,
+  createSalesPostingIdempotencyRecord,
+} from "./domain/sales-posting-idempotency.ts";
+export type {
+  SalesPostingIdempotencyIdentity,
+  SalesPostingIdempotencyRecord,
+  SalesPostingPurpose,
+} from "./domain/sales-posting-idempotency.ts";
+
+export {
+  resolveSalesPostingJournalEffect,
+} from "./application/replay-safe-journal-effect.ts";
+export type {
+  ResolveSalesPostingJournalEffectInput,
+  SalesPostingJournalEffectResolution,
+  SalesPostingReplayStore,
+} from "./application/replay-safe-journal-effect.ts";
