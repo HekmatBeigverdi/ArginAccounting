@@ -157,7 +157,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 14 | COGS / Inventory Relief Posting Calculation | Completed |
 | 15 | Mixed Stock + Service Invoice Orchestration | Completed |
 | 16 | Service-Only Invoice Posting Path | Completed |
-| 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Planned |
+| 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Completed |
 | 18 | Idempotency & Exactly-Once Journal Effect | Planned |
 | 19 | Optimistic Concurrency & Posting CAS | Planned |
 | 20 | Atomic Unit of Work / Outbox Boundary | Planned |
@@ -2283,3 +2283,145 @@ The implementation was reviewed against the completed commercial posting contrac
 ## Next Step
 
 Step 17 — Automatic Post-Finalization Orchestration & Resumable Pending State.
+
+## Step 17 — Automatic Post-Finalization Orchestration & Resumable Pending State
+
+### Completed work
+
+- Added an application-level `orchestrateSalesPostFinalization()` boundary for finalized Sales Invoices.
+- Introduced explicit orchestration statuses:
+  - `pending`;
+  - `ready`.
+- Introduced resumable pending reasons:
+  - `waiting-for-issue`;
+  - `waiting-for-confirmation`;
+  - `waiting-for-movement`;
+  - `waiting-for-valuation`.
+- Added explicit invoice-path classification:
+  - `service-only`;
+  - `stock-only`;
+  - `mixed`.
+- Service-only invoices become immediately accounting-ready through the Step 16 commercial-only path and do not enter Inventory/Valuation waiting states.
+- Stock and Mixed invoices progress deterministically through the dependency chain:
+
+```text
+Finalized Sales Invoice
+        ↓
+Issue exists?
+        ↓
+Issue confirmed?
+        ↓
+Movement lineage exists?
+        ↓
+Resolved valuation exists?
+        ↓
+Cost posting ready?
+        ↓
+Accounting-ready
+```
+
+- Missing future-resolvable dependencies return `pending` rather than terminal failure.
+- The pending result preserves:
+  - Sales document ID;
+  - Company ID;
+  - invoice path;
+  - exact pending reason;
+  - affected Sales line IDs.
+- Re-running the same orchestration function with newly available dependencies resumes from the current authoritative facts rather than mutating a hidden workflow cursor.
+- Company/source-document scope is revalidated when Fulfillment, Issue, Movement and Valuation artifacts are supplied.
+- Stock/Mixed readiness still requires balanced cost posting from Step 14.
+- Mixed-ready execution reuses the Step 15 invariant checks.
+- Service-ready execution reuses the Step 16 invariant checks.
+- `non-stock-product` is intentionally not silently collapsed into service-only or stock-only behavior; an explicit later policy is required.
+- Mapping/configuration/structural inconsistencies are not disguised as transient pending states.
+- No retry counter, idempotency key or exactly-once Journal effect is implemented here; Step 18 owns idempotency/replay.
+- No CAS/version transition is implemented here; Step 19 owns optimistic concurrency.
+- No Unit of Work/Outbox is implemented here; Step 20 owns atomic commit boundaries.
+- No Journal Voucher creation occurs here; Step 24 owns Journal creation.
+
+### Resumable state model
+
+```text
+pending / waiting-for-issue
+        ↓
+pending / waiting-for-confirmation
+        ↓
+pending / waiting-for-movement
+        ↓
+pending / waiting-for-valuation
+        ↓
+ready
+```
+
+The state is rebuildable from authoritative upstream facts. It is not a second source of truth for Sales, Inventory or Valuation.
+
+### Argin Bridge compliance
+
+- Pending state is a deterministic projection from durable Sales/Inventory/Valuation identities.
+- No local row ID or in-memory lock is treated as synchronization authority.
+- Exact affected Sales line IDs remain available for future retry/replay diagnostics.
+- Source/Company scope is preserved throughout the chain.
+- Future Bridge workers can re-run orchestration from authoritative synchronized facts without relying on an opaque local cursor.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/post-finalization-orchestrator.test.ts
+```
+
+Coverage includes:
+
+- service-only immediate readiness;
+- stock waiting for Issue;
+- waiting for Issue confirmation;
+- confirmed Issue waiting for Movement;
+- Movement waiting for Valuation;
+- stock readiness after valuation/cost availability;
+- mixed readiness through the same chain;
+- rejection of silent `non-stock-product` classification.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The design follows the existing Purchase Posting principle that finalized commercial facts remain valid when downstream accounting prerequisites are incomplete, while adapting Sales to its explicit Issue -> Movement -> Valuation chain. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Finalized Sales posting has an application orchestration boundary.
+- [x] Service-only invoices become ready without Inventory prerequisites.
+- [x] Stock/Mixed invoices expose deterministic pending reasons.
+- [x] Missing future dependencies are resumable rather than terminal.
+- [x] Pending state identifies affected Sales lines.
+- [x] Re-run with new facts resumes deterministically.
+- [x] Scope mismatch fails explicitly.
+- [x] Structural/configuration errors are not mislabeled as pending.
+- [x] Step 18 idempotency ownership is preserved.
+- [x] Step 19 CAS ownership is preserved.
+- [x] Step 20 Unit of Work/Outbox ownership is preserved.
+- [x] Step 24 Journal ownership is preserved.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 18 — Idempotency & Exactly-Once Journal Effect.
