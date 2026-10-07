@@ -34,6 +34,8 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added Step 22 Sales Return Inventory Receipt / Valuation cost restoration, resolving confirmed return receipts through positive inbound movements and Phase 21 valuation into balanced Inventory debit / COGS credit effects without rewriting historical outbound valuation.
 - Added Step 23 Sales Correction reverse-and-replace lineage, preserving immutable original invoice/line source versions and independent correction source identity without rewriting historical Sales, Inventory, Valuation or Journal facts.
 - Added Step 24 Accounting Journal Voucher draft creation with human-readable Persian lines, immutable Sales/Inventory/Valuation provenance, and atomic Journal + Posting CAS + Idempotency + Outbox persistence/replay boundaries.
+- Reconciled Step 25 Sales Posting status/recovery with deterministic wait/retry/replay/manual-review decisions and committed-outcome non-regression.
+- Added Step 26 Sales Posting permissions, approval evidence validation, append-only audit contracts, secured execution/recovery boundaries, and operational trace reading with audited trace access.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
