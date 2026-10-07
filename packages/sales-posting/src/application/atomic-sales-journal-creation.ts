@@ -186,7 +186,7 @@ export async function commitSalesPostingJournalAtomic(
       createdAtUtc: input.createdAtUtc,
       components: input.components,
       requestId: input.requestId ?? input.postingId,
-      causationId: input.causationId,
+      causationId: input.causationId ?? null,
     });
 
     const saved = await session.savePostingCas(
