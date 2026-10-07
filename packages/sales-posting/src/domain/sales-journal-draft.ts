@@ -179,7 +179,6 @@ export function createSalesPostingJournalDraft(
     || typeof input !== "object"
     || !Array.isArray(input.components)
     || input.components.length < 2
-    || input.source.sourceType === "sales-order"
   ) {
     return fail(
       SALES_POSTING_DOMAIN_ERROR_CODES.journalDraftInvalid,
@@ -364,6 +363,7 @@ function returnCommercialComponent(
 
 function returnCostComponent(
   component: SalesReturnCostRestorationComponent,
+  originalInvoiceId: string,
 ): SalesPostingJournalComponent {
   return Object.freeze({
     componentId: component.componentId,
@@ -381,7 +381,7 @@ function returnCostComponent(
     valuationEntryId: component.valuationEntryId,
     valuationMethod: component.valuationMethod,
     valuationRevision: component.valuationRevision,
-    originalInvoiceId: null,
+    originalInvoiceId,
     originalInvoiceLineId: component.originalInvoiceLineId,
     taxIds: Object.freeze([]),
     taxCodes: Object.freeze([]),
@@ -404,6 +404,8 @@ export function salesJournalComponentsFromReturn(input: {
 }): readonly SalesPostingJournalComponent[] {
   return Object.freeze([
     ...input.commercial.components.map(returnCommercialComponent),
-    ...(input.cost?.components ?? []).map(returnCostComponent),
+    ...(input.cost?.components ?? []).map((component) =>
+      returnCostComponent(component, input.commercial.originalInvoiceId)
+    ),
   ]);
 }
