@@ -180,3 +180,18 @@ export {
 export type {
   SalesServiceOnlyPostingResult,
 } from "./domain/sales-service-only-posting.ts";
+
+export {
+  SALES_POSTING_ORCHESTRATION_STATUSES,
+  SALES_POSTING_PENDING_REASONS,
+  orchestrateSalesPostFinalization,
+} from "./application/post-finalization-orchestrator.ts";
+export type {
+  OrchestrateSalesPostFinalizationInput,
+  SalesPostingInvoicePath,
+  SalesPostingOrchestrationStatus,
+  SalesPostingPendingReason,
+  SalesPostingPendingState,
+  SalesPostingPostFinalizationState,
+  SalesPostingReadyState,
+} from "./application/post-finalization-orchestrator.ts";
