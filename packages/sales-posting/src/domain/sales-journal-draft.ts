@@ -125,8 +125,11 @@ function description(component: SalesPostingJournalComponent): string {
   }
 }
 
-function lineId(componentId: string): string {
-  const id = `spj:${required(componentId, "componentId")}`;
+function lineId(
+  journalVoucherId: string,
+  index: number,
+): string {
+  const id = `${required(journalVoucherId, "journalVoucherId")}:line:${index + 1}`;
   if (id.length > 128) {
     return fail(
       SALES_POSTING_DOMAIN_ERROR_CODES.journalDraftInvalid,
@@ -215,7 +218,7 @@ export function createSalesPostingJournalDraft(
     }
 
     return Object.freeze({
-      id: lineId(component.componentId),
+      id: lineId(input.journalVoucherId, index),
       order: index + 1,
       accountId: component.accountId,
       description: description(component),
@@ -260,8 +263,8 @@ export function createSalesPostingJournalDraft(
   });
 
   const lineProvenance: SalesJournalLineProvenance[] = input.components.map(
-    (component) => Object.freeze({
-      journalLineId: lineId(component.componentId),
+    (component, index) => Object.freeze({
+      journalLineId: lineId(input.journalVoucherId, index),
       componentId: component.componentId,
       role: component.role,
       salesLineId: component.salesLineId,
