@@ -30,6 +30,7 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added Step 18 Sales Posting idempotency and exactly-once business-effect replay contracts using durable Sales source-version identity, SHA-256 payload fingerprints, conflict detection, and replay of the original Posting/Journal outcome.
 - Added Step 19 optimistic concurrency and Posting CAS with exact Posting/Company/Branch/source-version expectations, immutable exactly-one version advancement, timestamp ordering, and replay-before-CAS mutation preparation.
 - Added Step 20 atomic Sales Posting Unit-of-Work and Outbox boundary combining replay lookup, Posting CAS, Idempotency evidence and durable accounting-recognition integration events with rollback semantics.
+- Added Step 21 Sales Return commercial reversal with original-invoice/line provenance and exact AR/Revenue/Output VAT direction reversal while leaving Inventory/Valuation cost restoration to Step 22.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
