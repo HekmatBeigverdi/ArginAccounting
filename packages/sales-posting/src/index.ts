@@ -234,3 +234,14 @@ export type {
   PrepareSalesPostingMutationInput,
   SalesPostingReplayReader,
 } from "./application/prepare-posting-mutation.ts";
+
+export {
+  commitSalesPostingAccountingEffectAtomic,
+} from "./application/atomic-posting-unit-of-work.ts";
+export type {
+  CommitSalesPostingAccountingEffectInput,
+  CommitSalesPostingAccountingEffectResult,
+  SalesPostingAtomicSession,
+  SalesPostingAtomicUnitOfWork,
+  SalesPostingOutboxEvent,
+} from "./application/atomic-posting-unit-of-work.ts";
