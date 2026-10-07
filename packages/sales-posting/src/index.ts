@@ -255,3 +255,17 @@ export type {
   SalesReturnCommercialReversal,
   SalesReturnCommercialReversalComponent,
 } from "./domain/sales-return-commercial-reversal.ts";
+
+export {
+  calculateSalesReturnCostRestoration,
+  resolveSalesReturnReceiptValuation,
+} from "./domain/sales-return-cost-restoration.ts";
+export type {
+  SalesReturnCogsResolutionForLine,
+  SalesReturnCostRestoration,
+  SalesReturnCostRestorationComponent,
+  SalesReturnInventoryResolutionForLine,
+  SalesReturnMovementReader,
+  SalesReturnReceiptMovementLineage,
+  SalesReturnResolvedValuationLineage,
+} from "./domain/sales-return-cost-restoration.ts";
