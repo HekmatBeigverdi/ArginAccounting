@@ -29,6 +29,8 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   valuationPrerequisiteUnresolved: "sales_posting.valuation_prerequisite_unresolved",
   costPostingInvalid: "sales_posting.cost_posting_invalid",
   costPostingUnbalanced: "sales_posting.cost_posting_unbalanced",
+  mixedInvoiceInvalid: "sales_posting.mixed_invoice_invalid",
+  mixedInvoiceMismatch: "sales_posting.mixed_invoice_mismatch",
 } as const);
 
 export type SalesPostingDomainErrorCode =
