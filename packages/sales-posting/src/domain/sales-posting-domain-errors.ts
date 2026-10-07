@@ -21,6 +21,9 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   inventoryIssueLineageInvalid: "sales_posting.inventory_issue_lineage_invalid",
   inventoryIssueLineageMissing: "sales_posting.inventory_issue_lineage_missing",
   inventoryIssueLineageAmbiguous: "sales_posting.inventory_issue_lineage_ambiguous",
+  inventoryMovementLineageInvalid: "sales_posting.inventory_movement_lineage_invalid",
+  inventoryMovementLineageMissing: "sales_posting.inventory_movement_lineage_missing",
+  inventoryMovementLineageAmbiguous: "sales_posting.inventory_movement_lineage_ambiguous",
 } as const);
 
 export type SalesPostingDomainErrorCode =
