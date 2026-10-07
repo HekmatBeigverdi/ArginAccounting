@@ -110,3 +110,12 @@ export type {
   SalesInventoryIssueLineage,
   SalesInventoryIssueLineageResult,
 } from "./domain/sales-inventory-issue-lineage.ts";
+
+export {
+  resolveSalesOutboundInventoryMovementLineage,
+} from "./domain/sales-inventory-movement-lineage.ts";
+export type {
+  SalesInventoryMovementReader,
+  SalesOutboundInventoryMovementLineage,
+  SalesOutboundInventoryMovementLineageResult,
+} from "./domain/sales-inventory-movement-lineage.ts";
