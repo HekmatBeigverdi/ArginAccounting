@@ -19,6 +19,7 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added Step 7 commercial posting calculation and balance controls: AR debit from grand total, Revenue credit from tax base, Output VAT credit from immutable tax amount, with exact reconciliation and no COGS/Inventory leakage.
 - Added Step 8 stock-fulfillment prerequisite gating with exact Sales-to-Inventory Issue lineage, confirmed-only COGS eligibility, service/non-stock bypass, and fail-closed mixed-line validation.
 - Added Step 9 authoritative Inventory Issue lineage resolution using confirmed Inventory documents and immutable line source references, preserving separate Sales/Inventory line identities and fail-closed provenance checks.
+- Added Step 10 outbound Inventory Movement lineage resolution with exact Issue document/line matching, negative quantity enforcement, chronology/warehouse provenance, and fail-closed rejection of transfer/reversal or ambiguous movements.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
