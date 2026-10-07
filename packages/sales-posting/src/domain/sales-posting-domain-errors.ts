@@ -35,6 +35,9 @@ export const SALES_POSTING_DOMAIN_ERROR_CODES = Object.freeze({
   serviceOnlyMismatch: "sales_posting.service_only_mismatch",
   orchestrationInvalid: "sales_posting.orchestration_invalid",
   orchestrationMismatch: "sales_posting.orchestration_mismatch",
+  idempotencyInvalid: "sales_posting.idempotency_invalid",
+  idempotencyConflict: "sales_posting.idempotency_conflict",
+  replayOutcomeInvalid: "sales_posting.replay_outcome_invalid",
 } as const);
 
 export type SalesPostingDomainErrorCode =
