@@ -14,6 +14,7 @@ import {
   createSalesCogsAccountRule,
   createSalesInventoryAccountRule,
   createSalesOutputVatAccountRule,
+  createSalesCommercialPostingInput,
   createSalesPosting,
   createSalesPostingJournalDraft,
   createSalesPostingSourceIdentity,
@@ -437,26 +438,15 @@ export function createSalesPostingWorkspaceServices(input: {
               capturedAt: persisted.updatedAt,
             }),
           );
-          const documentTotals = calculateSalesDocumentTotals(snapshots.map(item => item.totals));
-          const commercial = {
+          const documentTotals = calculateSalesDocumentTotals(
+            snapshots.map(item => item.totals),
+          );
+          const commercial = createSalesCommercialPostingInput({
             source,
-            companyId,
-            branchId,
-            fiscalYearId: persisted.document.scope.fiscalYearId,
-            customerPartyId: persisted.document.customer.partyId,
-            businessDate: persisted.document.businessDate,
-            currency: documentTotals.currency,
+            document: persisted.document,
+            commercialSnapshots: snapshots,
             documentTotals,
-            lines: snapshots.map(snapshot => ({
-              snapshotId: snapshot.snapshotId,
-              lineId: snapshot.lineId,
-              productId: snapshot.productId,
-              lineKind: snapshot.lineKind,
-              capturedAt: snapshot.capturedAt,
-              terms: snapshot.terms,
-              totals: snapshot.totals,
-            })),
-          } as const;
+          });
 
           const now = new Date().toISOString();
           const stockLines = commercial.lines.filter(line => line.lineKind === "stock-product");
