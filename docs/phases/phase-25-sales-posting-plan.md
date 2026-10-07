@@ -159,7 +159,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 16 | Service-Only Invoice Posting Path | Completed |
 | 17 | Automatic Post-Finalization Orchestration & Resumable Pending State | Completed |
 | 18 | Idempotency & Exactly-Once Journal Effect | Completed |
-| 19 | Optimistic Concurrency & Posting CAS | Planned |
+| 19 | Optimistic Concurrency & Posting CAS | Completed |
 | 20 | Atomic Unit of Work / Outbox Boundary | Planned |
 | 21 | Sales Return Commercial Reversal | Planned |
 | 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Planned |
@@ -2592,3 +2592,164 @@ Step 18 defines and tests the deterministic exactly-once business-effect/replay 
 ## Next Step
 
 Step 19 — Optimistic Concurrency & Posting CAS.
+
+## Step 19 — Optimistic Concurrency & Posting CAS
+
+### Completed work
+
+- Added explicit optimistic concurrency controls for the Sales Posting aggregate.
+- Added `SalesPostingConcurrencyExpectation` containing:
+  - Posting ID;
+  - Company ID;
+  - Branch ID;
+  - exact Sales source identity/version;
+  - expected Posting version.
+- Added `assertSalesPostingConcurrency()`.
+- CAS now fails closed when:
+  - Posting ID differs;
+  - Company differs;
+  - Branch differs;
+  - Sales source identity/version differs;
+  - current Posting version differs from `expectedPostingVersion`.
+- Stale version conflicts use the explicit `sales_posting.concurrency_conflict` code.
+- Identity/scope/source mismatches use `sales_posting.concurrency_state_mismatch`.
+- Added `applySalesPostingCompareAndSwap()`.
+- Successful CAS:
+  - preserves immutable Posting/Company/Branch/source identity;
+  - increments Posting version exactly once;
+  - advances `updatedAtUtc`;
+  - rejects timestamp regression.
+- The prior aggregate remains immutable.
+- Added `prepareSalesPostingMutation()` to enforce the required ordering between Step 18 replay safety and Step 19 CAS.
+- Replay lookup now occurs before optimistic-concurrency validation.
+- If a compatible idempotency record already exists, the historical committed outcome is replayed even when the current Posting aggregate has since advanced to a later version.
+- If no replay exists, CAS is enforced before a new mutation proceeds.
+- This preserves the distinction:
+  - Idempotency protects retry/replay identity;
+  - CAS protects genuinely new concurrent mutation.
+- No database-specific `UPDATE ... WHERE version = ?` adapter is introduced here; Step 20 owns the atomic persistence/UoW boundary.
+- No Journal lifecycle/version mutation is introduced here; Step 24 remains the Journal creation boundary.
+
+### Concurrency model
+
+```text
+Retry / mutation request
+        ↓
+Step 18 replay lookup
+        ↓
+Existing compatible outcome?
+   yes -> replay original result
+   no
+        ↓
+Step 19 CAS
+current.version == expectedVersion?
+   no -> concurrency conflict
+   yes
+        ↓
+version = version + 1
+```
+
+Example:
+
+```text
+Posting current version = 3
+
+Exact historical retry:
+stored idempotency outcome exists
+expectedVersion = 1
+        ↓
+Replay succeeds
+CAS is not evaluated
+
+New mutation:
+no replay record
+expectedVersion = 1
+        ↓
+CAS conflict
+```
+
+### Source/scope protection
+
+CAS is not only a numeric version check. The mutation expectation must target the exact same:
+
+```text
+postingId
+companyId
+branchId
+Sales source document
+Sales source version
+```
+
+This prevents accidentally applying a valid version number to the wrong Posting aggregate or source revision.
+
+### Argin Bridge compliance
+
+- Posting version remains a durable optimistic-concurrency token.
+- Source identity/version remains part of the mutation expectation.
+- Replayed historical outcomes are stable across restarts and future Bridge delivery.
+- New stale mutations fail rather than silently overwriting synchronized state.
+- CAS contract is persistence-neutral and can be implemented later with SQLite or server-side PostgreSQL compare-and-swap semantics.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-posting-concurrency.test.ts
+```
+
+Coverage includes:
+
+- successful CAS;
+- exactly-one version increment;
+- immutable prior aggregate;
+- stale-version conflict;
+- Posting ID mismatch;
+- Company mismatch;
+- Branch mismatch;
+- source-version mismatch;
+- timestamp regression rejection;
+- replay-before-CAS ordering;
+- successful historical replay despite stale expected version;
+- CAS enforcement after replay miss.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The implementation follows the Phase 24 Sales concurrency rule: replay/idempotency is evaluated first, and CAS is enforced only for a genuinely new mutation. Successful local runtime/typecheck execution is not claimed from this environment; the commands above remain owner-side executable validation.
+
+### Exit criteria
+
+- [x] Posting aggregate has an explicit expected-version CAS contract.
+- [x] Successful mutation increments version exactly once.
+- [x] Stale expected version fails explicitly.
+- [x] Posting/Company/Branch/source identity mismatch fails explicitly.
+- [x] Timestamp regression is rejected.
+- [x] Prior aggregate remains immutable.
+- [x] Replay lookup occurs before CAS.
+- [x] Exact historical retry can replay after aggregate version advances.
+- [x] New mutation still enforces CAS after replay miss.
+- [x] Step 20 persistence/UoW ownership remains intact.
+- [x] Step 24 Journal lifecycle ownership remains intact.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 20 — Atomic Unit of Work / Outbox Boundary.
