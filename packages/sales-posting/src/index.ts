@@ -217,3 +217,20 @@ export type {
   SalesPostingJournalEffectResolution,
   SalesPostingReplayStore,
 } from "./application/replay-safe-journal-effect.ts";
+
+export {
+  applySalesPostingCompareAndSwap,
+  assertSalesPostingConcurrency,
+} from "./domain/sales-posting-concurrency.ts";
+export type {
+  SalesPostingConcurrencyExpectation,
+} from "./domain/sales-posting-concurrency.ts";
+
+export {
+  prepareSalesPostingMutation,
+} from "./application/prepare-posting-mutation.ts";
+export type {
+  PrepareSalesPostingMutationDecision,
+  PrepareSalesPostingMutationInput,
+  SalesPostingReplayReader,
+} from "./application/prepare-posting-mutation.ts";
