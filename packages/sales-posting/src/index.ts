@@ -140,3 +140,16 @@ export type {
   SalesCogsAccountRole,
   SalesCogsAccountRule,
 } from "./domain/sales-cogs-account-resolution.ts";
+
+export {
+  SALES_INVENTORY_ACCOUNT_ROLE,
+  createSalesInventoryAccountRule,
+  resolveSalesInventoryAccount,
+  selectSalesInventoryAccountRule,
+} from "./domain/sales-inventory-account-resolution.ts";
+export type {
+  SalesInventoryAccountResolution,
+  SalesInventoryAccountResolutionContext,
+  SalesInventoryAccountRole,
+  SalesInventoryAccountRule,
+} from "./domain/sales-inventory-account-resolution.ts";
