@@ -162,7 +162,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 19 | Optimistic Concurrency & Posting CAS | Completed |
 | 20 | Atomic Unit of Work / Outbox Boundary | Completed |
 | 21 | Sales Return Commercial Reversal | Completed |
-| 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Planned |
+| 22 | Sales Return Inventory Receipt / Valuation Cost Restoration | Completed |
 | 23 | Sales Correction & Replacement/Reversal Lineage | Planned |
 | 24 | Journal Voucher Creation & Immutable Source Provenance | Planned |
 | 25 | Posting Status, Recovery & Deterministic Retry | Planned |
@@ -3016,3 +3016,185 @@ Step 21 intentionally separates commercial reversal from stock-cost restoration.
 ## Next Step
 
 Step 22 — Sales Return Inventory Receipt / Valuation Cost Restoration.
+
+## Step 22 — Sales Return Inventory Receipt / Valuation Cost Restoration
+
+### Completed work
+
+- Added the Inventory/Valuation half of Sales Return posting.
+- Added `resolveSalesReturnReceiptValuation()`.
+- The resolver follows the authoritative chain:
+  - finalized Sales Return;
+  - confirmed Inventory Receipt staged from that Sales Return;
+  - exact Receipt line linked to the Sales Return line;
+  - exact positive inbound Inventory Movement;
+  - resolved Phase 21 inbound Valuation Entry.
+- Receipt source identity must be:
+  - `sourceSystem = sales`;
+  - `documentType = sales-return`;
+  - exact Sales Return document ID.
+- Only `stock-product` return lines participate in Inventory restoration.
+- Service/non-stock return lines do not fabricate Inventory movements or cost effects.
+- Receipt line Product identity must match the returned Sales line.
+- Inventory Movement must be:
+  - positive inbound quantity;
+  - same Receipt/document line;
+  - same Product/StockKey;
+  - not transfer;
+  - not reversal;
+  - same business date;
+  - recorded at Receipt confirmation.
+- Resolved valuation must be the exact valuation for that inbound movement.
+- Valuation must be:
+  - `kind = inbound`;
+  - `costState = resolved`;
+  - non-negative total cost;
+  - complete unit cost / total cost / valued-at evidence.
+- Unresolved return valuation blocks cost restoration explicitly; zero is never fabricated.
+- Added `calculateSalesReturnCostRestoration()`.
+- Cost restoration accounting is:
+
+```text
+Inventory Asset    Dr
+    COGS               Cr
+```
+
+- Monetary authority is the resolved Phase 21 inbound valuation total.
+- Sales selling price, discounts, VAT and Grand Total never become Inventory receipt cost.
+- The original outbound valuation/history is not edited or rewritten.
+- Return cost components preserve:
+  - Sales Return line ID;
+  - original Sales Invoice line ID;
+  - Product ID;
+  - Inventory Receipt/document line;
+  - inbound Movement ID;
+  - Valuation Entry ID;
+  - valuation method/revision.
+- COGS/Inventory account resolutions must match the exact return line, Product, Movement, Valuation and Warehouse lineage.
+- Zero-cost resolved inbound valuation creates no synthetic accounting lines.
+- Step 22 still does not create Journal Voucher/Journal Lines; Step 24 remains the Journal creation owner.
+
+### Accounting model
+
+If the resolved inbound valuation for returned stock is:
+
+```text
+totalCost = 600 IRR
+```
+
+Step 22 creates:
+
+```text
+Inventory Asset    Dr  600
+    COGS               Cr  600
+```
+
+This is separate from the Step 21 commercial reversal:
+
+```text
+Sales Revenue      Dr
+Output VAT         Dr
+    Accounts Receivable Cr
+```
+
+### Cost authority
+
+```text
+Sales Return commercial amount
+        ✗ not Inventory cost
+
+Phase 24 pre-sale cost quote
+        ✗ not return cost
+
+Resolved Phase 21 inbound valuation
+        ✓ return-cost authority
+```
+
+The historical original outbound valuation is not overwritten. The inbound Receipt creates a new immutable movement/valuation fact.
+
+### Lineage model
+
+```text
+Original Sales Invoice Line
+        ↓
+Sales Return Line
+        ↓
+Inventory Receipt Line
+        ↓
+Inbound Inventory Movement
+        ↓
+Resolved Inbound Valuation
+        ↓
+Inventory Dr / COGS Cr
+```
+
+### Argin Bridge compliance
+
+- Durable Sales Return, original invoice-line, Receipt line, Movement and Valuation IDs are preserved.
+- Historical outbound movement/valuation remains immutable.
+- The restoration effect is rebuildable from authoritative Sales + Inventory + Valuation facts.
+- No current selling price or local UI state participates in cost authority.
+- Unresolved monetary state remains explicit and replay-safe.
+
+### Automated tests
+
+Added:
+
+```text
+packages/sales-posting/tests/sales-return-cost-restoration.test.ts
+```
+
+Coverage includes:
+
+- confirmed Sales Return Receipt lineage;
+- positive inbound Movement validation;
+- resolved inbound Valuation lookup;
+- Inventory Debit / COGS Credit restoration;
+- return cost differing from commercial selling amount;
+- unresolved valuation blocking;
+- wrong Receipt source rejection;
+- outbound Movement rejection;
+- service-only return bypass.
+
+Local verification:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+Step 22 deliberately treats the Sales Return Receipt as a new authoritative inbound Inventory fact. It restores accounting cost from the resolved valuation of that inbound fact and never edits the original outbound valuation. Successful local runtime/typecheck execution is not claimed from this environment.
+
+### Exit criteria
+
+- [x] Sales Return stock restoration requires a confirmed Inventory Receipt.
+- [x] Receipt must originate from the exact Sales Return.
+- [x] Return line -> Receipt line lineage is exact.
+- [x] Receipt line -> positive inbound Movement lineage is exact.
+- [x] Inbound Movement -> resolved Valuation lineage is exact.
+- [x] Unresolved valuation blocks cost restoration.
+- [x] Selling price is never used as Inventory cost.
+- [x] Inventory is Debited and COGS is Credited.
+- [x] Original outbound valuation remains immutable.
+- [x] Service-only return creates no Inventory cost effect.
+- [x] Journal creation remains Step 24.
+- [x] Contract remains persistence-neutral and Bridge-ready.
+
+## Next Step
+
+Step 23 — Sales Correction & Replacement/Reversal Lineage.
