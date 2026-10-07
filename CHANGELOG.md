@@ -26,6 +26,7 @@ The project follows Semantic Versioning where practical during phased developmen
 - Added Step 14 COGS / Inventory Relief posting calculation from authoritative resolved outbound valuation cost, producing balanced COGS debit and Inventory credit components with exact valuation/account provenance and no Journal creation leakage.
 - Added Step 15 mixed stock + service invoice orchestration that composes the whole-invoice commercial leg with a stock-only cost leg, rejects service/non-stock COGS leakage, preserves separate balances/provenance, and keeps retry/Journal ownership in later steps.
 - Added Step 16 service-only Sales Invoice posting path that consumes only the balanced commercial leg, explicitly bypasses Inventory/Movement/Valuation/COGS, rejects stock and non-stock-product lines, and preserves service-line commercial provenance.
+- Added Step 17 automatic post-finalization Sales Posting orchestration with deterministic service/stock/mixed path classification and resumable pending states for Issue, confirmation, Movement and Valuation dependencies.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
