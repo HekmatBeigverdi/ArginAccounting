@@ -15,6 +15,7 @@ import type {
 import {
   SqliteInventoryInboundCostInputService,
   SqliteInventoryValuationBootstrapService,
+  SqliteInventoryValuationHistoricalRebuildService,
   SqliteInventoryValuationLiveService,
   SqliteInventoryValuationPolicyRepository,
   SqliteInventoryValuationReportReader,
@@ -132,6 +133,19 @@ export interface InventoryValuationWorkspaceServices {
     readonly blockedMovementCount: number;
   }>;
 
+  rebuildHistoricalValuation(input: {
+    companyId: string;
+    productId: string;
+    actorId: string;
+    requestId: string;
+    occurredAt: string;
+  }): Promise<{
+    readonly productId: string;
+    readonly rebuiltMovementCount: number;
+    readonly skippedReversalPairCount: number;
+    readonly earliestBusinessDate: string | null;
+  }>;
+
   readResolvedInboundCosts(query: {
     companyId: string;
     branchId: string | null;
@@ -197,6 +211,8 @@ export function createInventoryValuationWorkspaceServices(
   const inboundCosts = new SqliteInventoryInboundCostInputService(database);
   const bootstrap = new SqliteInventoryValuationBootstrapService(database);
   const liveValuation = new SqliteInventoryValuationLiveService(database);
+  const historicalRebuild =
+    new SqliteInventoryValuationHistoricalRebuildService(database);
   const products = new SqliteProductSelectorReader(database);
   const warehouses = new SqliteWarehouseReader(database);
   const hasFullAccess = permissions.includes("system.full-access");
@@ -421,6 +437,10 @@ export function createInventoryValuationWorkspaceServices(
     async retryValuationCatchUp(companyId) {
       requireViewPermission();
       return liveValuation.catchUpCompany(companyId, new Date().toISOString());
+    },
+    async rebuildHistoricalValuation(input) {
+      requireCostResolutionPermission();
+      return historicalRebuild.rebuildProduct(input);
     },
     async readResolvedInboundCosts(query) {
       requireViewPermission();
