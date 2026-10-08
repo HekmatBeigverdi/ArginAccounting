@@ -1,3 +1,72 @@
+
+function describeUnknownError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error.trim();
+  }
+  if (error && typeof error === "object") {
+    const candidate = error as Record<string, unknown>;
+    for (const key of ["message", "error", "cause", "code"]) {
+      const value = candidate[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {
+      // Fall through to the generic message.
+    }
+  }
+  return "خطای نامشخص";
+}
+
+function formatHistoricalRebuildError(error: unknown): string {
+  const message = describeUnknownError(error);
+
+  if (message.startsWith("VALUATION_HISTORICAL_REBUILD_FIFO_INSUFFICIENT:")) {
+    const [, movementId, businessDate, stock, layers, issue] = message.split(":");
+    return [
+      "بازسازی تاریخی به دلیل ناکافی‌بودن لایه‌های FIFO متوقف شد.",
+      movementId ? `Movement: ${movementId}` : "",
+      businessDate ? `تاریخ: ${businessDate}` : "",
+      stock ? stock.replace("stock=", "موجودی: ") : "",
+      layers ? layers.replace("layers=", "جمع لایه‌های FIFO: ") : "",
+      issue ? issue.replace("issue=", "مقدار خروج: ") : "",
+    ].filter(Boolean).join(" | ");
+  }
+
+  const known: Record<string, string> = {
+    VALUATION_HISTORICAL_REBUILD_POLICY_MISSING:
+      "برای این شرکت سیاست ارزش‌گذاری ثبت نشده است.",
+    VALUATION_HISTORICAL_REBUILD_POLICY_NOT_EFFECTIVE:
+      "برای یکی از تاریخ‌های حرکت، سیاست ارزش‌گذاری مؤثر وجود ندارد.",
+    VALUATION_HISTORICAL_REBUILD_COST_MISSING:
+      "برای یکی از ورودی‌های تاریخی بهای ورودی معتبر وجود ندارد.",
+    VALUATION_HISTORICAL_REBUILD_NEGATIVE_STOCK:
+      "ترتیب تاریخی حرکات به موجودی منفی منجر می‌شود و بازسازی متوقف شد.",
+    VALUATION_HISTORICAL_REBUILD_TRANSITION_SOURCE_MISSING:
+      "برای تبدیل روش ارزش‌گذاری، منبع معتبر قبلی جهت ایجاد لایه انتقالی پیدا نشد.",
+    VALUATION_HISTORICAL_REBUILD_TRANSITION_COST_INVALID:
+      "ارزش ریالی مانده قبل از تغییر روش معتبر نیست.",
+    VALUATION_HISTORICAL_REBUILD_TRANSITION_LAYER_MIXED:
+      "در مرز تغییر روش، هم‌زمان لایه FIFO و مانده روش قبلی وجود دارد و نیاز به بررسی دارد.",
+    VALUATION_HISTORICAL_REBUILD_TRANSFER_INVALID:
+      "یکی از انتقال‌های انبار از نظر زوج مبدأ/مقصد کامل نیست.",
+  };
+
+  const exact = known[message];
+  if (exact) return exact;
+
+  const prefix = Object.keys(known).find((key) => message.startsWith(key + ":"));
+  if (prefix) return `${known[prefix]} (${message})`;
+
+  return `بازسازی تاریخی ارزش‌گذاری ناموفق بود: ${message}`;
+}
+
 import { useEffect, useMemo, useState } from "react";
 import { getDesktopDatabase } from "@argin/database-tauri";
 import type {
@@ -371,11 +440,7 @@ export function InventoryValuationWorkspacePage() {
         `بازسازی تاریخی کنترل‌شده انجام شد؛ ${result.rebuiltMovementCount} حرکت برای این کالا دوباره ارزش‌گذاری شد.`,
       );
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "بازسازی تاریخی ارزش‌گذاری ناموفق بود.",
-      );
+      setError(formatHistoricalRebuildError(caughtError));
     } finally {
       setRebuildingProductId(null);
     }
