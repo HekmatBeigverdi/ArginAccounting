@@ -3981,6 +3981,13 @@ A manual acceptance test after Step 27 exposed a runtime integration gap: Sales 
 - Added the Sales Posting permissions to the default Security permission catalog.
 - Fixed Journal Line identity generation so different Sales Journals cannot reuse globally identical line IDs.
 - Added migration/runtime wiring tests and Journal-line collision coverage.
+- Extended the valuation recovery surface after manual testing exposed a second pre-Step 28 gap:
+  - movements with no Valuation Entry are now visible in the `نیازمند بررسی` workspace;
+  - incremental catch-up distinguishes ordinary recoverable rows from chronology-blocked rows;
+  - chronology-blocked rows no longer keep presenting the same ineffective retry action;
+  - a dedicated `بازسازی تاریخی کنترل‌شده` action rebuilds the affected Product valuation deterministically from authoritative Movement + Cost Input + effective Policy history;
+  - derived Valuation Entry/Layer/State rows are replaced while Movement, Cost Input and policy history remain authoritative/unchanged;
+  - quantity replay uses exact decimal arithmetic, not JavaScript floating-point quantity math.
 
 ### Expected runtime flow after closure
 
