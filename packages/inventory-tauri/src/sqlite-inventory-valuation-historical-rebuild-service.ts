@@ -25,6 +25,9 @@ type CostRow = {
 interface ProductState {
   quantity:string;
   totalCost:number;
+  lastMethod:"fifo"|"moving_average"|null;
+  lastMovementId:string|null;
+  lastValuationEntryId:string|null;
   fifoLayers:Array<{
     id:string;
     sourceMovementId:string;
@@ -161,6 +164,45 @@ export class SqliteInventoryValuationHistoricalRebuildService {
     const datedStates:Array<any>=[];
     const processedTransfers=new Set<string>();
 
+    const ensureFifoTransitionLayer=(
+      state:ProductState,
+      movement:MovementRow,
+      policy:PolicyRow,
+    )=>{
+      if(
+        policy.method!=="fifo"
+        || state.lastMethod!=="moving_average"
+        || compareQty(state.quantity,"0")<=0
+      ) return;
+      if(!state.lastMovementId||!state.lastValuationEntryId)
+        throw new Error("VALUATION_HISTORICAL_REBUILD_TRANSITION_SOURCE_MISSING");
+      if(state.totalCost<0)
+        throw new Error("VALUATION_HISTORICAL_REBUILD_TRANSITION_COST_INVALID");
+
+      const existingQty=sumFifoQty(state.fifoLayers);
+      if(compareQty(existingQty,state.quantity)===0) return;
+      if(compareQty(existingQty,"0")!==0)
+        throw new Error("VALUATION_HISTORICAL_REBUILD_TRANSITION_LAYER_MIXED");
+
+      const unitCost=unitCostFrom(state.totalCost,state.quantity);
+      state.fifoLayers.push({
+        id:`fifo-transition:${policy.policy_id}:${movement.warehouse_id}:${movement.zone_id??"root"}:${movement.location_id??"root"}`,
+        sourceMovementId:state.lastMovementId,
+        sourceEntryId:state.lastValuationEntryId,
+        warehouseId:movement.warehouse_id,
+        zoneId:movement.zone_id,
+        locationId:movement.location_id,
+        businessDate:policy.effective_from,
+        businessOrder:1,
+        originalQuantity:state.quantity,
+        remainingQuantity:state.quantity,
+        unitCost,
+        originalCost:state.totalCost,
+        remainingCost:state.totalCost,
+        currency:policy.currency,
+      });
+    };
+
     const remember=(m:MovementRow,state:ProductState,policy:PolicyRow)=>{
       datedStates.push({
         companyId,productId,warehouseId:m.warehouse_id,zoneKey:m.zone_id??"",
@@ -186,6 +228,8 @@ export class SqliteInventoryValuationHistoricalRebuildService {
 
         const sourceState=states.get(stockKey(source))??{quantity:"0",totalCost:0,fifoLayers:[]};
         const destinationState=states.get(stockKey(destination))??{quantity:"0",totalCost:0,fifoLayers:[]};
+        ensureFifoTransitionLayer(sourceState,source,policy);
+        ensureFifoTransitionLayer(destinationState,destination,policy);
         const quantity=absQty(source.quantity_delta);
         if(compareQty(sourceState.quantity,quantity)<0)
           throw new Error("VALUATION_HISTORICAL_REBUILD_NEGATIVE_STOCK");
@@ -202,7 +246,12 @@ export class SqliteInventoryValuationHistoricalRebuildService {
               }))},
               {quantity,currency:policy.currency as InventoryFifoLayerState["currency"]},
             );
-          }catch{throw new Error("VALUATION_HISTORICAL_REBUILD_FIFO_INSUFFICIENT");}
+          }catch{
+            const layerQty=sumFifoQty(sourceState.fifoLayers);
+            throw new Error(
+              `VALUATION_HISTORICAL_REBUILD_FIFO_INSUFFICIENT:${source.movement_id}:${source.business_date}:stock=${sourceState.quantity}:layers=${layerQty}:issue=${quantity}`
+            );
+          }
           carriedCost=result.totalCost;
           unitCost=result.unitCost;
           const nextById=new Map(result.state.layers.map(l=>[l.layerId,l]));
@@ -235,13 +284,20 @@ export class SqliteInventoryValuationHistoricalRebuildService {
           {m:source,kind:"transfer",quantity,unitCost,totalCost:-carriedCost,policy},
           {m:destination,kind:"transfer",quantity,unitCost,totalCost:carriedCost,policy},
         );
+        sourceState.lastMethod=policy.method;
+        sourceState.lastMovementId=source.movement_id;
+        sourceState.lastValuationEntryId=`valuation:${source.movement_id}`;
+        destinationState.lastMethod=policy.method;
+        destinationState.lastMovementId=destination.movement_id;
+        destinationState.lastValuationEntryId=`valuation:${destination.movement_id}`;
         remember(source,sourceState,policy);
         remember(destination,destinationState,policy);
         continue;
       }
 
       const key=stockKey(movement);
-      const state=states.get(key)??{quantity:"0",totalCost:0,fifoLayers:[]};
+      const state=states.get(key)??{quantity:"0",totalCost:0,lastMethod:null,lastMovementId:null,lastValuationEntryId:null,fifoLayers:[]};
+      ensureFifoTransitionLayer(state,movement,policy);
       const quantity=absQty(movement.quantity_delta);
       if(quantity==="0") continue;
 
@@ -277,7 +333,12 @@ export class SqliteInventoryValuationHistoricalRebuildService {
               }))},
               {quantity,currency:policy.currency as InventoryFifoLayerState["currency"]},
             );
-          }catch{throw new Error("VALUATION_HISTORICAL_REBUILD_FIFO_INSUFFICIENT");}
+          }catch{
+            const layerQty=sumFifoQty(state.fifoLayers);
+            throw new Error(
+              `VALUATION_HISTORICAL_REBUILD_FIFO_INSUFFICIENT:${movement.movement_id}:${movement.business_date}:stock=${state.quantity}:layers=${layerQty}:issue=${quantity}`
+            );
+          }
           totalCost=result.totalCost;
           unitCost=result.unitCost;
           const nextById=new Map(result.state.layers.map(l=>[l.layerId,l]));
@@ -301,6 +362,9 @@ export class SqliteInventoryValuationHistoricalRebuildService {
         state.totalCost-=totalCost;
         entries.push({m:movement,kind:"outbound",quantity,unitCost,totalCost:-totalCost,policy});
       }
+      state.lastMethod=policy.method;
+      state.lastMovementId=movement.movement_id;
+      state.lastValuationEntryId=`valuation:${movement.movement_id}`;
       states.set(key,state);
       remember(movement,state,policy);
     }
