@@ -114,6 +114,7 @@ export function InventoryValuationWorkspacePage() {
     readonly MissingInventoryValuationDisplay[]
   >([]);
   const [retryingValuation, setRetryingValuation] = useState(false);
+  const [rebuildingProductId, setRebuildingProductId] = useState<string | null>(null);
   const [status, setStatus] =
     useState<InventoryValuationRecalculationStatusReport | null>(null);
   const [policies, setPolicies] = useState<
@@ -349,6 +350,37 @@ export function InventoryValuationWorkspacePage() {
     }
   }
 
+
+  async function rebuildHistoricalValuation(
+    row: MissingInventoryValuationDisplay,
+  ): Promise<void> {
+    if (!services || !activeContext.companyId || !session) return;
+    setRebuildingProductId(row.productId);
+    setError("");
+    setSuccess("");
+    try {
+      const result = await services.rebuildHistoricalValuation({
+        companyId: activeContext.companyId,
+        productId: row.productId,
+        actorId: session.user.id,
+        requestId: `valuation-historical-rebuild:${row.productId}:${Date.now()}`,
+        occurredAt: new Date().toISOString(),
+      });
+      await refreshUnresolvedWorkspace();
+      setSuccess(
+        `بازسازی تاریخی کنترل‌شده انجام شد؛ ${result.rebuiltMovementCount} حرکت برای این کالا دوباره ارزش‌گذاری شد.`,
+      );
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "بازسازی تاریخی ارزش‌گذاری ناموفق بود.",
+      );
+    } finally {
+      setRebuildingProductId(null);
+    }
+  }
+
   async function setInboundCost(
     row: InventoryInboundCostCandidate,
     unitCost: string,
@@ -554,7 +586,9 @@ export function InventoryValuationWorkspacePage() {
           <ValuationMissingEntriesPanel
             rows={missingValuations}
             retrying={retryingValuation}
+            rebuildingProductId={rebuildingProductId}
             onRetry={retryMissingValuation}
+            onRebuild={rebuildHistoricalValuation}
           />
           <ValuationInboundCostPanel
             rows={inboundCostCandidates}
