@@ -158,7 +158,10 @@ test("unresolved workspace exposes movements that have no valuation entry and a 
   assert.match(page,/retryMissingValuation/);
   assert.match(panels,/حرکت‌های بدون ارزش‌گذاری/);
   assert.match(panels,/تلاش برای تکمیل ارزش‌گذاری/);
+  assert.match(panels,/بازسازی تاریخی کنترل‌شده/);
+  assert.match(page,/rebuildHistoricalValuation/);
   assert.match(services,/readMissingValuations/);
   assert.match(services,/e\.valuation_entry_id IS NULL/);
   assert.match(services,/blockedByLaterValuation/);
+  assert.match(services,/SqliteInventoryValuationHistoricalRebuildService/);
 });
