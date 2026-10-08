@@ -93,12 +93,6 @@ function unitCostFrom(total:number,quantity:string){
   if(!Number.isFinite(q)||q<=0) throw new Error("VALUATION_HISTORICAL_INVALID_QUANTITY");
   return String(total/q);
 }
-function sumFifoQty(layers:readonly InventoryFifoLayerState[]){
-  return layers.reduce((sum,l)=>addQty(sum,l.remainingQuantity),"0");
-}
-function sumFifoCost(layers:readonly InventoryFifoLayerState[]){
-  return layers.reduce((sum,l)=>sum+l.remainingCost,0);
-}
 function effectivePolicy(policies:readonly PolicyRow[],date:string):PolicyRow|null{
   const eligible=policies.filter(p=>p.effective_from<=date);
   return eligible.at(-1)??null;

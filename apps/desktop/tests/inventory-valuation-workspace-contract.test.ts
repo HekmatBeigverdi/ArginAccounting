@@ -162,6 +162,8 @@ test("unresolved workspace exposes movements that have no valuation entry and a 
   assert.match(page,/rebuildHistoricalValuation/);
   assert.match(services,/readMissingValuations/);
   assert.match(services,/e\.valuation_entry_id IS NULL/);
-  assert.match(services,/blockedByLaterValuation/);
+  assert.match(services,/liveValuation\.diagnoseMovement\(/);
+  assert.match(services,/requiresHistoricalRebuild:\s*diagnostic !== null && !diagnostic\.incrementallyProcessable/);
+  assert.match(services,/diagnosticReason: diagnostic\?\.reason \?\? null/);
   assert.match(services,/SqliteInventoryValuationHistoricalRebuildService/);
 });
