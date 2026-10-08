@@ -263,6 +263,84 @@ test("creates no VAT component for zero-tax lines", () => {
   assert.equal(posting.totalCredit, 100_000);
 });
 
+
+test("zero-rate tax definition creates no Output VAT resolution/component", () => {
+  const invoice = createSalesInvoice({
+    documentId: "sales-invoice-zero-rate-tax",
+    companyId: "company-001",
+    branchId: "branch-001",
+    fiscalYearId: "fy-1405",
+    customer: {
+      partyId: "customer-001",
+      code: "C-001",
+      displayName: "Customer",
+    },
+    businessDate: "2026-10-06",
+    capturedAt: "2026-10-06T12:00:00.000Z",
+    lines: [
+      {
+        lineId: "line-1",
+        position: 1,
+        lineKind: "service",
+        productId: "service-001",
+        commercialTerms: {
+          quantity: 1,
+          currency: "IRR",
+          unitPrice: 100_000,
+          priceOrigin: "manual",
+          taxes: [{
+            taxId: "vat-zero",
+            taxCode: "VAT",
+            rateBasisPoints: 0,
+          }],
+        },
+      },
+    ],
+  });
+  const commercial = createSalesCommercialPostingInput({
+    source: createSalesPostingSourceIdentity({
+      sourceType: "sales-invoice",
+      sourceDocumentId: invoice.document.documentId,
+      sourceVersion: 1,
+    }),
+    document: invoice.document,
+    commercialSnapshots: invoice.commercialSnapshots,
+    documentTotals: invoice.totals,
+  });
+
+  assert.equal(commercial.lines[0]?.terms.taxes.length, 1);
+  assert.equal(commercial.lines[0]?.totals.taxAmount, 0);
+
+  const posting = calculateSalesCommercialPosting({
+    commercial,
+    accountsReceivable: arResolution(),
+    revenueByLine: [{
+      lineId: "line-1",
+      resolution: {
+        ruleId: "rev",
+        accountRole: SALES_REVENUE_ACCOUNT_ROLE,
+        lineKind: "service",
+        account: {
+          accountId: "revenue",
+          companyId: "company-001",
+          code: "4102",
+          name: "Revenue",
+          status: "active",
+          postingAllowed: true,
+        },
+      },
+    }],
+    outputVatByLine: [],
+  });
+
+  assert.equal(
+    posting.components.some((component) => component.role === "output-vat"),
+    false,
+  );
+  assert.equal(posting.totalDebit, 100_000);
+  assert.equal(posting.totalCredit, 100_000);
+});
+
 test("rejects AR resolution for another customer or company", () => {
   assertDomainError(
     () => calculateSalesCommercialPosting({
