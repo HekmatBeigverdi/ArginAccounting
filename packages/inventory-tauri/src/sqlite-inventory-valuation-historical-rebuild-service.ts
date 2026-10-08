@@ -96,6 +96,9 @@ function unitCostFrom(total:number,quantity:string){
   if(!Number.isFinite(q)||q<=0) throw new Error("VALUATION_HISTORICAL_INVALID_QUANTITY");
   return String(total/q);
 }
+function sumFifoQty(layers:readonly { readonly remainingQuantity:string }[]):string{
+  return layers.reduce((sum,layer)=>addQty(sum,layer.remainingQuantity),"0");
+}
 function effectivePolicy(policies:readonly PolicyRow[],date:string):PolicyRow|null{
   const eligible=policies.filter(p=>p.effective_from<=date);
   return eligible.at(-1)??null;
@@ -252,7 +255,7 @@ export class SqliteInventoryValuationHistoricalRebuildService {
               `VALUATION_HISTORICAL_REBUILD_FIFO_INSUFFICIENT:${source.movement_id}:${source.business_date}:stock=${sourceState.quantity}:layers=${layerQty}:issue=${quantity}`
             );
           }
-          carriedCost=result.totalCost;
+          carriedCost=-result.totalCost;
           unitCost=result.unitCost;
           const nextById=new Map(result.state.layers.map(l=>[l.layerId,l]));
           for(const layer of sourceState.fifoLayers){
@@ -339,7 +342,7 @@ export class SqliteInventoryValuationHistoricalRebuildService {
               `VALUATION_HISTORICAL_REBUILD_FIFO_INSUFFICIENT:${movement.movement_id}:${movement.business_date}:stock=${state.quantity}:layers=${layerQty}:issue=${quantity}`
             );
           }
-          totalCost=result.totalCost;
+          totalCost=-result.totalCost;
           unitCost=result.unitCost;
           const nextById=new Map(result.state.layers.map(l=>[l.layerId,l]));
           for(const layer of state.fifoLayers){
@@ -355,7 +358,7 @@ export class SqliteInventoryValuationHistoricalRebuildService {
               {quantity,currency:policy.currency as never},
             );
           }catch{throw new Error("VALUATION_HISTORICAL_REBUILD_MWA_INVALID");}
-          totalCost=result.totalCost;
+          totalCost=-result.totalCost;
           unitCost=result.unitCost;
         }
         state.quantity=subQty(state.quantity,quantity);
