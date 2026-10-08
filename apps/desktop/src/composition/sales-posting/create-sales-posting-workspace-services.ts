@@ -355,7 +355,7 @@ export function createSalesPostingWorkspaceServices(input: {
       [companyId, sourceId],
     );
 
-  return Object.freeze({
+  return Object.freeze<SalesPostingWorkspaceServices>({
     canView: can(PERMISSIONS.view),
     canExecute: can(PERMISSIONS.execute),
     canRecover: can(PERMISSIONS.recover),

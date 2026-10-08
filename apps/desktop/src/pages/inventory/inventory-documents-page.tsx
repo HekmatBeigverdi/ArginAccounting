@@ -592,6 +592,7 @@ export function InventoryDocumentsPage() {
           && selected.sourceReference?.sourceSystem === "sales"
           && selected.sourceReference.documentType === "sales-invoice"
           && selected.sourceReference.documentId
+          && selected.scope?.branchId
           && session
         ) {
           try {
