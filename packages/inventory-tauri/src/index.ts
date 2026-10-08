@@ -72,3 +72,10 @@ export type {
   InventoryTabularRow,
 } from "./inventory-tabular-codec.ts";
 export { SqliteInventorySourceCostInputService } from "./sqlite-inventory-source-cost-input-service.ts";
+
+export {
+  SqliteInventoryValuationHistoricalRebuildService,
+} from "./sqlite-inventory-valuation-historical-rebuild-service.ts";
+export type {
+  HistoricalValuationRebuildResult,
+} from "./sqlite-inventory-valuation-historical-rebuild-service.ts";
