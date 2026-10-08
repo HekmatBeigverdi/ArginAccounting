@@ -89,6 +89,12 @@ test("historical rebuild bridges remaining MWA state into FIFO at policy transit
   assert.equal(transitionWrite.params[15], 800);
   assert.equal(transitionWrite.params[16], 500);
 
+  const idempotencyWrite = writes.find((write) =>
+    write.sql.includes("INSERT INTO inventory_valuation_idempotency")
+  );
+  assert.ok(idempotencyWrite, "expected rebuild idempotency outcome");
+  assert.equal(idempotencyWrite.params[4], "recalculation");
+
   const fifoOutbound = writes.find(
     (write) =>
       write.sql.includes("INSERT INTO inventory_valuation_entries")
