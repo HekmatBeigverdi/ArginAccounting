@@ -38,6 +38,19 @@ export type InventoryResolvedInboundCostDisplay = InventoryResolvedInboundCost &
   readonly warehouseLabel: string;
 };
 
+export interface MissingInventoryValuationDisplay {
+  readonly movementId: string;
+  readonly documentId: string;
+  readonly documentLabel: string;
+  readonly productId: string;
+  readonly productLabel: string;
+  readonly warehouseId: string;
+  readonly warehouseLabel: string;
+  readonly businessDate: string;
+  readonly quantityDelta: string;
+  readonly blockedByLaterValuation: boolean;
+}
+
 type DocumentLabelRow = { id: string; document_number: string | null };
 type ProductLabelRow = { id: string; code: string; title: string };
 type WarehouseLabelRow = { id: string; code: string; title: string };
@@ -104,6 +117,20 @@ export interface InventoryValuationWorkspaceServices {
     fromBusinessDate: string | null;
     limit: number;
   }): Promise<readonly InventoryInboundCostDisplayCandidate[]>;
+
+  readMissingValuations(query: {
+    companyId: string;
+    branchId: string | null;
+    productId: string | null;
+    warehouseId: string | null;
+    fromBusinessDate: string | null;
+    limit: number;
+  }): Promise<readonly MissingInventoryValuationDisplay[]>;
+
+  retryValuationCatchUp(companyId: string): Promise<{
+    readonly processedMovementCount: number;
+    readonly blockedMovementCount: number;
+  }>;
 
   readResolvedInboundCosts(query: {
     companyId: string;
@@ -320,6 +347,80 @@ export function createInventoryValuationWorkspaceServices(
         candidates,
       );
       return addBusinessLabels(query.companyId, activeCandidates);
+    },
+    async readMissingValuations(query) {
+      requireViewPermission();
+      requireBranchAccess(query.branchId);
+      await catchUp(query.companyId);
+
+      const clauses = [
+        "m.company_id=?",
+        "e.valuation_entry_id IS NULL",
+        "m.transfer_id IS NULL",
+        "m.reversal_of_movement_id IS NULL",
+        "m.quantity_delta LIKE '-%'",
+        "m.quantity_delta<>'-0'",
+        "NOT EXISTS (SELECT 1 FROM inventory_all_stock_movements rv WHERE rv.company_id=m.company_id AND rv.reversal_of_movement_id=m.movement_id)",
+      ];
+      const params: Array<string | number | null> = [query.companyId];
+      if (query.productId) {
+        clauses.push("m.product_id=?");
+        params.push(query.productId);
+      }
+      if (query.warehouseId) {
+        clauses.push("m.warehouse_id=?");
+        params.push(query.warehouseId);
+      }
+      if (query.fromBusinessDate) {
+        clauses.push("m.business_date>=?");
+        params.push(query.fromBusinessDate);
+      }
+
+      const rows = await database.query<{
+        movement_id:string;document_id:string;product_id:string;warehouse_id:string;
+        business_date:string;business_order:number;line_id:string;quantity_delta:string;
+        blocked_by_later:number;
+      }>(
+        `SELECT m.movement_id,m.document_id,m.product_id,m.warehouse_id,
+                m.business_date,m.business_order,m.line_id,m.quantity_delta,
+                CASE WHEN EXISTS(
+                  SELECT 1 FROM inventory_valuation_entries later
+                  WHERE later.company_id=m.company_id
+                    AND later.product_id=m.product_id
+                    AND (
+                      later.business_date>m.business_date
+                      OR (later.business_date=m.business_date AND later.business_order>m.business_order)
+                      OR (later.business_date=m.business_date AND later.business_order=m.business_order AND later.document_id>m.document_id)
+                      OR (later.business_date=m.business_date AND later.business_order=m.business_order AND later.document_id=m.document_id AND later.line_id>m.line_id)
+                      OR (later.business_date=m.business_date AND later.business_order=m.business_order AND later.document_id=m.document_id AND later.line_id=m.line_id AND later.movement_id>m.movement_id)
+                    )
+                ) THEN 1 ELSE 0 END blocked_by_later
+           FROM inventory_all_stock_movements m
+           LEFT JOIN inventory_valuation_entries e
+             ON e.company_id=m.company_id AND e.movement_id=m.movement_id
+          WHERE ${clauses.join(" AND ")}
+          ORDER BY m.business_date,m.business_order,m.document_id,m.line_id,m.movement_id
+          LIMIT ?`,
+        [...params, query.limit],
+      );
+
+      const labelled = await addBusinessLabels(
+        query.companyId,
+        rows.map(row => ({
+          movementId: row.movement_id,
+          documentId: row.document_id,
+          productId: row.product_id,
+          warehouseId: row.warehouse_id,
+          businessDate: row.business_date,
+          quantityDelta: row.quantity_delta,
+          blockedByLaterValuation: row.blocked_by_later === 1,
+        })),
+      );
+      return Object.freeze(labelled);
+    },
+    async retryValuationCatchUp(companyId) {
+      requireViewPermission();
+      return liveValuation.catchUpCompany(companyId, new Date().toISOString());
     },
     async readResolvedInboundCosts(query) {
       requireViewPermission();
