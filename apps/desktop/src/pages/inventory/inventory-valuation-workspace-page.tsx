@@ -24,11 +24,13 @@ import {
   createInventoryValuationWorkspaceServices,
   type InventoryResolvedInboundCostDisplay,
   type InventoryValuationWorkspaceServices,
+  type MissingInventoryValuationDisplay,
 } from "../../composition/inventory/create-inventory-valuation-workspace-services";
 import { createInventoryValuationTraceService } from "../../composition/inventory/create-inventory-valuation-trace-service";
 import {
   ValuationInboundCostPanel,
   ValuationKardexPanel,
+  ValuationMissingEntriesPanel,
   ValuationLayersPanel,
   ValuationOverviewPanel,
   ValuationPolicyPanel,
@@ -108,6 +110,10 @@ export function InventoryValuationWorkspacePage() {
   const [resolvedInboundCosts, setResolvedInboundCosts] = useState<
     readonly InventoryResolvedInboundCostDisplay[]
   >([]);
+  const [missingValuations, setMissingValuations] = useState<
+    readonly MissingInventoryValuationDisplay[]
+  >([]);
+  const [retryingValuation, setRetryingValuation] = useState(false);
   const [status, setStatus] =
     useState<InventoryValuationRecalculationStatusReport | null>(null);
   const [policies, setPolicies] = useState<
@@ -225,17 +231,19 @@ export function InventoryValuationWorkspacePage() {
     if (!services || !activeContext.companyId) return;
     const query = createUnresolvedQuery(activeContext.companyId);
 
-    const [unresolvedReport, candidates, registeredCosts, recalculationStatus] =
+    const [unresolvedReport, candidates, registeredCosts, missingRows, recalculationStatus] =
       await Promise.all([
         services.readUnresolved(query),
         services.readInboundCostCandidates(query),
         services.readResolvedInboundCosts(query),
+        services.readMissingValuations(query),
         services.readStatus(activeContext.companyId, productId || null),
       ]);
 
     setUnresolved(unresolvedReport);
     setInboundCostCandidates(candidates);
     setResolvedInboundCosts(registeredCosts);
+    setMissingValuations(missingRows);
     setStatus(recalculationStatus);
   }
 
@@ -314,6 +322,31 @@ export function InventoryValuationWorkspacePage() {
   async function openTrace(movementId: string): Promise<void> {
     if (traceReader && activeContext.companyId)
       setTrace(await traceReader(activeContext.companyId, movementId));
+  }
+
+
+  async function retryMissingValuation(): Promise<void> {
+    if (!services || !activeContext.companyId) return;
+    setRetryingValuation(true);
+    setError("");
+    setSuccess("");
+    try {
+      const result = await services.retryValuationCatchUp(activeContext.companyId);
+      await refreshUnresolvedWorkspace();
+      setSuccess(
+        result.blockedMovementCount > 0
+          ? `تکمیل خودکار انجام شد؛ ${result.processedMovementCount} حرکت تکمیل شد و ${result.blockedMovementCount} حرکت به بازسازی تاریخی نیاز دارد.`
+          : `ارزش‌گذاری تکمیل شد؛ ${result.processedMovementCount} حرکت پردازش شد.`,
+      );
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "تکمیل ارزش‌گذاری ناموفق بود.",
+      );
+    } finally {
+      setRetryingValuation(false);
+    }
   }
 
   async function setInboundCost(
@@ -518,6 +551,11 @@ export function InventoryValuationWorkspacePage() {
       )}
       {activeTab === "unresolved" && (
         <>
+          <ValuationMissingEntriesPanel
+            rows={missingValuations}
+            retrying={retryingValuation}
+            onRetry={retryMissingValuation}
+          />
           <ValuationInboundCostPanel
             rows={inboundCostCandidates}
             canResolve={services?.canResolveCostInput ?? false}
