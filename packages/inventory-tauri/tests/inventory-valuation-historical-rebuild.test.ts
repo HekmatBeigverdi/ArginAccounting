@@ -84,10 +84,10 @@ test("historical rebuild bridges remaining MWA state into FIFO at policy transit
       && String(write.params[0]).startsWith("fifo-transition:policy-fifo:"),
   );
   assert.ok(transitionWrite, "expected an MWA -> FIFO transition layer");
-  assert.equal(transitionWrite.params[13], "8");
-  assert.equal(transitionWrite.params[14], "5");
-  assert.equal(transitionWrite.params[16], 800);
-  assert.equal(transitionWrite.params[17], 500);
+  assert.equal(transitionWrite.params[12], "8");
+  assert.equal(transitionWrite.params[13], "5");
+  assert.equal(transitionWrite.params[15], 800);
+  assert.equal(transitionWrite.params[16], 500);
 
   const fifoOutbound = writes.find(
     (write) =>
