@@ -718,12 +718,29 @@ export function ValuationMissingEntriesPanel({
                     <td><ReadableLabel value={row.warehouseLabel} fallback={row.warehouseId} /></td>
                     <td>{row.quantityDelta}</td>
                     <td>
-                      {row.blockedByLaterValuation
+                      {row.requiresHistoricalRebuild
                         ? "نیازمند بازسازی تاریخی"
                         : "قابل تکمیل خودکار"}
+                      {row.diagnosticReason && row.requiresHistoricalRebuild && (
+                        <small className="valuation-diagnostic-reason">
+                          {row.diagnosticReason === "later-valuation-exists"
+                            ? " — پس از این حرکت، ارزش‌گذاری جدیدتری وجود دارد."
+                            : row.diagnosticReason === "prior-state-missing"
+                              ? " — وضعیت ریالی قبلی برای این تاریخ قابل اتکا نیست."
+                              : row.diagnosticReason === "fifo-layer-missing"
+                                ? " — لایه FIFO لازم برای این تاریخ در projection فعلی موجود نیست."
+                                : row.diagnosticReason === "fifo-insufficient"
+                                  ? " — لایه FIFO فعلی برای بازسازی تدریجی کافی نیست."
+                                  : row.diagnosticReason === "moving-average-invalid"
+                                    ? " — وضعیت میانگین موزون فعلی برای پردازش تدریجی کافی نیست."
+                                    : row.diagnosticReason === "policy-missing"
+                                      ? " — سیاست ارزش‌گذاری مؤثر برای این تاریخ یافت نشد."
+                                      : ""}
+                        </small>
+                      )}
                     </td>
                     <td className="valuation-action-cell">
-                      {row.blockedByLaterValuation ? (
+                      {row.requiresHistoricalRebuild ? (
                         <button
                           type="button"
                           className="valuation-secondary-action"
@@ -743,7 +760,7 @@ export function ValuationMissingEntriesPanel({
               </tbody>
             </table>
           </div>
-          {rows.some((row) => !row.blockedByLaterValuation) && (
+          {rows.some((row) => !row.requiresHistoricalRebuild) && (
             <div className="valuation-section__actions">
               <button
                 type="button"
