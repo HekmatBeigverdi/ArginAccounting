@@ -30,7 +30,10 @@ export type {
   InventoryBootstrapValuationMethod,
 } from "./sqlite-inventory-valuation-bootstrap-service.ts";
 export { SqliteInventoryValuationLiveService } from "./sqlite-inventory-valuation-live-service.ts";
-export type { InventoryValuationCatchUpResult } from "./sqlite-inventory-valuation-live-service.ts";
+export type {
+  InventoryValuationCatchUpDiagnostic,
+  InventoryValuationCatchUpResult,
+} from "./sqlite-inventory-valuation-live-service.ts";
 export {
   SqliteInventoryInboundCostInputService,
 } from "./sqlite-inventory-inbound-cost-input-service.ts";
