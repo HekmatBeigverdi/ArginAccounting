@@ -49,7 +49,15 @@ export interface MissingInventoryValuationDisplay {
   readonly warehouseLabel: string;
   readonly businessDate: string;
   readonly quantityDelta: string;
-  readonly blockedByLaterValuation: boolean;
+  readonly requiresHistoricalRebuild: boolean;
+  readonly diagnosticReason:
+    | "later-valuation-exists"
+    | "policy-missing"
+    | "prior-state-missing"
+    | "fifo-layer-missing"
+    | "fifo-insufficient"
+    | "moving-average-invalid"
+    | null;
 }
 
 type DocumentLabelRow = { id: string; document_number: string | null };
@@ -395,22 +403,9 @@ export function createInventoryValuationWorkspaceServices(
       const rows = await database.query<{
         movement_id:string;document_id:string;product_id:string;warehouse_id:string;
         business_date:string;business_order:number;line_id:string;quantity_delta:string;
-        blocked_by_later:number;
       }>(
         `SELECT m.movement_id,m.document_id,m.product_id,m.warehouse_id,
-                m.business_date,m.business_order,m.line_id,m.quantity_delta,
-                CASE WHEN EXISTS(
-                  SELECT 1 FROM inventory_valuation_entries later
-                  WHERE later.company_id=m.company_id
-                    AND later.product_id=m.product_id
-                    AND (
-                      later.business_date>m.business_date
-                      OR (later.business_date=m.business_date AND later.business_order>m.business_order)
-                      OR (later.business_date=m.business_date AND later.business_order=m.business_order AND later.document_id>m.document_id)
-                      OR (later.business_date=m.business_date AND later.business_order=m.business_order AND later.document_id=m.document_id AND later.line_id>m.line_id)
-                      OR (later.business_date=m.business_date AND later.business_order=m.business_order AND later.document_id=m.document_id AND later.line_id=m.line_id AND later.movement_id>m.movement_id)
-                    )
-                ) THEN 1 ELSE 0 END blocked_by_later
+                m.business_date,m.business_order,m.line_id,m.quantity_delta
            FROM inventory_all_stock_movements m
            LEFT JOIN inventory_valuation_entries e
              ON e.company_id=m.company_id AND e.movement_id=m.movement_id
@@ -420,17 +415,29 @@ export function createInventoryValuationWorkspaceServices(
         [...params, query.limit],
       );
 
+      const diagnosed = await Promise.all(
+        rows.map(async (row) => {
+          const diagnostic = await liveValuation.diagnoseMovement(
+            query.companyId,
+            row.movement_id,
+          );
+          return {
+            movementId: row.movement_id,
+            documentId: row.document_id,
+            productId: row.product_id,
+            warehouseId: row.warehouse_id,
+            businessDate: row.business_date,
+            quantityDelta: row.quantity_delta,
+            requiresHistoricalRebuild:
+              diagnostic !== null && !diagnostic.incrementallyProcessable,
+            diagnosticReason: diagnostic?.reason ?? null,
+          };
+        }),
+      );
+
       const labelled = await addBusinessLabels(
         query.companyId,
-        rows.map(row => ({
-          movementId: row.movement_id,
-          documentId: row.document_id,
-          productId: row.product_id,
-          warehouseId: row.warehouse_id,
-          businessDate: row.business_date,
-          quantityDelta: row.quantity_delta,
-          blockedByLaterValuation: row.blocked_by_later === 1,
-        })),
+        diagnosed,
       );
       return Object.freeze(labelled);
     },
