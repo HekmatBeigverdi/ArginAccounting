@@ -53,11 +53,40 @@ export interface HistoricalValuationRebuildResult {
 const absQty=(value:string)=>value.startsWith("-")?value.slice(1):value;
 const stockKey=(m:MovementRow)=>[m.warehouse_id,m.zone_id??"",m.location_id??""].join("|");
 const addQty=(a:string,b:string)=>addInventoryStockQuantities(a,b);
-function compareQty(a:string,b:string){return Number(a)-Number(b);}
+interface DecimalQuantity { readonly coefficient: bigint; readonly scale: number; }
+function decimalQuantity(value:string):DecimalQuantity{
+  const normalized=value.trim();
+  const negative=normalized.startsWith("-");
+  const unsigned=negative?normalized.slice(1):normalized;
+  const [whole="0",fraction=""]=unsigned.split(".");
+  return {
+    coefficient:BigInt(`${negative?"-":""}${whole}${fraction}`),
+    scale:fraction.length,
+  };
+}
+function power10(scale:number){return 10n**BigInt(scale);}
+function formatQuantity(coefficient:bigint,scale:number){
+  const negative=coefficient<0n;
+  const digits=(negative?-coefficient:coefficient).toString().padStart(scale+1,"0");
+  const unsigned=scale===0?digits:`${digits.slice(0,-scale)}.${digits.slice(-scale)}`;
+  const trimmed=scale===0?unsigned:unsigned.replace(/\.0+$/u,"").replace(/(\.\d*?)0+$/u,"$1");
+  return `${negative?"-":""}${trimmed}`;
+}
+function compareQty(a:string,b:string){
+  const left=decimalQuantity(a),right=decimalQuantity(b);
+  const scale=Math.max(left.scale,right.scale);
+  const aa=left.coefficient*power10(scale-left.scale);
+  const bb=right.coefficient*power10(scale-right.scale);
+  return aa===bb?0:aa<bb?-1:1;
+}
 function subQty(a:string,b:string){
-  const value=Number(a)-Number(b);
-  if(value<0) throw new Error("VALUATION_HISTORICAL_NEGATIVE_STOCK");
-  return String(value);
+  const left=decimalQuantity(a),right=decimalQuantity(b);
+  const scale=Math.max(left.scale,right.scale);
+  const value=
+    left.coefficient*power10(scale-left.scale)
+    - right.coefficient*power10(scale-right.scale);
+  if(value<0n) throw new Error("VALUATION_HISTORICAL_NEGATIVE_STOCK");
+  return formatQuantity(value,scale);
 }
 function unitCostFrom(total:number,quantity:string){
   const q=Number(quantity);
