@@ -226,8 +226,8 @@ export class SqliteInventoryValuationHistoricalRebuildService {
         if(!source||!destination) throw new Error("VALUATION_HISTORICAL_REBUILD_TRANSFER_INVALID");
         processedTransfers.add(transferKey);
 
-        const sourceState=states.get(stockKey(source))??{quantity:"0",totalCost:0,fifoLayers:[]};
-        const destinationState=states.get(stockKey(destination))??{quantity:"0",totalCost:0,fifoLayers:[]};
+        const sourceState=states.get(stockKey(source))??{quantity:"0",totalCost:0,lastMethod:null,lastMovementId:null,lastValuationEntryId:null,fifoLayers:[]};
+        const destinationState=states.get(stockKey(destination))??{quantity:"0",totalCost:0,lastMethod:null,lastMovementId:null,lastValuationEntryId:null,fifoLayers:[]};
         ensureFifoTransitionLayer(sourceState,source,policy);
         ensureFifoTransitionLayer(destinationState,destination,policy);
         const quantity=absQty(source.quantity_delta);
