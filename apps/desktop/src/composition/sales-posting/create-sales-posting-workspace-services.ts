@@ -567,16 +567,18 @@ export function createSalesPostingWorkspaceServices(input: {
               lineId:line.lineId,
               resolution:await resolveSalesRevenueAccount(revenueRules,{companyId,branchId,lineKind:line.lineKind,accountRole:"sales-revenue"},accounts),
             });
-            for (const tax of line.terms.taxes) {
-              const vatRules = rules.filter(r=>r.account_role==="output-vat").map(r=>createSalesOutputVatAccountRule({
-                ruleId:r.rule_id,companyId:r.company_id,branchId:r.branch_id,taxCode:r.tax_code,accountRole:"output-vat",accountId:r.account_id,priority:r.priority,active:r.active===1,
-              }));
-              outputVatByLine.push({
-                lineId:line.lineId,
-                resolution:await resolveSalesOutputVatAccount(vatRules,{
-                  companyId,branchId,taxId:tax.taxId,taxCode:tax.taxCode ?? null,rateBasisPoints:tax.rateBasisPoints,accountRole:"output-vat",
-                },accounts),
-              });
+            if (line.totals.taxAmount > 0) {
+              for (const tax of line.terms.taxes) {
+                const vatRules = rules.filter(r=>r.account_role==="output-vat").map(r=>createSalesOutputVatAccountRule({
+                  ruleId:r.rule_id,companyId:r.company_id,branchId:r.branch_id,taxCode:r.tax_code,accountRole:"output-vat",accountId:r.account_id,priority:r.priority,active:r.active===1,
+                }));
+                outputVatByLine.push({
+                  lineId:line.lineId,
+                  resolution:await resolveSalesOutputVatAccount(vatRules,{
+                    companyId,branchId,taxId:tax.taxId,taxCode:tax.taxCode ?? null,rateBasisPoints:tax.rateBasisPoints,accountRole:"output-vat",
+                  },accounts),
+                });
+              }
             }
           }
           const commercialPosting = calculateSalesCommercialPosting({
