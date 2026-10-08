@@ -465,7 +465,7 @@ export class SqliteInventoryValuationHistoricalRebuildService {
         [
           companyId,input.requestId,"inventory.valuation.historical-rebuild",
           JSON.stringify({productId,movementCount:active.length}),
-          "product-rebuild",productId,1,occurredAt.toISOString(),
+          "recalculation",productId,1,occurredAt.toISOString(),
         ],
       );
     });
