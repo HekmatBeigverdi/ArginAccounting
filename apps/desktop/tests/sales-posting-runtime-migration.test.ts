@@ -84,3 +84,12 @@ test("desktop runtime wires finalized Sales and confirmed Sales Issue into posti
   assert.match(composition, /SqliteJournalVoucherRepository/u);
   assert.match(composition, /sales_posting_idempotency/u);
 });
+
+test("Sales Posting composition skips Output VAT resolution when line tax total is zero", async () => {
+  const composition = await read(
+    "../src/composition/sales-posting/create-sales-posting-workspace-services.ts",
+  );
+
+  assert.match(composition, /if \(line\.totals\.taxAmount > 0\)/u);
+  assert.match(composition, /resolveSalesOutputVatAccount/u);
+});
