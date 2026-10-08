@@ -671,11 +671,15 @@ export function ValuationRegisteredCostPanel({
 export function ValuationMissingEntriesPanel({
   rows,
   retrying,
+  rebuildingProductId,
   onRetry,
+  onRebuild,
 }: {
   rows: readonly MissingInventoryValuationDisplay[];
   retrying: boolean;
+  rebuildingProductId: string | null;
   onRetry: () => Promise<void>;
+  onRebuild: (row: MissingInventoryValuationDisplay) => Promise<void>;
 }) {
   return (
     <section className="valuation-section">
@@ -700,7 +704,7 @@ export function ValuationMissingEntriesPanel({
             <table>
               <thead>
                 <tr>
-                  {["تاریخ","سند","کالا","انبار","تعداد","وضعیت"].map((header) => (
+                  {["تاریخ","سند","کالا","انبار","تعداد","وضعیت","عملیات"].map((header) => (
                     <th key={header}>{header}</th>
                   ))}
                 </tr>
@@ -718,21 +722,39 @@ export function ValuationMissingEntriesPanel({
                         ? "نیازمند بازسازی تاریخی"
                         : "قابل تکمیل خودکار"}
                     </td>
+                    <td className="valuation-action-cell">
+                      {row.blockedByLaterValuation ? (
+                        <button
+                          type="button"
+                          className="valuation-secondary-action"
+                          disabled={rebuildingProductId === row.productId}
+                          onClick={() => void onRebuild(row)}
+                        >
+                          {rebuildingProductId === row.productId
+                            ? "در حال بازسازی…"
+                            : "بازسازی تاریخی کنترل‌شده"}
+                        </button>
+                      ) : (
+                        <span className="valuation-muted">Catch-up</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="valuation-section__actions">
-            <button
-              type="button"
-              className="valuation-primary-action"
-              disabled={retrying}
-              onClick={() => void onRetry()}
-            >
-              {retrying ? "در حال تکمیل…" : "تلاش برای تکمیل ارزش‌گذاری"}
-            </button>
-          </div>
+          {rows.some((row) => !row.blockedByLaterValuation) && (
+            <div className="valuation-section__actions">
+              <button
+                type="button"
+                className="valuation-primary-action"
+                disabled={retrying}
+                onClick={() => void onRetry()}
+              >
+                {retrying ? "در حال تکمیل…" : "تلاش برای تکمیل ارزش‌گذاری"}
+              </button>
+            </div>
+          )}
         </>
       )}
     </section>
