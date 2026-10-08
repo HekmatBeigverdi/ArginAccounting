@@ -149,3 +149,16 @@ test("inventory valuation source references use canonical filenames",async()=>{
   const inventoryTauriIndex=await readFile(new URL("../../../packages/inventory-tauri/src/index.ts",import.meta.url),"utf8");
   assert.doesNotMatch(inventoryTauriIndex,/inbound-cost-input-service-v\d+/u);
 });
+
+test("unresolved workspace exposes movements that have no valuation entry and a catch-up action",async()=>{
+  const page=await readWorkspace();
+  const panels=await read("src/pages/inventory/inventory-valuation-panels.tsx");
+  const services=await read("src/composition/inventory/create-inventory-valuation-workspace-services.ts");
+  assert.match(page,/ValuationMissingEntriesPanel/);
+  assert.match(page,/retryMissingValuation/);
+  assert.match(panels,/حرکت‌های بدون ارزش‌گذاری/);
+  assert.match(panels,/تلاش برای تکمیل ارزش‌گذاری/);
+  assert.match(services,/readMissingValuations/);
+  assert.match(services,/e\.valuation_entry_id IS NULL/);
+  assert.match(services,/blockedByLaterValuation/);
+});
