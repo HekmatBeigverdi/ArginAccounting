@@ -637,13 +637,62 @@ export function createSalesPostingWorkspaceServices(input: {
                 companyId,branchId,salesLineId:valuation.salesLineId,productId:valuation.productId,movementId:valuation.movementId,valuationEntryId:valuation.valuationEntryId,warehouseId:valuation.warehouseId,accountRole:"inventory-asset",
               },accounts)});
             }
-            costPosting = calculateSalesCostPosting({
-              valuation:{sourceDocumentId:sourceId,companyId,ready:true,lines:valuationLines.map(({warehouseId,...line})=>line)},
-              cogsByLine,inventoryByLine,
-            });
+            costPosting = isReturn
+              ? calculateSalesReturnCostRestoration({
+                  commercial,
+                  lineage: returnLineage!,
+                  valuationLines: valuationLines.map((line) => {
+                    const lineage = returnLineage!.lines.find(
+                      (item) => item.returnLineId === line.salesLineId,
+                    );
+                    if (!lineage) {
+                      throw new Error("زنجیره ردیف برگشت از فروش کامل نیست.");
+                    }
+                    return {
+                      returnLineId: line.salesLineId,
+                      originalInvoiceLineId: lineage.originalInvoiceLineId,
+                      productId: line.productId,
+                      inventoryDocumentId: line.inventoryDocumentId,
+                      inventoryLineId: line.inventoryLineId,
+                      movementId: line.movementId,
+                      warehouseId: line.warehouseId,
+                      valuationEntryId: line.valuationEntryId,
+                      method: line.method,
+                      strategyVersion: line.strategyVersion,
+                      currency: line.currency,
+                      quantity: line.quantity,
+                      unitCost: line.unitCost,
+                      totalCost: line.totalCost,
+                      valuedAt: line.valuedAt,
+                      revision: line.revision,
+                    };
+                  }),
+                  cogsByLine,
+                  inventoryByLine,
+                })
+              : calculateSalesCostPosting({
+                  valuation:{
+                    sourceDocumentId:sourceId,
+                    companyId,
+                    ready:true,
+                    lines:valuationLines.map(
+                      ({warehouseId,inventoryDocumentId,inventoryLineId,...line})=>line
+                    ),
+                  },
+                  cogsByLine,
+                  inventoryByLine,
+                });
           }
 
-          const components = salesJournalComponentsFromInvoice({commercial:commercialPosting,cost:costPosting});
+          const components = isReturn
+            ? salesJournalComponentsFromReturn({
+                commercial: commercialPosting as any,
+                cost: costPosting,
+              })
+            : salesJournalComponentsFromInvoice({
+                commercial: commercialPosting as any,
+                cost: costPosting,
+              });
           const journalId = journalIdFor(sourceId,persisted.version);
           const requestId = `sales-post:${sourceId}:v${persisted.version}`;
           const fingerprint = await sha256Hex(JSON.stringify({
@@ -713,13 +762,13 @@ export function createSalesPostingWorkspaceServices(input: {
             [journalId,nextVersion,now,now,postingId],
           );
 
-          const idempotencyKey = `sales:sales-invoice:${encodeURIComponent(sourceId)}:v${persisted.version}:purpose:accounting-recognition`;
+          const idempotencyKey = `sales:${sourceType}:${encodeURIComponent(sourceId)}:v${persisted.version}:purpose:accounting-recognition`;
           await session.execute(
             `INSERT INTO sales_posting_idempotency(
               idempotency_key,company_id,source_type,source_document_id,source_version,purpose,
               payload_fingerprint,posting_id,journal_voucher_id,committed_posting_version,committed_at_utc
             ) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-            [idempotencyKey,companyId,"sales-invoice",sourceId,persisted.version,"accounting-recognition",fingerprint,postingId,journalId,nextVersion,now],
+            [idempotencyKey,companyId,sourceType,sourceId,persisted.version,"accounting-recognition",fingerprint,postingId,journalId,nextVersion,now],
           );
 
           const eventId = `sales-posting-committed:${postingId}`;
