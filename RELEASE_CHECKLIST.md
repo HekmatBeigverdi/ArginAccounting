@@ -39,6 +39,16 @@ cd ../../..
 
 If a dedicated `validate:phase23` script is present by Step 36, use it as the canonical wrapper and still record its observed output.
 
+For Phase 25 the canonical release gate is:
+
+```bash
+pnpm validate:phase25
+```
+
+It covers Sales Posting, Sales, Sales-Tauri, Inventory, Inventory-Tauri, Accounting, Accounting-Tauri, Security, Desktop, documentation generation/link validation, clean generated-doc diff, full monorepo typecheck/test/build/lint, and Tauri Rust `cargo check`.
+
+Phase 25 release-quality PASS must be based on observed execution of this gate (local or GitHub Actions), not on the existence of test files.
+
 Validation evidence must identify who executed local commands. Connector-side documentation must not claim local execution it did not perform.
 
 ## 4. Repository Validation
@@ -70,6 +80,14 @@ Phase 23 migration:
 0033_purchase_posting.sql
 ```
 
+Phase 25 migration:
+
+```text
+0037_sales_posting.sql
+```
+
+Phase 25 validation must cover Sales Posting state/rules, append-only idempotency and Journal provenance, Outbox evidence, exact replay, Sales Return source identity, and upgrade/fresh-database migration registration.
+
 Phase 23 integration evidence must exercise Purchase Posting persistence on real SQLite, including Posting Rules, expected-version CAS, append-only replay evidence, controlled reversal lineage, Journal linkage, rollback/failure recovery and exact replay. Upstream Purchase migrations 0030–0032 remain required input state.
 
 ## 6. Security and Scope
@@ -82,6 +100,8 @@ Phase 23 integration evidence must exercise Purchase Posting persistence on real
 - [ ] No production password, token, secret, or private environment value is committed.
 
 For Phase 23 verify independent Purchase Posting view/execute/trace/reverse permissions in addition to upstream Purchase document, receipt, matching and cost-resolution permissions. Source-owned Journals must not expose generic draft edit/delete mutations.
+
+For Phase 25 verify independent `sales.posting.view`, `sales.posting.execute`, `sales.posting.recover`, and `sales.posting.trace.view` permissions, Company/Branch scope enforcement, and source-owned Journal protection.
 
 ## 7. Bounded-Context Semantics
 
@@ -154,6 +174,20 @@ docs/phases/phase-23-release-notes.md
 ```
 
 Create `v0.23.0` only from the verified Phase 23 release commit on `main` after Step 36 validation and promotion.
+
+For Phase 25 the prepared version is:
+
+```text
+v0.25.0
+```
+
+Prepared notes:
+
+```text
+docs/phases/phase-25-release-notes.md
+```
+
+Create `v0.25.0` only from the verified Phase 25 release commit on `main` after Step 30 validation and merge.
 
 ## 12. Post-Release
 
