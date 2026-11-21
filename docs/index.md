@@ -7,6 +7,7 @@
 - [ArginAccounting Accounting Convention](accounting/accounting-convention.md)
 - [Accounting Engine](accounting/accounting-engine.md)
 - [Posting Engine](accounting/posting-engine.md)
+- [Sales Posting Reconciliation and Accounting Examples](accounting/sales-posting-reconciliation.md)
 
 ## adr
 
@@ -224,7 +225,9 @@
 - [Phase 23 — Purchase Posting & Accounting Integration — Fixed Implementation Plan](phases/phase-23-purchase-posting-plan.md)
 - [Phase 23 — Purchase Posting & Accounting Integration — Release Notes](phases/phase-23-release-notes.md)
 - [Phase 24 — Sales Workflow — Fixed Implementation Plan](phases/phase-24-sales-workflow-plan.md)
+- [ArginAccounting v0.25.0 — Sales Posting](phases/phase-25-release-notes.md)
 - [Phase 25 — Sales Posting — Implementation Plan](phases/phase-25-sales-posting-plan.md)
+- [Phase 25 — Sales Posting](phases/phase-25-sales-posting.md)
 - [Phase Documentation](phases/README.md)
 
 ## registries
