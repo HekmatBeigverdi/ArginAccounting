@@ -472,6 +472,8 @@ export function createSalesPostingWorkspaceServices(input: {
             strategyVersion: number; currency: string; quantity: string;
             unitCost: string; totalCost: number; valuedAt: string; revision: number;
             warehouseId: string;
+            inventoryDocumentId: string;
+            inventoryLineId: string;
           }> = [];
 
           if (stockLines.length > 0) {
@@ -533,8 +535,18 @@ export function createSalesPostingWorkspaceServices(input: {
                 await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceType,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-valuation",now});
                 return Object.freeze({status:"pending",retryAction:"wait",reason:"waiting-for-valuation",waitingLineIds:Object.freeze([salesLine.lineId]),journalVoucherId:null,committedPostingVersion:null});
               }
-              if (!mv.quantity_delta.startsWith("-") || mv.total_cost > 0) {
-                throw new Error("حرکت یا ارزش‌گذاری خروج فروش معتبر نیست.");
+              const movementSignValid = isReturn
+                ? !mv.quantity_delta.startsWith("-") && mv.quantity_delta !== "0"
+                : mv.quantity_delta.startsWith("-");
+              const valuationSignValid = isReturn
+                ? mv.total_cost >= 0
+                : mv.total_cost <= 0;
+              if (!movementSignValid || !valuationSignValid) {
+                throw new Error(
+                  isReturn
+                    ? "حرکت یا ارزش‌گذاری ورودی برگشت از فروش معتبر نیست."
+                    : "حرکت یا ارزش‌گذاری خروج فروش معتبر نیست.",
+                );
               }
               valuationLines.push({
                 salesLineId:salesLine.lineId,
@@ -550,6 +562,8 @@ export function createSalesPostingWorkspaceServices(input: {
                 valuedAt:mv.valued_at,
                 revision:mv.revision,
                 warehouseId:mv.warehouse_id,
+                inventoryDocumentId:issue.id,
+                inventoryLineId:issueLine.id,
               });
             }
           }
