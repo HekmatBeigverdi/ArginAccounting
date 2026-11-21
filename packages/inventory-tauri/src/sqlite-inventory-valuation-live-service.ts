@@ -49,6 +49,19 @@ export interface InventoryValuationCatchUpResult {
   readonly blockedMovementCount: number;
 }
 
+export interface InventoryValuationCatchUpDiagnostic {
+  readonly movementId: string;
+  readonly incrementallyProcessable: boolean;
+  readonly reason:
+    | "later-valuation-exists"
+    | "policy-missing"
+    | "prior-state-missing"
+    | "fifo-layer-missing"
+    | "fifo-insufficient"
+    | "moving-average-invalid"
+    | null;
+}
+
 const zoneKey = (value: string | null): string => value ?? "";
 
 function absoluteOutboundQuantity(value: string): string {
@@ -81,6 +94,171 @@ function sumFifoCost(layers: readonly InventoryFifoLayerState[]): number {
  */
 export class SqliteInventoryValuationLiveService {
   constructor(private readonly db: DatabaseExecutor) {}
+
+
+  async diagnoseMovement(
+    companyId: string,
+    movementId: string,
+  ): Promise<InventoryValuationCatchUpDiagnostic | null> {
+    const movement = await this.db.queryOne<MovementRow>(
+      `SELECT * FROM inventory_all_stock_movements
+       WHERE company_id=? AND movement_id=?`,
+      [companyId, movementId],
+    );
+    if (!movement) return null;
+
+    const laterEntry = await this.db.queryOne<{ ok: number }>(
+      `SELECT 1 ok
+       FROM inventory_valuation_entries e
+       WHERE e.company_id=? AND e.product_id=?
+         AND (
+           e.business_date>?
+           OR (e.business_date=? AND e.business_order>?)
+           OR (e.business_date=? AND e.business_order=? AND e.document_id>?)
+           OR (e.business_date=? AND e.business_order=? AND e.document_id=? AND e.line_id>?)
+           OR (e.business_date=? AND e.business_order=? AND e.document_id=? AND e.line_id=? AND e.movement_id>?)
+         )
+       LIMIT 1`,
+      [
+        companyId,
+        movement.product_id,
+        movement.business_date,
+        movement.business_date,
+        movement.business_order,
+        movement.business_date,
+        movement.business_order,
+        movement.document_id,
+        movement.business_date,
+        movement.business_order,
+        movement.document_id,
+        movement.line_id,
+        movement.business_date,
+        movement.business_order,
+        movement.document_id,
+        movement.line_id,
+        movement.movement_id,
+      ],
+    );
+    if (laterEntry) {
+      return Object.freeze({
+        movementId,
+        incrementallyProcessable: false,
+        reason: "later-valuation-exists" as const,
+      });
+    }
+
+    const policy = await this.db.queryOne<PolicyRow>(
+      `SELECT policy_id,method,strategy_version,currency,effective_from
+       FROM inventory_valuation_policies
+       WHERE company_id=? AND effective_from<=?
+       ORDER BY effective_from DESC,revision DESC
+       LIMIT 1`,
+      [companyId, movement.business_date],
+    );
+    if (!policy) {
+      return Object.freeze({
+        movementId,
+        incrementallyProcessable: false,
+        reason: "policy-missing" as const,
+      });
+    }
+
+    const previous = await this.db.queryOne<StateRow>(
+      `SELECT quantity,total_cost
+       FROM inventory_valuation_states
+       WHERE company_id=? AND product_id=? AND warehouse_id=?
+         AND zone_key=? AND location_key=? AND business_date<=?
+       ORDER BY business_date DESC
+       LIMIT 1`,
+      [
+        companyId,
+        movement.product_id,
+        movement.warehouse_id,
+        zoneKey(movement.zone_id),
+        zoneKey(movement.location_id),
+        movement.business_date,
+      ],
+    );
+    if (!previous || previous.total_cost === null) {
+      return Object.freeze({
+        movementId,
+        incrementallyProcessable: false,
+        reason: "prior-state-missing" as const,
+      });
+    }
+
+    const quantity = absoluteOutboundQuantity(movement.quantity_delta);
+
+    if (policy.method === "fifo") {
+      const layerRows = await this.db.query<LayerRow>(
+        `SELECT cost_layer_id,remaining_quantity,remaining_cost,currency
+         FROM inventory_valuation_cost_layers
+         WHERE company_id=? AND product_id=? AND warehouse_id=?
+           AND zone_id IS ? AND location_id IS ?
+           AND remaining_quantity<>'0'
+         ORDER BY opened_business_date,opened_business_order,cost_layer_id`,
+        [
+          companyId,
+          movement.product_id,
+          movement.warehouse_id,
+          movement.zone_id,
+          movement.location_id,
+        ],
+      );
+      if (layerRows.length === 0) {
+        return Object.freeze({
+          movementId,
+          incrementallyProcessable: false,
+          reason: "fifo-layer-missing" as const,
+        });
+      }
+      try {
+        fifoInventoryValuationStrategy.issue(
+          {
+            layers: layerRows.map((row) => ({
+              layerId: row.cost_layer_id,
+              remainingQuantity: row.remaining_quantity,
+              remainingCost: row.remaining_cost,
+              currency: row.currency as InventoryFifoLayerState["currency"],
+            })),
+          },
+          {
+            quantity,
+            currency: policy.currency as InventoryFifoLayerState["currency"],
+          },
+        );
+      } catch {
+        return Object.freeze({
+          movementId,
+          incrementallyProcessable: false,
+          reason: "fifo-insufficient" as const,
+        });
+      }
+    } else {
+      try {
+        movingAverageInventoryValuationStrategy.issue(
+          {
+            quantity: previous.quantity,
+            totalCost: previous.total_cost,
+            currency: policy.currency as never,
+          },
+          { quantity, currency: policy.currency as never },
+        );
+      } catch {
+        return Object.freeze({
+          movementId,
+          incrementallyProcessable: false,
+          reason: "moving-average-invalid" as const,
+        });
+      }
+    }
+
+    return Object.freeze({
+      movementId,
+      incrementallyProcessable: true,
+      reason: null,
+    });
+  }
 
   async catchUpCompany(companyId: string, occurredAt: string): Promise<InventoryValuationCatchUpResult> {
     if (!companyId.trim()) throw new Error("VALUATION_LIVE_INVALID:companyId");

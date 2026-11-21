@@ -1,3 +1,72 @@
+
+function describeUnknownError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim();
+  }
+  if (typeof error === "string" && error.trim()) {
+    return error.trim();
+  }
+  if (error && typeof error === "object") {
+    const candidate = error as Record<string, unknown>;
+    for (const key of ["message", "error", "cause", "code"]) {
+      const value = candidate[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim();
+      }
+    }
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {
+      // Fall through to the generic message.
+    }
+  }
+  return "خطای نامشخص";
+}
+
+function formatHistoricalRebuildError(error: unknown): string {
+  const message = describeUnknownError(error);
+
+  if (message.startsWith("VALUATION_HISTORICAL_REBUILD_FIFO_INSUFFICIENT:")) {
+    const [, movementId, businessDate, stock, layers, issue] = message.split(":");
+    return [
+      "بازسازی تاریخی به دلیل ناکافی‌بودن لایه‌های FIFO متوقف شد.",
+      movementId ? `Movement: ${movementId}` : "",
+      businessDate ? `تاریخ: ${businessDate}` : "",
+      stock ? stock.replace("stock=", "موجودی: ") : "",
+      layers ? layers.replace("layers=", "جمع لایه‌های FIFO: ") : "",
+      issue ? issue.replace("issue=", "مقدار خروج: ") : "",
+    ].filter(Boolean).join(" | ");
+  }
+
+  const known: Record<string, string> = {
+    VALUATION_HISTORICAL_REBUILD_POLICY_MISSING:
+      "برای این شرکت سیاست ارزش‌گذاری ثبت نشده است.",
+    VALUATION_HISTORICAL_REBUILD_POLICY_NOT_EFFECTIVE:
+      "برای یکی از تاریخ‌های حرکت، سیاست ارزش‌گذاری مؤثر وجود ندارد.",
+    VALUATION_HISTORICAL_REBUILD_COST_MISSING:
+      "برای یکی از ورودی‌های تاریخی بهای ورودی معتبر وجود ندارد.",
+    VALUATION_HISTORICAL_REBUILD_NEGATIVE_STOCK:
+      "ترتیب تاریخی حرکات به موجودی منفی منجر می‌شود و بازسازی متوقف شد.",
+    VALUATION_HISTORICAL_REBUILD_TRANSITION_SOURCE_MISSING:
+      "برای تبدیل روش ارزش‌گذاری، منبع معتبر قبلی جهت ایجاد لایه انتقالی پیدا نشد.",
+    VALUATION_HISTORICAL_REBUILD_TRANSITION_COST_INVALID:
+      "ارزش ریالی مانده قبل از تغییر روش معتبر نیست.",
+    VALUATION_HISTORICAL_REBUILD_TRANSITION_LAYER_MIXED:
+      "در مرز تغییر روش، هم‌زمان لایه FIFO و مانده روش قبلی وجود دارد و نیاز به بررسی دارد.",
+    VALUATION_HISTORICAL_REBUILD_TRANSFER_INVALID:
+      "یکی از انتقال‌های انبار از نظر زوج مبدأ/مقصد کامل نیست.",
+  };
+
+  const exact = known[message];
+  if (exact) return exact;
+
+  const prefix = Object.keys(known).find((key) => message.startsWith(key + ":"));
+  if (prefix) return `${known[prefix]} (${message})`;
+
+  return `بازسازی تاریخی ارزش‌گذاری ناموفق بود: ${message}`;
+}
+
 import { useEffect, useMemo, useState } from "react";
 import { getDesktopDatabase } from "@argin/database-tauri";
 import type {
@@ -24,11 +93,13 @@ import {
   createInventoryValuationWorkspaceServices,
   type InventoryResolvedInboundCostDisplay,
   type InventoryValuationWorkspaceServices,
+  type MissingInventoryValuationDisplay,
 } from "../../composition/inventory/create-inventory-valuation-workspace-services";
 import { createInventoryValuationTraceService } from "../../composition/inventory/create-inventory-valuation-trace-service";
 import {
   ValuationInboundCostPanel,
   ValuationKardexPanel,
+  ValuationMissingEntriesPanel,
   ValuationLayersPanel,
   ValuationOverviewPanel,
   ValuationPolicyPanel,
@@ -108,6 +179,11 @@ export function InventoryValuationWorkspacePage() {
   const [resolvedInboundCosts, setResolvedInboundCosts] = useState<
     readonly InventoryResolvedInboundCostDisplay[]
   >([]);
+  const [missingValuations, setMissingValuations] = useState<
+    readonly MissingInventoryValuationDisplay[]
+  >([]);
+  const [retryingValuation, setRetryingValuation] = useState(false);
+  const [rebuildingProductId, setRebuildingProductId] = useState<string | null>(null);
   const [status, setStatus] =
     useState<InventoryValuationRecalculationStatusReport | null>(null);
   const [policies, setPolicies] = useState<
@@ -225,17 +301,19 @@ export function InventoryValuationWorkspacePage() {
     if (!services || !activeContext.companyId) return;
     const query = createUnresolvedQuery(activeContext.companyId);
 
-    const [unresolvedReport, candidates, registeredCosts, recalculationStatus] =
+    const [unresolvedReport, candidates, registeredCosts, missingRows, recalculationStatus] =
       await Promise.all([
         services.readUnresolved(query),
         services.readInboundCostCandidates(query),
         services.readResolvedInboundCosts(query),
+        services.readMissingValuations(query),
         services.readStatus(activeContext.companyId, productId || null),
       ]);
 
     setUnresolved(unresolvedReport);
     setInboundCostCandidates(candidates);
     setResolvedInboundCosts(registeredCosts);
+    setMissingValuations(missingRows);
     setStatus(recalculationStatus);
   }
 
@@ -314,6 +392,58 @@ export function InventoryValuationWorkspacePage() {
   async function openTrace(movementId: string): Promise<void> {
     if (traceReader && activeContext.companyId)
       setTrace(await traceReader(activeContext.companyId, movementId));
+  }
+
+
+  async function retryMissingValuation(): Promise<void> {
+    if (!services || !activeContext.companyId) return;
+    setRetryingValuation(true);
+    setError("");
+    setSuccess("");
+    try {
+      const result = await services.retryValuationCatchUp(activeContext.companyId);
+      await refreshUnresolvedWorkspace();
+      setSuccess(
+        result.blockedMovementCount > 0
+          ? `تکمیل خودکار انجام شد؛ ${result.processedMovementCount} حرکت تکمیل شد و ${result.blockedMovementCount} حرکت به بازسازی تاریخی نیاز دارد.`
+          : `ارزش‌گذاری تکمیل شد؛ ${result.processedMovementCount} حرکت پردازش شد.`,
+      );
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "تکمیل ارزش‌گذاری ناموفق بود.",
+      );
+    } finally {
+      setRetryingValuation(false);
+    }
+  }
+
+
+  async function rebuildHistoricalValuation(
+    row: MissingInventoryValuationDisplay,
+  ): Promise<void> {
+    if (!services || !activeContext.companyId || !session) return;
+    setRebuildingProductId(row.productId);
+    setError("");
+    setSuccess("");
+    try {
+      const result = await services.rebuildHistoricalValuation({
+        companyId: activeContext.companyId,
+        productId: row.productId,
+        actorId: session.user.id,
+        requestId: `valuation-historical-rebuild:${row.productId}:${Date.now()}`,
+        occurredAt: new Date().toISOString(),
+      });
+      await refreshUnresolvedWorkspace();
+      setSuccess(
+        `بازسازی تاریخی کنترل‌شده انجام شد؛ ${result.rebuiltMovementCount} حرکت برای این کالا دوباره ارزش‌گذاری شد.`,
+      );
+    } catch (caughtError) {
+      setError(formatHistoricalRebuildError(caughtError));
+    } finally {
+      setRebuildingProductId(null);
+    }
   }
 
   async function setInboundCost(
@@ -518,6 +648,13 @@ export function InventoryValuationWorkspacePage() {
       )}
       {activeTab === "unresolved" && (
         <>
+          <ValuationMissingEntriesPanel
+            rows={missingValuations}
+            retrying={retryingValuation}
+            rebuildingProductId={rebuildingProductId}
+            onRetry={retryMissingValuation}
+            onRebuild={rebuildHistoricalValuation}
+          />
           <ValuationInboundCostPanel
             rows={inboundCostCandidates}
             canResolve={services?.canResolveCostInput ?? false}

@@ -6,6 +6,60 @@ The project follows Semantic Versioning where practical during phased developmen
 
 ---
 
+## [0.25.0] - Unreleased
+
+### Phase Start
+
+- Started Phase 25 — Sales Posting from `main` baseline `044a3ed1abbd847da7675c6bf70dcd9510f6f648` on branch `phase/25-sales-posting`.
+- Added the persistence-neutral `@argin/sales-posting` domain foundation with durable Posting/source identity, source versioning, Bridge-ready metadata and focused Step 2 tests.
+- Added the Step 3 immutable commercial posting-input boundary consuming Phase 24 Sales document/line snapshots and authoritative totals with source matching, tamper detection and exact reconciliation.
+- Added Step 4 deterministic Revenue account resolution with Company/Branch/line-kind specificity, fail-closed missing/ambiguous mapping behavior, and active/postable account validation.
+- Added Step 5 Accounts Receivable control-account resolution with Company/Branch policy, durable Customer Party provenance, and fail-closed account validation.
+- Added Step 6 Output VAT account resolution with Company/Branch/tax-code specificity, preserved Phase 24 tax provenance, and fail-closed account validation.
+- Added Step 7 commercial posting calculation and balance controls: AR debit from grand total, Revenue credit from tax base, Output VAT credit from immutable tax amount, with exact reconciliation and no COGS/Inventory leakage.
+- Added Step 8 stock-fulfillment prerequisite gating with exact Sales-to-Inventory Issue lineage, confirmed-only COGS eligibility, service/non-stock bypass, and fail-closed mixed-line validation.
+- Added Step 9 authoritative Inventory Issue lineage resolution using confirmed Inventory documents and immutable line source references, preserving separate Sales/Inventory line identities and fail-closed provenance checks.
+- Added Step 10 outbound Inventory Movement lineage resolution with exact Issue document/line matching, negative quantity enforcement, chronology/warehouse provenance, and fail-closed rejection of transfer/reversal or ambiguous movements.
+- Added Step 11 resolved FIFO/MWA valuation prerequisite using authoritative Movement-linked Phase 21 valuation entries, preserving valuation method/revision/strategy provenance and blocking COGS on missing or unresolved cost.
+- Added Step 12 COGS account resolution with Company/Branch mapping, durable stock/valuation provenance, deterministic specificity/priority rules, and fail-closed active/postable account validation.
+- Added Step 13 Inventory Asset account resolution with Company/Branch mapping, preserved Sales/Movement/Valuation/Warehouse provenance, and fail-closed active/postable account validation without making Warehouse/Product masters own GL mappings.
+- Added Step 14 COGS / Inventory Relief posting calculation from authoritative resolved outbound valuation cost, producing balanced COGS debit and Inventory credit components with exact valuation/account provenance and no Journal creation leakage.
+- Added Step 15 mixed stock + service invoice orchestration that composes the whole-invoice commercial leg with a stock-only cost leg, rejects service/non-stock COGS leakage, preserves separate balances/provenance, and keeps retry/Journal ownership in later steps.
+- Added Step 16 service-only Sales Invoice posting path that consumes only the balanced commercial leg, explicitly bypasses Inventory/Movement/Valuation/COGS, rejects stock and non-stock-product lines, and preserves service-line commercial provenance.
+- Added Step 17 automatic post-finalization Sales Posting orchestration with deterministic service/stock/mixed path classification and resumable pending states for Issue, confirmation, Movement and Valuation dependencies.
+- Added Step 18 Sales Posting idempotency and exactly-once business-effect replay contracts using durable Sales source-version identity, SHA-256 payload fingerprints, conflict detection, and replay of the original Posting/Journal outcome.
+- Added Step 19 optimistic concurrency and Posting CAS with exact Posting/Company/Branch/source-version expectations, immutable exactly-one version advancement, timestamp ordering, and replay-before-CAS mutation preparation.
+- Added Step 20 atomic Sales Posting Unit-of-Work and Outbox boundary combining replay lookup, Posting CAS, Idempotency evidence and durable accounting-recognition integration events with rollback semantics.
+- Added Step 21 Sales Return commercial reversal with original-invoice/line provenance and exact AR/Revenue/Output VAT direction reversal while leaving Inventory/Valuation cost restoration to Step 22.
+- Added Step 22 Sales Return Inventory Receipt / Valuation cost restoration, resolving confirmed return receipts through positive inbound movements and Phase 21 valuation into balanced Inventory debit / COGS credit effects without rewriting historical outbound valuation.
+- Added Step 23 Sales Correction reverse-and-replace lineage, preserving immutable original invoice/line source versions and independent correction source identity without rewriting historical Sales, Inventory, Valuation or Journal facts.
+- Added Step 24 Accounting Journal Voucher draft creation with human-readable Persian lines, immutable Sales/Inventory/Valuation provenance, and atomic Journal + Posting CAS + Idempotency + Outbox persistence/replay boundaries.
+- Reconciled Step 25 Sales Posting status/recovery with deterministic wait/retry/replay/manual-review decisions and committed-outcome non-regression.
+- Added Step 26 Sales Posting permissions, approval evidence validation, append-only audit contracts, secured execution/recovery boundaries, and operational trace reading with audited trace access.
+- Added Step 27 Persian RTL Sales Posting status/recovery UI with authoritative Snapshot-driven state, human-readable pending/blocked reasons, permission-aware recovery actions, and operational trace presentation.
+- Closed the pre-Step 28 Sales Posting runtime integration gap: registered SQLite migration 37, added durable Posting/rule/idempotency/provenance/outbox persistence, wired automatic Sales Journal creation after invoice finalization and confirmed Sales Inventory Issues, added historical catch-up/retry UI, registered Sales Posting permissions, and fixed cross-Journal line-ID collisions.
+- Added controlled historical valuation rebuild for chronology-blocked outbound movements discovered by Sales Posting acceptance testing, including explicit missing-Valuation diagnostics and removal of ineffective repeated catch-up actions.
+- Fixed historical valuation rebuild across a Company policy transition from Moving Average to FIFO by carrying the validated pre-transition quantity/value into a controlled FIFO transition layer; genuine FIFO insufficiency remains fail-closed with movement/date/stock/layer diagnostics.
+- Fixed Sales Posting Output VAT composition for zero-tax Sales lines so tax definitions with a zero calculated tax amount do not create spurious VAT resolutions or `sales_posting.account_resolution_mismatch:outputVatByLine`.
+- Completed Phase 25 Step 28 automated integration/E2E coverage for stock, service-only, mixed, zero/positive VAT, historical valuation recovery, Sales Return, correction lineage, replay/CAS/atomic boundaries, legacy catch-up and Desktop runtime persistence.
+- Wired finalized Sales Return through confirmed Inventory Receipt/inbound valuation to append-only commercial reversal + Inventory/COGS restoration Journal creation.
+- Hardened automatic Sales account bootstrap to fail closed rather than crossing Trading/Manufacturing account models; stale auto rules pointing to an invalid business-model logical key are deactivated while explicit rules remain authoritative.
+- Completed Phase 25 Step 29 documentation/reconciliation: added the canonical Phase 25 record and Sales Posting reconciliation/accounting-examples guide covering Journal-vs-Invoice totals, VAT, service/mixed Sales, Returns, Corrections, negative gross margin, recovery, source trace and account-semantic reconciliation.
+- Synchronized root/project documentation entry points, Phase registry, Module Registry and ROADMAP to the Phase 25 Step 29 state while reserving actual quality-gate PASS for Step 30.
+- Completed Phase 25 Step 30 Quality Gate: added the canonical `validate:phase25` wrapper and dedicated GitHub Actions workflow; `Phase 25 Validation #8` (run ID `44900925197`) passed successfully on code SHA `2e58178a988ad1d9d88c853dd75265b8ddcb3acc`.
+- Prepared PR #29 for merge to `main` and release notes for `v0.25.0`; semantic Tag/GitHub Release publication remains a manual repository-owner action.
+- Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
+- Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
+- Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
+- Froze Argin Bridge readiness around durable posting/source identity, version/change metadata, replay safety and immutable provenance; live transport remains deferred.
+
+### Release
+
+- Target semantic tag: `v0.25.0`.
+- Release title: `ArginAccounting v0.25.0 — Sales Posting`.
+
+---
+
 ## [0.24.0] - Unreleased
 
 ### Added

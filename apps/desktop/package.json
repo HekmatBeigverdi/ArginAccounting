@@ -45,7 +45,8 @@
     "@argin/purchase-posting": "workspace:*",
     "@argin/purchase-posting-tauri": "workspace:*",
     "@argin/sales": "workspace:*",
-    "@argin/sales-tauri": "workspace:*"
+    "@argin/sales-tauri": "workspace:*",
+    "@argin/sales-posting": "workspace:*"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

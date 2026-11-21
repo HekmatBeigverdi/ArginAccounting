@@ -247,6 +247,9 @@ importers:
       '@argin/sales':
         specifier: workspace:*
         version: link:../../packages/sales
+      '@argin/sales-posting':
+        specifier: workspace:*
+        version: link:../../packages/sales-posting
       '@argin/sales-tauri':
         specifier: workspace:*
         version: link:../../packages/sales-tauri
@@ -784,6 +787,28 @@ importers:
       '@argin/warehouse':
         specifier: workspace:*
         version: link:../warehouse
+    devDependencies:
+      '@types/node':
+        specifier: ^20
+        version: 20.19.43
+      rimraf:
+        specifier: ^6.0.0
+        version: 6.1.3
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/sales-posting:
+    dependencies:
+      '@argin/accounting':
+        specifier: workspace:*
+        version: link:../accounting
+      '@argin/inventory':
+        specifier: workspace:*
+        version: link:../inventory
+      '@argin/sales':
+        specifier: workspace:*
+        version: link:../sales
     devDependencies:
       '@types/node':
         specifier: ^20

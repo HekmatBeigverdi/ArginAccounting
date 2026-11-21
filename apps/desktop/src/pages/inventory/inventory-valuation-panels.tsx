@@ -12,6 +12,9 @@ import type {
   InventoryInboundCostCandidate,
   InventoryResolvedInboundCost,
 } from "@argin/inventory-tauri";
+import type {
+  MissingInventoryValuationDisplay,
+} from "../../composition/inventory/create-inventory-valuation-workspace-services";
 import { gregorianToJalali } from "./inventory-persian-date";
 import { valuationMethodLabel } from "./inventory-valuation-workspace-format";
 
@@ -660,6 +663,117 @@ export function ValuationRegisteredCostPanel({
           </div>
         )}
       </Dialog>
+    </section>
+  );
+}
+
+
+export function ValuationMissingEntriesPanel({
+  rows,
+  retrying,
+  rebuildingProductId,
+  onRetry,
+  onRebuild,
+}: {
+  rows: readonly MissingInventoryValuationDisplay[];
+  retrying: boolean;
+  rebuildingProductId: string | null;
+  onRetry: () => Promise<void>;
+  onRebuild: (row: MissingInventoryValuationDisplay) => Promise<void>;
+}) {
+  return (
+    <section className="valuation-section">
+      <div className="valuation-section__head">
+        <div>
+          <h3>حرکت‌های بدون ارزش‌گذاری</h3>
+          <p>
+            این ردیف‌ها Movement قطعی دارند اما هنوز Valuation Entry ندارند. برای
+            ردیف‌های عادی می‌توان Catch-up را اجرا کرد؛ ردیف تاریخیِ عقب‌افتاده
+            ممکن است نیازمند بازسازی کنترل‌شده باشد.
+          </p>
+        </div>
+        <span className="valuation-count">{rows.length} ردیف</span>
+      </div>
+      {rows.length === 0 ? (
+        <p className="valuation-empty">
+          Movement بدون Valuation Entry در محدوده انتخاب‌شده وجود ندارد.
+        </p>
+      ) : (
+        <>
+          <div className="valuation-table valuation-table--compact">
+            <table>
+              <thead>
+                <tr>
+                  {["تاریخ","سند","کالا","انبار","تعداد","وضعیت","عملیات"].map((header) => (
+                    <th key={header}>{header}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.movementId}>
+                    <td>{gregorianToJalali(row.businessDate)}</td>
+                    <td><ReadableLabel value={row.documentLabel} fallback={row.documentId} /></td>
+                    <td><ReadableLabel value={row.productLabel} fallback={row.productId} wide /></td>
+                    <td><ReadableLabel value={row.warehouseLabel} fallback={row.warehouseId} /></td>
+                    <td>{row.quantityDelta}</td>
+                    <td>
+                      {row.requiresHistoricalRebuild
+                        ? "نیازمند بازسازی تاریخی"
+                        : "قابل تکمیل خودکار"}
+                      {row.diagnosticReason && row.requiresHistoricalRebuild && (
+                        <small className="valuation-diagnostic-reason">
+                          {row.diagnosticReason === "later-valuation-exists"
+                            ? " — پس از این حرکت، ارزش‌گذاری جدیدتری وجود دارد."
+                            : row.diagnosticReason === "prior-state-missing"
+                              ? " — وضعیت ریالی قبلی برای این تاریخ قابل اتکا نیست."
+                              : row.diagnosticReason === "fifo-layer-missing"
+                                ? " — لایه FIFO لازم برای این تاریخ در projection فعلی موجود نیست."
+                                : row.diagnosticReason === "fifo-insufficient"
+                                  ? " — لایه FIFO فعلی برای بازسازی تدریجی کافی نیست."
+                                  : row.diagnosticReason === "moving-average-invalid"
+                                    ? " — وضعیت میانگین موزون فعلی برای پردازش تدریجی کافی نیست."
+                                    : row.diagnosticReason === "policy-missing"
+                                      ? " — سیاست ارزش‌گذاری مؤثر برای این تاریخ یافت نشد."
+                                      : ""}
+                        </small>
+                      )}
+                    </td>
+                    <td className="valuation-action-cell">
+                      {row.requiresHistoricalRebuild ? (
+                        <button
+                          type="button"
+                          className="valuation-secondary-action"
+                          disabled={rebuildingProductId === row.productId}
+                          onClick={() => void onRebuild(row)}
+                        >
+                          {rebuildingProductId === row.productId
+                            ? "در حال بازسازی…"
+                            : "بازسازی تاریخی کنترل‌شده"}
+                        </button>
+                      ) : (
+                        <span className="valuation-muted">Catch-up</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.some((row) => !row.requiresHistoricalRebuild) && (
+            <div className="valuation-section__actions">
+              <button
+                type="button"
+                className="valuation-primary-action"
+                disabled={retrying}
+                onClick={() => void onRetry()}
+              >
+                {retrying ? "در حال تکمیل…" : "تلاش برای تکمیل ارزش‌گذاری"}
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }

@@ -137,17 +137,21 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Confirmed stock sales create/consume Inventory issue movements; FIFO/MWA independently determines cost of goods sold.
    - Product Master Data must not become a single mutable authoritative Sales-price store for all contexts.
    - Fixed 30-step implementation and closure record: [Phase 24 Sales Workflow Plan](docs/phases/phase-24-sales-workflow-plan.md); release notes: [Phase 24 Release Notes](docs/phases/phase-24-release-notes.md).
-25. ⏳ Sales Posting
-   - Canonical plan: [Phase 25 Sales Posting Plan](docs/phases/phase-25-sales-posting-plan.md); mandatory handoff: [Sales Fulfillment and Posting Handoff](docs/architecture/sales-fulfillment-posting-handoff.md).
+25. ✅ Sales Posting
+   - All 30 fixed steps are complete; canonical Phase 25 GitHub Actions validation passed. Merge/release state is prepared.
+   - Canonical phase record: [Phase 25 Sales Posting](docs/phases/phase-25-sales-posting.md); fixed plan: [Phase 25 Sales Posting Plan](docs/phases/phase-25-sales-posting-plan.md); accounting reconciliation: [Sales Posting Reconciliation](docs/accounting/sales-posting-reconciliation.md); mandatory handoff: [Sales Fulfillment and Posting Handoff](docs/architecture/sales-fulfillment-posting-handoff.md).
    - A finalized stock Sales Invoice stages exactly one Inventory Issue Draft through Inventory public contracts; invoice finalization itself MUST NOT decrease stock.
    - Inventory quantity decreases only when the Inventory Issue is finalized/confirmed and creates the authoritative Inventory Movement.
-   - Post revenue/tax/receivable from immutable Sales commercial facts.
-   - Post COGS/inventory relief only from resolved Phase 21 FIFO/MWA valuation outputs, never from selling price; stock COGS posting is blocked until Issue -> Movement -> Valuation prerequisites are complete.
+   - Revenue/tax/receivable comes from immutable Sales commercial facts.
+   - COGS/inventory relief comes only from resolved Phase 21 FIFO/MWA valuation outputs, never from selling price or the Phase 24 pre-finalization cost quote.
    - Service-only invoices bypass Inventory fulfillment; mixed invoices preserve stock-line prerequisites without treating services as stock.
-   - Sales Return stages exactly one Inventory Receipt Draft for stock lines; stock restoration and return cost effects follow Inventory movement/valuation lineage.
-   - Join commercial and costing accounting effects while preserving independent source provenance, idempotency/exactly-once behavior, recovery and correction/reversal chains.
-   - Mandatory E2E gates cover stock-only, service-only, mixed, return, replay/no-duplicate and posting-before-valuation rejection scenarios.
-   - CR-24-01 adds company-level below-cost governance (`allow / warn / require-approval / block` + minimum margin-over-cost threshold). Phase 24 uses a Phase 21 pre-finalization cost quote against net pre-VAT Sales value, persists the decision/approval trace, and stages the Inventory document transactionally. Phase 25 must use the actual resolved outbound valuation for COGS, preserve legitimate negative margin, and never substitute selling price or the quote for COGS.
+   - Sales Return stages an Inventory Receipt for stock lines and now flows through confirmed Receipt -> inbound Valuation -> commercial reversal + Inventory/COGS restoration Journal.
+   - Historical missing-Valuation recovery supports controlled rebuild and MWA -> FIFO transition handling without rewriting authoritative Movement/Cost Input history.
+   - Commercial and costing effects retain independent provenance, idempotency/exactly-once behavior, recovery and correction/reversal lineage.
+   - Step 28 automated E2E gates cover stock-only, service-only, mixed, zero/positive VAT, return, correction, replay/no-duplicate, historical Valuation recovery and runtime persistence.
+   - Automatic Sales account bootstrap is fail-closed and does not silently cross Trading/Manufacturing account models; explicit Posting Rules remain authoritative.
+   - CR-24-01 below-cost governance remains a Sales commercial gate. Phase 25 preserves the actual valuation-derived COGS and legitimate negative gross margin.
+   - Release target: `v0.25.0` — `ArginAccounting v0.25.0 — Sales Posting`; canonical release-quality validation passed in Phase 25 Validation #8.
 
 ## Treasury
 
@@ -210,7 +214,7 @@ A phase is complete only when:
 
 ## Current Target
 
-Phase 24 — Sales Workflow is now the current implementation target. Step 1 is complete on `phase/24-sales-workflow`, based on `main` commit `91a1dc43fa7c341493d92b7e9457c1ecf0a117a8`. The fixed 30-step plan freezes Sales pricing/document ownership, Inventory/Valuation boundaries and Argin Bridge-ready durable identity. Phase 23 is merged to `develop`/`main`; semantic `v0.23.0` publication remains a manual repository-owner action.
+Phase 25 — Sales Posting is now the current implementation target. Step 1 is complete on `phase/25-sales-posting`, based on `main` commit `044a3ed1abbd847da7675c6bf70dcd9510f6f648`, which is the completed Phase 24 merge baseline. The fixed 30-step plan freezes the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal handoff, source-authority boundaries, exactly-once Journal-effect requirement and Argin Bridge-ready durable posting contracts. Step 2 is the first executable/domain implementation step. Phase 24 is complete on `main`; semantic `v0.24.0` tag/GitHub Release publication remains a manual repository-owner action.
 
 ## Latest Completed Inventory Milestone
 

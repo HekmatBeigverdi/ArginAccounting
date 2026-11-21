@@ -15,6 +15,7 @@ import type {
 import {
   SqliteInventoryInboundCostInputService,
   SqliteInventoryValuationBootstrapService,
+  SqliteInventoryValuationHistoricalRebuildService,
   SqliteInventoryValuationLiveService,
   SqliteInventoryValuationPolicyRepository,
   SqliteInventoryValuationReportReader,
@@ -37,6 +38,27 @@ export type InventoryResolvedInboundCostDisplay = InventoryResolvedInboundCost &
   readonly productLabel: string;
   readonly warehouseLabel: string;
 };
+
+export interface MissingInventoryValuationDisplay {
+  readonly movementId: string;
+  readonly documentId: string;
+  readonly documentLabel: string;
+  readonly productId: string;
+  readonly productLabel: string;
+  readonly warehouseId: string;
+  readonly warehouseLabel: string;
+  readonly businessDate: string;
+  readonly quantityDelta: string;
+  readonly requiresHistoricalRebuild: boolean;
+  readonly diagnosticReason:
+    | "later-valuation-exists"
+    | "policy-missing"
+    | "prior-state-missing"
+    | "fifo-layer-missing"
+    | "fifo-insufficient"
+    | "moving-average-invalid"
+    | null;
+}
 
 type DocumentLabelRow = { id: string; document_number: string | null };
 type ProductLabelRow = { id: string; code: string; title: string };
@@ -105,6 +127,33 @@ export interface InventoryValuationWorkspaceServices {
     limit: number;
   }): Promise<readonly InventoryInboundCostDisplayCandidate[]>;
 
+  readMissingValuations(query: {
+    companyId: string;
+    branchId: string | null;
+    productId: string | null;
+    warehouseId: string | null;
+    fromBusinessDate: string | null;
+    limit: number;
+  }): Promise<readonly MissingInventoryValuationDisplay[]>;
+
+  retryValuationCatchUp(companyId: string): Promise<{
+    readonly processedMovementCount: number;
+    readonly blockedMovementCount: number;
+  }>;
+
+  rebuildHistoricalValuation(input: {
+    companyId: string;
+    productId: string;
+    actorId: string;
+    requestId: string;
+    occurredAt: string;
+  }): Promise<{
+    readonly productId: string;
+    readonly rebuiltMovementCount: number;
+    readonly skippedReversalPairCount: number;
+    readonly earliestBusinessDate: string | null;
+  }>;
+
   readResolvedInboundCosts(query: {
     companyId: string;
     branchId: string | null;
@@ -170,6 +219,8 @@ export function createInventoryValuationWorkspaceServices(
   const inboundCosts = new SqliteInventoryInboundCostInputService(database);
   const bootstrap = new SqliteInventoryValuationBootstrapService(database);
   const liveValuation = new SqliteInventoryValuationLiveService(database);
+  const historicalRebuild =
+    new SqliteInventoryValuationHistoricalRebuildService(database);
   const products = new SqliteProductSelectorReader(database);
   const warehouses = new SqliteWarehouseReader(database);
   const hasFullAccess = permissions.includes("system.full-access");
@@ -320,6 +371,83 @@ export function createInventoryValuationWorkspaceServices(
         candidates,
       );
       return addBusinessLabels(query.companyId, activeCandidates);
+    },
+    async readMissingValuations(query) {
+      requireViewPermission();
+      requireBranchAccess(query.branchId);
+      await catchUp(query.companyId);
+
+      const clauses = [
+        "m.company_id=?",
+        "e.valuation_entry_id IS NULL",
+        "m.transfer_id IS NULL",
+        "m.reversal_of_movement_id IS NULL",
+        "m.quantity_delta LIKE '-%'",
+        "m.quantity_delta<>'-0'",
+        "NOT EXISTS (SELECT 1 FROM inventory_all_stock_movements rv WHERE rv.company_id=m.company_id AND rv.reversal_of_movement_id=m.movement_id)",
+      ];
+      const params: Array<string | number | null> = [query.companyId];
+      if (query.productId) {
+        clauses.push("m.product_id=?");
+        params.push(query.productId);
+      }
+      if (query.warehouseId) {
+        clauses.push("m.warehouse_id=?");
+        params.push(query.warehouseId);
+      }
+      if (query.fromBusinessDate) {
+        clauses.push("m.business_date>=?");
+        params.push(query.fromBusinessDate);
+      }
+
+      const rows = await database.query<{
+        movement_id:string;document_id:string;product_id:string;warehouse_id:string;
+        business_date:string;business_order:number;line_id:string;quantity_delta:string;
+      }>(
+        `SELECT m.movement_id,m.document_id,m.product_id,m.warehouse_id,
+                m.business_date,m.business_order,m.line_id,m.quantity_delta
+           FROM inventory_all_stock_movements m
+           LEFT JOIN inventory_valuation_entries e
+             ON e.company_id=m.company_id AND e.movement_id=m.movement_id
+          WHERE ${clauses.join(" AND ")}
+          ORDER BY m.business_date,m.business_order,m.document_id,m.line_id,m.movement_id
+          LIMIT ?`,
+        [...params, query.limit],
+      );
+
+      const diagnosed = await Promise.all(
+        rows.map(async (row) => {
+          const diagnostic = await liveValuation.diagnoseMovement(
+            query.companyId,
+            row.movement_id,
+          );
+          return {
+            movementId: row.movement_id,
+            documentId: row.document_id,
+            productId: row.product_id,
+            warehouseId: row.warehouse_id,
+            businessDate: row.business_date,
+            quantityDelta: row.quantity_delta,
+            requiresHistoricalRebuild:
+              diagnostic !== null && !diagnostic.incrementallyProcessable,
+            diagnosticReason: diagnostic?.reason ?? null,
+          };
+        }),
+      );
+
+      const labelled = await addBusinessLabels(
+        query.companyId,
+        diagnosed,
+      );
+      return Object.freeze(labelled);
+    },
+    async retryValuationCatchUp(companyId) {
+      requireViewPermission();
+      return liveValuation.catchUpCompany(companyId, new Date().toISOString());
+    },
+    async rebuildHistoricalValuation(input) {
+      requireCostResolutionPermission();
+      return historicalRebuild.rebuildProduct(input);
     },
     async readResolvedInboundCosts(query) {
       requireViewPermission();
