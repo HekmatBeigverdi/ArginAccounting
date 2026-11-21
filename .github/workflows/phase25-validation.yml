@@ -1,3 +1,4 @@
+# Canonical release gate for Phase 25 — Sales Posting
 name: Phase 25 Validation
 
 on:
