@@ -10,6 +10,7 @@ import {
   SALES_POSTING_DOMAIN_ERROR_CODES,
   calculateSalesCommercialPosting,
   calculateSalesCostPosting,
+  calculateSalesReturnCostRestoration,
   createSalesAccountsReceivableAccountRule,
   createSalesCogsAccountRule,
   createSalesInventoryAccountRule,
@@ -19,12 +20,15 @@ import {
   createSalesPostingJournalDraft,
   createSalesPostingSourceIdentity,
   createSalesRevenueAccountRule,
+  createSalesReturnCommercialLineage,
+  reverseSalesReturnCommercialPosting,
   resolveSalesAccountsReceivableAccount,
   resolveSalesCogsAccount,
   resolveSalesInventoryAccount,
   resolveSalesOutputVatAccount,
   resolveSalesRevenueAccount,
   salesJournalComponentsFromInvoice,
+  salesJournalComponentsFromReturn,
   type SalesPostingRecoverySnapshot,
   type SalesPostingTraceSnapshot,
 } from "@argin/sales-posting";
@@ -298,6 +302,7 @@ async function upsertPostingStatus(session: DatabaseSession, args: {
   companyId: string;
   branchId: string;
   sourceId: string;
+  sourceType: "sales-invoice" | "sales-return" | "sales-correction";
   sourceVersion: number;
   status: PostingRow["status"];
   reason?: string | null;
@@ -316,7 +321,7 @@ async function upsertPostingStatus(session: DatabaseSession, args: {
         created_at,updated_at,sync_origin,sync_changed_at
       ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
-        args.postingId,args.companyId,args.branchId,"sales-invoice",args.sourceId,args.sourceVersion,
+        args.postingId,args.companyId,args.branchId,args.sourceType,args.sourceId,args.sourceVersion,
         null,args.status,args.reason ?? null,args.errorCode ?? null,1,
         args.now,args.now,"local",args.now,
       ],
