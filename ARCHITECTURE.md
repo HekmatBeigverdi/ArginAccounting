@@ -111,6 +111,28 @@ Confirmed Purchase snapshots remain historical facts even if mutable Product Mas
 
 See [Commercial Pricing and Inventory Valuation Boundary](docs/architecture/commercial-pricing-and-valuation-boundary.md), [Phase 22 Purchase Workflow](docs/phases/phase-22-purchase-workflow-plan.md), and [Phase 23 Purchase Posting](docs/phases/phase-23-purchase-posting-plan.md).
 
+Phase 25 adds the Sales-specific accounting-recognition boundary:
+
+```text
+Immutable Sales commercial facts
+        +
+Inventory Issue / Receipt lineage
+        +
+Resolved FIFO/MWA Valuation
+        ↓
+Sales Posting rules + idempotent orchestration
+        ↓
+balanced Journal effect
+        ↓
+Accounting-owned Journal lifecycle
+```
+
+For stock Sales, Revenue/A-R/VAT comes from immutable Sales facts while COGS/Inventory comes only from resolved Inventory Valuation. Service-only Sales bypass Inventory. Sales Returns reverse the commercial effect and restore Inventory/COGS from inbound return valuation. Corrections are reverse-and-replace; finalized historical facts remain immutable.
+
+Automatic Sales account bootstrap is intentionally fail-closed and does not cross Trading/Manufacturing chart semantics when Product Master lacks an explicit purchased/manufactured classification. Explicit Posting Rules remain authoritative.
+
+See [Phase 25 Sales Posting](docs/phases/phase-25-sales-posting.md), [Sales Posting Reconciliation](docs/accounting/sales-posting-reconciliation.md), and [Sales Fulfillment and Posting Handoff](docs/architecture/sales-fulfillment-posting-handoff.md).
+
 Operational modules do not write arbitrary journal entries. They submit deterministic, idempotent posting requests to the Posting Engine.
 
 See [Accounting Engine](docs/accounting/accounting-engine.md) and [Posting Engine](docs/accounting/posting-engine.md).
