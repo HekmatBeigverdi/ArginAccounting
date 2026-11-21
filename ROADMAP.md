@@ -137,8 +137,8 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Confirmed stock sales create/consume Inventory issue movements; FIFO/MWA independently determines cost of goods sold.
    - Product Master Data must not become a single mutable authoritative Sales-price store for all contexts.
    - Fixed 30-step implementation and closure record: [Phase 24 Sales Workflow Plan](docs/phases/phase-24-sales-workflow-plan.md); release notes: [Phase 24 Release Notes](docs/phases/phase-24-release-notes.md).
-25. 🚧 Sales Posting
-   - Steps 1–29 are complete on `phase/25-sales-posting`; Step 30 Quality Gate, Merge & Release remains.
+25. ✅ Sales Posting
+   - All 30 fixed steps are complete; canonical Phase 25 GitHub Actions validation passed. Merge/release state is prepared.
    - Canonical phase record: [Phase 25 Sales Posting](docs/phases/phase-25-sales-posting.md); fixed plan: [Phase 25 Sales Posting Plan](docs/phases/phase-25-sales-posting-plan.md); accounting reconciliation: [Sales Posting Reconciliation](docs/accounting/sales-posting-reconciliation.md); mandatory handoff: [Sales Fulfillment and Posting Handoff](docs/architecture/sales-fulfillment-posting-handoff.md).
    - A finalized stock Sales Invoice stages exactly one Inventory Issue Draft through Inventory public contracts; invoice finalization itself MUST NOT decrease stock.
    - Inventory quantity decreases only when the Inventory Issue is finalized/confirmed and creates the authoritative Inventory Movement.
@@ -151,7 +151,7 @@ This roadmap is the canonical phase-numbering source. Every phase follows the pe
    - Step 28 automated E2E gates cover stock-only, service-only, mixed, zero/positive VAT, return, correction, replay/no-duplicate, historical Valuation recovery and runtime persistence.
    - Automatic Sales account bootstrap is fail-closed and does not silently cross Trading/Manufacturing account models; explicit Posting Rules remain authoritative.
    - CR-24-01 below-cost governance remains a Sales commercial gate. Phase 25 preserves the actual valuation-derived COGS and legitimate negative gross margin.
-   - Release target: `v0.25.0` — `ArginAccounting v0.25.0 — Sales Posting`; release-quality PASS is reserved for Step 30 observed validation.
+   - Release target: `v0.25.0` — `ArginAccounting v0.25.0 — Sales Posting`; canonical release-quality validation passed in Phase 25 Validation #8.
 
 ## Treasury
 
