@@ -140,3 +140,18 @@ test("Sales Return idempotency persists its own source type instead of masquerad
   assert.match(posting, /\[idempotencyKey,companyId,sourceType,sourceId/u);
   assert.match(posting, /args\.sourceType/u);
 });
+
+test("automatic account bootstrap never crosses trading/manufacturing business models", async () => {
+  const posting = await read(
+    "../src/composition/sales-posting/create-sales-posting-workspace-services.ts",
+  );
+
+  assert.match(posting, /\["revenue\.operating\.goods"\]/u);
+  assert.match(posting, /\["assets\.current\.inventory"\]/u);
+  assert.match(posting, /\["costs\.merchandise\.sold"\]/u);
+  assert.doesNotMatch(posting, /\["revenue\.operating\.goods",\s*"revenue\.operating\.products"/u);
+  assert.doesNotMatch(posting, /\["assets\.current\.inventory",\s*"assets\.current\.finished-goods"/u);
+  assert.doesNotMatch(posting, /\["costs\.merchandise\.sold",\s*"costs\.manufacturing\.goods-sold"/u);
+  assert.match(posting, /isAuto \|\| matchesAllowedLogicalKey/u);
+  assert.match(posting, /SET active=0,version=version\+1/u);
+});
