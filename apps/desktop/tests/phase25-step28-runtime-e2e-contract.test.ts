@@ -113,3 +113,30 @@ test("committed Sales UI is driven by persisted Posting recovery state and Journ
   assert.match(panel, /journalVoucherId/u);
   assert.match(panel, /committedPostingVersion/u);
 });
+
+test("Sales Return runtime connects finalize -> Receipt confirm -> valuation -> reversal Journal", async () => {
+  const salesPage = await read("../src/pages/sales/sales-documents-page.tsx");
+  const inventoryPage = await read("../src/pages/inventory/inventory-documents-page.tsx");
+  const posting = await read(
+    "../src/composition/sales-posting/create-sales-posting-workspace-services.ts",
+  );
+
+  assert.match(salesPage, /documentType === "sales-return"/u);
+  assert.match(inventoryPage, /selected\.documentType === "receipt"/u);
+  assert.match(inventoryPage, /documentType === "sales-return"/u);
+  assert.match(posting, /createSalesReturnCommercialLineage/u);
+  assert.match(posting, /reverseSalesReturnCommercialPosting/u);
+  assert.match(posting, /calculateSalesReturnCostRestoration/u);
+  assert.match(posting, /salesJournalComponentsFromReturn/u);
+  assert.match(posting, /source_document_type=\?/u);
+});
+
+test("Sales Return idempotency persists its own source type instead of masquerading as invoice", async () => {
+  const posting = await read(
+    "../src/composition/sales-posting/create-sales-posting-workspace-services.ts",
+  );
+
+  assert.match(posting, /sales:\$\{sourceType\}:/u);
+  assert.match(posting, /\[idempotencyKey,companyId,sourceType,sourceId/u);
+  assert.match(posting, /args\.sourceType/u);
+});
