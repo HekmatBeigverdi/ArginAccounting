@@ -257,8 +257,8 @@ async function bootstrapRules(
       role: "sales-revenue",
       lineKind: snapshot.lineKind,
       logicalKeys: snapshot.lineKind === "service"
-        ? ["revenue.operating.services", "revenue.operating.goods", "revenue.operating.products"]
-        : ["revenue.operating.goods", "revenue.operating.products", "revenue.operating.services"],
+        ? ["revenue.operating.services"]
+        : ["revenue.operating.goods"],
       now,
     });
     for (const tax of snapshot.terms.taxes) {
@@ -275,13 +275,13 @@ async function bootstrapRules(
     await ensureRule(session, {
       companyId,
       role: "cogs",
-      logicalKeys: ["costs.merchandise.sold", "costs.manufacturing.goods-sold"],
+      logicalKeys: ["costs.merchandise.sold"],
       now,
     });
     await ensureRule(session, {
       companyId,
       role: "inventory-asset",
-      logicalKeys: ["assets.current.inventory", "assets.current.finished-goods", "assets.current.raw-materials"],
+      logicalKeys: ["assets.current.inventory"],
       now,
     });
   }
