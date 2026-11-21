@@ -605,11 +605,21 @@ export function createSalesPostingWorkspaceServices(input: {
               }
             }
           }
-          const commercialPosting = calculateSalesCommercialPosting({
+          const forwardCommercialPosting = calculateSalesCommercialPosting({
             commercial,accountsReceivable:ar,revenueByLine,outputVatByLine,
           });
+          const returnLineage = isReturn
+            ? createSalesReturnCommercialLineage(persisted.document)
+            : null;
+          const commercialPosting = isReturn
+            ? reverseSalesReturnCommercialPosting({
+                commercialInput: commercial,
+                commercialPosting: forwardCommercialPosting,
+                lineage: returnLineage!,
+              })
+            : forwardCommercialPosting;
 
-          let costPosting = null;
+          let costPosting:any = null;
           if (valuationLines.length > 0) {
             const cogsRules = rules.filter(r=>r.account_role==="cogs").map(r=>createSalesCogsAccountRule({
               ruleId:r.rule_id,companyId:r.company_id,branchId:r.branch_id,accountRole:"cogs",accountId:r.account_id,priority:r.priority,active:r.active===1,
