@@ -208,20 +208,40 @@ async function ensureRule(session: DatabaseSession, args: {
   logicalKeys: readonly string[];
   now: string;
 }): Promise<void> {
-  const existing = await session.queryOne<{ rule_id: string }>(
-    `SELECT rule_id FROM sales_posting_rules
-      WHERE company_id=? AND account_role=? AND active=1
-        AND branch_id IS NULL
-        AND ((line_kind IS NULL AND ? IS NULL) OR line_kind=?)
-        AND ((tax_code IS NULL AND ? IS NULL) OR tax_code=?)
-      ORDER BY priority DESC,rule_id LIMIT 1`,
+  const existing = await session.queryOne<{
+    rule_id: string;
+    account_source_reference_id: string | null;
+  }>(
+    `SELECT r.rule_id,a.source_reference_id account_source_reference_id
+       FROM sales_posting_rules r
+       JOIN accounts a
+         ON a.company_id=r.company_id AND a.id=r.account_id
+      WHERE r.company_id=? AND r.account_role=? AND r.active=1
+        AND r.branch_id IS NULL
+        AND ((r.line_kind IS NULL AND ? IS NULL) OR r.line_kind=?)
+        AND ((r.tax_code IS NULL AND ? IS NULL) OR r.tax_code=?)
+      ORDER BY r.priority DESC,r.rule_id LIMIT 1`,
     [
       args.companyId, args.role,
       args.lineKind ?? null, args.lineKind ?? null,
       args.taxCode ?? null, args.taxCode ?? null,
     ],
   );
-  if (existing) return;
+  if (existing) {
+    const isAuto = existing.rule_id.startsWith(`auto:${args.companyId}:`);
+    const matchesAllowedLogicalKey = args.logicalKeys.some(
+      (logicalKey) =>
+        existing.account_source_reference_id?.endsWith(`:${logicalKey}`) === true,
+    );
+    if (!isAuto || matchesAllowedLogicalKey) return;
+
+    await session.execute(
+      `UPDATE sales_posting_rules
+          SET active=0,version=version+1,updated_at=?
+        WHERE rule_id=?`,
+      [args.now, existing.rule_id],
+    );
+  }
 
   const accountId = await findBuiltInAccount(session, args.companyId, args.logicalKeys);
   if (!accountId) return;
