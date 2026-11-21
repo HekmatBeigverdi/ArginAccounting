@@ -170,7 +170,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 27 | Persian RTL Posting Status/Recovery UI | Completed |
 | 28 | Automated Integration & E2E Stock/Service/Return Scenarios | Completed |
 | 29 | Documentation, Reconciliation & Accounting Examples | Completed |
-| 30 | Quality Gate, Merge & Release | Planned |
+| 30 | Quality Gate, Merge & Release | Completed |
 
 ## Step 1 — Baseline, Handoff Contract & Ownership Verification
 
@@ -4619,3 +4619,94 @@ All executable validation remains part of Step 30 and must be recorded from actu
 ## Next Step
 
 Step 30 — Quality Gate, Merge & Release.
+
+## Step 30 — Quality Gate, Merge & Release
+
+### Completed work
+
+Phase 25 now has an explicit canonical validation wrapper:
+
+```bash
+pnpm validate:phase25
+```
+
+and a dedicated GitHub Actions workflow:
+
+```text
+.github/workflows/phase25-validation.yml
+```
+
+The gate covers:
+
+- `@argin/sales-posting` typecheck/tests;
+- Sales and Sales-Tauri typecheck/tests;
+- Inventory and Inventory-Tauri typecheck/tests;
+- Accounting and Accounting-Tauri typecheck/tests;
+- Security typecheck/tests;
+- Desktop typecheck/tests/build;
+- generated documentation index;
+- internal documentation link validation;
+- clean generated-doc diff;
+- repository-wide typecheck/tests/build/lint;
+- Tauri Rust `cargo check`.
+
+### Observed release validation
+
+GitHub Actions:
+
+```text
+Workflow: Phase 25 Validation
+Run:      #8
+Run ID:   44900925197
+Code SHA: 2e58178a988ad1d9d88c853dd75265b8ddcb3acc
+Result:   SUCCESS
+```
+
+The successful run includes the final application/runtime code, Step 28 E2E coverage, Phase 29 documentation, generated documentation index, canonical `validate:phase25` script and release workflow.
+
+The final Step 30 status/documentation commit is Markdown-only and intentionally excluded from rerunning the release gate.
+
+### Release preparation
+
+Prepared:
+
+```text
+Version: 0.25.0
+Tag:     v0.25.0
+Title:   ArginAccounting v0.25.0 — Sales Posting
+Notes:   docs/phases/phase-25-release-notes.md
+```
+
+Pull Request:
+
+```text
+#29 — release: Phase 25 Sales Posting
+phase/25-sales-posting → main
+```
+
+Tag and GitHub Release publication remain manual repository-owner actions as requested.
+
+### Exit criteria
+
+- [x] Canonical `validate:phase25` gate exists.
+- [x] Dedicated Phase 25 GitHub Actions workflow exists.
+- [x] Dependency installation succeeded with frozen lockfile.
+- [x] Phase 25 release gate completed successfully.
+- [x] Documentation generation/link validation passed.
+- [x] Monorepo and Tauri quality checks passed through the canonical gate.
+- [x] Release notes are prepared.
+- [x] Phase plan and project status are reconciled.
+- [x] Release PR targets `main`.
+- [x] Semantic version/tag/title are frozen.
+- [x] Manual Tag/GitHub Release instructions are prepared for repository owner.
+
+## Phase 25 Final State
+
+Phase 25 — Sales Posting is complete and release-ready.
+
+The verified release target is:
+
+```text
+v0.25.0 — ArginAccounting v0.25.0 — Sales Posting
+```
+
