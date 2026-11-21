@@ -16,7 +16,7 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
 | Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri`, Desktop | Phase 23 complete; final validation passed; semantic publication manual | 23 | [Phase 23 Purchase Posting](../phases/phase-23-purchase-posting-plan.md) |
 | Sales Workflow | `@argin/sales`, `@argin/sales-tauri`, Desktop | Phase 24 complete and merged; semantic publication manual | 24 | [Phase 24 Sales Workflow](../phases/phase-24-sales-workflow-plan.md) |
-| Sales Posting | `@argin/sales-posting`, Desktop, Accounting/Inventory adapters | Phase 25 Steps 1–29 complete; Step 30 quality/release gate pending | 25 | [Phase 25 Sales Posting](../phases/phase-25-sales-posting.md) |
+| Sales Posting | `@argin/sales-posting`, Desktop, Accounting/Inventory adapters | Phase 25 complete; canonical validation passed; `v0.25.0` release prepared | 25 | [Phase 25 Sales Posting](../phases/phase-25-sales-posting.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -83,4 +83,4 @@ Module name, bounded-context purpose, package names, runtime adapters, lifecycle
 - Reconciliation: [Sales Posting Reconciliation and Accounting Examples](../accounting/sales-posting-reconciliation.md) defines AR/Revenue/VAT/COGS/Inventory equations, Journal-total-versus-Invoice-total behavior, negative gross margin and operator drill-down.
 - Desktop: Persian RTL recovery/status panel exposes Pending/Ready/Committed/Blocked, deterministic retry/replay/manual-review actions and optional operational trace.
 - Bridge: Sales source/version, Posting, Movement, Valuation and Journal identities remain durable and explicit; Idempotency/Outbox evidence is sync-ready and projections are not promoted to independent authority.
-- Quality: Step 28 adds stock/service/mixed/return/correction/runtime E2E regression gates. Step 29 synchronizes canonical documentation. Runtime quality PASS is reserved for Step 30 observed validation.
+- Quality: Step 28 adds stock/service/mixed/return/correction/runtime E2E regression gates; Step 29 synchronizes canonical documentation; Step 30 canonical GitHub Actions release validation passed successfully.
