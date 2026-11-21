@@ -37,7 +37,7 @@ Historical Phase 01–17 documentation is retained as project history and is not
 22. [Phase 22 — Purchase Workflow](phase-22-purchase-workflow-plan.md) — Steps 1–23 complete; release preparation and promotion to `develop`/`main` complete; semantic `v0.22.0` publication pending
 23. [Phase 23 — Purchase Posting & Accounting Integration](phase-23-purchase-posting-plan.md) — all 36 steps complete; final Phase 23 validation passed; promotion/release publication follows the prepared Step 36 procedure
 24. [Phase 24 — Sales Workflow](phase-24-sales-workflow-plan.md) — all 30 steps complete and merged to `main`; semantic `v0.24.0` publication remains manual
-25. [Phase 25 — Sales Posting](phase-25-sales-posting.md) — Steps 1–29 complete; [fixed implementation plan](phase-25-sales-posting-plan.md); only Step 30 Quality Gate, Merge & Release remains
+25. [Phase 25 — Sales Posting](phase-25-sales-posting.md) — all 30 fixed steps complete; canonical validation passed; [fixed implementation plan](phase-25-sales-posting-plan.md); `v0.25.0` release prepared
 
 ## Renumbering Rule
 
