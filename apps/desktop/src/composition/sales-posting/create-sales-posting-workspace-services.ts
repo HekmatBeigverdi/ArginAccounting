@@ -414,15 +414,19 @@ export function createSalesPostingWorkspaceServices(input: {
             throw new Error("فاکتور فروش در شعبه فعال یافت نشد.");
           }
           if (
-            persisted.document.documentType !== "sales-invoice"
+            (persisted.document.documentType !== "sales-invoice"
+              && persisted.document.documentType !== "sales-return")
             || persisted.lifecycle.status !== "finalized"
           ) {
-            throw new Error("ثبت حسابداری خودکار فقط برای فاکتور فروش قطعی اجرا می‌شود.");
+            throw new Error("ثبت حسابداری خودکار فقط برای سند فروش/برگشت فروش قطعی اجرا می‌شود.");
           }
+
+          const sourceType = persisted.document.documentType;
+          const isReturn = sourceType === "sales-return";
 
           const source = createSalesPostingSourceIdentity({
             sourceSystem: "sales",
-            sourceType: "sales-invoice",
+            sourceType,
             sourceDocumentId: sourceId,
             sourceVersion: persisted.version,
             externalReference: null,
