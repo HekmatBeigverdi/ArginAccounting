@@ -588,9 +588,13 @@ export function InventoryDocumentsPage() {
         await services.confirm(selected, reason?.trim() ?? null);
 
         if (
-          selected.documentType === "issue"
+          (
+            (selected.documentType === "issue"
+              && selected.sourceReference?.documentType === "sales-invoice")
+            || (selected.documentType === "receipt"
+              && selected.sourceReference?.documentType === "sales-return")
+          )
           && selected.sourceReference?.sourceSystem === "sales"
-          && selected.sourceReference.documentType === "sales-invoice"
           && selected.sourceReference.documentId
           && selected.scope?.branchId
           && session
@@ -610,9 +614,17 @@ export function InventoryDocumentsPage() {
                 sourceId: selected.sourceReference.documentId,
               });
               if (recovery.status === "committed") {
-                setMessage("حواله قطعی شد و سند حسابداری فروش نیز به‌صورت خودکار ایجاد شد.");
+                setMessage(
+                  selected.documentType === "receipt"
+                    ? "رسید برگشت از فروش قطعی شد و سند حسابداری آن به‌صورت خودکار ایجاد شد."
+                    : "حواله قطعی شد و سند حسابداری فروش نیز به‌صورت خودکار ایجاد شد.",
+                );
               } else if (recovery.status === "pending") {
-                setMessage("حواله قطعی شد؛ ثبت حسابداری فروش در انتظار تکمیل ارزش‌گذاری است.");
+                setMessage(
+                  selected.documentType === "receipt"
+                    ? "رسید برگشت از فروش قطعی شد؛ ثبت حسابداری در انتظار تکمیل ارزش‌گذاری است."
+                    : "حواله قطعی شد؛ ثبت حسابداری فروش در انتظار تکمیل ارزش‌گذاری است.",
+                );
               }
             }
           } catch (postingError) {
