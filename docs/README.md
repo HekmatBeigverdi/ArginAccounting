@@ -47,13 +47,13 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 ## Current Project State
 
 - Current implementation target: [Phase 25 — Sales Posting](phases/phase-25-sales-posting.md).
-- Phase 25 Steps 1–29 are complete; only Step 30 Quality Gate, Merge & Release remains.
+- Phase 25 all 30 fixed steps are complete; canonical Phase 25 Validation #8 passed successfully.
 - The fixed 30-step implementation plan remains canonical at [Phase 25 Sales Posting Plan](phases/phase-25-sales-posting-plan.md).
 - The accounting reconciliation reference is [Sales Posting Reconciliation and Accounting Examples](accounting/sales-posting-reconciliation.md).
 - Phase 25 is based on `main` commit `044a3ed1abbd847da7675c6bf70dcd9510f6f648`, the completed Phase 24 merge baseline, on branch `phase/25-sales-posting`.
 - Sales owns selling-price/commercial facts; Inventory owns quantity/movement; Phase 21 owns FIFO/MWA cost; Phase 25 owns Sales-specific accounting orchestration; Accounting owns Journal lifecycle.
 - Phase 24 is complete on `main`; semantic `v0.24.0` tag/GitHub Release publication remains manual.
-- Phase 25 release target is `v0.25.0` — `ArginAccounting v0.25.0 — Sales Posting`; no release-quality PASS is claimed before Step 30 execution.
+- Phase 25 release target is `v0.25.0` — `ArginAccounting v0.25.0 — Sales Posting`; release-quality PASS is recorded from GitHub Actions run ID `44900925197`.
 - Canonical roadmap: [`ROADMAP.md`](../ROADMAP.md)
 
 ## Source-of-Truth Policy
