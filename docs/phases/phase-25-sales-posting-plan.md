@@ -169,7 +169,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 26 | Permissions, Approval/Audit & Operational Trace | Completed |
 | 27 | Persian RTL Posting Status/Recovery UI | Completed |
 | 28 | Automated Integration & E2E Stock/Service/Return Scenarios | Completed |
-| 29 | Documentation, Reconciliation & Accounting Examples | Planned |
+| 29 | Documentation, Reconciliation & Accounting Examples | Completed |
 | 30 | Quality Gate, Merge & Release | Planned |
 
 ## Step 1 — Baseline, Handoff Contract & Ownership Verification
@@ -4382,3 +4382,240 @@ The source changes and automated gates are committed on the Phase 25 branch. Run
 ## Next Step
 
 Step 29 — Documentation, Reconciliation & Accounting Examples.
+
+## Step 29 — Documentation, Reconciliation & Accounting Examples
+
+### Completed work
+
+Step 29 converts the implemented Phase 25 accounting behavior into canonical project documentation and explicit reconciliation rules.
+
+Added the canonical phase record:
+
+```text
+docs/phases/phase-25-sales-posting.md
+```
+
+The phase record documents:
+
+- ownership boundaries;
+- stock Sales flow;
+- service-only and mixed flow;
+- commercial posting;
+- COGS / Inventory Relief;
+- pending/recovery state;
+- historical Valuation recovery;
+- Moving Average -> FIFO transition handling;
+- Sales Return;
+- Sales Correction;
+- exactly-once/idempotent replay;
+- Journal provenance;
+- account-resolution safety;
+- below-cost behavior;
+- Desktop runtime wiring;
+- SQLite persistence;
+- Security/Audit;
+- Argin Bridge readiness;
+- remaining Step 30 release gate.
+
+Added the canonical accounting/reconciliation guide:
+
+```text
+docs/accounting/sales-posting-reconciliation.md
+```
+
+It defines the canonical equations:
+
+```text
+AR = Sales Grand Total
+Revenue = Sales Tax Base
+Output VAT = Sales Tax Amount
+COGS = absolute resolved outbound Valuation cost
+Inventory Relief = COGS
+```
+
+and explains why:
+
+```text
+Journal Total != Invoice Total
+```
+
+can be correct for stock Sales because the Journal contains both the commercial and cost/inventory effects.
+
+### Accounting examples
+
+The reconciliation guide includes examples for:
+
+- stock sale without VAT;
+- stock sale with VAT;
+- zero calculated VAT;
+- service-only sale;
+- mixed stock + service;
+- full Sales Return;
+- partial Sales Return;
+- Correction/reverse-and-replace;
+- below-cost / negative gross margin.
+
+The manual-acceptance example is documented explicitly:
+
+```text
+Revenue = 1,425,000 IRR
+COGS    = 1,666,667 IRR
+
+Gross Margin = -241,667 IRR
+
+Journal Debit  = 3,091,667
+Journal Credit = 3,091,667
+```
+
+The guide explains that the customer receivable remains only `1,425,000`; the additional `1,666,667` is the independent COGS/Inventory accounting leg.
+
+### Reconciliation matrices
+
+The guide adds operational reconciliation checklists for:
+
+#### Sales Invoice
+
+- source version;
+- Customer/A-R;
+- Tax Base/Revenue;
+- Tax Amount/Output VAT;
+- zero-VAT omission;
+- Issue;
+- Movement;
+- Valuation Entry/revision;
+- COGS;
+- Inventory Relief;
+- service-line exclusion;
+- Journal balance;
+- Posting identity;
+- Journal identity;
+- replay/no-duplicate behavior.
+
+#### Sales Return
+
+- return source type;
+- original Invoice lineage;
+- return-line lineage;
+- Inventory Receipt;
+- positive Movement;
+- resolved inbound Valuation;
+- Revenue/VAT/A-R reversal;
+- Inventory restoration;
+- COGS reversal;
+- balanced Journal;
+- replay identity.
+
+### Account semantic reconciliation
+
+Step 29 records that:
+
+```text
+balanced Journal
+!= automatically correct account semantics
+```
+
+QA/accounting review must verify both:
+
+```text
+amount correctness
+AND
+account semantic correctness
+```
+
+The current fail-closed automatic bootstrap policy from Step 28 is documented, including the prohibition on implicit Trading -> Manufacturing account fallback.
+
+### Gross-margin documentation
+
+The guide defines:
+
+```text
+Gross Margin = Revenue - COGS
+```
+
+and explicitly documents legitimate negative gross margin when CR-24-01 allowed/approved the sale.
+
+It also separates:
+
+```text
+Phase 24 pre-finalization cost quote
+→ governance evidence
+
+Phase 25 resolved outbound Valuation
+→ accounting COGS authority
+```
+
+### Recovery documentation
+
+The canonical operator meaning/action for:
+
+```text
+waiting-for-issue
+waiting-for-confirmation
+waiting-for-movement
+waiting-for-valuation
+blocked/manual-review
+```
+
+is documented.
+
+The controlled historical rebuild path is included so operators do not repeatedly invoke ineffective incremental catch-up for chronology-blocked Movement history.
+
+### Trace documentation
+
+The documented drill-down chain is:
+
+```text
+Journal Line
+→ Journal Voucher
+→ Sales Posting
+→ Sales source/version
+→ Sales Line
+→ Inventory document/line
+→ Movement
+→ Valuation Entry/revision
+```
+
+Service-only lines intentionally terminate before Inventory.
+
+### Project documentation reconciliation
+
+Step 29 synchronizes:
+
+- root README;
+- Documentation Hub;
+- Phase documentation index;
+- Module Registry;
+- ROADMAP;
+- CHANGELOG;
+- Phase 25 canonical plan.
+
+The generated documentation index remains a Step 30 quality-gate command and is not claimed regenerated from the connected GitHub environment.
+
+### Validation note
+
+Step 29 is a documentation/reconciliation completion step. It does not claim runtime test PASS.
+
+All executable validation remains part of Step 30 and must be recorded from actual execution.
+
+### Exit criteria
+
+- [x] Canonical Phase 25 record exists.
+- [x] Canonical Sales Posting reconciliation guide exists.
+- [x] Stock Sales accounting example is documented.
+- [x] VAT and zero-VAT examples are documented.
+- [x] Service-only and mixed examples are documented.
+- [x] Sales Return and partial-return examples are documented.
+- [x] Correction/reverse-and-replace semantics are documented.
+- [x] Journal-total-versus-Invoice-total behavior is explained.
+- [x] Gross margin / negative margin behavior is documented.
+- [x] Sales/Inventory/Valuation/Posting/Accounting reconciliation fields are documented.
+- [x] Account semantic correctness is part of reconciliation.
+- [x] Recovery/historical rebuild operator guidance is documented.
+- [x] Exactly-once/replay reconciliation is documented.
+- [x] Argin Bridge trace chain is documented.
+- [x] Project documentation registries/entry points are synchronized.
+- [x] Runtime validation PASS is not falsely claimed.
+
+## Next Step
+
+Step 30 — Quality Gate, Merge & Release.
