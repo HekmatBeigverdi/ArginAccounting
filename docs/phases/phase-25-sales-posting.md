@@ -2,12 +2,15 @@
 
 ## Status
 
-Implementation through **Step 29 — Documentation, Reconciliation & Accounting Examples** is complete on branch `phase/25-sales-posting`.
+All **30 fixed Phase 25 steps are complete** on branch `phase/25-sales-posting`.
 
-The remaining phase action is:
+The canonical release gate passed in GitHub Actions:
 
 ```text
-Step 30 — Quality Gate, Merge & Release
+Phase 25 Validation #8
+Run ID: 44900925197
+Code SHA: 2e58178a988ad1d9d88c853dd75265b8ddcb3acc
+Result: SUCCESS
 ```
 
 Release target:
@@ -572,15 +575,17 @@ Durable IDs, source versions, request/operation identity, UTC metadata, immutabl
 - [Phase 24 Sales Workflow](phase-24-sales-workflow-plan.md)
 - [Phase 21 Inventory Valuation](phase-21-inventory-valuation-plan.md)
 
-## Remaining Closure
+## Release State
 
-Only Step 30 remains:
+All fixed implementation steps and the canonical Quality Gate are complete.
+
+Prepared release:
 
 ```text
-Quality Gate
-→ owner validation evidence
-→ merge
-→ v0.25.0 release preparation/publication
+Version: 0.25.0
+Tag: v0.25.0
+Title: ArginAccounting v0.25.0 — Sales Posting
+Notes: docs/phases/phase-25-release-notes.md
 ```
 
-The existence of tests is not evidence that they passed. Step 30 must record observed validation results.
+Tag and GitHub Release publication remain manual repository-owner actions.
