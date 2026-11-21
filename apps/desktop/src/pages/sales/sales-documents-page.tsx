@@ -335,7 +335,13 @@ function SalesDocumentsWorkspace() {
       setPendingAction(null);
       setMessage(ACTION_MESSAGES[action]);
 
-      if (action === "finalize" && result.document.documentType === "sales-invoice") {
+      if (
+        action === "finalize"
+        && (
+          result.document.documentType === "sales-invoice"
+          || result.document.documentType === "sales-return"
+        )
+      ) {
         try {
           const posting = createSalesPostingWorkspaceServices({
             database: await getDesktopDatabase(),
@@ -352,9 +358,17 @@ function SalesDocumentsWorkspace() {
             });
             setPostingRecovery(recovery);
             if (recovery.status === "committed") {
-              setMessage("فاکتور قطعی شد و سند حسابداری فروش به‌صورت خودکار ایجاد شد.");
+              setMessage(
+                result.document.documentType === "sales-return"
+                  ? "برگشت از فروش قطعی شد و سند حسابداری آن به‌صورت خودکار ایجاد شد."
+                  : "فاکتور قطعی شد و سند حسابداری فروش به‌صورت خودکار ایجاد شد.",
+              );
             } else if (recovery.status === "pending") {
-              setMessage("فاکتور قطعی شد؛ ثبت حسابداری پس از قطعی‌شدن حواله و تکمیل ارزش‌گذاری ادامه می‌یابد.");
+              setMessage(
+                result.document.documentType === "sales-return"
+                  ? "برگشت از فروش قطعی شد؛ ثبت حسابداری پس از قطعی‌شدن رسید و تکمیل ارزش‌گذاری ادامه می‌یابد."
+                  : "فاکتور قطعی شد؛ ثبت حسابداری پس از قطعی‌شدن حواله و تکمیل ارزش‌گذاری ادامه می‌یابد.",
+              );
             }
           }
         } catch (postingError) {
@@ -505,7 +519,10 @@ function SalesDocumentsWorkspace() {
     if (
       !selectedDocument
       || !session
-      || selectedDocument.documentType !== "sales-invoice"
+      || (
+        selectedDocument.documentType !== "sales-invoice"
+        && selectedDocument.documentType !== "sales-return"
+      )
       || selectedDocument.status !== "finalized"
     ) {
       return;
@@ -949,7 +966,8 @@ function SalesDocumentsWorkspace() {
                   </div>
                 </div>
 
-                {selectedDocument.documentType === "sales-invoice" &&
+                {(selectedDocument.documentType === "sales-invoice"
+                    || selectedDocument.documentType === "sales-return") &&
                   selectedDocument.status === "finalized" &&
                   postingRecovery && (
                     <SalesPostingRecoveryPanel
