@@ -15,6 +15,8 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 | Inventory Documents | `@argin/inventory`, `@argin/inventory-tauri`, Desktop | Implemented; Phase 20 Step 21 quality gate pending validation | 20 | [Inventory Documents Module](../modules/inventory-documents.md) |
 | Purchase Workflow | `@argin/purchase`, `@argin/purchase-tauri` | Implemented through Phase 22 | 22 | [Phase 22 Purchase Workflow](../phases/phase-22-purchase-workflow-plan.md) |
 | Purchase Posting | `@argin/purchase-posting`, `@argin/purchase-posting-tauri`, Desktop | Phase 23 complete; final validation passed; semantic publication manual | 23 | [Phase 23 Purchase Posting](../phases/phase-23-purchase-posting-plan.md) |
+| Sales Workflow | `@argin/sales`, `@argin/sales-tauri`, Desktop | Phase 24 complete and merged; semantic publication manual | 24 | [Phase 24 Sales Workflow](../phases/phase-24-sales-workflow-plan.md) |
+| Sales Posting | `@argin/sales-posting`, Desktop, Accounting/Inventory adapters | Phase 25 Steps 1–29 complete; Step 30 quality/release gate pending | 25 | [Phase 25 Sales Posting](../phases/phase-25-sales-posting.md) |
 
 ## Inventory Documents — Phase 20 Current State
 
@@ -64,3 +66,21 @@ This registry is the canonical inventory of ArginAccounting modules. Update it w
 ## Required Fields for Future Entries
 
 Module name, bounded-context purpose, package names, runtime adapters, lifecycle status, owning phase, migrations, permission namespace, public contracts, canonical documents, and deprecation notes.
+
+
+## Sales Posting — Phase 25 Current State
+
+- Purpose/ownership: Sales-specific accounting-recognition boundary between immutable Sales commercial facts, Inventory/Valuation fulfillment facts and Accounting-owned Journal Vouchers.
+- Domain/Application: `@argin/sales-posting` owns source identity, commercial/cost posting calculations, account resolution, return/correction lineage, recovery, idempotency, CAS, atomic commit/Outbox and Journal provenance.
+- Runtime persistence: Desktop migration `0037_sales_posting.sql` persists Posting state, Posting Rules, append-only Idempotency outcomes, append-only Journal provenance and Outbox evidence.
+- Stock fulfillment: finalized stock Sales Invoice stages Inventory Issue; Sales Posting waits for confirmed Issue -> Movement -> resolved FIFO/MWA Valuation before COGS/Inventory Relief.
+- Service fulfillment: service-only Sales bypass Inventory/Valuation and may post immediately from commercial facts.
+- Mixed invoices: commercial posting covers all lines while cost posting is restricted to stock lines.
+- Returns: finalized Sales Return stages Inventory Receipt; confirmed Receipt/inbound Valuation drives Revenue/VAT/A-R reversal plus Inventory restoration/COGS reversal.
+- Corrections: reverse-and-replace lineage preserves immutable original source/Journal history.
+- Valuation recovery: chronology-blocked missing Valuation Entries use controlled historical rebuild from authoritative Movement + Cost Input + effective Policy history; MWA -> FIFO transition state is handled explicitly.
+- Account safety: automatic bootstrap is fail-closed and does not cross Trading/Manufacturing business-model account semantics. Explicit Posting Rules remain authoritative.
+- Reconciliation: [Sales Posting Reconciliation and Accounting Examples](../accounting/sales-posting-reconciliation.md) defines AR/Revenue/VAT/COGS/Inventory equations, Journal-total-versus-Invoice-total behavior, negative gross margin and operator drill-down.
+- Desktop: Persian RTL recovery/status panel exposes Pending/Ready/Committed/Blocked, deterministic retry/replay/manual-review actions and optional operational trace.
+- Bridge: Sales source/version, Posting, Movement, Valuation and Journal identities remain durable and explicit; Idempotency/Outbox evidence is sync-ready and projections are not promoted to independent authority.
+- Quality: Step 28 adds stock/service/mixed/return/correction/runtime E2E regression gates. Step 29 synchronizes canonical documentation. Runtime quality PASS is reserved for Step 30 observed validation.
