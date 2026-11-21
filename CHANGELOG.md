@@ -44,6 +44,8 @@ The project follows Semantic Versioning where practical during phased developmen
 - Completed Phase 25 Step 28 automated integration/E2E coverage for stock, service-only, mixed, zero/positive VAT, historical valuation recovery, Sales Return, correction lineage, replay/CAS/atomic boundaries, legacy catch-up and Desktop runtime persistence.
 - Wired finalized Sales Return through confirmed Inventory Receipt/inbound valuation to append-only commercial reversal + Inventory/COGS restoration Journal creation.
 - Hardened automatic Sales account bootstrap to fail closed rather than crossing Trading/Manufacturing account models; stale auto rules pointing to an invalid business-model logical key are deactivated while explicit rules remain authoritative.
+- Completed Phase 25 Step 29 documentation/reconciliation: added the canonical Phase 25 record and Sales Posting reconciliation/accounting-examples guide covering Journal-vs-Invoice totals, VAT, service/mixed Sales, Returns, Corrections, negative gross margin, recovery, source trace and account-semantic reconciliation.
+- Synchronized root/project documentation entry points, Phase registry, Module Registry and ROADMAP to the Phase 25 Step 29 state while reserving actual quality-gate PASS for Step 30.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
