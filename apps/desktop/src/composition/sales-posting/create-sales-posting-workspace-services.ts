@@ -475,22 +475,23 @@ export function createSalesPostingWorkspaceServices(input: {
           }> = [];
 
           if (stockLines.length > 0) {
+            const inventoryDocumentType = isReturn ? "receipt" : "issue";
             const issue = await session.queryOne<IssueRow>(
               `SELECT id,company_id,status,fiscal_period_id,version,updated_at
                  FROM inventory_documents
                 WHERE company_id=? AND source_system='sales'
-                  AND source_document_type='sales-invoice'
-                  AND source_document_id=? AND document_type='issue'
+                  AND source_document_type=?
+                  AND source_document_id=? AND document_type=?
                   AND deleted_at IS NULL
                 ORDER BY created_at DESC LIMIT 1`,
-              [companyId, sourceId],
+              [companyId, sourceType, sourceId, inventoryDocumentType],
             );
             if (!issue) {
-              await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-issue",now});
+              await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceType,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-issue",now});
               return Object.freeze({status:"pending",retryAction:"wait",reason:"waiting-for-issue",waitingLineIds:Object.freeze(stockLines.map(x=>x.lineId)),journalVoucherId:null,committedPostingVersion:null});
             }
             if (issue.status !== "confirmed") {
-              await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-confirmation",now});
+              await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceType,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-confirmation",now});
               return Object.freeze({status:"pending",retryAction:"wait",reason:"waiting-for-confirmation",waitingLineIds:Object.freeze(stockLines.map(x=>x.lineId)),journalVoucherId:null,committedPostingVersion:null});
             }
             fiscalPeriodId = issue.fiscal_period_id;
@@ -503,7 +504,7 @@ export function createSalesPostingWorkspaceServices(input: {
             for (const salesLine of stockLines) {
               const issueLine = issueLines.find(line => line.source_line_id === salesLine.lineId);
               if (!issueLine) {
-                await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-movement",now});
+                await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceType,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-movement",now});
                 return Object.freeze({status:"pending",retryAction:"wait",reason:"waiting-for-movement",waitingLineIds:Object.freeze([salesLine.lineId]),journalVoucherId:null,committedPostingVersion:null});
               }
               const mv = await session.queryOne<MovementValuationRow>(
@@ -519,7 +520,7 @@ export function createSalesPostingWorkspaceServices(input: {
                 [companyId,issue.id,issueLine.id],
               );
               if (!mv) {
-                await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-movement",now});
+                await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceType,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-movement",now});
                 return Object.freeze({status:"pending",retryAction:"wait",reason:"waiting-for-movement",waitingLineIds:Object.freeze([salesLine.lineId]),journalVoucherId:null,committedPostingVersion:null});
               }
               if (
@@ -529,7 +530,7 @@ export function createSalesPostingWorkspaceServices(input: {
                 mv.currency === null || mv.quantity === null ||
                 mv.valued_at === null || mv.revision === null
               ) {
-                await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-valuation",now});
+                await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceType,sourceVersion:persisted.version,status:"pending",reason:"waiting-for-valuation",now});
                 return Object.freeze({status:"pending",retryAction:"wait",reason:"waiting-for-valuation",waitingLineIds:Object.freeze([salesLine.lineId]),journalVoucherId:null,committedPostingVersion:null});
               }
               if (!mv.quantity_delta.startsWith("-") || mv.total_cost > 0) {
@@ -660,7 +661,7 @@ export function createSalesPostingWorkspaceServices(input: {
           const postingAggregate = createSalesPosting({
             postingId,companyId,branchId,source,createdAtUtc:now,
           });
-          await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceVersion:persisted.version,status:"ready",now});
+          await upsertPostingStatus(session,{postingId,companyId,branchId,sourceId,sourceType,sourceVersion:persisted.version,status:"ready",now});
 
           const journalRepository = new SqliteJournalVoucherRepository(session);
           const journalExisting = await journalRepository.findById(journalId);
