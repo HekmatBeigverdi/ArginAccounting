@@ -25,8 +25,8 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 - Phase 22 — Purchase Workflow: implementation Steps 1–23 complete and promoted; semantic publication remains a repository-owner action.
 - Phase 23 — Purchase Posting & Accounting Integration: all 36 steps complete; the final Phase 23 GitHub Actions validation gate passed; promotion/release publication follows the prepared procedure.
 - Phase 24 — Sales Workflow: all 30 steps complete and merged to `main`; semantic `v0.24.0` publication remains a repository-owner action.
-- Phase 25 — Sales Posting: Steps 1–29 complete on `phase/25-sales-posting`; only Step 30 Quality Gate, Merge & Release remains.
-- Prepared Phase 25 target: `v0.25.0` — `ArginAccounting v0.25.0 — Sales Posting`.
+- Phase 25 — Sales Posting: all 30 fixed steps complete; canonical GitHub Actions release validation passed; merge/release preparation is complete.
+- Prepared Phase 25 target: `v0.25.0` — `ArginAccounting v0.25.0 — Sales Posting`; Tag/GitHub Release publication remains manual.
 
 Phase 24 owns Customer/Sales commercial facts and stages stock fulfillment through Inventory. Phase 25 consumes immutable Sales facts plus authoritative Phase 21 FIFO/MWA valuation outputs to produce deterministic, balanced, replay-safe Accounting Journal effects. Inventory remains quantity authority, Inventory Valuation remains cost authority, Sales remains commercial authority, and Accounting remains Journal lifecycle authority.
 
