@@ -808,6 +808,7 @@ export function createSalesPostingWorkspaceServices(input: {
             await input.database.transaction(session =>
               upsertPostingStatus(session,{
                 postingId:postingIdFor(sourceId,persisted.version),companyId,branchId,sourceId,
+                sourceType:persisted.document.documentType as "sales-invoice"|"sales-return"|"sales-correction",
                 sourceVersion:persisted.version,status:"blocked",errorCode:code,now,
               })
             );
