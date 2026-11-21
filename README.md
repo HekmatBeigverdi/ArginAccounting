@@ -23,12 +23,14 @@ Source identifiers, database identifiers, API contracts, GitHub documentation, b
 - Phase 01–20: implementation completed and integrated through the Phase 20 stable baseline.
 - Phase 21 — Inventory Valuation: implementation Steps 1–19 complete; its standalone final release record remains separate.
 - Phase 22 — Purchase Workflow: implementation Steps 1–23 complete and promoted; semantic publication remains a repository-owner action.
-- Phase 23 — Purchase Posting & Accounting Integration: all 36 steps complete; the final Phase 23 GitHub Actions validation gate passed; promotion to `develop`/`main` and manual semantic publication follow the release procedure.
-- Prepared Phase 23 target: `v0.23.0` — `ArginAccounting v0.23.0 — Purchase Posting & Accounting Integration`.
+- Phase 23 — Purchase Posting & Accounting Integration: all 36 steps complete; the final Phase 23 GitHub Actions validation gate passed; promotion/release publication follows the prepared procedure.
+- Phase 24 — Sales Workflow: all 30 steps complete and merged to `main`; semantic `v0.24.0` publication remains a repository-owner action.
+- Phase 25 — Sales Posting: Steps 1–29 complete on `phase/25-sales-posting`; only Step 30 Quality Gate, Merge & Release remains.
+- Prepared Phase 25 target: `v0.25.0` — `ArginAccounting v0.25.0 — Sales Posting`.
 
-Phase 22 owns Supplier/Purchase commercial facts and connects confirmed stock purchases to Inventory receipts and authoritative Inventory Valuation Cost Inputs. Phase 23 consumes those durable facts and valuation outputs to produce deterministic, balanced, replay-safe Accounting Journal drafts without duplicate operator entry. Inventory remains quantity authority, Inventory Valuation remains FIFO/MWA authority, Purchase remains commercial authority, and Accounting remains Journal lifecycle authority.
+Phase 24 owns Customer/Sales commercial facts and stages stock fulfillment through Inventory. Phase 25 consumes immutable Sales facts plus authoritative Phase 21 FIFO/MWA valuation outputs to produce deterministic, balanced, replay-safe Accounting Journal effects. Inventory remains quantity authority, Inventory Valuation remains cost authority, Sales remains commercial authority, and Accounting remains Journal lifecycle authority.
 
-See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 22 record](docs/phases/phase-22-purchase-workflow-plan.md), [Phase 23 record](docs/phases/phase-23-purchase-posting-plan.md), and [Phase 23 manual Desktop acceptance](docs/testing/phase-23-manual-desktop-acceptance.md).
+See the canonical [Roadmap](ROADMAP.md), [Documentation Hub](docs/README.md), [Phase 24 record](docs/phases/phase-24-sales-workflow-plan.md), [Phase 25 record](docs/phases/phase-25-sales-posting.md), [Phase 25 implementation plan](docs/phases/phase-25-sales-posting-plan.md), and [Sales Posting reconciliation guide](docs/accounting/sales-posting-reconciliation.md).
 
 ## Main Modules
 
@@ -133,6 +135,10 @@ Validation commands are requirements, not proof of success. Phase and release do
 - [Phase 21 — Inventory Valuation](docs/phases/phase-21-inventory-valuation-plan.md)
 - [Phase 22 — Purchase Workflow](docs/phases/phase-22-purchase-workflow-plan.md)
 - [Phase 23 — Purchase Posting & Accounting Integration](docs/phases/phase-23-purchase-posting-plan.md)
+- [Phase 24 — Sales Workflow](docs/phases/phase-24-sales-workflow-plan.md)
+- [Phase 25 — Sales Posting](docs/phases/phase-25-sales-posting.md)
+- [Phase 25 Implementation Plan](docs/phases/phase-25-sales-posting-plan.md)
+- [Sales Posting Reconciliation](docs/accounting/sales-posting-reconciliation.md)
 - [Phase 23 Manual Desktop Acceptance](docs/testing/phase-23-manual-desktop-acceptance.md)
 - [ADR Registry](docs/adr/README.md)
 - [Database Design](docs/database/database-design.md)
