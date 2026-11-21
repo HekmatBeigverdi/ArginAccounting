@@ -168,7 +168,7 @@ Sales Return reverses or adjusts the corresponding commercial and inventory-cost
 | 25 | Posting Status, Recovery & Deterministic Retry | Completed |
 | 26 | Permissions, Approval/Audit & Operational Trace | Completed |
 | 27 | Persian RTL Posting Status/Recovery UI | Completed |
-| 28 | Automated Integration & E2E Stock/Service/Return Scenarios | Planned |
+| 28 | Automated Integration & E2E Stock/Service/Return Scenarios | Completed |
 | 29 | Documentation, Reconciliation & Accounting Examples | Planned |
 | 30 | Quality Gate, Merge & Release | Planned |
 
@@ -4040,3 +4040,345 @@ This closure does not change the frozen Step 28 title/order. Step 28 now has the
 ## Next Step
 
 Step 28 — Automated Integration & E2E Stock/Service/Return Scenarios.
+
+## Step 28 — Automated Integration & E2E Stock/Service/Return Scenarios
+
+### Completed work
+
+Step 28 converts the manual acceptance path discovered after Step 27 into repeatable regression gates across Sales, Inventory Valuation, Sales Posting, Accounting Journal creation and Desktop runtime wiring.
+
+#### 1. Stock Sales Invoice E2E
+
+Automated coverage now verifies:
+
+```text
+Finalized Sales Invoice
+        ↓
+waiting-for-issue
+        ↓
+confirmed Inventory Issue
+        ↓
+Inventory Movement
+        ↓
+resolved FIFO/MWA valuation
+        ↓
+Commercial + COGS posting
+        ↓
+one balanced Accounting Journal
+```
+
+The resulting Journal contains both commercial and cost effects:
+
+```text
+Accounts Receivable    Dr
+COGS                   Dr
+    Sales Revenue          Cr
+    Output VAT             Cr
+    Inventory              Cr
+```
+
+Valuation provenance is retained on both COGS and Inventory Journal lines.
+
+#### 2. Service-only Sales Invoice E2E
+
+Service-only Sales bypasses Inventory completely:
+
+```text
+Finalize
+  ↓
+Commercial Posting
+  ↓
+Journal
+```
+
+Tests assert that no Inventory/COGS line is fabricated.
+
+#### 3. Mixed Stock + Service E2E
+
+Commercial posting covers all Sales lines while cost posting is restricted to stock lines.
+
+The test rejects accidental COGS/Inventory effects on service lines.
+
+#### 4. VAT regression
+
+Two behaviors are now protected:
+
+- positive calculated VAT creates Output VAT;
+- zero calculated VAT creates no Output VAT resolution or Journal line.
+
+This permanently covers the manual defect that produced:
+
+```text
+sales_posting.account_resolution_mismatch:outputVatByLine
+```
+
+#### 5. Inventory valuation recovery regression
+
+Desktop runtime gates protect the manually discovered path:
+
+```text
+Movement exists
+Valuation Entry missing
+        ↓
+diagnose incremental capability
+        ↓
+catch-up OR controlled historical rebuild
+        ↓
+resolved valuation
+        ↓
+Sales Posting resumes
+```
+
+The gate verifies:
+
+- missing-Valuation diagnostics;
+- no infinite blind retry for chronology-blocked movements;
+- controlled historical rebuild action;
+- MWA -> FIFO transition-layer support;
+- exact FIFO insufficiency diagnostics.
+
+#### 6. Historical MWA -> FIFO transition
+
+Historical rebuild is explicitly protected for:
+
+```text
+Moving Average historical state
+        ↓ effective policy change
+FIFO
+        ↓
+controlled FIFO transition layer
+        ↓
+later outbound valuation
+```
+
+The existing Inventory Tauri test verifies that valid remaining MWA quantity/value is carried into a FIFO transition layer and that real FIFO shortage remains fail-closed.
+
+#### 7. Sales Return runtime E2E
+
+Step 28 closed the remaining Desktop runtime gap for Sales Return:
+
+```text
+Finalized Sales Return
+        ↓
+Inventory Receipt Draft
+        ↓
+Receipt confirmed
+        ↓
+positive inbound Movement
+        ↓
+resolved inbound Valuation
+        ↓
+Commercial reversal
+        +
+Inventory / COGS restoration
+        ↓
+Return Journal
+```
+
+The Accounting effect is append-only:
+
+```text
+Sales Revenue          Dr
+Output VAT             Dr
+Inventory              Dr
+    Accounts Receivable    Cr
+    COGS                   Cr
+```
+
+Return source identity is persisted as `sales-return`; it no longer masquerades as `sales-invoice` in Posting/Idempotency evidence.
+
+#### 8. Correction lineage regression
+
+The Step 28 scenario gate asserts that Sales Correction remains:
+
+```text
+reverse-and-replace
+```
+
+with independent original Invoice and Correction source versions. Historical Journal mutation remains prohibited.
+
+#### 9. Runtime trigger coverage
+
+Desktop contract tests now protect both automatic paths:
+
+```text
+Sales Invoice Finalize
+→ evaluateAndPost
+
+Sales Issue Confirm
+→ Valuation catch-up
+→ evaluateAndPost
+```
+
+and:
+
+```text
+Sales Return Finalize
+→ evaluateAndPost
+
+Sales Return Receipt Confirm
+→ Valuation catch-up
+→ evaluateAndPost
+```
+
+Finalized legacy documents with no Posting state retain idempotent catch-up behavior when opened.
+
+#### 10. Durable SQLite boundary
+
+Migration/runtime gates verify the existence of:
+
+```text
+sales_postings
+sales_posting_rules
+sales_posting_idempotency
+sales_posting_journal_provenance
+sales_posting_outbox
+```
+
+Idempotency and Journal provenance remain append-only.
+
+#### 11. Account mapping safety
+
+Manual acceptance exposed an unsafe cross-model fallback where a normal stock item in a Manufacturing chart could be auto-mapped to:
+
+```text
+فروش محصولات تولیدی
+کالای ساخته‌شده
+```
+
+without Product Master owning a purchased/manufactured classification.
+
+Step 28 changes automatic bootstrap to fail closed:
+
+- service lines auto-bootstrap only from `revenue.operating.services`;
+- stock Sales Revenue only from `revenue.operating.goods`;
+- stock Inventory only from `assets.current.inventory`;
+- COGS only from `costs.merchandise.sold`.
+
+There is no automatic fallback from Trading to Manufacturing accounts.
+
+Explicit user/admin Posting Rules remain authoritative and are not overridden.
+
+Previously generated automatic rules that point outside the allowed logical key are deactivated before resolution. If no exact rule/account exists, Posting becomes blocked/manual-review rather than silently using the wrong business-model account.
+
+This preserves accounting correctness until Product Master explicitly owns a future purchased/manufactured classification.
+
+#### 12. Exactly-once / concurrency gate
+
+Step 28 adopts the already implemented automated tests from Steps 18–20 and 24 as mandatory regression gates for:
+
+- exact idempotent replay;
+- same source/version + incompatible fingerprint conflict;
+- optimistic CAS;
+- one winner under competing expected versions;
+- atomic rollback on Outbox failure;
+- one durable Journal identity;
+- no duplicate Journal/provenance/Outbox writes on replay.
+
+### Added Step 28 tests
+
+```text
+packages/sales-posting/tests/phase25-step28-e2e-scenarios.test.ts
+apps/desktop/tests/phase25-step28-runtime-e2e-contract.test.ts
+```
+
+Step 28 also relies on the focused regression suites already added during manual acceptance, including:
+
+```text
+packages/inventory-tauri/tests/inventory-valuation-historical-rebuild.test.ts
+packages/sales-posting/tests/atomic-posting-unit-of-work.test.ts
+packages/sales-posting/tests/sales-journal-draft.test.ts
+packages/sales-posting/tests/sales-posting-concurrency.test.ts
+packages/sales-posting/tests/replay-safe-journal-effect.test.ts
+apps/desktop/tests/sales-posting-runtime-migration.test.ts
+apps/desktop/tests/inventory-valuation-workspace-contract.test.ts
+```
+
+### Step 28 scenario matrix
+
+| Scenario | Expected result |
+|---|---|
+| Stock invoice before Issue | Pending / waiting-for-issue |
+| Stock invoice after resolved valuation | Balanced Commercial + COGS Journal |
+| Service-only invoice | Immediate commercial Journal; no Inventory/COGS |
+| Mixed invoice | Commercial all lines; Cost stock lines only |
+| Zero VAT | No Output VAT line |
+| Positive VAT | Output VAT Credit |
+| Missing valuation | Pending / recovery path |
+| Historical chronology block | Controlled historical rebuild |
+| MWA -> FIFO history | Transition layer + deterministic rebuild |
+| Sales Return | AR/Revenue/VAT reversal + Inventory/COGS restoration |
+| Correction | Reverse-and-replace lineage |
+| Exact replay | Same Journal; no duplicate effects |
+| CAS conflict | Deterministic retry/conflict |
+| Wrong automatic business-model account | Fail closed / manual review |
+
+### Argin Bridge compliance
+
+Step 28 verifies that all tested effects retain durable:
+
+- Sales source document/version;
+- Posting ID/version;
+- Inventory document/line;
+- Movement ID;
+- Valuation Entry/revision;
+- Journal Voucher/line;
+- Idempotency identity;
+- Outbox identity.
+
+No test depends on SQLite row IDs as business identity.
+
+### Local verification
+
+Focused Step 28:
+
+```bash
+pnpm --filter @argin/sales-posting typecheck
+pnpm --filter @argin/sales-posting test
+
+pnpm --filter @argin/inventory-tauri typecheck
+pnpm --filter @argin/inventory-tauri test
+
+pnpm --filter @argin/desktop typecheck
+pnpm --filter @argin/desktop test
+```
+
+Recommended regression:
+
+```bash
+pnpm --filter @argin/sales typecheck
+pnpm --filter @argin/sales test
+pnpm --filter @argin/inventory typecheck
+pnpm --filter @argin/inventory test
+pnpm --filter @argin/accounting typecheck
+pnpm --filter @argin/accounting test
+
+pnpm typecheck
+pnpm test
+```
+
+### Validation note
+
+The source changes and automated gates are committed on the Phase 25 branch. Runtime/typecheck PASS on the owner's local macOS environment is not claimed from the connected GitHub environment and remains part of owner acceptance / Step 30 quality gates.
+
+### Exit criteria
+
+- [x] Stock Sales Invoice integration scenario is automated.
+- [x] Service-only integration scenario is automated.
+- [x] Mixed stock/service scenario is automated.
+- [x] Positive/zero VAT behavior is regression protected.
+- [x] Inventory/valuation pending and recovery wiring is protected.
+- [x] Historical valuation rebuild regression is protected.
+- [x] MWA -> FIFO historical transition is protected.
+- [x] Sales Return commercial + cost reversal is automated.
+- [x] Sales Return Desktop runtime is wired through Receipt confirmation.
+- [x] Correction reverse-and-replace lineage is regression protected.
+- [x] Idempotency/replay/CAS/atomic tests are part of the Step 28 gate.
+- [x] Legacy finalized Sales catch-up is protected.
+- [x] Durable Posting/Journal provenance persistence is protected.
+- [x] Cross-model automatic account fallback is prohibited.
+- [x] Bridge-ready durable identities remain intact.
+
+## Next Step
+
+Step 29 — Documentation, Reconciliation & Accounting Examples.
