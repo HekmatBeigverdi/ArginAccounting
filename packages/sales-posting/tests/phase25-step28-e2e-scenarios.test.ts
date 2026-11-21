@@ -189,12 +189,16 @@ function costPosting(amount = 600) {
   } as any;
 }
 
-function journal(components:readonly any[], id:string) {
+function journal(
+  components:readonly any[],
+  id:string,
+  journalSource:any = source,
+) {
   return createSalesPostingJournalDraft({
     journalVoucherId: id,
     journalNumber: id.toUpperCase(),
     postingId: `posting:${id}`,
-    source,
+    source: journalSource,
     companyId: "company-1",
     branchId: "branch-1",
     voucherDate: "2026-10-07",
@@ -387,17 +391,12 @@ test("E2E sales return reverses commercial effect and restores Inventory/COGS", 
     commercial: reversed,
     cost: restoredCost,
   });
-  const returnJournal = createSalesPostingJournalDraft({
-    ...journal(components, "temporary").journal,
-  } as any);
-
-  void returnJournal;
   assert.equal(reversed.components.find(x => x.role === "accounts-receivable")?.side, "credit");
   assert.equal(reversed.components.find(x => x.role === "sales-revenue")?.side, "debit");
   assert.equal(restoredCost.components.find((x:any) => x.role === "inventory-asset")?.side, "debit");
   assert.equal(restoredCost.components.find((x:any) => x.role === "cogs")?.side, "credit");
 
-  const draft = journal(components, "journal-return");
+  const draft = journal(components, "journal-return", returnCommercial.source);
   assert.equal(draft.journal.totalDebit.amount, 1700);
   assert.equal(draft.journal.totalCredit.amount, 1700);
   assert.equal(draft.provenance.lineProvenance.every(x => x.originalInvoiceId === "inv-original"), true);
