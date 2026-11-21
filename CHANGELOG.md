@@ -46,6 +46,8 @@ The project follows Semantic Versioning where practical during phased developmen
 - Hardened automatic Sales account bootstrap to fail closed rather than crossing Trading/Manufacturing account models; stale auto rules pointing to an invalid business-model logical key are deactivated while explicit rules remain authoritative.
 - Completed Phase 25 Step 29 documentation/reconciliation: added the canonical Phase 25 record and Sales Posting reconciliation/accounting-examples guide covering Journal-vs-Invoice totals, VAT, service/mixed Sales, Returns, Corrections, negative gross margin, recovery, source trace and account-semantic reconciliation.
 - Synchronized root/project documentation entry points, Phase registry, Module Registry and ROADMAP to the Phase 25 Step 29 state while reserving actual quality-gate PASS for Step 30.
+- Completed Phase 25 Step 30 Quality Gate: added the canonical `validate:phase25` wrapper and dedicated GitHub Actions workflow; `Phase 25 Validation #8` (run ID `44900925197`) passed successfully on code SHA `2e58178a988ad1d9d88c853dd75265b8ddcb3acc`.
+- Prepared PR #29 for merge to `main` and release notes for `v0.25.0`; semantic Tag/GitHub Release publication remains a manual repository-owner action.
 - Froze the fixed 30-step Sales Posting implementation plan and the Sales -> Inventory -> Movement -> Valuation -> Posting -> Journal dependency chain.
 - Froze ownership boundaries: immutable Sales facts own commercial amounts; Phase 21 resolved FIFO/MWA valuation owns COGS; Inventory owns quantity/movement; Accounting owns Journal lifecycle.
 - Froze below-cost handling so the Phase 24 pre-finalization cost quote remains governance evidence only and never becomes COGS.
