@@ -18,7 +18,6 @@ import {
   AppRouter
 } from "./app/router/app-router";
 
-import { DesktopTitleBar } from "./components/desktop/desktop-title-bar";
 
 import {
   AuditProvider
@@ -46,7 +45,6 @@ import "./pages/product/products-page-tokens.css";
 function App() {
   return (
     <div className="desktop-root">
-      <DesktopTitleBar />
       <div className="desktop-root__content">
         <PlatformProvider>
           <SecurityBootstrapProvider>

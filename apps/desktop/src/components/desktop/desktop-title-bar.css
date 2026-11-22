@@ -23,10 +23,11 @@
   overflow: hidden;
 }
 
-.desktop-titlebar__identity strong {
+.desktop-titlebar__identity img {
   flex: 0 0 auto;
-  font-size: .78rem;
-  font-weight: 700;
+  width: 1.5rem;
+  height: 1.5rem;
+  object-fit: contain;
 }
 
 .desktop-titlebar__identity span {
@@ -37,6 +38,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   direction: rtl;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.desktop-titlebar--login {
+  min-height: 2.875rem;
+  background: #fff;
+  border-bottom-color: #e3e8e0;
+}
+
+.desktop-titlebar--login .desktop-titlebar__identity {
+  padding-inline: 1.25rem;
 }
 
 .desktop-titlebar__controls {

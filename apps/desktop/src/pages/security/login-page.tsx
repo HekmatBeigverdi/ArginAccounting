@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 
 import { authenticateUser, SecurityValidationError } from "@argin/security";
 import {
@@ -12,17 +12,29 @@ import {
 import { getDesktopDatabase } from "@argin/database-tauri";
 
 import { useAuthSession } from "../../app/providers/auth-session-provider";
+import { DesktopTitleBar } from "../../components/desktop/desktop-title-bar";
 import { Feedback } from "../../components/feedback";
-import { Button, Field, Input } from "../../components/forms";
-import { Panel } from "../../components/layout";
+import { Button, Input } from "../../components/forms";
+import loginUserIcon from "../../assets/argin-ui/login-user.svg";
+import passwordEyeIcon from "../../assets/argin-ui/login-password-eye.svg";
+import keyboardIcon from "../../assets/argin-ui/login-keyboard.svg";
+import arginLogo from "../../assets/argin-ui/argin-logo.png";
+import loginBackground from "../../assets/argin-ui/login-background.jpg";
 
-import "./security-workspace.css";
+import "./login-page.css";
+
+type LoginField = "username" | "password";
+
+const keyboardRows = ["1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm"];
 
 export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showKeyboard, setShowKeyboard] = useState(false);
+  const [keyboardTarget, setKeyboardTarget] = useState<LoginField>("username");
 
   const navigate = useNavigate();
   const { setSession } = useAuthSession();
@@ -56,51 +68,120 @@ export function LoginPage() {
     }
   }
 
+  function appendVirtualKey(key: string): void {
+    if (keyboardTarget === "username") setUsername((current) => current + key);
+    else setPassword((current) => current + key);
+  }
+
+  function removeVirtualKey(): void {
+    if (keyboardTarget === "username") setUsername((current) => current.slice(0, -1));
+    else setPassword((current) => current.slice(0, -1));
+  }
+
   return (
-    <main className="security-login-page" lang="fa" dir="rtl">
-      <Panel className="security-login-card">
-        <div className="security-login-card__brand">
-          <div className="security-login-card__mark" aria-hidden="true">آ</div>
-          <h1>ورود به آرگین</h1>
-          <p>برای ادامه، با حساب کاربری محلی خود وارد شوید.</p>
-        </div>
+    <main className="argin-login" lang="fa" dir="rtl">
+      <div className="argin-login__window">
+        <DesktopTitleBar className="desktop-titlebar--login" />
 
-        <form className="security-form" onSubmit={(event) => { void handleSubmit(event); }}>
-          <Field label="نام کاربری">
-            <Input
-              value={username}
-              autoComplete="username"
-              autoFocus
-              disabled={isSubmitting}
-              onChange={(event) => setUsername(event.target.value)}
-            />
-          </Field>
+        <section className="argin-login__workspace" aria-label="ورود به نرم‌افزار حسابداری آرگین">
+          <img className="argin-login__background" src={loginBackground} alt="" aria-hidden="true" />
+          <div className="argin-login__welcome">
+            <h1>به آرگین خوش آمدید</h1>
+            <p>برای ورود به نرم‌افزار، اطلاعات حساب کاربری را وارد کنید.</p>
+          </div>
 
-          <Field label="رمز عبور">
-            <Input
-              type="password"
-              value={password}
-              autoComplete="current-password"
-              disabled={isSubmitting}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </Field>
+          <section className="argin-login__card" aria-labelledby="login-heading">
+            <div className="argin-login__brand">
+              <img src={arginLogo} alt="نشان آرگین" />
+              <span>نرم‌افزار</span>
+              <strong>حسابداری آرگین</strong>
+            </div>
+            <div className="argin-login__divider" />
+            <h2 id="login-heading">ورود به حساب کاربری</h2>
 
-          {errorMessage ? <Feedback tone="error">{errorMessage}</Feedback> : null}
+            <form className="argin-login__form" onSubmit={(event) => { void handleSubmit(event); }}>
+              <label className="argin-login__field">
+                <span>نام کاربری</span>
+                <span className="argin-login__input-wrap">
+                  <Input
+                    value={username}
+                    autoComplete="username"
+                    autoFocus
+                    disabled={isSubmitting}
+                    placeholder="نام کاربری یا شماره همراه"
+                    onFocus={() => setKeyboardTarget("username")}
+                    onChange={(event) => setUsername(event.target.value)}
+                  />
+                  <img src={loginUserIcon} alt="" aria-hidden="true" />
+                </span>
+              </label>
 
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={isSubmitting || !username.trim() || !password}
-          >
-            {isSubmitting ? "در حال ورود..." : "ورود"}
-          </Button>
-        </form>
+              <label className="argin-login__field">
+                <span>گذرواژه</span>
+                <span className="argin-login__input-wrap argin-login__input-wrap--password">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    autoComplete="current-password"
+                    disabled={isSubmitting}
+                    placeholder="گذرواژه را وارد کنید"
+                    onFocus={() => setKeyboardTarget("password")}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <button
+                    className="argin-login__icon-button"
+                    type="button"
+                    aria-label={showPassword ? "پنهان کردن گذرواژه" : "نمایش گذرواژه"}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    <img src={passwordEyeIcon} alt="" aria-hidden="true" />
+                  </button>
+                </span>
+              </label>
 
-        <div className="security-login-card__footer">
-          <Link to="/dashboard">بازگشت به داشبورد</Link>
-        </div>
-      </Panel>
+              {errorMessage ? <Feedback tone="error">{errorMessage}</Feedback> : null}
+
+              <button
+                className="argin-login__keyboard-toggle"
+                type="button"
+                aria-expanded={showKeyboard}
+                onClick={() => setShowKeyboard((value) => !value)}
+              >
+                <span>{showKeyboard ? "بستن صفحه‌کلید" : "نمایش صفحه‌کلید"}</span>
+                <img src={keyboardIcon} alt="" aria-hidden="true" />
+              </button>
+
+              {showKeyboard ? (
+                <div className="argin-login__keyboard" aria-label="صفحه‌کلید مجازی">
+                  {keyboardRows.map((row) => (
+                    <div className="argin-login__keyboard-row" key={row}>
+                      {[...row].map((key) => (
+                        <button key={key} type="button" onClick={() => appendVirtualKey(key)}>{key}</button>
+                      ))}
+                    </div>
+                  ))}
+                  <div className="argin-login__keyboard-row argin-login__keyboard-row--actions">
+                    <button type="button" onClick={removeVirtualKey}>پاک‌کردن</button>
+                    <button type="button" onClick={() => setShowKeyboard(false)}>بستن</button>
+                  </div>
+                </div>
+              ) : null}
+
+              <Button
+                className="argin-login__submit"
+                type="submit"
+                variant="primary"
+                disabled={isSubmitting || !username.trim() || !password}
+              >
+                {isSubmitting ? "در حال ورود..." : "ورود به آرگین"}
+              </Button>
+            </form>
+
+            <p className="argin-login__footer">نسخهٔ دسکتاپ <span>•</span> نشست امن محلی</p>
+          </section>
+        </section>
+      </div>
     </main>
   );
 }

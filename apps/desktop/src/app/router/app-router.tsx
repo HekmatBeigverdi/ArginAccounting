@@ -1,6 +1,7 @@
-import { HashRouter, Navigate, Route, Routes } from "react-router";
+import { HashRouter, Navigate, Route, Routes, useLocation } from "react-router";
 
 import { AppShell } from "../shell/app-shell";
+import { DesktopTitleBar } from "../../components/desktop/desktop-title-bar";
 
 import { DashboardPage } from "../../pages/dashboard/dashboard-page";
 import { CompanySetupPage } from "../../pages/company/company-setup-page";
@@ -31,9 +32,12 @@ import { PurchaseDocumentsPage } from "../../pages/purchase/purchase-documents-p
 import { PurchaseOperationalReportsPage } from "../../pages/purchase/purchase-operational-reports-page";
 import { SalesDocumentsPage } from "../../pages/sales/sales-documents-page";
 
-export function AppRouter() {
+function RoutedAppContent() {
+  const { pathname } = useLocation();
+
   return (
-    <HashRouter>
+    <>
+      {pathname !== "/login" ? <DesktopTitleBar /> : null}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<AppShell />}>
@@ -68,6 +72,14 @@ export function AppRouter() {
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
       </Routes>
+    </>
+  );
+}
+
+export function AppRouter() {
+  return (
+    <HashRouter>
+      <RoutedAppContent />
     </HashRouter>
   );
 }

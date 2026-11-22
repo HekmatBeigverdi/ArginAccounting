@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import titlebarLogo from "../../assets/argin-ui/titlebar-logo.png";
 
 import "./desktop-title-bar.css";
 
-export function DesktopTitleBar() {
+export function DesktopTitleBar({ className = "" }: { className?: string }) {
   const [maximized, setMaximized] = useState(false);
   const nativeWindowAvailable = isTauri();
 
@@ -41,13 +42,13 @@ export function DesktopTitleBar() {
 
   return (
     <div
-      className="desktop-titlebar"
+      className={`desktop-titlebar ${className}`.trim()}
       data-tauri-drag-region
       onDoubleClick={() => void toggleMaximize()}
     >
       <div className="desktop-titlebar__identity" data-tauri-drag-region>
-        <strong data-tauri-drag-region>ArginAccounting</strong>
-        <span data-tauri-drag-region>نرم‌افزار حسابداری شرکتی آرگین</span>
+        <img src={titlebarLogo} alt="" aria-hidden="true" data-tauri-drag-region />
+        <span data-tauri-drag-region>نرم‌افزار حسابداری آرگین</span>
       </div>
 
       <div

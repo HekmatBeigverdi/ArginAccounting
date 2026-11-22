@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="272" height="46" viewBox="0 0 272 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Mint wave header" clip-path="url(#clip0_0_73)">
+<path id="Vector" d="M0 22C62 5 109 9 159 26C205 42 241 38 272 5V46H0V22Z" fill="#DFF6E9"/>
+<path id="Vector_2" opacity="0.8" d="M0 30C61 13 112 17 161 33C207 48 241 43 272 20" stroke-width="6" stroke="#B8EBD1"/>
+<path id="Vector_3" d="M0 39C71 20 119 26 166 39C210 51 244 48 272 31" stroke-width="8" stroke="#EFFBF4"/>
+</g>
+<defs>
+<clipPath id="clip0_0_73">
+<rect width="272" height="46" fill="white"/>
+</clipPath>
+</defs>
+</svg>

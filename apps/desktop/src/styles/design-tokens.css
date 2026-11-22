@@ -15,29 +15,29 @@
   --ui-radius-lg: 0.85rem;
   --ui-radius-pill: 999px;
 
-  --ui-border: #dbe3ea;
-  --ui-border-strong: #c5d0dc;
-  --ui-surface: #ffffff;
-  --ui-surface-subtle: #f8fafc;
+  --ui-border: #dbe3eb;
+  --ui-border-strong: #c5d3df;
+  --ui-surface: #fcfeff;
+  --ui-surface-subtle: #f6f9f8;
   --ui-canvas: #f4f6f8;
-  --ui-text: #17212b;
-  --ui-text-muted: #64748b;
-  --ui-primary: #0f766e;
-  --ui-primary-hover: #115e59;
-  --ui-primary-soft: #f0fdfa;
+  --ui-text: #1f2933;
+  --ui-text-muted: #64798b;
+  --ui-primary: #0a7a4d;
+  --ui-primary-hover: #075f3e;
+  --ui-primary-soft: #e8f8f3;
   --ui-danger: #b42318;
   --ui-danger-soft: #fff1f0;
-  --ui-success: #166534;
-  --ui-success-soft: #f0fdf4;
-  --ui-warning: #92400e;
-  --ui-warning-soft: #fffbeb;
-  --ui-info: #1d4ed8;
-  --ui-info-soft: #eff6ff;
-  --ui-focus: #14b8a6;
-  --ui-focus-ring: #99f6e4;
+  --ui-success: #137a43;
+  --ui-success-soft: #e7f7ed;
+  --ui-warning: #966000;
+  --ui-warning-soft: #fff7e6;
+  --ui-info: #315ed1;
+  --ui-info-soft: #edf3ff;
+  --ui-focus: #28a979;
+  --ui-focus-ring: #a9e6cc;
 
   --ui-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.05);
-  --ui-shadow-md: 0 8px 24px rgb(15 23 42 / 0.08);
+  --ui-shadow-md: 0 8px 24px rgb(23 41 26 / 0.09);
 
   --ui-page-max: 1440px;
   --ui-workspace-height: calc(100dvh - 10.5rem);

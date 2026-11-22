@@ -97,8 +97,8 @@
 .ui-badge--danger { background: var(--ui-danger-soft); color: var(--ui-danger); }
 .ui-badge--info { background: var(--ui-info-soft); color: var(--ui-info); }
 
-.ui-table-wrap { max-width: 100%; overflow: auto; }
-.ui-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+.ui-table-wrap { max-width: 100%; overflow: auto; direction: rtl; }
+.ui-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; direction: rtl; }
 .ui-table th, .ui-table td { padding: var(--ui-table-cell-y) var(--ui-table-cell-x); border-bottom: 1px solid #edf2f7; text-align: right; vertical-align: middle; }
 .ui-table th { background: var(--ui-surface-subtle); color: #475569; font-size: 0.78rem; font-weight: 700; }
 
