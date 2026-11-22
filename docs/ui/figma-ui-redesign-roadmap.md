@@ -1,60 +1,73 @@
-# Figma-Driven UI Redesign Roadmap
+# Figma UI Design Roadmap
 
-## Status
+## Purpose and Scope
 
-Roadmap recorded on `feature/figma-ui-redesign`. Work is planned as reviewable steps; implementation changes must remain on this branch until explicitly promoted.
+This is the UI design track for ArginAccounting. Its UI-01 through UI-12 labels are independent design-step identifiers and do not change the software phase numbering in `ROADMAP.md`.
 
-## Purpose
+The track guides Figma design and implementation handoff for the existing React + TypeScript + Tauri product. Existing UI architecture and Phase 14 standards remain authoritative for behavior, implementation boundaries, Persian RTL, accessibility, density, and responsive containment.
 
-Refresh the ArginAccounting user interface through a Figma-led design and implementation workflow while preserving accounting behavior, module boundaries, offline operation, and the established Persian-first experience.
+## Roadmap
 
-The product baseline is a React + TypeScript + Tauri desktop application. Existing UI architecture and Phase 14 design-system rules remain authoritative for implementation constraints. Figma defines the approved visual and interaction specification; application code remains authoritative for business behavior and validation.
+| Step | Design scope | Expected output | Status |
+|---|---|---|---|
+| **UI-01 — Foundations and shell** | Transfer the actual tokens from `design-tokens.css` into Figma Variables and Styles; finalize the application shell, grouped navigation, breadcrumbs, company/branch/fiscal-year selection, and display density. | Foundations page, component library, and shell matching the application. | Next |
+| **UI-02 — Dashboard and shared pages** | Real dashboard, sign-in, system status, companies and branches, fiscal years, users, roles and permissions, audit, and approval workflow. | Frames for the main workflows and access states. | Planned |
+| **UI-03 — Accounting** | Chart of Accounts tree, accounting dimensions, coding templates, journal list and editor, approval/finalization lifecycle, and Reports Center. | Dense accounting UI with tables, details, and traceability back to source journals. | Planned |
+| **UI-04 — Master data** | Parties, products and services, warehouses, and selectors reused by purchasing, sales, and documents. | List, detail, and form screens plus selector components. | Planned |
+| **UI-05 — Inventory and valuation** | Receipts and issues, transfers, Kardex and stock reports, FIFO/MWA policy, tracing, and valuation rebuild. | Document and report flows that show quantity and value lineage. | Planned |
+| **UI-06 — Purchases and accounting posting** | Purchase documents and commercial lines, invoice-to-receipt matching, returns and corrections, reports, posting status and trace. | Complete purchase flow from entry through accounting journal and error recovery. | Planned |
+| **UI-07 — Sales and accounting posting** | Complete the current Figma frame against the actual Sales page: list and detail, form, finalization, below-cost handling, return and correction, inventory fulfillment, trace, and posting recovery. | Full Sales lifecycle design, not only an invoice table. | Planned |
+| **UI-08 — Treasury, software phases 26–30** | Cash and banks, receipts and payments, cheques and receivables, settlement and reconciliation, posting rules, and source-document integrity. | Treasury pages and discrepancy/reconciliation flows. | Planned |
+| **UI-09 — Iranian Taxpayer System, software phases 31–35** | Tax settings, product/service mapping, preview and validation, signing, submission, inquiry, retry, and error history. | Traceable flow from Sales invoice to the Taxpayer System response. | Planned |
+| **UI-10 — Enterprise modules, software phases 36–43** | Fixed assets and depreciation; payroll and HR; manufacturing and cost accounting; budgeting; contracts and projects. | Each module designed according to its data dependencies and accounting-posting ownership. | Planned |
+| **UI-11 — Product completion, software phases 44–47** | Advanced reporting, synchronization, backup and restore, deployment status, and system health. | Monitoring and operations pages, including offline and connection-error states. | Planned |
+| **UI-12 — Final UI acceptance** | Accessibility, RTL/LTR, numbers and dates, density modes, and window behavior. | Implementation-ready specifications with Figma frames mapped to code routes and components. | Planned |
 
-## Guiding Constraints
+## Cross-Cutting Acceptance Requirements
 
-- Persian-first, right-to-left layouts; isolate left-to-right content such as identifiers and amounts where needed.
-- Preserve Jalali dates in the user interface and Gregorian storage in the application.
-- Reuse shared design tokens and primitives; avoid module-specific duplicate components.
-- Keep domain and application behavior outside presentation components.
-- Preserve keyboard access, focus visibility, accessibility, density options, and responsive containment.
-- Specify loading, empty, error, success, disabled, and permission-limited states for every changed workflow.
-- Do not remove existing capabilities as part of a visual redesign unless a separately reviewed change requests it.
-- Keep financial values, totals, account codes, and document statuses precise and traceable.
+Every step must design the states relevant to its screens:
 
-## Fixed Steps
+- Loading and empty
+- Validation error and technical error
+- Success
+- No permission and read-only
+- Offline and recovery
 
-| Step | Name | Scope | Exit evidence | Status |
-|---|---|---|---|---|
-| 1 | UI and Figma Baseline Audit | Inventory current application shell, design tokens, reusable components, and target workflows; map Figma pages/frames to current screens and note behavior that must remain unchanged. | Auditable screen-to-route/component map, gap list, Figma file/page references, and agreed first implementation slice. | Not started |
-| 2 | Workflow and Information Architecture | Confirm navigation, task flows, key actions, page hierarchy, and screen-level requirements before visual detailing. | Approved flow diagrams or Figma prototypes for the selected workflows, including role and permission states. | Not started |
-| 3 | Figma Design System | Define or reconcile color, typography, spacing, sizing, elevation, iconography, form, table, modal, and feedback tokens/components with the existing shared UI foundation. | Figma library with documented token names, component variants, and RTL/LTR examples. | Not started |
-| 4 | Application Shell and Shared Patterns | Design the shell, navigation, global company/branch/fiscal context, page headers, filters, action bars, dialogs, and common feedback patterns. | Approved shell and shared-pattern frames covering compact, comfortable, and spacious density. | Not started |
-| 5 | Priority Workflow Designs | Apply the shared system to selected operational screens, prioritizing dashboard, sales, purchases, inventory, and accounting reports according to the baseline audit. | Each selected workflow has linked frames, interaction notes, and all required state variants. | Not started |
-| 6 | Design-to-Code Mapping | Map approved Figma components and variables to existing React components and tokens; identify only the code changes required to realize the approved design. | Component/token mapping with explicit reuse, extension, and new-component decisions. | Not started |
-| 7 | Incremental Implementation and Review | Implement one approved slice at a time on this branch; compare the running application with Figma and preserve existing business behavior. | Per-slice change summary, visual comparison, and recorded regression/acceptance evidence. | Not started |
-| 8 | Accessibility, RTL, and Density Review | Review keyboard flows, focus, contrast, screen resizing, RTL/LTR isolation, date/number presentation, and all density modes across changed screens. | Completed checklist with issues resolved or explicitly recorded for follow-up. | Not started |
-| 9 | Documentation and Handoff | Update canonical UI documentation, component guidance, and roadmap statuses; prepare the finished branch for owner review. | Verified documentation links, completed step evidence, and a reviewable branch/PR summary. | Not started |
+Cover all three project density modes and desktop sizing, especially **1366 × 768**. Preserve Persian RTL, isolate LTR values where appropriate, use Jalali dates in the UI, and keep financial figures and document states unambiguous.
 
-## Step 1 Working Checklist
+## Figma File Organization
 
-- Identify the active Figma file and its current pages, frames, components, variables, and libraries.
-- Inventory current routes/screens and their source components in `apps/desktop` and `apps/web`.
-- Record shared UI tokens and primitives already defined by Phase 14.
-- Map each target Figma frame to an existing route and component; mark new or ambiguous screens.
-- Capture the existing user actions, permissions, validation, and data states that the redesign must preserve.
-- Agree the first implementation slice before editing application code.
+Organize the Figma file into these pages:
 
-## Branch and Delivery Policy
+1. Foundations and Components
+2. Shell and Dashboard
+3. Accounting
+4. Master Data and Inventory
+5. Purchases and Sales
+6. Treasury
+7. Tax
+8. Enterprise Operations
 
-- Working branch: `feature/figma-ui-redesign`.
-- Base branch: `main` at `90e59134f326f6a8357578e7fc66afea0a108592` when this roadmap branch was created.
-- Keep Figma exploration and implementation changes isolated to this branch.
-- Do not merge, tag, release, or deploy as part of roadmap setup.
-- Review each step as a separate checkpoint. Update the step status and evidence here only after the corresponding work is completed and reviewed.
+## UI-01 Acceptance Checklist
+
+- Read token values and names from the repository's actual `design-tokens.css`; do not invent or substitute design tokens.
+- Create or reconcile Figma Variables and Styles against those values, including the actual product typeface and density tokens.
+- Reconcile the Figma shell with the running application's real shell, grouped navigation, breadcrumb behavior, active company/branch/fiscal-year context, and density selector.
+- Build the foundations page and reusable component library from the project's existing design system.
+- Include RTL/LTR examples and the relevant feedback, permission, read-only, offline, and recovery states.
+- Validate the primary desktop shell at 1366 × 768 and verify that the output remains editable and component-based.
+
+## Branch and Delivery
+
+- Design and implementation branch: `feature/figma-ui-redesign`.
+- Base: `main` at `90e59134f326f6a8357578e7fc66afea0a108592` when the branch was created.
+- Do not change software phase numbering.
+- Keep work isolated on this branch. Do not merge, release, or deploy as part of the design steps.
+- Mark a UI step complete only after its Figma output and acceptance evidence are reviewed.
 
 ## References
 
-- [UI Architecture](../ui/UI_ARCHITECTURE.md)
+- [UI Architecture](UI_ARCHITECTURE.md)
 - [Phase 14 — UI Foundation Consolidation](../phases/phase-14-ui-foundation-consolidation.md)
-- [Phase 14 UI Architecture Audit](../ui/phase-14-ui-architecture-audit.md)
-- [Product Vision](product-vision.md)
+- [Phase 14 UI Architecture Audit](phase-14-ui-architecture-audit.md)
+- [Product Vision](../vision/product-vision.md)
