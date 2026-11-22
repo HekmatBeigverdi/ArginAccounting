@@ -83,7 +83,7 @@ Organize the Figma file into these pages:
 - [UI-02 authentication and administration states](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=29-13)
 - The nine editable desktop frames cover sign-in, dashboard, system health, company/branch management, fiscal years, users, role-permission matrix, audit, and approval detail/timeline. Frames are designed at 1366 × 768 using the approved RTL shell, density selector, active company/branch/fiscal-year context, and local status surface where applicable.
 - Eight shared examples cover loading, empty lists, invalid sign-in, insufficient permissions, read-only fiscal year, technical system error, audit with no results, and successful approval submission.
-- Visual review checked the dashboard, sign-in, system status, company/branch, roles/permissions, and approval frames. Button/title overlap was corrected. Remaining frames are ready for owner review.
+- Visual review checked the dashboard, sign-in, system status, company/branch, roles/permissions, approval, and shared-state frames. The dashboard now follows the visual direction of the approved [Desktop UI Exploration](https://www.figma.com/design/GWMTmgehOGAk4OSqcloENC/ArginAccounting-%E2%80%94-Desktop-UI-Exploration?node-id=13-2): softer rounded surfaces, icon-led KPIs, an activity chart, a quick-action panel, and a clean recent-documents table. The administration screens now share matching line icons, active navigation, context selectors, and the company status card. Button/title overlap was corrected; all frames remain editable and within their 1366 × 768 bounds.
 - **Review state:** Ready for project-owner review. Record acceptance here after reviewing the Figma output.
 
 ## Branch and Delivery
