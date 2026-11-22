@@ -10,7 +10,7 @@ The track guides Figma design and implementation handoff for the existing React 
 
 | Step | Design scope | Expected output | Status |
 |---|---|---|---|
-| **UI-01 — Foundations and shell** | Transfer the actual tokens from `design-tokens.css` into Figma Variables and Styles; finalize the application shell, grouped navigation, breadcrumbs, company/branch/fiscal-year selection, and display density. | Foundations page, component library, and shell matching the application. | Next |
+| **UI-01 — Foundations and shell** | Transfer the actual tokens from `design-tokens.css` into Figma Variables and Styles; finalize the application shell, grouped navigation, breadcrumbs, company/branch/fiscal-year selection, and display density. | Foundations page, component library, and shell matching the application. | **Ready for review** |
 | **UI-02 — Dashboard and shared pages** | Real dashboard, sign-in, system status, companies and branches, fiscal years, users, roles and permissions, audit, and approval workflow. | Frames for the main workflows and access states. | Planned |
 | **UI-03 — Accounting** | Chart of Accounts tree, accounting dimensions, coding templates, journal list and editor, approval/finalization lifecycle, and Reports Center. | Dense accounting UI with tables, details, and traceability back to source journals. | Planned |
 | **UI-04 — Master data** | Parties, products and services, warehouses, and selectors reused by purchasing, sales, and documents. | List, detail, and form screens plus selector components. | Planned |
@@ -56,6 +56,17 @@ Organize the Figma file into these pages:
 - Build the foundations page and reusable component library from the project's existing design system.
 - Include RTL/LTR examples and the relevant feedback, permission, read-only, offline, and recovery states.
 - Validate the primary desktop shell at 1366 × 768 and verify that the output remains editable and component-based.
+
+## UI-01 Delivery Record
+
+- Figma file: [ArginAccounting — UI Design System](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8)
+- [Foundations and Components page](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=8-33)
+- [Shell and Dashboard page](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=6-32)
+- [Shared shell states](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=11-112)
+- The foundations page contains color, spacing, radius, typography, layout, and three-mode density Variables; color, text, and elevation Styles; and editable shell components.
+- The shell page contains comfortable, compact, and spacious app-shell frames, each at 1366 × 768, plus editable samples for loading, empty, validation/technical errors, success, no permission, read-only, and offline/recovery.
+- The shell uses the actual RTL navigation/context-selector structure and values from the project CSS tokens. Screenshot inspection confirmed the three desktop frames and state specimens render at their specified sizes.
+- **Review state:** Ready for project-owner review. Record acceptance here after the Figma output is reviewed; then mark UI-01 complete.
 
 ## Branch and Delivery
 
