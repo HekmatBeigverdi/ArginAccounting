@@ -38,6 +38,8 @@ Run the generator after adding, moving, renaming, or deleting documentation file
 - [Coding Convention](development/coding-convention.md)
 - [Testing Convention](development/testing-convention.md)
 - [Security Model](security/security-model.md)
+- [UI Architecture](ui/UI_ARCHITECTURE.md)
+- [Figma UI Redesign Roadmap](ui/figma-ui-redesign-roadmap.md)
 - [Domain Glossary](glossary/domain-glossary.md)
 - [Inventory Glossary](glossary/inventory-glossary.md)
 - [Domain Dictionary](glossary/domain-dictionary.md)
