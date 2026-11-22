@@ -10,8 +10,8 @@ The track guides Figma design and implementation handoff for the existing React 
 
 | Step | Design scope | Expected output | Status |
 |---|---|---|---|
-| **UI-01 — Foundations and shell** | Transfer the actual tokens from `design-tokens.css` into Figma Variables and Styles; finalize the application shell, grouped navigation, breadcrumbs, company/branch/fiscal-year selection, and display density. | Foundations page, component library, and shell matching the application. | **Ready for review** |
-| **UI-02 — Dashboard and shared pages** | Real dashboard, sign-in, system status, companies and branches, fiscal years, users, roles and permissions, audit, and approval workflow. | Frames for the main workflows and access states. | Planned |
+| **UI-01 — Foundations and shell** | Transfer the actual tokens from `design-tokens.css` into Figma Variables and Styles; finalize the application shell, grouped navigation, breadcrumbs, company/branch/fiscal-year selection, and display density. | Foundations page, component library, and shell matching the application. | **Completed** |
+| **UI-02 — Dashboard and shared pages** | Real dashboard, sign-in, system status, companies and branches, fiscal years, users, roles and permissions, audit, and approval workflow. | Frames for the main workflows and access states. | **Ready for review** |
 | **UI-03 — Accounting** | Chart of Accounts tree, accounting dimensions, coding templates, journal list and editor, approval/finalization lifecycle, and Reports Center. | Dense accounting UI with tables, details, and traceability back to source journals. | Planned |
 | **UI-04 — Master data** | Parties, products and services, warehouses, and selectors reused by purchasing, sales, and documents. | List, detail, and form screens plus selector components. | Planned |
 | **UI-05 — Inventory and valuation** | Receipts and issues, transfers, Kardex and stock reports, FIFO/MWA policy, tracing, and valuation rebuild. | Document and report flows that show quantity and value lineage. | Planned |
@@ -41,12 +41,13 @@ Organize the Figma file into these pages:
 
 1. Foundations and Components
 2. Shell and Dashboard
-3. Accounting
-4. Master Data and Inventory
-5. Purchases and Sales
-6. Treasury
-7. Tax
-8. Enterprise Operations
+3. Dashboard and Administration (UI-02 supporting workflows)
+4. Accounting
+5. Master Data and Inventory
+6. Purchases and Sales
+7. Treasury
+8. Tax
+9. Enterprise Operations
 
 ## UI-01 Acceptance Checklist
 
@@ -66,7 +67,24 @@ Organize the Figma file into these pages:
 - The foundations page contains color, spacing, radius, typography, layout, and three-mode density Variables; color, text, and elevation Styles; and editable shell components.
 - The shell page contains comfortable, compact, and spacious app-shell frames, each at 1366 × 768, plus editable samples for loading, empty, validation/technical errors, success, no permission, read-only, and offline/recovery.
 - The shell uses the actual RTL navigation/context-selector structure and values from the project CSS tokens. Screenshot inspection confirmed the three desktop frames and state specimens render at their specified sizes.
-- **Review state:** Ready for project-owner review. Record acceptance here after the Figma output is reviewed; then mark UI-01 complete.
+- **Review state:** Approved by the project owner on 2026-11-22; UI-01 is complete.
+
+## UI-02 Delivery Record
+
+- [Dashboard and Administration page](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-31)
+- [Sign-in screen](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-14)
+- [System status](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-129)
+- [Companies and branches](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-221)
+- [Fiscal years](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-298)
+- [Users](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-376)
+- [Roles and permissions](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-464)
+- [Audit report](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-544)
+- [Approval workflow](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=25-634)
+- [UI-02 authentication and administration states](https://www.figma.com/design/4Y0RnCKwv87exbbqimoja8?node-id=29-13)
+- The nine editable desktop frames cover sign-in, dashboard, system health, company/branch management, fiscal years, users, role-permission matrix, audit, and approval detail/timeline. Frames are designed at 1366 × 768 using the approved RTL shell, density selector, active company/branch/fiscal-year context, and local status surface where applicable.
+- Eight shared examples cover loading, empty lists, invalid sign-in, insufficient permissions, read-only fiscal year, technical system error, audit with no results, and successful approval submission.
+- Visual review checked the dashboard, sign-in, system status, company/branch, roles/permissions, and approval frames. Button/title overlap was corrected. Remaining frames are ready for owner review.
+- **Review state:** Ready for project-owner review. Record acceptance here after reviewing the Figma output.
 
 ## Branch and Delivery
 
