@@ -83,6 +83,8 @@ h1, h2, h3, h4 { text-align: start; }
 .application-bootstrap__card h1,
 .application-bootstrap__card p { margin: 0; text-align: center; }
 .application-bootstrap__card p { color: var(--ui-text-muted); }
+.application-resolution-card h1 { color: var(--ui-danger); }
+.application-resolution-card__current { margin-top: 0; font-variant-numeric: tabular-nums; }
 .application-bootstrap__card button {
   justify-self: center;
   min-height: var(--ui-control-height);

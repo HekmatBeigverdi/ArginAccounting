@@ -1,0 +1,20 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="258.167" height="109.365" viewBox="0 0 258.167 109.365" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Brand contour" clip-path="url(#clip0_0_128)">
+<path id="Vector" d="M28.6969 0.816152H230.287C250.418 0.816152 259.124 10.3379 256.404 29.3815L247.426 82.4315C245.794 99.8427 234.912 108.548 214.78 108.548H29.5131C10.4695 108.548 0.947703 99.0266 0.947703 79.983V30.1977C0.947703 10.61 10.1974 0.816152 28.6969 0.816152Z" fill="url(#paint0_linear_0_128)" stroke-width="1.95877" stroke="url(#paint1_linear_0_128)"/>
+<path id="Vector_2" d="M3.39616 88.1445C48.2846 65.2922 75.2176 72.6376 120.922 87.3284C166.627 102.019 203.8 115.6 244.242 86.8799L241.794 93.0414C237.632 103.379 227.294 108.276 214.78 107.732H30.3292C16.1826 107.188 7.20488 100.659 3.39616 88.1445Z" fill="#D3F6E1"/>
+<path id="Vector_3" d="M4.21232 91.4091C55.63 67.7407 89.0922 81.6153 128.268 93.0414C167.443 104.468 210.7 114.8 242.61 92.4091" stroke-width="5.71307" stroke="#A6EDC4" stroke-opacity="0.68"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_128" x1="0.947703" y1="0.816152" x2="256.889" y2="0.816152" gradientUnits="userSpaceOnUse">
+<stop stop-color="#F0FBF5"/>
+<stop offset="1" stop-color="#E4F8EB"/>
+</linearGradient>
+<linearGradient id="paint1_linear_0_128" x1="0.947703" y1="0.816152" x2="256.889" y2="0.816152" gradientUnits="userSpaceOnUse">
+<stop stop-color="#D3F3DD"/>
+<stop offset="1" stop-color="#00AA64"/>
+</linearGradient>
+<clipPath id="clip0_0_128">
+<rect width="258.167" height="109.365" fill="white"/>
+</clipPath>
+</defs>
+</svg>

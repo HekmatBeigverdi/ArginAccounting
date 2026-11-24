@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
+import minimizeIcon from "../../app/shell/assets/reference/title-min.svg";
+import maximizeIcon from "../../app/shell/assets/reference/title-max.svg";
+import closeIcon from "../../app/shell/assets/reference/title-close.svg";
 import "./desktop-title-bar.css";
 
 export function DesktopTitleBar() {
@@ -63,7 +66,7 @@ export function DesktopTitleBar() {
           title="Minimize"
           onClick={() => void appWindow.minimize()}
         >
-          <span aria-hidden="true">—</span>
+          <img src={minimizeIcon} alt="" aria-hidden="true" />
         </button>
 
         <button
@@ -73,7 +76,7 @@ export function DesktopTitleBar() {
           title={maximized ? "Restore" : "Maximize"}
           onClick={() => void toggleMaximize()}
         >
-          <span className={maximized ? "desktop-titlebar__restore-icon" : "desktop-titlebar__maximize-icon"} aria-hidden="true" />
+          {maximized ? <span className="desktop-titlebar__restore-icon" aria-hidden="true" /> : <img src={maximizeIcon} alt="" aria-hidden="true" />}
         </button>
 
         <button
@@ -83,7 +86,7 @@ export function DesktopTitleBar() {
           title="Close"
           onClick={() => void appWindow.close()}
         >
-          <span aria-hidden="true">×</span>
+          <img src={closeIcon} alt="" aria-hidden="true" />
         </button>
       </div>
     </div>

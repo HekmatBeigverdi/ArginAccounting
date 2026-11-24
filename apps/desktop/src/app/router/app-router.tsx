@@ -1,6 +1,10 @@
+import { useEffect } from "react";
 import { HashRouter, Navigate, Route, Routes } from "react-router";
+import { isTauri } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { AppShell } from "../shell/app-shell";
+import { useAuthSession } from "../providers/auth-session-provider";
 
 import { DashboardPage } from "../../pages/dashboard/dashboard-page";
 import { CompanySetupPage } from "../../pages/company/company-setup-page";
@@ -31,13 +35,26 @@ import { PurchaseDocumentsPage } from "../../pages/purchase/purchase-documents-p
 import { PurchaseOperationalReportsPage } from "../../pages/purchase/purchase-operational-reports-page";
 import { SalesDocumentsPage } from "../../pages/sales/sales-documents-page";
 
+function LoginRoute() {
+  const { session } = useAuthSession();
+
+  return session ? <Navigate to="/dashboard" replace /> : <LoginPage />;
+}
+
+function AuthenticatedAppShell() {
+  const { session } = useAuthSession();
+
+  return session ? <AppShell /> : <Navigate to="/login" replace />;
+}
+
 export function AppRouter() {
   return (
     <HashRouter>
+      <WindowResizePolicy />
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<AppShell />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/login" element={<LoginRoute />} />
+        <Route element={<AuthenticatedAppShell />}>
+          <Route index element={<Navigate to="/login" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/security/users" element={<UsersPage />} />
           <Route path="/security/roles" element={<RolesPage />} />
@@ -65,9 +82,23 @@ export function AppRouter() {
           <Route path="/accounting/dimensions" element={<AccountingDimensionsPage />} />
           <Route path="/accounting/coding-templates" element={<CodingTemplatesPage />} />
           <Route path="/system/diagnostics" element={<SystemDiagnosticsPage />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Route>
       </Routes>
     </HashRouter>
   );
+}
+
+function WindowResizePolicy() {
+  const { session } = useAuthSession();
+
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    void getCurrentWindow().setResizable(session !== null).catch((error: unknown) => {
+      console.error("Could not update window resize policy:", error);
+    });
+  }, [session]);
+
+  return null;
 }

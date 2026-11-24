@@ -1,0 +1,15 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="246.73" height="44.8884" viewBox="0 0 246.73 44.8884" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Menu capsule" clip-path="url(#clip0_0_172)">
+<path id="Vector" d="M21.3457 0.816152H226.2C241.435 0.816152 247.42 7.34538 244.155 20.4038L240.891 32.6461C238.17 40.2635 231.913 44.0723 222.119 44.0723H21.3457C7.74315 44.0723 0.941875 36.9989 0.941875 22.8523C0.941875 8.16153 7.74315 0.816152 21.3457 0.816152Z" fill="url(#paint0_linear_0_172)" stroke-width="1.22423" stroke="#DEF4E9"/>
+<path id="Vector_2" d="M226.2 0.816152C241.435 0.816152 247.42 7.34538 244.155 20.4038L240.891 32.6461C238.17 40.2635 231.913 44.0723 222.119 44.0723C231.913 41.8959 237.354 37.8151 238.442 31.83L242.523 16.3231C244.155 7.61743 238.714 2.44846 226.2 0.816152Z" fill="#00B371"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_0_172" x1="0.941875" y1="0.816152" x2="15.8069" y2="84.694" gradientUnits="userSpaceOnUse">
+<stop stop-color="#F4FCF7"/>
+<stop offset="1" stop-color="#ECFAF3"/>
+</linearGradient>
+<clipPath id="clip0_0_172">
+<rect width="246.73" height="44.8884" fill="white"/>
+</clipPath>
+</defs>
+</svg>

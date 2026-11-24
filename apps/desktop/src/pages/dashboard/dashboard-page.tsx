@@ -11,24 +11,100 @@ import { Card, Page, Panel } from "../../components/layout";
 import { useAccountingServices } from "../../composition/accounting/accounting-provider";
 import {
   formatJournalRials,
-  formatJournalVoucherDate,
+  journalVoucherStatusLabel,
 } from "../../features/accounting/journal-voucher-presenter";
 
+import referenceMetricCardIcon from "../../app/shell/assets/reference/metric-card.svg";
+import referenceMetricFilterIcon from "../../app/shell/assets/reference/metric-filter.svg";
+import referenceMetricLayersIcon from "../../app/shell/assets/reference/metric-layers.svg";
+import referenceMetricTrendIcon from "../../app/shell/assets/reference/metric-trend.svg";
+import referencePurchaseSeries from "../../app/shell/assets/reference/chart-purchase-series.svg";
+import referenceSalesSeries from "../../app/shell/assets/reference/chart-sales-series.svg";
+import referenceQuickArrow from "../../app/shell/assets/reference/quick-arrow.svg";
+import referenceQuickJournalIcon from "../../app/shell/assets/reference/quick-journal.svg";
+import referenceQuickPurchaseIcon from "../../app/shell/assets/reference/quick-purchase.svg";
+import referenceQuickReportIcon from "../../app/shell/assets/reference/quick-report.svg";
+import referenceQuickSalesIcon from "../../app/shell/assets/reference/quick-sales.svg";
 import "./dashboard-page.css";
 
-const fiscalStatusLabels = {
-  draft: "پیش‌نویس",
-  open: "باز",
-  closing: "در حال بستن",
-  closed: "بسته",
-} as const;
+type DashboardMetric = {
+  key: string;
+  label: string;
+  value: string;
+  note: string;
+  icon: string;
+  tone: "mint" | "blue" | "amber" | "teal";
+};
 
-function fiscalStatusTone(status: keyof typeof fiscalStatusLabels) {
+type DashboardTrendPoint = {
+  month: string;
+  sales: number;
+  purchases: number;
+};
+
+// Preview values from the Figma frame. Replace this presentation model with
+// dashboard aggregate contracts when those become available.
+const dashboardPreviewMetrics: readonly DashboardMetric[] = [
+  {
+    key: "net-sales",
+    label: "فروش خالص",
+    value: "۱٬۴۸۰٬۰۰۰٬۰۰۰",
+    note: "↑ ۱۲٫۴٪ نسبت به ماه قبل",
+    icon: referenceMetricCardIcon,
+    tone: "mint",
+  },
+  {
+    key: "receipts",
+    label: "دریافت‌ها",
+    value: "۳۸۰٬۰۰۰٬۰۰۰",
+    note: "۲۴ فاکتور باز",
+    icon: referenceMetricTrendIcon,
+    tone: "blue",
+  },
+  {
+    key: "due-payments",
+    label: "پرداخت‌های سررسید",
+    value: "۲۱۰٬۰۰۰٬۰۰۰",
+    note: "۸ سررسید نزدیک",
+    icon: referenceMetricFilterIcon,
+    tone: "amber",
+  },
+  {
+    key: "inventory-value",
+    label: "ارزش موجودی",
+    value: "۹۲۰٬۰۰۰٬۰۰۰",
+    note: "بر اساس ارزش‌گذاری",
+    icon: referenceMetricLayersIcon,
+    tone: "teal",
+  },
+];
+
+// Bar heights mirror the seven illustrative month pairs in the Figma design.
+const dashboardPreviewTrend: readonly DashboardTrendPoint[] = [
+  { month: "فروردین", sales: 51, purchases: 38 },
+  { month: "اردیبهشت", sales: 73, purchases: 54 },
+  { month: "خرداد", sales: 87, purchases: 64 },
+  { month: "تیر", sales: 111, purchases: 78 },
+  { month: "مرداد", sales: 102, purchases: 72 },
+  { month: "شهریور", sales: 115, purchases: 96 },
+  { month: "مهر", sales: 115, purchases: 115 },
+];
+
+const reportPermissions = [
+  "accounting.reports.trial-balance.view",
+  "accounting.reports.general-ledger.view",
+  "accounting.reports.subsidiary-ledger.view",
+  "accounting.reports.journal.view",
+  "accounting.reports.dimensions.view",
+] as const;
+
+function journalStatusTone(status: JournalVoucherListItemDto["status"]) {
   switch (status) {
-    case "open": return "success" as const;
-    case "closing": return "warning" as const;
-    case "closed": return "neutral" as const;
-    case "draft": return "info" as const;
+    case "posted": return "success" as const;
+    case "pending_approval": return "warning" as const;
+    case "reversed": return "danger" as const;
+    case "approved": return "info" as const;
+    case "draft": return "neutral" as const;
   }
 }
 
@@ -44,14 +120,13 @@ export function DashboardPage() {
     () => new Set(session?.user.permissions ?? []),
     [session],
   );
-  const canViewJournals =
-    permissions.has("system.full-access") ||
-    permissions.has("accounting.journal-vouchers.view");
+  const hasFullAccess = permissions.has("system.full-access");
+  const canViewJournals = hasFullAccess || permissions.has("accounting.journal-vouchers.view");
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!context.companyId || !context.fiscalYearId || !canViewJournals) {
+    if (!context.companyId || !canViewJournals) {
       setRecentVouchers([]);
       setJournalError("");
       setIsLoadingJournals(false);
@@ -60,13 +135,18 @@ export function DashboardPage() {
 
     setIsLoadingJournals(true);
     setJournalError("");
-    void journals.list({
+    const query = {
       companyId: context.companyId,
-      fiscalYearId: context.fiscalYearId,
       ...(context.branchId ? { branchId: context.branchId } : {}),
       page: 1,
-      pageSize: 5,
-    })
+      pageSize: 3,
+    };
+    const request = context.fiscalYearId
+      ? journals.list({ ...query, fiscalYearId: context.fiscalYearId })
+        .then((page) => page.items.length > 0 ? page : journals.list(query))
+      : journals.list(query);
+
+    void request
       .then((page) => {
         if (!cancelled) setRecentVouchers(page.items);
       })
@@ -91,44 +171,32 @@ export function DashboardPage() {
     journals,
   ]);
 
-  const shortcuts = useMemo(() => [
+  const quickActions = [
     ...(canViewJournals ? [{
-      label: "عملیات روزانه",
-      title: "اسناد حسابداری",
-      description: "ثبت، جستجو و ویرایش اسناد حسابداری پیش‌نویس.",
+      label: "ثبت سند حسابداری",
       path: "/accounting/journal-vouchers",
+      icon: referenceQuickJournalIcon,
+      tone: "mint",
     }] : []),
-    {
-      label: "ساختار حسابداری",
-      title: "کدینگ حساب‌ها",
-      description: "مشاهده و مدیریت ساختار درختی حساب‌های شرکت فعال.",
-      path: "/accounting/chart-of-accounts",
-    },
-    {
-      label: "اطلاعات پایه",
-      title: "شرکت و شعب",
-      description: "تعریف اطلاعات شرکت و دفتر مرکزی در فضای کاری فعلی.",
-      path: "/company/setup",
-    },
-    {
-      label: "مدیریت مالی",
-      title: "سال‌های مالی",
-      description: "تعریف و مشاهده سال مالی مورد استفاده عملیات حسابداری.",
-      path: "/fiscal/years",
-    },
-    {
-      label: "ساختار حسابداری",
-      title: "ابعاد حسابداری",
-      description: "مدیریت انواع ابعاد، اعضا و سیاست‌های تخصیص.",
-      path: "/accounting/dimensions",
-    },
-    {
-      label: "کنترل سیستم",
-      title: "وضعیت سیستم",
-      description: "بررسی وضعیت پایگاه داده و زیرساخت دسکتاپ.",
-      path: "/system/diagnostics",
-    },
-  ], [canViewJournals]);
+    ...(hasFullAccess || permissions.has("sales.documents.view") ? [{
+      label: "صدور فاکتور فروش",
+      path: "/sales/documents",
+      icon: referenceQuickSalesIcon,
+      tone: "blue",
+    }] : []),
+    ...(hasFullAccess || permissions.has("purchases.documents.view") ? [{
+      label: "ثبت فاکتور خرید",
+      path: "/purchases/documents",
+      icon: referenceQuickPurchaseIcon,
+      tone: "mint",
+    }] : []),
+    ...(hasFullAccess || reportPermissions.some((permission) => permissions.has(permission)) ? [{
+      label: "گزارش دفتر کل",
+      path: "/accounting/reports",
+      icon: referenceQuickReportIcon,
+      tone: "blue",
+    }] : []),
+  ];
 
   if (context.isLoading) {
     return (
@@ -142,22 +210,20 @@ export function DashboardPage() {
 
   return (
     <Page className="dashboard-page">
-      <section className="dashboard-page__hero" aria-labelledby="dashboard-title">
+      <section className="dashboard-page__heading" aria-labelledby="dashboard-title">
         <div>
-          <p className="dashboard-page__eyebrow">نمای کلی فضای کاری</p>
-          <h2 id="dashboard-title">خوش آمدید{session?.user.displayName ? `، ${session.user.displayName}` : ""}</h2>
-          <p>
-            دسترسی سریع به عملیات موجود و خلاصه زمینه فعال شرکت، شعبه و سال مالی.
-          </p>
+          <h2 id="dashboard-title">نمای کلی شرکت</h2>
+          <p>مروری روشن بر جریان مالی، عملکرد و فعالیت‌های مهم</p>
         </div>
-        <div className="dashboard-page__hero-status">
-          <Badge tone="success">آفلاین</Badge>
-          <Badge>SQLite</Badge>
-        </div>
+        {canViewJournals ? (
+          <Link className="dashboard-page__new-document" to="/accounting/journal-vouchers">
+            <span aria-hidden="true">＋</span>
+            سند جدید
+          </Link>
+        ) : null}
       </section>
 
       {context.error ? <Feedback tone="error">{context.error}</Feedback> : null}
-
       {!context.activeCompany ? (
         <Feedback tone="info">
           هنوز شرکتی ثبت نشده است. برای شروع، اطلاعات شرکت و دفتر مرکزی را تعریف کنید.
@@ -165,125 +231,114 @@ export function DashboardPage() {
         </Feedback>
       ) : null}
 
-      <section className="dashboard-page__section" aria-labelledby="active-context-title">
-        <div className="dashboard-page__section-heading">
-          <div>
-            <h2 id="active-context-title">زمینه کاری فعال</h2>
-            <p>خلاصه انتخاب‌هایی که عملیات جاری برنامه بر اساس آن‌ها انجام می‌شود.</p>
-          </div>
-        </div>
-
-        <div className="dashboard-page__context-grid">
-          <Card className="dashboard-page__context-card">
-            <div className="dashboard-page__context-card-header">
-              <strong>شرکت</strong>
-              <Badge tone={context.activeCompany?.status === "active" ? "success" : "neutral"}>
-                {context.activeCompany?.status === "active" ? "فعال" : "بدون انتخاب"}
-              </Badge>
+      <section className="dashboard-page__metrics" aria-label="شاخص‌های مالی نمایشی">
+        {dashboardPreviewMetrics.map((metric) => (
+          <Card key={metric.key} className={`dashboard-page__metric dashboard-page__metric--${metric.tone}`}>
+            <div className="dashboard-page__metric-icon" aria-hidden="true">
+              <img src={metric.icon} alt="" />
             </div>
-            {context.activeCompany ? (
-              <dl>
-                <div><dt>نام</dt><dd>{context.activeCompany.legalName}</dd></div>
-                <div><dt>کد</dt><dd dir="ltr">{context.activeCompany.code}</dd></div>
-                <div><dt>ارز پایه</dt><dd>ریال ایران</dd></div>
-              </dl>
-            ) : <p>برای نمایش اطلاعات، ابتدا یک شرکت تعریف کنید.</p>}
+            <p>{metric.label}</p>
+            <strong dir="ltr">{metric.value}</strong>
+            <span>{metric.note}</span>
           </Card>
-
-          <Card className="dashboard-page__context-card">
-            <div className="dashboard-page__context-card-header">
-              <strong>شعبه</strong>
-              {context.activeBranch?.isHeadOffice ? <Badge tone="info">دفتر مرکزی</Badge> : <Badge>شعبه</Badge>}
-            </div>
-            {context.activeBranch ? (
-              <dl>
-                <div><dt>نام</dt><dd>{context.activeBranch.name}</dd></div>
-                <div><dt>کد</dt><dd dir="ltr">{context.activeBranch.code}</dd></div>
-                <div><dt>وضعیت</dt><dd>{context.activeBranch.status === "active" ? "فعال" : "غیرفعال"}</dd></div>
-              </dl>
-            ) : <p>برای شرکت فعال شعبه‌ای در دسترس نیست.</p>}
-          </Card>
-
-          <Card className="dashboard-page__context-card">
-            <div className="dashboard-page__context-card-header">
-              <strong>سال مالی</strong>
-              {context.activeFiscalYear ? (
-                <Badge tone={fiscalStatusTone(context.activeFiscalYear.status)}>
-                  {fiscalStatusLabels[context.activeFiscalYear.status]}
-                </Badge>
-              ) : <Badge>بدون انتخاب</Badge>}
-            </div>
-            {context.activeFiscalYear ? (
-              <dl>
-                <div><dt>عنوان</dt><dd>{context.activeFiscalYear.title}</dd></div>
-                <div><dt>کد</dt><dd dir="ltr">{context.activeFiscalYear.code}</dd></div>
-                <div><dt>بازه</dt><dd>{formatJournalVoucherDate(context.activeFiscalYear.startDate)} تا {formatJournalVoucherDate(context.activeFiscalYear.endDate)}</dd></div>
-              </dl>
-            ) : <p>برای شرکت فعال هنوز سال مالی قابل استفاده‌ای انتخاب نشده است.</p>}
-          </Card>
-        </div>
+        ))}
       </section>
 
-      <section className="dashboard-page__section" aria-labelledby="shortcut-title">
-        <div className="dashboard-page__section-heading">
-          <div>
-            <h2 id="shortcut-title">دسترسی سریع</h2>
-            <p>ورود مستقیم به قابلیت‌هایی که هم‌اکنون در برنامه پیاده‌سازی شده‌اند.</p>
+      <div className="dashboard-page__middle-row">
+        <Card className="dashboard-page__trend-panel">
+          <div className="dashboard-page__panel-heading">
+            <div>
+              <h3>روند فروش و خرید</h3>
+              <p>عملکرد ماهانهٔ دریافتی‌ها</p>
+            </div>
+            <div className="dashboard-page__legend" aria-hidden="true">
+              <span>فروش<img src={referenceSalesSeries} alt="" /></span>
+              <span>خرید<img src={referencePurchaseSeries} alt="" /></span>
+            </div>
           </div>
-        </div>
-        <div className="dashboard-page__shortcut-grid">
-          {shortcuts.map((shortcut) => (
-            <Link key={shortcut.path} to={shortcut.path} className="ui-card dashboard-page__shortcut">
-              <span>{shortcut.label}</span>
-              <strong>{shortcut.title}</strong>
-              <p>{shortcut.description}</p>
-              <div className="dashboard-page__shortcut-action">ورود به بخش ←</div>
-            </Link>
-          ))}
-        </div>
-      </section>
+          <div className="dashboard-page__chart" role="img" aria-label="نمودار نمایشی فروش و خرید از فروردین تا مهر">
+            {dashboardPreviewTrend.map((point) => (
+              <div className="dashboard-page__chart-month" key={point.month}>
+                <div className="dashboard-page__chart-bars">
+                  <span className="dashboard-page__bar dashboard-page__bar--sales" style={{ height: `${point.sales}px` }} />
+                  <span className="dashboard-page__bar dashboard-page__bar--purchases" style={{ height: `${point.purchases}px` }} />
+                </div>
+                <span className="dashboard-page__chart-label">{point.month}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="dashboard-page__quick-panel">
+          <div className="dashboard-page__panel-heading">
+            <div>
+              <h3>دسترسی سریع</h3>
+              <p>کارهای پرکاربرد روزانه</p>
+            </div>
+          </div>
+          {quickActions.length ? (
+            <nav className="dashboard-page__quick-actions" aria-label="دسترسی سریع داشبورد">
+              {quickActions.map((action) => (
+                <Link className={`dashboard-page__quick-action dashboard-page__quick-action--${action.tone}`} key={action.path} to={action.path}>
+                  <span className="dashboard-page__quick-icon" aria-hidden="true"><img src={action.icon} alt="" /></span>
+                  <span>{action.label}</span>
+                  <span className="dashboard-page__quick-arrow" aria-hidden="true"><img src={referenceQuickArrow} alt="" /></span>
+                </Link>
+              ))}
+            </nav>
+          ) : (
+            <p className="dashboard-page__no-actions">برای نمایش دسترسی‌ها، مجوزهای مرتبط لازم است.</p>
+          )}
+        </Card>
+      </div>
 
       {canViewJournals ? (
-        <section className="dashboard-page__section" aria-labelledby="recent-journals-title">
-          <div className="dashboard-page__section-heading">
-            <div>
-              <h2 id="recent-journals-title">اسناد حسابداری اخیر</h2>
-              <p>آخرین اسناد پیش‌نویس موجود در شرکت، شعبه و سال مالی فعال.</p>
-            </div>
-            <Link to="/accounting/journal-vouchers">مشاهده همه اسناد</Link>
+        <Card className="dashboard-page__activity-panel">
+          <div className="dashboard-page__activity-heading">
+            <h3 id="recent-journals-title">آخرین اسناد حسابداری</h3>
+            <Link to="/accounting/journal-vouchers">مشاهدهٔ همه</Link>
           </div>
-
-          <Panel className="dashboard-page__journal-panel">
-            {isLoadingJournals ? <p className="dashboard-page__loading">در حال دریافت اسناد اخیر...</p> : null}
-            {journalError ? <Feedback tone="warning">{journalError}</Feedback> : null}
-            {!isLoadingJournals && !journalError && !context.activeFiscalYear ? (
-              <div className="dashboard-page__journal-empty">
-                <strong>سال مالی فعالی برای نمایش اسناد وجود ندارد.</strong>
-                <p>پس از تعریف یا انتخاب سال مالی، اسناد همان زمینه در این بخش نمایش داده می‌شوند.</p>
-                <Link to="/fiscal/years">مدیریت سال‌های مالی</Link>
-              </div>
-            ) : null}
-            {!isLoadingJournals && !journalError && context.activeFiscalYear && recentVouchers.length === 0 ? (
-              <div className="dashboard-page__journal-empty">
-                <strong>هنوز سندی در این زمینه ثبت نشده است.</strong>
-                <p>می‌توانید اولین سند حسابداری پیش‌نویس را از فضای اسناد ایجاد کنید.</p>
-                <Link to="/accounting/journal-vouchers">رفتن به اسناد حسابداری</Link>
-              </div>
-            ) : null}
-            {recentVouchers.length > 0 ? (
-              <div className="dashboard-page__journal-list">
-                {recentVouchers.map((voucher) => (
-                  <div key={voucher.id} className="dashboard-page__journal-item">
-                    <span className="dashboard-page__journal-number" dir="ltr">{voucher.number}</span>
-                    <span className="dashboard-page__journal-date">{formatJournalVoucherDate(voucher.voucherDate)}</span>
-                    <span className="dashboard-page__journal-description">{voucher.description || voucher.reference || "بدون شرح"}</span>
-                    <span className="dashboard-page__journal-amount">{formatJournalRials(voucher.totalDebit.amount)}</span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </Panel>
-        </section>
+          {isLoadingJournals ? <p className="dashboard-page__loading" role="status">در حال دریافت اسناد اخیر...</p> : null}
+          {journalError ? <Feedback tone="warning">{journalError}</Feedback> : null}
+          {!isLoadingJournals && !journalError && !context.activeFiscalYear && recentVouchers.length === 0 ? (
+            <div className="dashboard-page__journal-empty">
+              <strong>سال مالی فعالی برای نمایش اسناد وجود ندارد.</strong>
+              <p>پس از تعریف یا انتخاب سال مالی، اسناد همان زمینه در این بخش نمایش داده می‌شوند.</p>
+              <Link to="/fiscal/years">مدیریت سال‌های مالی</Link>
+            </div>
+          ) : null}
+          {!isLoadingJournals && !journalError && context.activeFiscalYear && recentVouchers.length === 0 ? (
+            <div className="dashboard-page__journal-empty">
+              <strong>هنوز سندی در این زمینه ثبت نشده است.</strong>
+              <p>می‌توانید اولین سند حسابداری پیش‌نویس را از فضای اسناد ایجاد کنید.</p>
+              <Link to="/accounting/journal-vouchers">رفتن به اسناد حسابداری</Link>
+            </div>
+          ) : null}
+          {recentVouchers.length > 0 ? (
+            <div className="dashboard-page__table-scroll">
+              <table className="dashboard-page__table">
+                <thead>
+                  <tr>
+                    <th scope="col">شماره سند</th>
+                    <th scope="col">شرح</th>
+                    <th scope="col">مبلغ (ریال)</th>
+                    <th scope="col">وضعیت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentVouchers.map((voucher) => (
+                    <tr key={voucher.id}>
+                      <td dir="ltr">{voucher.number}</td>
+                      <td>{voucher.description || voucher.reference || "بدون شرح"}</td>
+                      <td dir="ltr">{formatJournalRials(voucher.totalDebit.amount)}</td>
+                      <td><Badge tone={journalStatusTone(voucher.status)}>{journalVoucherStatusLabel(voucher.status)}</Badge></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+        </Card>
       ) : null}
     </Page>
   );
